@@ -479,7 +479,7 @@ internal class DeepCopyIrTreeWithDescriptors(val targetDescriptor: FunctionDescr
             return IrCallImpl(
                 startOffset    = expression.startOffset,
                 endOffset      = expression.endOffset,
-                type           = newDescriptor.returnType?.toIrType()!!,
+                type           = newDescriptor.returnType?.toIrType(context.symbolTable)!!,
                 descriptor     = newDescriptor,
                 typeArgumentsCount = expression.typeArgumentsCount,
                 origin         = expression.origin,
@@ -611,7 +611,7 @@ internal class DeepCopyIrTreeWithDescriptors(val targetDescriptor: FunctionDescr
 
     //-------------------------------------------------------------------------//
 
-    private fun substituteType(oldType: IrType?): IrType? = substituteType(oldType?.toKotlinType())?.toIrType()
+    private fun substituteType(oldType: IrType?): IrType? = substituteType(oldType?.toKotlinType())?.toIrType(context.symbolTable)
 
     private fun substituteType(oldType: KotlinType?): KotlinType? {
         if (typeSubstitutor == null) return oldType
