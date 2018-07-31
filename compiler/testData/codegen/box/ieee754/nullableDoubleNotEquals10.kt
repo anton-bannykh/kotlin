@@ -1,26 +1,34 @@
 // LANGUAGE_VERSION: 1.0
-fun myNotEquals(a: Double?, b: Double?) = a != b
+//fun myNotEquals(a: Double?,
+// b: Double) = a != b
 
-fun myNotEquals1(a: Double?, b: Double) = a != b
+inline fun foo(init: (Int) -> Unit) {
+    var i = 0
+    while (i < 10) {
+        init(i)
+        ++i
+    }
+}
 
-fun myNotEquals2(a: Double, b: Double?) = a != b
-
-fun myNotEquals0(a: Double, b: Double) = a != b
 
 
 fun box(): String {
-    if (myNotEquals(null, null)) return "fail 1"
-    if (!myNotEquals(null, 0.0)) return "fail 2"
-    if (!myNotEquals(0.0, null)) return "fail 3"
-    if (myNotEquals(0.0, 0.0)) return "fail 4"
+    foo { it * it }
 
-    if (!myNotEquals1(null, 0.0)) return "fail 5"
-    if (myNotEquals1(0.0, 0.0)) return "fail 6"
+    Array<Int>(10) { it }
 
-    if (!myNotEquals2(0.0, null)) return "fail 7"
-    if (myNotEquals2(0.0, 0.0)) return "fail 8"
-
-    if (myNotEquals0(0.0, 0.0)) return "fail 9"
+//    if (myNotEquals(null, null)) return "fail 1"
+//    if (!myNotEquals(null, 0.0)) return "fail 2"
+//    if (!myNotEquals(0.0, null)) return "fail 3"
+//    if (myNotEquals(0.0, 0.0)) return "fail 4"
+//
+//    if (!myNotEquals1(null, 0.0)) return "fail 5"
+//    if (myNotEquals1(0.0, 0.0)) return "fail 6"
+//
+//    if (!myNotEquals2(0.0, null)) return "fail 7"
+//    if (myNotEquals2(0.0, 0.0)) return "fail 8"
+//
+//    if (myNotEquals0(0.0, 0.0)) return "fail 9"
 
     return "OK"
 }

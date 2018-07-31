@@ -101,14 +101,14 @@ public fun isChar(c: Any): Boolean {
 }
 
 // TODO: Distinguish Boolean/Byte and Short/Char
-public fun isBooleanArray(a: dynamic) = js("a instanceof Int8Array")
-public fun isByteArray(a: dynamic) = js("a instanceof Int8Array")
-public fun isShortArray(a: dynamic) = js("a instanceof Int16Array")
-public fun isCharArray(a: dynamic) = js("a instanceof Uint16Array")
-public fun isIntArray(a: dynamic) = js("a instanceof Int32Array")
-public fun isFloatArray(a: dynamic) = js("a instanceof Float32Array")
-public fun isDoubleArray(a: dynamic) = js("a instanceof Float64Array")
-public fun isLongArray(a: dynamic) = isArray(a)  // TODO: Implement
+public fun isBooleanArray(a: dynamic): Boolean = js("a instanceof Int8Array").unsafeCast<Boolean>()
+public fun isByteArray(a: dynamic): Boolean = js("a instanceof Int8Array").unsafeCast<Boolean>()
+public fun isShortArray(a: dynamic): Boolean = js("a instanceof Int16Array").unsafeCast<Boolean>()
+public fun isCharArray(a: dynamic): Boolean = js("a instanceof Uint16Array").unsafeCast<Boolean>()
+public fun isIntArray(a: dynamic): Boolean = js("a instanceof Int32Array").unsafeCast<Boolean>()
+public fun isFloatArray(a: dynamic): Boolean = js("a instanceof Float32Array").unsafeCast<Boolean>()
+public fun isDoubleArray(a: dynamic): Boolean = js("a instanceof Float64Array").unsafeCast<Boolean>()
+public fun isLongArray(a: dynamic): Boolean = isArray(a)  // TODO: Implement
 
 
 internal fun jsIn(x: String, y: dynamic): Boolean = js("x in y")

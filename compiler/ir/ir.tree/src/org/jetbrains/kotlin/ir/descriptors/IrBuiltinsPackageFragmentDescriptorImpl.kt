@@ -45,4 +45,12 @@ class IrBuiltinsPackageFragmentDescriptorImpl(
     override fun acceptVoid(visitor: DeclarationDescriptorVisitor<Void, Void>) {
         visitor.visitPackageFragmentDescriptor(this, null)
     }
+
+    override fun equals(other: Any?): Boolean {
+        return other is IrBuiltinsPackageFragmentDescriptorImpl && containingModule == other.containingModule && fqName == other.fqName
+    }
+
+    override fun hashCode(): Int {
+        return containingModule.hashCode() * 31 + fqName.hashCode()
+    }
 }

@@ -72,9 +72,17 @@ abstract class IrBuiltinOperatorDescriptorBase(containingDeclaration: Declaratio
     override fun <R : Any?, D : Any?> accept(visitor: DeclarationDescriptorVisitor<R, D>, data: D): R {
         return visitor.visitFunctionDescriptor(this, data)
     }
+
+    override fun equals(other: Any?): Boolean {
+        return other is IrBuiltinOperatorDescriptorBase && containingDeclaration == other.containingDeclaration && name == other.name
+    }
+
+    override fun hashCode(): Int {
+        return containingDeclaration.hashCode() * 31 + name.hashCode()
+    }
 }
 
-class IrSimpleBuiltinOperatorDescriptorImpl(
+open class IrSimpleBuiltinOperatorDescriptorImpl(
     containingDeclaration: DeclarationDescriptor,
     name: Name,
     private val returnType: KotlinType
@@ -87,6 +95,14 @@ class IrSimpleBuiltinOperatorDescriptorImpl(
 
     override fun getReturnType(): KotlinType = returnType
     override fun getValueParameters(): List<ValueParameterDescriptor> = valueParameters
+
+    override fun equals(other: Any?): Boolean {
+        return other is IrSimpleBuiltinOperatorDescriptorImpl && containingDeclaration == other.containingDeclaration && name == other.name
+    }
+
+    override fun hashCode(): Int {
+        return containingDeclaration.hashCode() * 31 + name.hashCode()
+    }
 }
 
 class IrBuiltinValueParameterDescriptorImpl(
@@ -117,5 +133,14 @@ class IrBuiltinValueParameterDescriptorImpl(
 
     override fun <R : Any?, D : Any?> accept(visitor: DeclarationDescriptorVisitor<R, D>, data: D): R {
         return visitor.visitValueParameterDescriptor(this, data)
+    }
+
+    override fun equals(other: Any?): Boolean {
+        return other is IrBuiltinValueParameterDescriptorImpl && containingDeclaration == other.containingDeclaration &&
+                name == other.name && index == other.index && type == other.type
+    }
+
+    override fun hashCode(): Int {
+        return ((containingDeclaration.hashCode() * 31 + name.hashCode()) * 31 + index) * 31 + type.hashCode()
     }
 }
