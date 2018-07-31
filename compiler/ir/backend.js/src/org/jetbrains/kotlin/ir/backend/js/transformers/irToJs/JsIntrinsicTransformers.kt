@@ -143,6 +143,30 @@ class JsIntrinsicTransformers(backendContext: JsIrBackendContext) {
                 val continuation = context.continuation
                 JsInvocation(JsNameRef(getterName, continuation))
             }
+
+            add(intrinsics.jsArrayLength) { call, context ->
+                val args = translateCallArguments(call, context)
+                JsNameRef("length", args[0])
+            }
+
+            add(intrinsics.jsArrayGet) { call, context ->
+                val args = translateCallArguments(call, context)
+                val array = args[0]
+                val index = args[1]
+                JsArrayAccess(array, index)
+            }
+
+            add(intrinsics.jsArraySet) { call, context ->
+                val args = translateCallArguments(call, context)
+                val array = args[0]
+                val index = args[1]
+                val value = args[2]
+                JsBinaryOperation(JsBinaryOperator.ASG, JsArrayAccess(array, index), value)
+            }
+
+            add(intrinsics.arrayLiteral) { call, context ->
+                JsArrayLiteral(translateCallArguments(call, context))
+            }
         }
     }
 

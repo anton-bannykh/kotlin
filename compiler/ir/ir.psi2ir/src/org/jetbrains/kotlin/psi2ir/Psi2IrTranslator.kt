@@ -20,6 +20,8 @@ import org.jetbrains.kotlin.config.LanguageVersionSettings
 import org.jetbrains.kotlin.descriptors.ModuleDescriptor
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
+import org.jetbrains.kotlin.ir.descriptors.IrBuiltIns
+import org.jetbrains.kotlin.ir.util.SymbolTable
 import org.jetbrains.kotlin.ir.util.patchDeclarationParents
 import org.jetbrains.kotlin.ir.visitors.acceptVoid
 import org.jetbrains.kotlin.psi.KtFile
@@ -49,8 +51,8 @@ class Psi2IrTranslator(
         return generateModuleFragment(context, ktFiles)
     }
 
-    fun createGeneratorContext(moduleDescriptor: ModuleDescriptor, bindingContext: BindingContext) =
-        GeneratorContext(configuration, moduleDescriptor, bindingContext, languageVersionSettings)
+    fun createGeneratorContext(moduleDescriptor: ModuleDescriptor, bindingContext: BindingContext, symbolTable: SymbolTable? = null, irBuiltins: IrBuiltIns? = null) =
+        GeneratorContext(configuration, moduleDescriptor, bindingContext, languageVersionSettings, symbolTable ?: SymbolTable(), irBuiltins)
 
     fun generateModuleFragment(context: GeneratorContext, ktFiles: Collection<KtFile>): IrModuleFragment {
         val moduleGenerator = ModuleGenerator(context)

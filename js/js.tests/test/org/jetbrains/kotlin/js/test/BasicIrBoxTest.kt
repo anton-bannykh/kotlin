@@ -127,7 +127,7 @@ abstract class BasicIrBoxTest(
                 filesToCompile,
                 config.configuration,
                 FqName((testPackage?.let { "$it." } ?: "") + testFunction),
-                listOf(runtimeResult!!.moduleDescriptor))
+                listOf(runtimeResult!!))
         }
 
         outputFile.write(result.generatedCode)

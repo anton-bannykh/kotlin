@@ -13,6 +13,7 @@ import org.jetbrains.kotlin.backend.common.runOnFilePostfix
 import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.config.languageVersionSettings
 import org.jetbrains.kotlin.descriptors.ModuleDescriptor
+import org.jetbrains.kotlin.descriptors.impl.ModuleDescriptorImpl
 import org.jetbrains.kotlin.ir.backend.js.lower.*
 import org.jetbrains.kotlin.ir.backend.js.lower.coroutines.SuspendFunctionsLowering
 import org.jetbrains.kotlin.ir.backend.js.lower.inline.FunctionInlining
@@ -20,27 +21,32 @@ import org.jetbrains.kotlin.ir.backend.js.lower.inline.RemoveInlineFunctionsWith
 import org.jetbrains.kotlin.ir.backend.js.lower.inline.ReturnableBlockLowering
 import org.jetbrains.kotlin.ir.backend.js.lower.inline.replaceUnboundSymbols
 import org.jetbrains.kotlin.ir.backend.js.transformers.irToJs.IrModuleToJsTransformer
-import org.jetbrains.kotlin.ir.declarations.IrFile
-import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
-import org.jetbrains.kotlin.ir.util.ExternalDependenciesGenerator
-import org.jetbrains.kotlin.ir.util.patchDeclarationParents
+import org.jetbrains.kotlin.ir.declarations.*
+import org.jetbrains.kotlin.ir.descriptors.IrBuiltIns
+import org.jetbrains.kotlin.ir.expressions.IrBlock
+import org.jetbrains.kotlin.ir.expressions.IrReturnableBlock
+import org.jetbrains.kotlin.ir.symbols.*
+import org.jetbrains.kotlin.ir.symbols.impl.*
+import org.jetbrains.kotlin.ir.util.*
+import org.jetbrains.kotlin.ir.visitors.acceptChildrenVoid
+import org.jetbrains.kotlin.ir.visitors.acceptVoid
 import org.jetbrains.kotlin.js.analyze.TopDownAnalyzerFacadeForJS
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.progress.ProgressIndicatorAndCompilationCanceledStatus
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi2ir.Psi2IrTranslator
 
-data class Result(val moduleDescriptor: ModuleDescriptor, val generatedCode: String)
+data class Result(val moduleDescriptor: ModuleDescriptor, val generatedCode: String, val moduleFragment: IrModuleFragment, val symbolTable: SymbolTable, val irBuiltIns: IrBuiltIns, val jsIntrinsics: JsIntrinsics)
 
 fun compile(
     project: Project,
     files: List<KtFile>,
     configuration: CompilerConfiguration,
     export: FqName? = null,
-    dependencies: List<ModuleDescriptor> = listOf()
+    dependencies: List<Result> = listOf()
 ): Result {
     val analysisResult =
-        TopDownAnalyzerFacadeForJS.analyzeFiles(files, project, configuration, dependencies.filterIsInstance(), emptyList())
+        TopDownAnalyzerFacadeForJS.analyzeFiles(files, project, configuration, dependencies.mapNotNull { it.moduleDescriptor as? ModuleDescriptorImpl }, emptyList())
 
     ProgressIndicatorAndCompilationCanceledStatus.checkCanceled()
 
@@ -48,6 +54,10 @@ fun compile(
 
     val psi2IrTranslator = Psi2IrTranslator(configuration.languageVersionSettings)
     val psi2IrContext = psi2IrTranslator.createGeneratorContext(analysisResult.moduleDescriptor, analysisResult.bindingContext)
+
+    dependencies.forEach {
+        psi2IrContext.symbolTable.loadModule(it.moduleFragment)
+    }
 
     val moduleFragment = psi2IrTranslator.generateModuleFragment(psi2IrContext, files)
 
@@ -57,6 +67,8 @@ fun compile(
         psi2IrContext.symbolTable,
         moduleFragment
     )
+
+//    dependencies.forEach { context.originalModuleIndex.addModule(it.moduleFragment) }
 
     ExternalDependenciesGenerator(psi2IrContext.moduleDescriptor, psi2IrContext.symbolTable, psi2IrContext.irBuiltIns)
         .generateUnboundSymbolsAsDependencies(moduleFragment)
@@ -68,13 +80,24 @@ fun compile(
 
     MoveExternalDeclarationsToSeparatePlace().lower(moduleFragment.files)
 
+//    if (dependencies.size > 0) println(moduleFragment.dump())
+
+    moduleFragment.files.forEach { ArrayLowering(context, false).lower(it) }
+
+    val moduleFragmentCopy = moduleFragment.deepCopyWithSymbols()
+
+//    if (dependencies.size > 0) println(moduleFragment.dump())
+
     context.performInlining(moduleFragment)
+
+
+//    if (dependencies.size > 0) println(moduleFragment.dump())
 
     context.lower(moduleFragment)
 
     val program = moduleFragment.accept(IrModuleToJsTransformer(context), null)
 
-    return Result(analysisResult.moduleDescriptor, program.toString())
+    return Result(analysisResult.moduleDescriptor, program.toString(), moduleFragmentCopy, context.symbolTable, context.irBuiltIns, context.intrinsics)
 }
 
 private fun JsIrBackendContext.performInlining(moduleFragment: IrModuleFragment) {
@@ -90,6 +113,7 @@ private fun JsIrBackendContext.performInlining(moduleFragment: IrModuleFragment)
 }
 
 private fun JsIrBackendContext.lower(moduleFragment: IrModuleFragment) {
+    moduleFragment.files.forEach(VarargLowering(this)::lower)
     moduleFragment.files.forEach(LateinitLowering(this, true)::lower)
     moduleFragment.files.forEach(DefaultArgumentStubGenerator(this)::runOnFilePostfix)
     moduleFragment.files.forEach(DefaultParameterInjector(this)::runOnFilePostfix)
@@ -117,6 +141,7 @@ private fun JsIrBackendContext.lower(moduleFragment: IrModuleFragment) {
     moduleFragment.files.forEach(clble.getReferenceReplacer())
     moduleFragment.files.forEach(ClassReferenceLowering(this)::lower)
     moduleFragment.files.forEach(PrimitiveCompanionLowering(this)::lower)
+    moduleFragment.files.forEach { ArrayLowering(this, true).lower(it) }
     moduleFragment.files.forEach(IntrinsicifyCallsLowering(this)::lower)
 }
 
