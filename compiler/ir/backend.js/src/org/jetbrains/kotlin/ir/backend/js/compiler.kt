@@ -68,6 +68,8 @@ fun compile(
 
     MoveExternalDeclarationsToSeparatePlace().lower(moduleFragment.files)
 
+    moduleFragment.files.forEach { ArrayLowering(context).lower(it) }
+
     context.performInlining(moduleFragment)
 
     context.lower(moduleFragment)

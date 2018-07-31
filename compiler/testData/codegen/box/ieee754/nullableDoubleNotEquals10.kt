@@ -9,6 +9,8 @@ fun myNotEquals0(a: Double, b: Double) = a != b
 
 
 fun box(): String {
+    Array(10) { it }
+
     if (myNotEquals(null, null)) return "fail 1"
     if (!myNotEquals(null, 0.0)) return "fail 2"
     if (!myNotEquals(0.0, null)) return "fail 3"

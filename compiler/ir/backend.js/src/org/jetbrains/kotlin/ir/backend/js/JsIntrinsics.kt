@@ -172,6 +172,16 @@ class JsIntrinsics(
 
     val charConstructor = context.symbolTable.referenceConstructor(context.getClass(KotlinBuiltIns.FQ_NAMES._char.toSafe()).constructors.single())
 
+    // Arrays:
+    val array = context.symbolTable.referenceClass(irBuiltIns.builtIns.array)
+    val byteArray = context.symbolTable.referenceClass(irBuiltIns.builtIns.getPrimitiveArrayClassDescriptor(PrimitiveType.BYTE))
+    val shortArray = context.symbolTable.referenceClass(irBuiltIns.builtIns.getPrimitiveArrayClassDescriptor(PrimitiveType.SHORT))
+    val charArray = context.symbolTable.referenceClass(irBuiltIns.builtIns.getPrimitiveArrayClassDescriptor(PrimitiveType.CHAR))
+    val intArray = context.symbolTable.referenceClass(irBuiltIns.builtIns.getPrimitiveArrayClassDescriptor(PrimitiveType.INT))
+    val floatArray = context.symbolTable.referenceClass(irBuiltIns.builtIns.getPrimitiveArrayClassDescriptor(PrimitiveType.FLOAT))
+    val doubleArray = context.symbolTable.referenceClass(irBuiltIns.builtIns.getPrimitiveArrayClassDescriptor(PrimitiveType.DOUBLE))
+    val longArray = context.symbolTable.referenceClass(irBuiltIns.builtIns.getPrimitiveArrayClassDescriptor(PrimitiveType.LONG))
+
     // Helpers:
 
     private fun getInternalFunction(name: String) =
