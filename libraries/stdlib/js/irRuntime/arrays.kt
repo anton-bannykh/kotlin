@@ -20,7 +20,7 @@ inline fun <T> fillArrayFun(array: Array<T>, init: (Int) -> T): Array<T> {
     return array
 }
 
-inline fun <T> arrayLength(array: Array<T>): Int = array.asDynamic().length
+fun <T> arrayLength(array: Array<T>): Int = array.asDynamic().length
 
 //
 //fun booleanArray(size: Int, init: dynamic): Array<Boolean> {

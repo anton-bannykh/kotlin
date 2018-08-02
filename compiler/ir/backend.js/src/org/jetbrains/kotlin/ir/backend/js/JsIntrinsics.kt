@@ -179,13 +179,13 @@ class JsIntrinsics(
     val arrayConstructor = array.owner.declarations.filterIsInstance<IrConstructor>().first().symbol
     val arraySize = array.owner.declarations.filterIsInstance<IrProperty>().filter { it.name.asString() == "size" }.first().getter!!.symbol
 
-    val byteArray = context.symbolTable.referenceClass(irBuiltIns.builtIns.getPrimitiveArrayClassDescriptor(PrimitiveType.BYTE))
-    val shortArray = context.symbolTable.referenceClass(irBuiltIns.builtIns.getPrimitiveArrayClassDescriptor(PrimitiveType.SHORT))
-    val charArray = context.symbolTable.referenceClass(irBuiltIns.builtIns.getPrimitiveArrayClassDescriptor(PrimitiveType.CHAR))
-    val intArray = context.symbolTable.referenceClass(irBuiltIns.builtIns.getPrimitiveArrayClassDescriptor(PrimitiveType.INT))
-    val floatArray = context.symbolTable.referenceClass(irBuiltIns.builtIns.getPrimitiveArrayClassDescriptor(PrimitiveType.FLOAT))
-    val doubleArray = context.symbolTable.referenceClass(irBuiltIns.builtIns.getPrimitiveArrayClassDescriptor(PrimitiveType.DOUBLE))
-    val longArray = context.symbolTable.referenceClass(irBuiltIns.builtIns.getPrimitiveArrayClassDescriptor(PrimitiveType.LONG))
+//    val byteArray = context.symbolTable.referenceClass(irBuiltIns.builtIns.getPrimitiveArrayClassDescriptor(PrimitiveType.BYTE))
+//    val shortArray = context.symbolTable.referenceClass(irBuiltIns.builtIns.getPrimitiveArrayClassDescriptor(PrimitiveType.SHORT))
+//    val charArray = context.symbolTable.referenceClass(irBuiltIns.builtIns.getPrimitiveArrayClassDescriptor(PrimitiveType.CHAR))
+//    val intArray = context.symbolTable.referenceClass(irBuiltIns.builtIns.getPrimitiveArrayClassDescriptor(PrimitiveType.INT))
+//    val floatArray = context.symbolTable.referenceClass(irBuiltIns.builtIns.getPrimitiveArrayClassDescriptor(PrimitiveType.FLOAT))
+//    val doubleArray = context.symbolTable.referenceClass(irBuiltIns.builtIns.getPrimitiveArrayClassDescriptor(PrimitiveType.DOUBLE))
+//    val longArray = context.symbolTable.referenceClass(irBuiltIns.builtIns.getPrimitiveArrayClassDescriptor(PrimitiveType.LONG))
 
     val jsArray = getInternalFunction("arrayWithFun")
     val jsArrayLength = getInternalFunction("arrayLength")
