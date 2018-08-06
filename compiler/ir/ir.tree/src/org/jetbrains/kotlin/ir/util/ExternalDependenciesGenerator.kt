@@ -30,11 +30,15 @@ class ExternalDependenciesGenerator(
         moduleDescriptor, symbolTable, IrDeclarationOrigin.IR_EXTERNAL_DECLARATION_STUB, irBuiltIns.languageVersionSettings
     )
 
-    fun generateUnboundSymbolsAsDependencies(irModule: IrModuleFragment) {
-        DependencyGenerationTask(irModule).run()
+    fun generateUnboundSymbolsAsDependencies() {
+        DependencyGenerationTask().run()
     }
 
-    private inner class DependencyGenerationTask(val irModule: IrModuleFragment) {
+    fun generateUnboundSymbolsAsDependencies(moduleFragment: IrModuleFragment) {
+        DependencyGenerationTask().run()
+    }
+
+    private inner class DependencyGenerationTask() {
 
         fun run() {
             stubGenerator.unboundSymbolGeneration = true

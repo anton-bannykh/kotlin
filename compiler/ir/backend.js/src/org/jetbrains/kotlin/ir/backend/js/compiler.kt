@@ -21,18 +21,23 @@ import org.jetbrains.kotlin.ir.backend.js.lower.inline.RemoveInlineFunctionsWith
 import org.jetbrains.kotlin.ir.backend.js.lower.inline.ReturnableBlockLowering
 import org.jetbrains.kotlin.ir.backend.js.lower.inline.replaceUnboundSymbols
 import org.jetbrains.kotlin.ir.backend.js.transformers.irToJs.IrModuleToJsTransformer
-import org.jetbrains.kotlin.ir.declarations.IrFile
-import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
-import org.jetbrains.kotlin.ir.util.ExternalDependenciesGenerator
-import org.jetbrains.kotlin.ir.util.dump
-import org.jetbrains.kotlin.ir.util.patchDeclarationParents
+import org.jetbrains.kotlin.ir.declarations.*
+import org.jetbrains.kotlin.ir.descriptors.IrBuiltIns
+import org.jetbrains.kotlin.ir.expressions.IrBlock
+import org.jetbrains.kotlin.ir.expressions.IrReturnableBlock
+import org.jetbrains.kotlin.ir.symbols.impl.*
+import org.jetbrains.kotlin.ir.util.*
+import org.jetbrains.kotlin.ir.visitors.acceptChildrenVoid
+import org.jetbrains.kotlin.ir.visitors.acceptVoid
 import org.jetbrains.kotlin.js.analyze.TopDownAnalyzerFacadeForJS
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.progress.ProgressIndicatorAndCompilationCanceledStatus
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi2ir.Psi2IrTranslator
 
-data class Result(val moduleDescriptor: ModuleDescriptor, val generatedCode: String, val moduleFragment: IrModuleFragment)
+data class Result(val moduleDescriptor: ModuleDescriptor, val generatedCode: String, val moduleFragment: IrModuleFragment, val symbolTable: SymbolTable, val irBuiltIns: IrBuiltIns, val jsIntrinsics: JsIntrinsics)
+
+private lateinit var builtinsSymbolTable: SymbolTable
 
 fun compile(
     project: Project,
@@ -48,8 +53,108 @@ fun compile(
 
     TopDownAnalyzerFacadeForJS.checkForErrors(files, analysisResult.bindingContext)
 
+    if (!::builtinsSymbolTable.isInitialized) {
+        val psi2IrTranslator = Psi2IrTranslator(configuration.languageVersionSettings)
+        val psi2IrContext = psi2IrTranslator.createGeneratorContext(analysisResult.moduleDescriptor, analysisResult.bindingContext)
+        ExternalDependenciesGenerator(psi2IrContext.moduleDescriptor, psi2IrContext.symbolTable, psi2IrContext.irBuiltIns)
+            .generateUnboundSymbolsAsDependencies()
+        builtinsSymbolTable = psi2IrContext.symbolTable.copyGlobal()
+    }
+
+    val symbolTable = builtinsSymbolTable.copyGlobal()
+
+    dependencies.forEach {
+        symbolTable.loadModule(it.moduleFragment)
+    }
+
     val psi2IrTranslator = Psi2IrTranslator(configuration.languageVersionSettings)
-    val psi2IrContext = psi2IrTranslator.createGeneratorContext(analysisResult.moduleDescriptor, analysisResult.bindingContext)
+    val psi2IrContext = psi2IrTranslator.createGeneratorContext(analysisResult.moduleDescriptor, analysisResult.bindingContext, symbolTable, dependencies.firstOrNull()?.irBuiltIns)
+
+/*    dependencies.forEach {
+        val symbolRemapper = object : DeepCopySymbolRemapper() {
+            override fun visitClass(declaration: IrClass) {
+                remapSymbol(classes, declaration) {
+                    IrClassSymbolImpl(descriptorsRemapper.remapDeclaredClass(it.descriptor))
+                }
+                declaration.acceptChildrenVoid(this)
+            }
+
+            override fun visitConstructor(declaration: IrConstructor) {
+                remapSymbol(constructors, declaration) {
+                    IrConstructorSymbolImpl(descriptorsRemapper.remapDeclaredConstructor(it.descriptor))
+                }
+                declaration.acceptChildrenVoid(this)
+            }
+
+            override fun visitEnumEntry(declaration: IrEnumEntry) {
+                remapSymbol(enumEntries, declaration) {
+                    IrEnumEntrySymbolImpl(descriptorsRemapper.remapDeclaredEnumEntry(it.descriptor))
+                }
+                declaration.acceptChildrenVoid(this)
+            }
+
+            override fun visitExternalPackageFragment(declaration: IrExternalPackageFragment) {
+                remapSymbol(externalPackageFragments, declaration) {
+                    IrExternalPackageFragmentSymbolImpl(descriptorsRemapper.remapDeclaredExternalPackageFragment(it.descriptor))
+                }
+                declaration.acceptChildrenVoid(this)
+            }
+
+            override fun visitField(declaration: IrField) {
+                remapSymbol(fields, declaration) {
+                    IrFieldSymbolImpl(descriptorsRemapper.remapDeclaredField(it.descriptor))
+                }
+                declaration.acceptChildrenVoid(this)
+            }
+
+            override fun visitFile(declaration: IrFile) {
+                remapSymbol(files, declaration) {
+                    IrFileSymbolImpl(descriptorsRemapper.remapDeclaredFilePackageFragment(it.descriptor))
+                }
+                declaration.acceptChildrenVoid(this)
+            }
+
+            override fun visitSimpleFunction(declaration: IrSimpleFunction) {
+                remapSymbol(functions, declaration) {
+                    IrSimpleFunctionSymbolImpl(descriptorsRemapper.remapDeclaredSimpleFunction(it.descriptor))
+                }
+                declaration.acceptChildrenVoid(this)
+            }
+
+            override fun visitTypeParameter(declaration: IrTypeParameter) {
+                remapSymbol(typeParameters, declaration) {
+                    IrTypeParameterSymbolImpl(descriptorsRemapper.remapDeclaredTypeParameter(it.descriptor))
+                }
+                declaration.acceptChildrenVoid(this)
+            }
+
+            override fun visitValueParameter(declaration: IrValueParameter) {
+                remapSymbol(valueParameters, declaration) {
+                    IrValueParameterSymbolImpl(descriptorsRemapper.remapDeclaredValueParameter(it.descriptor))
+                }
+                declaration.acceptChildrenVoid(this)
+            }
+
+            override fun visitVariable(declaration: IrVariable) {
+                remapSymbol(variables, declaration) {
+                    IrVariableSymbolImpl(descriptorsRemapper.remapDeclaredVariable(it.descriptor))
+                }
+                declaration.acceptChildrenVoid(this)
+            }
+
+            override fun visitBlock(expression: IrBlock) {
+                if (expression is IrReturnableBlock) {
+                    remapSymbol(returnableBlocks, expression) {
+                        IrReturnableBlockSymbolImpl(expression.descriptor)
+                    }
+                }
+                expression.acceptChildrenVoid(this)
+            }
+        }
+        it.moduleFragment.acceptVoid(symbolRemapper)
+        val typeRemapper = DeepCopyTypeRemapper(symbolRemapper)
+        it.moduleFragment.transform(DeepCopyIrTreeWithSymbols(symbolRemapper, typeRemapper), null).patchDeclarationParents()
+    }*/
 
     val moduleFragment = psi2IrTranslator.generateModuleFragment(psi2IrContext, files)
 
@@ -63,7 +168,7 @@ fun compile(
     dependencies.forEach { context.originalModuleIndex.addModule(it.moduleFragment) }
 
     ExternalDependenciesGenerator(psi2IrContext.moduleDescriptor, psi2IrContext.symbolTable, psi2IrContext.irBuiltIns)
-        .generateUnboundSymbolsAsDependencies(moduleFragment)
+        .generateUnboundSymbolsAsDependencies()
 
     val extensions = IrGenerationExtension.getInstances(project)
     extensions.forEach { extension ->
@@ -76,6 +181,8 @@ fun compile(
 
     moduleFragment.files.forEach { ArrayLowering(context).lower(it) }
 
+    val moduleFragmentCopy = moduleFragment.deepCopyWithSymbols()
+
     if (dependencies.size > 0) println(moduleFragment.dump())
 
     context.performInlining(moduleFragment)
@@ -86,7 +193,7 @@ fun compile(
 
     val program = moduleFragment.accept(IrModuleToJsTransformer(context), null)
 
-    return Result(analysisResult.moduleDescriptor, program.toString(), moduleFragment)
+    return Result(analysisResult.moduleDescriptor, program.toString(), moduleFragmentCopy, context.symbolTable, context.irBuiltIns, context.intrinsics)
 }
 
 private fun JsIrBackendContext.performInlining(moduleFragment: IrModuleFragment) {
