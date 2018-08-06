@@ -179,13 +179,15 @@ fun compile(
 
     if (dependencies.size > 0) println(moduleFragment.dump())
 
-    moduleFragment.files.forEach { ArrayLowering(context).lower(it) }
+    moduleFragment.files.forEach { ArrayLowering(context, false).lower(it) }
 
     val moduleFragmentCopy = moduleFragment.deepCopyWithSymbols()
 
     if (dependencies.size > 0) println(moduleFragment.dump())
 
     context.performInlining(moduleFragment)
+
+    moduleFragment.files.forEach { ArrayLowering(context, true).lower(it) }
 
     if (dependencies.size > 0) println(moduleFragment.dump())
 

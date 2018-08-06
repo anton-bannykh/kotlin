@@ -19,22 +19,23 @@ import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
 import org.jetbrains.kotlin.ir.visitors.transformChildrenVoid
 
-class ArrayLowering(val context: JsIrBackendContext) : FileLoweringPass {
+class ArrayLowering(val context: JsIrBackendContext, val hack: Boolean) : FileLoweringPass {
     override fun lower(irFile: IrFile) {
-        irFile.transformChildrenVoid(ArrayConstructorTransformer(context))
+        irFile.transformChildrenVoid(ArrayConstructorTransformer(context, hack))
     }
 }
 
 private class ArrayConstructorTransformer(
-    val context: JsIrBackendContext
+    val context: JsIrBackendContext,
+    val hack: Boolean
 ) : IrElementTransformerVoid() {
 
     override fun visitCall(expression: IrCall): IrExpression {
-        when (expression.symbol) {
-            context.intrinsics.arrayConstructor -> {
+        when {
+            expression.symbol == context.intrinsics.arrayConstructor && !hack  -> {
                 return irCall(expression, context.intrinsics.jsArray)
             }
-            context.intrinsics.arraySize -> {
+            expression.symbol == context.intrinsics.arraySize && hack -> {
                 return irCall(expression, context.intrinsics.jsArrayLength, dispatchReceiverAsFirstArgument = true)
             }
         }

@@ -13,6 +13,7 @@ inline fun <T> arrayWithFun(size: Int, init: (Int) -> T) = fillArrayFun(Array<T>
 
 inline fun <T> fillArrayFun(array: Array<T>, init: (Int) -> T): Array<T> {
     var i = 0
+    array.size
     while (i != array.size) {
         array[i] = init(i)
         ++i
