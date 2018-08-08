@@ -13,15 +13,12 @@ inline fun <T> arrayWithFun(size: Int, init: (Int) -> T) = fillArrayFun(Array<T>
 
 inline fun <T> fillArrayFun(array: Array<T>, init: (Int) -> T): Array<T> {
     var i = 0
-    array.size
     while (i != array.size) {
         array[i] = init(i)
         ++i
     }
     return array
 }
-
-fun <T> arrayLength(array: Array<T>): Int = array.asDynamic().length.unsafeCast<Int>()
 
 //
 //fun booleanArray(size: Int, init: dynamic): Array<Boolean> {

@@ -13,6 +13,7 @@ import org.jetbrains.kotlin.descriptors.impl.SimpleFunctionDescriptorImpl
 import org.jetbrains.kotlin.descriptors.impl.TypeParameterDescriptorImpl
 import org.jetbrains.kotlin.ir.backend.js.utils.createValueParameter
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
+import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.descriptors.IrBuiltIns
@@ -178,6 +179,8 @@ class JsIntrinsics(
     val array = context.symbolTable.referenceClass(irBuiltIns.builtIns.array)
     val arrayConstructor = array.owner.declarations.filterIsInstance<IrConstructor>().first().symbol
     val arraySize = array.owner.declarations.filterIsInstance<IrProperty>().filter { it.name.asString() == "size" }.first().getter!!.symbol
+    val arrayGet = array.owner.declarations.filterIsInstance<IrFunction>().filter { it.name.asString() == "get" }.first().symbol
+    val arraySet = array.owner.declarations.filterIsInstance<IrFunction>().filter { it.name.asString() == "set" }.first().symbol
 
 //    val byteArray = context.symbolTable.referenceClass(irBuiltIns.builtIns.getPrimitiveArrayClassDescriptor(PrimitiveType.BYTE))
 //    val shortArray = context.symbolTable.referenceClass(irBuiltIns.builtIns.getPrimitiveArrayClassDescriptor(PrimitiveType.SHORT))
@@ -188,7 +191,9 @@ class JsIntrinsics(
 //    val longArray = context.symbolTable.referenceClass(irBuiltIns.builtIns.getPrimitiveArrayClassDescriptor(PrimitiveType.LONG))
 
     val jsArray = getInternalFunction("arrayWithFun")
-    val jsArrayLength = getInternalFunction("arrayLength")
+    val jsArrayLength = unOp("jsArrayLength").symbol
+    val jsArrayGet = binOp("jsArrayGet").symbol
+    val jsArraySet = tripleOp("jsArraySet").symbol
 
     // Helpers:
 

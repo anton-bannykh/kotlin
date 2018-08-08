@@ -38,6 +38,12 @@ private class ArrayConstructorTransformer(
             expression.symbol == context.intrinsics.arraySize && hack -> {
                 return irCall(expression, context.intrinsics.jsArrayLength, dispatchReceiverAsFirstArgument = true)
             }
+            expression.symbol == context.intrinsics.arrayGet && hack -> {
+                return irCall(expression, context.intrinsics.jsArrayGet, dispatchReceiverAsFirstArgument = true)
+            }
+            expression.symbol == context.intrinsics.arraySet && hack -> {
+                return irCall(expression, context.intrinsics.jsArraySet, dispatchReceiverAsFirstArgument = true)
+            }
         }
 
 //        (expression.symbol.owner as? IrConstructor)?.let { declaration ->
