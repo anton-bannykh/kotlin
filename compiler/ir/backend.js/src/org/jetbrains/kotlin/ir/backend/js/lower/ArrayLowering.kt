@@ -39,7 +39,7 @@ private class ArrayConstructorTransformer(
                 return irCall(expression, context.intrinsics.jsArrayLength, dispatchReceiverAsFirstArgument = true)
             }
         }
-//
+
 //        (expression.symbol.owner as? IrConstructor)?.let { declaration ->
 //            (declaration.parent as? IrClass)?.let { irClass ->
 //                when (irClass.symbol) {

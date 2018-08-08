@@ -90,8 +90,8 @@ internal class FunctionInlining(val context: Context): IrElementTransformerVoidW
 
         val functionDescriptor = irCall.descriptor
         val originalDescriptor = functionDescriptor.resolveFakeOverride().original
-        val functionDeclaration =
-            context.originalModuleIndex.functions[originalDescriptor] // ?:                 // If function is declared in the current module.
+        val functionDeclaration = irCall.symbol.owner
+//            context.originalModuleIndex.functions[originalDescriptor] // ?:                 // If function is declared in the current module.
        // TODO     deserializer.deserializeInlineBody(originalDescriptor)                      // Function is declared in another module.
         return functionDeclaration as IrFunction?
     }
@@ -168,15 +168,15 @@ private class Inliner(val globalSubstituteMap: MutableMap<DeclarationDescriptor,
         }
 
         val returnType = copyFunctionDeclaration.returnType                    // Substituted return type.
-        val sourceFileName = context.originalModuleIndex.declarationToFile[caller.descriptor.original] ?: ""
+//        val sourceFileName = context.originalModuleIndex.declarationToFile[caller.descriptor.original] ?: ""
         val inlineFunctionBody = IrReturnableBlockImpl(                                     // Create new IR element to replace "call".
             startOffset = startOffset,
             endOffset   = endOffset,
             type        = returnType,
             symbol      = irReturnableBlockSymbol,
             origin      = null,
-            statements  = statements,
-            sourceFileName = sourceFileName
+            statements  = statements/*,
+            sourceFileName = sourceFileName*/
         )
 
         val transformer = ParameterSubstitutor()

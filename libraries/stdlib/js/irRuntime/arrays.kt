@@ -21,7 +21,7 @@ inline fun <T> fillArrayFun(array: Array<T>, init: (Int) -> T): Array<T> {
     return array
 }
 
-fun <T> arrayLength(array: Array<T>): Int = array.asDynamic().length
+fun <T> arrayLength(array: Array<T>): Int = array.asDynamic().length.unsafeCast<Int>()
 
 //
 //fun booleanArray(size: Int, init: dynamic): Array<Boolean> {
