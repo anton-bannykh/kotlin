@@ -185,7 +185,7 @@ class CoroutineCodegenForLambda private constructor(
         funDescriptor.source
     ).also {
         it.initialize(
-            funDescriptor.extensionReceiverParameter?.type,
+            funDescriptor.extensionReceiverParameter,
             funDescriptor.dispatchReceiverParameter,
             funDescriptor.typeParameters,
             funDescriptor.valueParameters,
