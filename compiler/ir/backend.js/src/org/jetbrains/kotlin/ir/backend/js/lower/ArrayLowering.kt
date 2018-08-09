@@ -31,6 +31,8 @@ private class ArrayConstructorTransformer(
 ) : IrElementTransformerVoid() {
 
     override fun visitCall(expression: IrCall): IrExpression {
+        expression.transformChildrenVoid(this)
+
         when {
             expression.symbol == context.intrinsics.arrayConstructor && !hack  -> {
                 return irCall(expression, context.intrinsics.jsArray)
@@ -58,7 +60,7 @@ private class ArrayConstructorTransformer(
 //            }
 //        }
 
-        return super.visitCall(expression)
+        return expression
     }
 
 
