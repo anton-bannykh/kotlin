@@ -177,10 +177,15 @@ class JsIntrinsics(
 
     // Arrays:
     val array = context.symbolTable.referenceClass(irBuiltIns.builtIns.array)
-    val arrayConstructor = array.owner.declarations.filterIsInstance<IrConstructor>().first().symbol
-    val arraySize = array.owner.declarations.filterIsInstance<IrProperty>().filter { it.name.asString() == "size" }.first().getter!!.symbol
-    val arrayGet = array.owner.declarations.filterIsInstance<IrFunction>().filter { it.name.asString() == "get" }.first().symbol
-    val arraySet = array.owner.declarations.filterIsInstance<IrFunction>().filter { it.name.asString() == "set" }.first().symbol
+    val arrayConstructor
+        get() = array.owner.declarations.filterIsInstance<IrConstructor>().first().symbol
+    val arraySize
+        get() = array.owner.declarations.filterIsInstance<IrProperty>().filter { it.name.asString() == "size" }.first().getter!!.symbol
+    val arrayGet
+        get() = array.owner.declarations.filterIsInstance<IrFunction>().filter { it.name.asString() == "get" }.first().symbol
+    val arraySet
+        get() = array.owner.declarations.filterIsInstance<IrFunction>().filter { it.name.asString() == "set" }.first().symbol
+
 
 //    val byteArray = context.symbolTable.referenceClass(irBuiltIns.builtIns.getPrimitiveArrayClassDescriptor(PrimitiveType.BYTE))
 //    val shortArray = context.symbolTable.referenceClass(irBuiltIns.builtIns.getPrimitiveArrayClassDescriptor(PrimitiveType.SHORT))
