@@ -423,21 +423,6 @@ open class SymbolTable : ReferenceSymbolTable {
                 throw IllegalArgumentException("Unexpected value descriptor: $value")
         }
 
-    // Maybe merge instead?
-    fun copyGlobal(): SymbolTable {
-        val result = SymbolTable()
-
-        externalPackageFragmentTable.copyTo(result.externalPackageFragmentTable)
-        classSymbolTable.copyTo(result.classSymbolTable)
-        constructorSymbolTable.copyTo(result.constructorSymbolTable)
-        enumEntrySymbolTable.copyTo(result.enumEntrySymbolTable)
-        fieldSymbolTable.copyTo(result.fieldSymbolTable)
-        simpleFunctionSymbolTable.copyTo(result.simpleFunctionSymbolTable)
-        globalTypeParameterSymbolTable.copyTo(result.globalTypeParameterSymbolTable)
-
-        return result
-    }
-
     fun loadModule(module: IrModuleFragment) {
         module.acceptVoid(object: IrElementVisitorVoid {
             override fun visitElement(element: IrElement) {

@@ -105,6 +105,8 @@ class JsIrBackendContext(
             val contextGetter =
                 continuation.owner.declarations.filterIsInstance<IrFunction>().atMostOne { it.descriptor.name == CONTINUATION_CONTEXT_GETTER_NAME }
                         ?: continuation.owner.declarations.filterIsInstance<IrProperty>().atMostOne { it.descriptor.name == CONTINUATION_CONTEXT_PROPERTY_NAME }?.getter!!
+//            val contextGetter = (continuation.owner.declarations.singleOrNull { it.descriptor.name.asString() == "context" } as? IrProperty)?.getter ?:
+//                continuation.owner.declarations.single { it.descriptor.name == CONTINUATION_CONTEXT_GETTER_NAME } as IrFunction
             return contextGetter.symbol
         }
 
