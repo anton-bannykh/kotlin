@@ -18,7 +18,6 @@ import org.jetbrains.kotlin.codegen.state.GenerationState;
 import org.jetbrains.kotlin.codegen.state.KotlinTypeMapper;
 import org.jetbrains.kotlin.config.LanguageFeature;
 import org.jetbrains.kotlin.descriptors.*;
-import org.jetbrains.kotlin.descriptors.annotations.AnnotationUseSiteTarget;
 import org.jetbrains.kotlin.descriptors.annotations.Annotations;
 import org.jetbrains.kotlin.fileClasses.JvmFileClassUtilKt;
 import org.jetbrains.kotlin.load.java.JvmAbi;
@@ -333,7 +332,7 @@ public class PropertyCodegen {
         if (isBackingFieldOwner) {
             if (!isInterface(context.getContextDescriptor()) ||
                 processInterfaceMethod(descriptor, kind, false, true, state.getJvmDefaultMode())) {
-                memberCodegen.generateSyntheticAnnotationsMethod(descriptor, signature, annotations, AnnotationUseSiteTarget.PROPERTY);
+                memberCodegen.generateSyntheticAnnotationsMethod(descriptor, signature, annotations);
             }
         }
     }
