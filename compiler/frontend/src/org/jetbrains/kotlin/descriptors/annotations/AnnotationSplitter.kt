@@ -132,7 +132,6 @@ class AnnotationSplitter(
         override fun isEmpty() = annotations.isEmpty()
         override fun hasAnnotation(fqName: FqName) = annotations.hasAnnotation(fqName)
         override fun findAnnotation(fqName: FqName) = annotations.findAnnotation(fqName)
-        override fun getUseSiteTargetedAnnotations() = annotations.getUseSiteTargetedAnnotations()
         override fun iterator() = annotations.iterator()
         override fun toString() = annotations.toString()
     }
