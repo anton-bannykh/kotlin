@@ -162,10 +162,9 @@ public class PropertyCodegen {
                                       ? !(context instanceof MultifileClassPartContext)
                                       : CodegenContextUtil.isImplClassOwner(context);
 
-        Annotations propertyAnnotations = descriptor.getAnnotations();
         assert declaration != null : "Declaration is null: " + descriptor + " (context=" + context + ")";
-        generateBackingField(declaration, descriptor, descriptor.getBackingField(), descriptor.getDelegateField(), isBackingFieldOwner);
-        generateSyntheticMethodIfNeeded(descriptor, propertyAnnotations, isBackingFieldOwner);
+        generateBackingField(declaration, descriptor, isBackingFieldOwner);
+        generateSyntheticMethodIfNeeded(descriptor, isBackingFieldOwner);
     }
 
     /**
@@ -298,8 +297,6 @@ public class PropertyCodegen {
     private void generateBackingField(
             @NotNull KtNamedDeclaration p,
             @NotNull PropertyDescriptor descriptor,
-            @Nullable FieldDescriptor backingField,
-            @Nullable FieldDescriptor delegateField,
             boolean isBackingFieldOwner
     ) {
         if (isJvmInterface(descriptor.getContainingDeclaration()) || kind == OwnerKind.DEFAULT_IMPLS ||
@@ -307,21 +304,32 @@ public class PropertyCodegen {
             return;
         }
 
-        if (p instanceof KtProperty && ((KtProperty) p).hasDelegate()) {
-            generatePropertyDelegateAccess((KtProperty) p, descriptor, delegateField, isBackingFieldOwner);
+        boolean isDelegate = p instanceof KtProperty && ((KtProperty) p).hasDelegate();
+
+        Object defaultValue;
+        if (isDelegate) {
+            defaultValue = null;
         }
         else if (Boolean.TRUE.equals(bindingContext.get(BindingContext.BACKING_FIELD_REQUIRED, descriptor))) {
-            generateBackingFieldAccess(p, descriptor, backingField, isBackingFieldOwner);
+            if (shouldWriteFieldInitializer(descriptor)) {
+                ConstantValue<?> initializer = descriptor.getCompileTimeInitializer();
+                defaultValue = initializer == null ? null : initializer.getValue();
+            }
+            else {
+                defaultValue = null;
+            }
         }
+        else {
+            return;
+        }
+
+        generateBackingField(p, descriptor, isDelegate, defaultValue, isBackingFieldOwner);
     }
 
     // Annotations on properties are stored in bytecode on an empty synthetic method. This way they're still
     // accessible via reflection, and 'deprecated' and 'synthetic' flags prevent this method from being called accidentally
-    private void generateSyntheticMethodIfNeeded(
-            @NotNull PropertyDescriptor descriptor,
-            @NotNull Annotations annotations,
-            boolean isBackingFieldOwner
-    ) {
+    private void generateSyntheticMethodIfNeeded(@NotNull PropertyDescriptor descriptor, boolean isBackingFieldOwner) {
+        Annotations annotations = descriptor.getAnnotations();
         if (annotations.getAllAnnotations().isEmpty()) return;
 
         Method signature = getSyntheticMethodSignature(descriptor);
@@ -349,11 +357,11 @@ public class PropertyCodegen {
             @NotNull KtNamedDeclaration element,
             @NotNull PropertyDescriptor propertyDescriptor,
             boolean isDelegate,
-            @NotNull KotlinType kotlinType,
             @Nullable Object defaultValue,
-            @Nullable FieldDescriptor annotatedField,
             boolean isBackingFieldOwner
     ) {
+        FieldDescriptor annotatedField = isDelegate ? propertyDescriptor.getDelegateField() : propertyDescriptor.getBackingField();
+
         int modifiers = getDeprecatedAccessFlag(propertyDescriptor);
 
         for (AnnotationCodegen.JvmFlagAnnotation flagAnnotation : AnnotationCodegen.FIELD_FLAGS) {
@@ -374,6 +382,8 @@ public class PropertyCodegen {
             modifiers |= ACC_SYNTHETIC;
         }
 
+        KotlinType kotlinType =
+                isDelegate ? getDelegateTypeForProperty((KtProperty) element, propertyDescriptor) : propertyDescriptor.getType();
         Type type = typeMapper.mapType(kotlinType);
 
         ClassBuilder builder = v;
@@ -411,17 +421,6 @@ public class PropertyCodegen {
         }
     }
 
-    private void generatePropertyDelegateAccess(
-            @NotNull KtProperty p,
-            @NotNull PropertyDescriptor propertyDescriptor,
-            @Nullable FieldDescriptor delegateField,
-            boolean isBackingFieldOwner
-    ) {
-        KotlinType delegateType = getDelegateTypeForProperty(p, propertyDescriptor);
-
-        generateBackingField(p, propertyDescriptor, true, delegateType, null, delegateField, isBackingFieldOwner);
-    }
-
     @NotNull
     private KotlinType getDelegateTypeForProperty(@NotNull KtProperty p, @NotNull PropertyDescriptor propertyDescriptor) {
         KotlinType delegateType = null;
@@ -444,27 +443,11 @@ public class PropertyCodegen {
         return delegateType;
     }
 
-    private void generateBackingFieldAccess(
-            @NotNull KtNamedDeclaration p,
-            @NotNull PropertyDescriptor propertyDescriptor,
-            @Nullable FieldDescriptor backingField,
-            boolean isBackingFieldOwner
-    ) {
-        Object value = null;
-
-        if (shouldWriteFieldInitializer(propertyDescriptor)) {
-            ConstantValue<?> initializer = propertyDescriptor.getCompileTimeInitializer();
-            if (initializer != null) {
-                value = initializer.getValue();
-            }
-        }
-
-        generateBackingField(p, propertyDescriptor, false, propertyDescriptor.getType(), value, backingField, isBackingFieldOwner);
-    }
-
     private boolean shouldWriteFieldInitializer(@NotNull PropertyDescriptor descriptor) {
-        if (!descriptor.isConst() && state.getLanguageVersionSettings().supportsFeature(LanguageFeature.NoConstantValueAttributeForNonConstVals))
+        if (!descriptor.isConst() &&
+            state.getLanguageVersionSettings().supportsFeature(LanguageFeature.NoConstantValueAttributeForNonConstVals)) {
             return false;
+        }
 
         //final field of primitive or String type
         if (!descriptor.isVar()) {
@@ -474,16 +457,16 @@ public class PropertyCodegen {
         return false;
     }
 
-    public void generateGetter(@Nullable KtNamedDeclaration p, @NotNull PropertyDescriptor descriptor, @Nullable KtPropertyAccessor getter) {
+    private void generateGetter(
+            @Nullable KtNamedDeclaration p, @NotNull PropertyDescriptor descriptor, @Nullable KtPropertyAccessor getter
+    ) {
         generateAccessor(p, getter, descriptor.getGetter() != null
                                     ? descriptor.getGetter()
                                     : DescriptorFactory.createDefaultGetter(descriptor, Annotations.Companion.getEMPTY()));
     }
 
-    public void generateSetter(
-            @Nullable KtNamedDeclaration p,
-            @NotNull PropertyDescriptor descriptor,
-            @Nullable KtPropertyAccessor setter
+    private void generateSetter(
+            @Nullable KtNamedDeclaration p, @NotNull PropertyDescriptor descriptor, @Nullable KtPropertyAccessor setter
     ) {
         if (!descriptor.isVar()) return;
 
@@ -563,7 +546,7 @@ public class PropertyCodegen {
     public static StackValue invokeDelegatedPropertyConventionMethod(
             @NotNull ExpressionCodegen codegen,
             @NotNull ResolvedCall<FunctionDescriptor> resolvedCall,
-            @Nullable StackValue receiver,
+            @NotNull StackValue receiver,
             @NotNull PropertyDescriptor propertyDescriptor
     ) {
         codegen.tempVariables.put(
