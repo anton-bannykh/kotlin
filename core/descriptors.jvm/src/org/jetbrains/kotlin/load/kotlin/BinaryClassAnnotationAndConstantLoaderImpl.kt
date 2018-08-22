@@ -19,8 +19,6 @@ package org.jetbrains.kotlin.load.kotlin
 import org.jetbrains.kotlin.descriptors.*
 import org.jetbrains.kotlin.descriptors.annotations.AnnotationDescriptor
 import org.jetbrains.kotlin.descriptors.annotations.AnnotationDescriptorImpl
-import org.jetbrains.kotlin.descriptors.annotations.AnnotationUseSiteTarget
-import org.jetbrains.kotlin.descriptors.annotations.AnnotationWithTarget
 import org.jetbrains.kotlin.load.java.components.DescriptorResolverUtils
 import org.jetbrains.kotlin.load.kotlin.KotlinJvmBinaryClass.AnnotationArrayArgumentVisitor
 import org.jetbrains.kotlin.metadata.ProtoBuf
@@ -38,7 +36,7 @@ class BinaryClassAnnotationAndConstantLoaderImpl(
         private val notFoundClasses: NotFoundClasses,
         storageManager: StorageManager,
         kotlinClassFinder: KotlinClassFinder
-) : AbstractBinaryClassAnnotationAndConstantLoader<AnnotationDescriptor, ConstantValue<*>, AnnotationWithTarget>(
+) : AbstractBinaryClassAnnotationAndConstantLoader<AnnotationDescriptor, ConstantValue<*>>(
         storageManager, kotlinClassFinder
 ) {
     private val annotationDeserializer = AnnotationDeserializer(module, notFoundClasses)
@@ -72,19 +70,6 @@ class BinaryClassAnnotationAndConstantLoaderImpl(
             is LongValue -> ULongValue(constant.value)
             else -> constant
         }
-    }
-
-    override fun loadPropertyAnnotations(
-            propertyAnnotations: List<AnnotationDescriptor>,
-            fieldAnnotations: List<AnnotationDescriptor>,
-            fieldUseSiteTarget: AnnotationUseSiteTarget
-    ): List<AnnotationWithTarget> {
-        return propertyAnnotations.map { AnnotationWithTarget(it, null) } +
-               fieldAnnotations.map { AnnotationWithTarget(it, fieldUseSiteTarget) }
-    }
-
-    override fun transformAnnotations(annotations: List<AnnotationDescriptor>): List<AnnotationWithTarget> {
-        return annotations.map { AnnotationWithTarget(it, null) }
     }
 
     override fun loadAnnotation(
