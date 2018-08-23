@@ -177,28 +177,18 @@ class JsIntrinsics(
 
     // Arrays:
     val array = context.symbolTable.referenceClass(irBuiltIns.builtIns.array)
-    val arrayConstructor
-        get() = array.owner.declarations.filterIsInstance<IrConstructor>().first().symbol
-    val arraySize
-        get() = array.owner.declarations.filterIsInstance<IrProperty>().filter { it.name.asString() == "size" }.first().getter!!.symbol
-    val arrayGet
-        get() = array.owner.declarations.filterIsInstance<IrFunction>().filter { it.name.asString() == "get" }.first().symbol
-    val arraySet
-        get() = array.owner.declarations.filterIsInstance<IrFunction>().filter { it.name.asString() == "set" }.first().symbol
 
-
-//    val byteArray = context.symbolTable.referenceClass(irBuiltIns.builtIns.getPrimitiveArrayClassDescriptor(PrimitiveType.BYTE))
-//    val shortArray = context.symbolTable.referenceClass(irBuiltIns.builtIns.getPrimitiveArrayClassDescriptor(PrimitiveType.SHORT))
-//    val charArray = context.symbolTable.referenceClass(irBuiltIns.builtIns.getPrimitiveArrayClassDescriptor(PrimitiveType.CHAR))
-//    val intArray = context.symbolTable.referenceClass(irBuiltIns.builtIns.getPrimitiveArrayClassDescriptor(PrimitiveType.INT))
-//    val floatArray = context.symbolTable.referenceClass(irBuiltIns.builtIns.getPrimitiveArrayClassDescriptor(PrimitiveType.FLOAT))
-//    val doubleArray = context.symbolTable.referenceClass(irBuiltIns.builtIns.getPrimitiveArrayClassDescriptor(PrimitiveType.DOUBLE))
-//    val longArray = context.symbolTable.referenceClass(irBuiltIns.builtIns.getPrimitiveArrayClassDescriptor(PrimitiveType.LONG))
+    val primitiveArrays = PrimitiveType.values().associate { context.symbolTable.referenceClass(irBuiltIns.builtIns.getPrimitiveArrayClassDescriptor(it)) to it }
 
     val jsArray = getInternalFunction("arrayWithFun")
+    val jsFillArray = getInternalFunction("fillArrayFun")
+    val jsNewArray = getInternalFunction("newArray")
+
     val jsArrayLength = unOp("jsArrayLength").symbol
     val jsArrayGet = binOp("jsArrayGet").symbol
     val jsArraySet = tripleOp("jsArraySet").symbol
+
+
 
     // Helpers:
 

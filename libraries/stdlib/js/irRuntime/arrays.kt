@@ -7,7 +7,7 @@ package kotlin.js
 
 external fun <T> Array(size: Int): Array<T>
 
-//fun <T> newArray(size: Int, initValue: T) = fillArrayVal(Array<T>(size), initValue)
+fun <T> newArray(size: Int, initValue: T) = fillArrayVal(Array<T>(size), initValue)
 
 inline fun <T> arrayWithFun(size: Int, init: (Int) -> T) = fillArrayFun(Array<T>(size), init)
 
@@ -20,7 +20,6 @@ inline fun <T> fillArrayFun(array: Array<T>, init: (Int) -> T): Array<T> {
     return array
 }
 
-//
 //fun booleanArray(size: Int, init: dynamic): Array<Boolean> {
 //    val result: dynamic = Array<Boolean>(size)
 //    result.`$type$` = "BooleanArray"
@@ -72,9 +71,9 @@ inline fun <T> fillArrayFun(array: Array<T>, init: (Int) -> T): Array<T> {
 //
 //inline fun longArrayWithFun(size: Int, init: (Int) -> Long): Array<Long> = fillArrayFun(longArray(size, false), init)
 //
-//private fun <T> fillArrayVal(array: Array<T>, initValue: T): Array<T> {
-//    for (i in 0..array.size - 1) {
-//        array[i] = initValue
-//    }
-//    return array
-//}
+private fun <T> fillArrayVal(array: Array<T>, initValue: T): Array<T> {
+    for (i in 0..array.size - 1) {
+        array[i] = initValue
+    }
+    return array
+}
