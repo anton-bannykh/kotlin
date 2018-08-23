@@ -81,6 +81,15 @@ private class ArrayConstructorTransformer(
                 expression.symbol == context.intrinsics.array.setFunction -> {
                     return irCall(expression, context.intrinsics.jsArraySet, dispatchReceiverAsFirstArgument = true)
                 }
+                expression.symbol in context.intrinsics.primitiveArrays.keys.map { it.sizeProperty } -> {
+                    return irCall(expression, context.intrinsics.jsArrayLength, dispatchReceiverAsFirstArgument = true)
+                }
+                expression.symbol in context.intrinsics.primitiveArrays.keys.map { it.getFunction } -> {
+                    return irCall(expression, context.intrinsics.jsArrayGet, dispatchReceiverAsFirstArgument = true)
+                }
+                expression.symbol in context.intrinsics.primitiveArrays.keys.map { it.setFunction }-> {
+                    return irCall(expression, context.intrinsics.jsArraySet, dispatchReceiverAsFirstArgument = true)
+                }
             }
             context.intrinsics.primitiveArrays.entries.firstOrNull { (k, _) -> k.sizeConstructor == expression.symbol }?.let { (_, t) ->
                 val default = when (t) {
