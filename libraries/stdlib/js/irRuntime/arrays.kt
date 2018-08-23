@@ -78,7 +78,7 @@ private fun <T> fillArrayVal(array: Array<T>, initValue: T): Array<T> {
     return array
 }
 
-internal fun arrayIterator(array: dynamic, type: String?) = object : Iterator<dynamic> {
+internal fun <T> arrayIterator(array: Array<T>) = object : Iterator<T> {
     var index = 0
     override fun hasNext() = index != array.size
     override fun next() = if (index != array.size) array[index++] else throw NoSuchElementException("$index")
