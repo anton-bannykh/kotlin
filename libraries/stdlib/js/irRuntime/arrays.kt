@@ -70,10 +70,65 @@ inline fun <T> fillArrayFun(array: Array<T>, init: (Int) -> T): Array<T> {
 //}
 //
 //inline fun longArrayWithFun(size: Int, init: (Int) -> Long): Array<Long> = fillArrayFun(longArray(size, false), init)
-//
+
 private fun <T> fillArrayVal(array: Array<T>, initValue: T): Array<T> {
     for (i in 0..array.size - 1) {
         array[i] = initValue
     }
     return array
+}
+
+internal fun arrayIterator(array: dynamic, type: String?) = object : Iterator<dynamic> {
+    var index = 0
+    override fun hasNext() = index != array.size
+    override fun next() = if (index != array.size) array[index++] else throw NoSuchElementException("$index")
+}
+
+
+internal fun booleanArrayIterator(array: BooleanArray) = object : BooleanIterator() {
+    var index = 0
+    override fun hasNext() = index != array.size
+    override fun nextBoolean() = if (index != array.size) array[index++] else throw NoSuchElementException("$index")
+}
+
+internal fun byteArrayIterator(array: ByteArray) = object : ByteIterator() {
+    var index = 0
+    override fun hasNext() = index != array.size
+    override fun nextByte() = if (index != array.size) array[index++] else throw NoSuchElementException("$index")
+}
+
+internal fun shortArrayIterator(array: ShortArray) = object : ShortIterator() {
+    var index = 0
+    override fun hasNext() = index != array.size
+    override fun nextShort() = if (index != array.size) array[index++] else throw NoSuchElementException("$index")
+}
+
+internal fun charArrayIterator(array: CharArray) = object : CharIterator() {
+    var index = 0
+    override fun hasNext() = index != array.size
+    override fun nextChar() = if (index != array.size) array[index++] else throw NoSuchElementException("$index")
+}
+
+internal fun intArrayIterator(array: IntArray) = object : IntIterator() {
+    var index = 0
+    override fun hasNext() = index != array.size
+    override fun nextInt() = if (index != array.size) array[index++] else throw NoSuchElementException("$index")
+}
+
+internal fun floatArrayIterator(array: FloatArray) = object : FloatIterator() {
+    var index = 0
+    override fun hasNext() = index != array.size
+    override fun nextFloat() = if (index != array.size) array[index++] else throw NoSuchElementException("$index")
+}
+
+internal fun doubleArrayIterator(array: DoubleArray) = object : DoubleIterator() {
+    var index = 0
+    override fun hasNext() = index != array.size
+    override fun nextDouble() = if (index != array.size) array[index++] else throw NoSuchElementException("$index")
+}
+
+internal fun longArrayIterator(array: LongArray) = object : LongIterator() {
+    var index = 0
+    override fun hasNext() = index != array.size
+    override fun nextLong() = if (index != array.size) array[index++] else throw NoSuchElementException("$index")
 }

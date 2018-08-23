@@ -39,6 +39,9 @@ private val IrClassSymbol.getFunction
 private val IrClassSymbol.setFunction
     get() = owner.declarations.filterIsInstance<IrFunction>().first { it.name.asString() == "set" }.symbol
 
+private val IrClassSymbol.iterator
+    get() = owner.declarations.filterIsInstance<IrFunction>().first { it.name.asString() == "iterator" }.symbol
+
 private class ArrayConstructorTransformer(
     val context: JsIrBackendContext,
     val hack: Boolean
@@ -81,6 +84,9 @@ private class ArrayConstructorTransformer(
                 expression.symbol == context.intrinsics.array.setFunction -> {
                     return irCall(expression, context.intrinsics.jsArraySet, dispatchReceiverAsFirstArgument = true)
                 }
+                expression.symbol == context.intrinsics.array.iterator -> {
+                    return irCall(expression, context.intrinsics.jsArrayIteratorFunction, dispatchReceiverAsFirstArgument = true)
+                }
                 expression.symbol in context.intrinsics.primitiveArrays.keys.map { it.sizeProperty } -> {
                     return irCall(expression, context.intrinsics.jsArrayLength, dispatchReceiverAsFirstArgument = true)
                 }
@@ -106,6 +112,10 @@ private class ArrayConstructorTransformer(
                     putValueArgument(0, expression.getValueArgument(0))
                     putValueArgument(1, default)
                 }
+            }
+
+            context.intrinsics.primitiveArrays.entries.firstOrNull { (k, _) -> k.iterator == expression.symbol }?.let { (_, t) ->
+                return irCall(expression, context.intrinsics.jsPrimitiveArrayIteratorFunctions[t]!!, dispatchReceiverAsFirstArgument = true)
             }
         }
 

@@ -188,7 +188,10 @@ class JsIntrinsics(
     val jsArrayGet = binOp("jsArrayGet").symbol
     val jsArraySet = tripleOp("jsArraySet").symbol
 
+    val jsArrayIteratorFunction = getInternalFunction("arrayIterator")
 
+    val jsPrimitiveArrayIteratorFunctions =
+        PrimitiveType.values().associate { it to getInternalFunction("${it.typeName.asString().toLowerCase()}ArrayIterator") }
 
     // Helpers:
 

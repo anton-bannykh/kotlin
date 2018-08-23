@@ -80,19 +80,18 @@ fun compile(
 
     MoveExternalDeclarationsToSeparatePlace().lower(moduleFragment.files)
 
-    if (dependencies.size > 0) println(moduleFragment.dump())
+//    if (dependencies.size > 0) println(moduleFragment.dump())
 
     moduleFragment.files.forEach { ArrayLowering(context, false).lower(it) }
 
     val moduleFragmentCopy = moduleFragment.deepCopyWithSymbols()
 
-    if (dependencies.size > 0) println(moduleFragment.dump())
+//    if (dependencies.size > 0) println(moduleFragment.dump())
 
     context.performInlining(moduleFragment)
 
-    moduleFragment.files.forEach { ArrayLowering(context, true).lower(it) }
 
-    if (dependencies.size > 0) println(moduleFragment.dump())
+//    if (dependencies.size > 0) println(moduleFragment.dump())
 
     context.lower(moduleFragment)
 
@@ -140,6 +139,7 @@ private fun JsIrBackendContext.lower(moduleFragment: IrModuleFragment) {
     moduleFragment.files.forEach(clble.getClosureBuilder())
     moduleFragment.files.forEach(clble.getReferenceReplacer())
     moduleFragment.files.forEach(ClassReferenceLowering(this)::lower)
+    moduleFragment.files.forEach { ArrayLowering(this, true).lower(it) }
     moduleFragment.files.forEach(IntrinsicifyCallsLowering(this)::lower)
 }
 
