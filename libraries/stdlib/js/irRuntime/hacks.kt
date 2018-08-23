@@ -26,3 +26,22 @@ public interface Function3<in P1, in P2, in P3, out R> : Function<R> {
 }
 
 public inline fun <reified T> arrayOfNulls(size: Int): Array<T?> = Array<T?>(size)
+
+public inline fun <T> arrayOf(vararg a: T) = a
+
+public inline fun booleanArrayOf(vararg a: Boolean) = a
+
+public inline fun byteArrayOf(vararg a: Byte) = a
+
+public inline fun shortArrayOf(vararg a: Short) = a
+
+public inline fun charArrayOf(vararg a: Char) = a
+
+public inline fun intArrayOf(vararg a: Int) = a
+
+public inline fun floatArrayOf(vararg a: Float) = a
+
+public inline fun doubleArrayOf(vararg a: Double) = a
+
+public inline fun longArrayOf(vararg a: Long) = a
+
