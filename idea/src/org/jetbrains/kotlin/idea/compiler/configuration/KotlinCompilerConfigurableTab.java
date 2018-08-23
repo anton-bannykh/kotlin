@@ -44,6 +44,10 @@ import org.jetbrains.kotlin.idea.facet.DescriptionListCellRenderer;
 import org.jetbrains.kotlin.idea.facet.KotlinFacet;
 import org.jetbrains.kotlin.idea.roots.ProjectRootUtilsKt;
 import org.jetbrains.kotlin.idea.util.application.ApplicationUtilsKt;
+import org.jetbrains.kotlin.platform.IdeTargetPlatformKind;
+import org.jetbrains.kotlin.platform.impl.JsIdePlatformUtil;
+import org.jetbrains.kotlin.platform.impl.JvmIdePlatformUtil;
+import org.jetbrains.kotlin.platform.impl.JvmIdeTargetPlatformKind;
 
 import javax.swing.*;
 import java.awt.event.ActionEvent;
@@ -347,7 +351,7 @@ public class KotlinCompilerConfigurableTab implements SearchableConfigurable, Co
 
     @SuppressWarnings("unchecked")
     private void fillJvmVersionList() {
-        for (TargetPlatformKind.Jvm jvm : TargetPlatformKind.Jvm.Companion.getJVM_PLATFORMS()) {
+        for (JvmIdeTargetPlatformKind.Platform jvm : JvmIdeTargetPlatformKind.INSTANCE.getPlatforms()) {
             jvmVersionComboBox.addItem(jvm.getVersion().getDescription());
         }
     }
@@ -378,9 +382,9 @@ public class KotlinCompilerConfigurableTab implements SearchableConfigurable, Co
         coroutineSupportComboBox.setRenderer(new DescriptionListCellRenderer());
     }
 
-    public void setTargetPlatform(@Nullable TargetPlatformKind<?> targetPlatform) {
-        k2jsPanel.setVisible(TargetPlatformKind.JavaScript.INSTANCE.equals(targetPlatform));
-        scriptPanel.setVisible(targetPlatform instanceof TargetPlatformKind.Jvm);
+    public void setTargetPlatform(@Nullable IdeTargetPlatformKind<?> targetPlatform) {
+        k2jsPanel.setVisible(JsIdePlatformUtil.isJavaScript(targetPlatform));
+        scriptPanel.setVisible(JvmIdePlatformUtil.isJvm(targetPlatform));
     }
 
     @SuppressWarnings("unchecked")

@@ -23,12 +23,13 @@ import com.intellij.ui.HoverHyperlinkLabel
 import com.intellij.util.ui.FormBuilder
 import com.intellij.util.ui.ThreeStateCheckBox
 import org.jetbrains.kotlin.cli.common.arguments.*
-import org.jetbrains.kotlin.config.CompilerSettings
-import org.jetbrains.kotlin.config.TargetPlatformKind
-import org.jetbrains.kotlin.config.createCompilerArguments
-import org.jetbrains.kotlin.config.splitArgumentString
+import org.jetbrains.kotlin.config.*
 import org.jetbrains.kotlin.idea.compiler.configuration.*
 import org.jetbrains.kotlin.idea.util.onTextChange
+import org.jetbrains.kotlin.platform.IdeTargetPlatformKind
+import org.jetbrains.kotlin.platform.impl.isCommon
+import org.jetbrains.kotlin.platform.impl.isJavaScript
+import org.jetbrains.kotlin.platform.impl.isJvm
 import java.awt.BorderLayout
 import javax.swing.*
 import javax.swing.border.EmptyBorder
@@ -85,7 +86,7 @@ class KotlinFacetEditorGeneralTab(
         val useProjectSettingsCheckBox = ThreeStateCheckBox("Use project settings").apply { isThirdStateEnabled = isMultiEditor }
 
         val targetPlatformComboBox =
-                JComboBox<TargetPlatformKind<*>>(TargetPlatformKind.ALL_PLATFORMS.toTypedArray()).apply {
+                JComboBox<IdeTargetPlatformKind<*>>(IdeTargetPlatformKind.ALL_KINDS.toTypedArray()).apply {
                     setRenderer(DescriptionListCellRenderer())
                 }
 
@@ -143,14 +144,14 @@ class KotlinFacetEditorGeneralTab(
             compilerConfigurable.reset()
         }
 
-        private val chosenPlatform: TargetPlatformKind<*>?
-            get() = targetPlatformComboBox.selectedItem as TargetPlatformKind<*>?
+        private val chosenPlatform: IdeTargetPlatformKind<*>?
+            get() = targetPlatformComboBox.selectedItem as IdeTargetPlatformKind<*>?
     }
 
     inner class ArgumentConsistencyValidator : FacetEditorValidator() {
         override fun check(): ValidationResult {
-            val platform = editor.targetPlatformComboBox.selectedItem as TargetPlatformKind<*>? ?: return ValidationResult.OK
-            val primaryArguments = platform.createCompilerArguments().apply {
+            val platformKind = editor.targetPlatformComboBox.selectedItem as IdeTargetPlatformKind<*>? ?: return ValidationResult.OK
+            val primaryArguments = platformKind.defaultPlatform.createArguments().apply {
                 editor.compilerConfigurable.applyTo(
                         this,
                         this as? K2JVMCompilerArguments ?: K2JVMCompilerArguments(),
@@ -164,10 +165,10 @@ class KotlinFacetEditorGeneralTab(
                 validateArguments(errors)?.let { message -> return ValidationResult(message) }
             }
             val emptyArguments = argumentClass.newInstance()
-            val fieldNamesToCheck = when (platform) {
-                is TargetPlatformKind.Jvm -> jvmUIExposedFields
-                is TargetPlatformKind.JavaScript -> jsUIExposedFields
-                is TargetPlatformKind.Common-> metadataUIExposedFields
+            val fieldNamesToCheck = when {
+                platformKind.isJvm -> jvmUIExposedFields
+                platformKind.isJavaScript -> jsUIExposedFields
+                platformKind.isCommon -> metadataUIExposedFields
                 else -> commonUIExposedFields
             }
 
@@ -284,14 +285,14 @@ class KotlinFacetEditorGeneralTab(
             editor.compilerConfigurable.apply()
             with(configuration.settings) {
                 useProjectSettings = editor.useProjectSettingsCheckBox.isSelected
-                (editor.targetPlatformComboBox.selectedItem as TargetPlatformKind<*>?)?.let {
+                (editor.targetPlatformComboBox.selectedItem as IdeTargetPlatformKind<*>?)?.let {
                     if (it != targetPlatformKind) {
-                        val platformArguments = when (it) {
-                            is TargetPlatformKind.Jvm -> editor.compilerConfigurable.k2jvmCompilerArguments
-                            is TargetPlatformKind.JavaScript -> editor.compilerConfigurable.k2jsCompilerArguments
+                        val platformArguments = when {
+                            it.isJvm -> editor.compilerConfigurable.k2jvmCompilerArguments
+                            it.isJavaScript -> editor.compilerConfigurable.k2jsCompilerArguments
                             else -> null
                         }
-                        compilerArguments = it.createCompilerArguments {
+                        compilerArguments = it.defaultPlatform.createArguments {
                             if (platformArguments != null) {
                                 mergeBeans(platformArguments, this)
                             }

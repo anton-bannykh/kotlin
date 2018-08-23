@@ -25,7 +25,10 @@ import org.jdom.Element
 import org.jdom.Text
 import org.jetbrains.kotlin.cli.common.arguments.*
 import org.jetbrains.kotlin.load.java.JvmAbi
-import org.jetbrains.kotlin.resolve.jvm.platform.JvmPlatform
+import org.jetbrains.kotlin.platform.IdeTargetPlatform
+import org.jetbrains.kotlin.platform.IdeTargetPlatformKind
+import org.jetbrains.kotlin.platform.impl.JvmIdeTargetPlatformKind
+import org.jetbrains.kotlin.platform.orDefault
 import java.lang.reflect.Modifier
 import kotlin.reflect.KClass
 import kotlin.reflect.full.superclasses
@@ -44,8 +47,9 @@ private fun readV1Config(element: Element): KotlinFacetSettings {
         val targetPlatformName = versionInfoElement?.getOptionValue("targetPlatformName")
         val languageLevel = versionInfoElement?.getOptionValue("languageLevel")
         val apiLevel = versionInfoElement?.getOptionValue("apiLevel")
-        val targetPlatform = TargetPlatformKind.ALL_PLATFORMS.firstOrNull { it.description == targetPlatformName }
-                             ?: TargetPlatformKind.Jvm[JvmTarget.DEFAULT]
+        val targetPlatform = IdeTargetPlatformKind.All_PLATFORMS
+            .firstOrNull { it.description == targetPlatformName }
+            ?: JvmIdeTargetPlatformKind.defaultPlatform
 
         val compilerInfoElement = element.getOptionBody("compilerInfo")
 
@@ -59,7 +63,7 @@ private fun readV1Config(element: Element): KotlinFacetSettings {
         val jvmArgumentsElement = compilerInfoElement?.getOptionBody("k2jvmCompilerArguments")
         val jsArgumentsElement = compilerInfoElement?.getOptionBody("k2jsCompilerArguments")
 
-        val compilerArguments = targetPlatform.createCompilerArguments { freeArgs = ArrayList() }
+        val compilerArguments = targetPlatform.createArguments { freeArgs = arrayListOf() }
 
         commonArgumentsElement?.let { XmlSerializer.deserializeInto(compilerArguments, it) }
         when (compilerArguments) {
@@ -94,15 +98,17 @@ private fun readV1Config(element: Element): KotlinFacetSettings {
     }
 }
 
-fun Element.getFacetPlatformByConfigurationElement(): TargetPlatformKind<*> {
+fun Element.getFacetPlatformByConfigurationElement(): IdeTargetPlatform<*, *> {
     val platformName = getAttributeValue("platform")
-    return TargetPlatformKind.ALL_PLATFORMS.firstOrNull { it.description == platformName } ?: TargetPlatformKind.DEFAULT_PLATFORM
+    return IdeTargetPlatformKind.All_PLATFORMS
+        .firstOrNull { it.description == platformName }
+        .orDefault()
 }
 
 private fun readV2AndLaterConfig(element: Element): KotlinFacetSettings {
     return KotlinFacetSettings().apply {
         element.getAttributeValue("useProjectSettings")?.let { useProjectSettings = it.toBoolean() }
-        val platformKind = element.getFacetPlatformByConfigurationElement()
+        val targetPlatform = element.getFacetPlatformByConfigurationElement()
         element.getChild("implements")?.let {
             val items = it.getChildren("implement")
             implementedModuleNames = if (items.isNotEmpty()) {
@@ -130,7 +136,7 @@ private fun readV2AndLaterConfig(element: Element): KotlinFacetSettings {
             XmlSerializer.deserializeInto(compilerSettings!!, it)
         }
         element.getChild("compilerArguments")?.let {
-            compilerArguments = platformKind.createCompilerArguments { freeArgs = ArrayList() }
+            compilerArguments = targetPlatform.createArguments { freeArgs = arrayListOf() }
             XmlSerializer.deserializeInto(compilerArguments!!, it)
             compilerArguments!!.detectVersionAutoAdvance()
         }

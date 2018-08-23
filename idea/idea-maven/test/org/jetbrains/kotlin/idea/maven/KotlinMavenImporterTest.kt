@@ -42,6 +42,7 @@ import org.jetbrains.kotlin.idea.framework.KotlinSdkType
 import org.jetbrains.kotlin.idea.project.languageVersionSettings
 import org.jetbrains.kotlin.idea.refactoring.toPsiFile
 import org.jetbrains.kotlin.js.resolve.JsPlatform
+import org.jetbrains.kotlin.platform.impl.*
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.resolve.TargetPlatform
 import org.jetbrains.kotlin.resolve.jvm.platform.JvmPlatform
@@ -687,7 +688,7 @@ class KotlinMavenImporterTest : MavenImportingTestCase() {
             Assert.assertFalse(compilerArguments!!.autoAdvanceApiVersion)
             Assert.assertEquals(true, compilerArguments!!.suppressWarnings)
             Assert.assertEquals(LanguageFeature.State.ENABLED, coroutineSupport)
-            Assert.assertTrue(targetPlatformKind == TargetPlatformKind.JavaScript)
+            Assert.assertTrue(targetPlatformKind.isJavaScript)
             with(compilerArguments as K2JSCompilerArguments) {
                 Assert.assertEquals(true, sourceMap)
                 Assert.assertEquals("commonjs", moduleKind)
@@ -1012,7 +1013,7 @@ class KotlinMavenImporterTest : MavenImportingTestCase() {
         assertModules("project")
         assertImporterStatePresent()
 
-        Assert.assertEquals(TargetPlatformKind.Jvm[JvmTarget.JVM_1_6], facetSettings.targetPlatformKind)
+        Assert.assertEquals(JvmIdeTargetPlatformKind.Platform(JvmTarget.JVM_1_6), facetSettings.targetPlatformKind)
 
         assertContentFolders("project", JavaSourceRootType.SOURCE, "src/main/kotlin")
         assertContentFolders("project", JavaSourceRootType.TEST_SOURCE, "src/test/java")
@@ -1067,7 +1068,7 @@ class KotlinMavenImporterTest : MavenImportingTestCase() {
         assertModules("project")
         assertImporterStatePresent()
 
-        Assert.assertEquals(TargetPlatformKind.Jvm[JvmTarget.JVM_1_6], facetSettings.targetPlatformKind)
+        Assert.assertEquals(JvmIdeTargetPlatformKind.Platform(JvmTarget.JVM_1_6), facetSettings.targetPlatformKind)
     }
 
     fun testJvmDetectionByGoalWithCommonStdlib() {
@@ -1117,7 +1118,7 @@ class KotlinMavenImporterTest : MavenImportingTestCase() {
         assertModules("project")
         assertImporterStatePresent()
 
-        Assert.assertEquals(TargetPlatformKind.Jvm[JvmTarget.JVM_1_6], facetSettings.targetPlatformKind)
+        Assert.assertEquals(JvmIdeTargetPlatformKind.Platform(JvmTarget.JVM_1_6), facetSettings.targetPlatformKind)
 
         assertContentFolders("project", JavaSourceRootType.SOURCE, "src/main/kotlin")
         assertContentFolders("project", JavaSourceRootType.TEST_SOURCE, "src/test/java")
@@ -1172,7 +1173,7 @@ class KotlinMavenImporterTest : MavenImportingTestCase() {
         assertModules("project")
         assertImporterStatePresent()
 
-        Assert.assertEquals(TargetPlatformKind.JavaScript, facetSettings.targetPlatformKind)
+        Assert.assertTrue(facetSettings.targetPlatformKind.isJavaScript)
 
         Assert.assertTrue(ModuleRootManager.getInstance(getModule("project")).sdk!!.sdkType is KotlinSdkType)
 
@@ -1229,7 +1230,7 @@ class KotlinMavenImporterTest : MavenImportingTestCase() {
         assertModules("project")
         assertImporterStatePresent()
 
-        Assert.assertEquals(TargetPlatformKind.JavaScript, facetSettings.targetPlatformKind)
+        Assert.assertTrue(facetSettings.targetPlatformKind.isJavaScript)
 
         Assert.assertTrue(ModuleRootManager.getInstance(getModule("project")).sdk!!.sdkType is KotlinSdkType)
 
@@ -1286,7 +1287,7 @@ class KotlinMavenImporterTest : MavenImportingTestCase() {
         assertModules("project")
         assertImporterStatePresent()
 
-        Assert.assertEquals(TargetPlatformKind.JavaScript, facetSettings.targetPlatformKind)
+        Assert.assertTrue(facetSettings.targetPlatformKind.isJavaScript)
 
         Assert.assertTrue(ModuleRootManager.getInstance(getModule("project")).sdk!!.sdkType is KotlinSdkType)
 
@@ -1348,7 +1349,7 @@ class KotlinMavenImporterTest : MavenImportingTestCase() {
         assertModules("project")
         assertImporterStatePresent()
 
-        Assert.assertEquals(TargetPlatformKind.JavaScript, facetSettings.targetPlatformKind)
+        Assert.assertTrue(facetSettings.targetPlatformKind.isJavaScript)
 
         val rootManager = ModuleRootManager.getInstance(getModule("project"))
         val libraries = rootManager.orderEntries.filterIsInstance<LibraryOrderEntry>().map { it.library as LibraryEx }
@@ -1402,7 +1403,7 @@ class KotlinMavenImporterTest : MavenImportingTestCase() {
         assertModules("project")
         assertImporterStatePresent()
 
-        Assert.assertEquals(TargetPlatformKind.Common, facetSettings.targetPlatformKind)
+        Assert.assertTrue(facetSettings.targetPlatformKind.isCommon)
 
         Assert.assertTrue(ModuleRootManager.getInstance(getModule("project")).sdk!!.sdkType is KotlinSdkType)
 
@@ -1453,7 +1454,7 @@ class KotlinMavenImporterTest : MavenImportingTestCase() {
         assertModules("project")
         assertImporterStatePresent()
 
-        Assert.assertEquals(TargetPlatformKind.Common, facetSettings.targetPlatformKind)
+        Assert.assertTrue(facetSettings.targetPlatformKind.isCommon)
 
         Assert.assertTrue(ModuleRootManager.getInstance(getModule("project")).sdk!!.sdkType is KotlinSdkType)
 
@@ -1504,7 +1505,7 @@ class KotlinMavenImporterTest : MavenImportingTestCase() {
         assertModules("project")
         assertImporterStatePresent()
 
-        Assert.assertEquals(TargetPlatformKind.Common, facetSettings.targetPlatformKind)
+        Assert.assertTrue(facetSettings.targetPlatformKind.isCommon)
 
         val rootManager = ModuleRootManager.getInstance(getModule("project"))
         val stdlib = rootManager.orderEntries.filterIsInstance<LibraryOrderEntry>().single().library
@@ -1565,7 +1566,7 @@ class KotlinMavenImporterTest : MavenImportingTestCase() {
         assertModules("project")
         assertImporterStatePresent()
 
-        Assert.assertEquals(TargetPlatformKind.Jvm[JvmTarget.JVM_1_6], facetSettings.targetPlatformKind)
+        Assert.assertEquals(JvmIdeTargetPlatformKind.Platform(JvmTarget.JVM_1_6), facetSettings.targetPlatformKind)
 
         assertContentFolders("project", KotlinSourceRootType.Source, "src/main/kotlin")
         assertContentFolders("project", KotlinSourceRootType.TestSource, "src/test/java")
@@ -1620,7 +1621,7 @@ class KotlinMavenImporterTest : MavenImportingTestCase() {
         assertModules("project")
         assertImporterStatePresent()
 
-        Assert.assertEquals(TargetPlatformKind.JavaScript, facetSettings.targetPlatformKind)
+        Assert.assertTrue(facetSettings.targetPlatformKind.isJavaScript)
 
         assertContentFolders("project", KotlinSourceRootType.Source, "src/main/kotlin")
         assertContentFolders("project", KotlinSourceRootType.TestSource, "src/test/java")
@@ -1675,7 +1676,7 @@ class KotlinMavenImporterTest : MavenImportingTestCase() {
         assertModules("project")
         assertImporterStatePresent()
 
-        Assert.assertEquals(TargetPlatformKind.Common, facetSettings.targetPlatformKind)
+        Assert.assertTrue(facetSettings.targetPlatformKind.isCommon)
 
         assertContentFolders("project", KotlinSourceRootType.Source, "src/main/kotlin")
         assertContentFolders("project", KotlinSourceRootType.TestSource, "src/test/java")
@@ -2373,20 +2374,20 @@ class KotlinMavenImporterTest : MavenImportingTestCase() {
         assertImporterStatePresent()
 
         with(facetSettings("my-common-module1")) {
-            Assert.assertEquals(TargetPlatformKind.Common.description, targetPlatformKind!!.description)
+            Assert.assertEquals(CommonIdeTargetPlatformKind.Platform.description, targetPlatformKind!!.description)
         }
 
         with(facetSettings("my-common-module2")) {
-            Assert.assertEquals(TargetPlatformKind.Common.description, targetPlatformKind!!.description)
+            Assert.assertEquals(CommonIdeTargetPlatformKind.Platform.description, targetPlatformKind!!.description)
         }
 
         with(facetSettings("my-jvm-module")) {
-            Assert.assertEquals(TargetPlatformKind.Jvm(JvmTarget.JVM_1_6).description, targetPlatformKind!!.description)
+            Assert.assertEquals(JvmIdeTargetPlatformKind.Platform(JvmTarget.JVM_1_6).description, targetPlatformKind!!.description)
             Assert.assertEquals(listOf("my-common-module1", "my-common-module2"), implementedModuleNames)
         }
 
         with(facetSettings("my-js-module")) {
-            Assert.assertEquals(TargetPlatformKind.JavaScript.description, targetPlatformKind!!.description)
+            Assert.assertEquals(JsIdeTargetPlatformKind.Platform.description, targetPlatformKind!!.description)
             Assert.assertEquals(listOf("my-common-module1"), implementedModuleNames)
         }
     }

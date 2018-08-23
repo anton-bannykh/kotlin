@@ -47,6 +47,9 @@ import org.jetbrains.kotlin.idea.project.languageVersionSettings
 import org.jetbrains.kotlin.idea.util.projectStructure.allModules
 import org.jetbrains.kotlin.idea.util.projectStructure.sdk
 import org.jetbrains.kotlin.js.resolve.JsPlatform
+import org.jetbrains.kotlin.platform.impl.JvmIdeTargetPlatformKind
+import org.jetbrains.kotlin.platform.impl.isCommon
+import org.jetbrains.kotlin.platform.impl.isJavaScript
 import org.jetbrains.kotlin.resolve.TargetPlatform
 import org.jetbrains.kotlin.resolve.jvm.platform.JvmPlatform
 import org.jetbrains.kotlin.test.KotlinTestUtils
@@ -131,7 +134,7 @@ class GradleFacetImportTest : GradleImportingTestCase() {
             Assert.assertEquals("1.1", apiLevel!!.versionString)
             Assert.assertFalse(compilerArguments!!.autoAdvanceLanguageVersion)
             Assert.assertFalse(compilerArguments!!.autoAdvanceApiVersion)
-            Assert.assertEquals(TargetPlatformKind.Jvm[JvmTarget.JVM_1_8], targetPlatformKind)
+            Assert.assertEquals(JvmIdeTargetPlatformKind.Platform(JvmTarget.JVM_1_8), targetPlatformKind)
             Assert.assertEquals("1.7", (compilerArguments as K2JVMCompilerArguments).jvmTarget)
             Assert.assertEquals(
                 "-Xdump-declarations-to=tmp -Xsingle-module",
@@ -143,7 +146,7 @@ class GradleFacetImportTest : GradleImportingTestCase() {
             Assert.assertEquals("1.0", apiLevel!!.versionString)
             Assert.assertFalse(compilerArguments!!.autoAdvanceLanguageVersion)
             Assert.assertFalse(compilerArguments!!.autoAdvanceApiVersion)
-            Assert.assertEquals(TargetPlatformKind.Jvm[JvmTarget.JVM_1_6], targetPlatformKind)
+            Assert.assertEquals(JvmIdeTargetPlatformKind.Platform(JvmTarget.JVM_1_6), targetPlatformKind)
             Assert.assertEquals("1.6", (compilerArguments as K2JVMCompilerArguments).jvmTarget)
             Assert.assertEquals(
                 "-Xdump-declarations-to=tmpTest",
@@ -257,7 +260,7 @@ compileTestKotlin {
         with(facetSettings) {
             Assert.assertEquals("1.1", languageLevel!!.versionString)
             Assert.assertEquals("1.1", apiLevel!!.versionString)
-            Assert.assertEquals(TargetPlatformKind.Jvm[JvmTarget.JVM_1_8], targetPlatformKind)
+            Assert.assertEquals(JvmIdeTargetPlatformKind.Platform(JvmTarget.JVM_1_8), targetPlatformKind)
             Assert.assertEquals("1.7", (compilerArguments as K2JVMCompilerArguments).jvmTarget)
             Assert.assertEquals(
                 "-Xdump-declarations-to=tmp -Xsingle-module",
@@ -267,7 +270,7 @@ compileTestKotlin {
         with(testFacetSettings) {
             Assert.assertEquals("1.1", languageLevel!!.versionString)
             Assert.assertEquals("1.0", apiLevel!!.versionString)
-            Assert.assertEquals(TargetPlatformKind.Jvm[JvmTarget.JVM_1_6], targetPlatformKind)
+            Assert.assertEquals(JvmIdeTargetPlatformKind.Platform(JvmTarget.JVM_1_6), targetPlatformKind)
             Assert.assertEquals("1.6", (compilerArguments as K2JVMCompilerArguments).jvmTarget)
             Assert.assertEquals(
                 "-Xdump-declarations-to=tmpTest",
@@ -345,7 +348,7 @@ compileTestKotlin {
         with(facetSettings("project_myMain")) {
             Assert.assertEquals("1.1", languageLevel!!.versionString)
             Assert.assertEquals("1.1", apiLevel!!.versionString)
-            Assert.assertEquals(TargetPlatformKind.Jvm[JvmTarget.JVM_1_8], targetPlatformKind)
+            Assert.assertEquals(JvmIdeTargetPlatformKind.Platform(JvmTarget.JVM_1_8), targetPlatformKind)
             Assert.assertEquals("1.7", (compilerArguments as K2JVMCompilerArguments).jvmTarget)
             Assert.assertEquals(
                 "-Xdump-declarations-to=tmp -Xsingle-module",
@@ -355,7 +358,7 @@ compileTestKotlin {
         with(facetSettings("project_myTest")) {
             Assert.assertEquals("1.1", languageLevel!!.versionString)
             Assert.assertEquals("1.0", apiLevel!!.versionString)
-            Assert.assertEquals(TargetPlatformKind.Jvm[JvmTarget.JVM_1_6], targetPlatformKind)
+            Assert.assertEquals(JvmIdeTargetPlatformKind.Platform(JvmTarget.JVM_1_6), targetPlatformKind)
             Assert.assertEquals("1.6", (compilerArguments as K2JVMCompilerArguments).jvmTarget)
             Assert.assertEquals(
                 "-Xdump-declarations-to=tmpTest",
@@ -438,7 +441,7 @@ compileTestKotlin {
         with(facetSettings("project_myMain")) {
             Assert.assertEquals("1.1", languageLevel!!.versionString)
             Assert.assertEquals("1.1", apiLevel!!.versionString)
-            Assert.assertEquals(TargetPlatformKind.Jvm[JvmTarget.JVM_1_8], targetPlatformKind)
+            Assert.assertEquals(JvmIdeTargetPlatformKind.Platform(JvmTarget.JVM_1_8), targetPlatformKind)
             Assert.assertEquals("1.7", (compilerArguments as K2JVMCompilerArguments).jvmTarget)
             Assert.assertEquals(
                 "-Xdump-declarations-to=tmp -Xsingle-module",
@@ -448,7 +451,7 @@ compileTestKotlin {
         with(facetSettings("project_myTest")) {
             Assert.assertEquals("1.1", languageLevel!!.versionString)
             Assert.assertEquals("1.0", apiLevel!!.versionString)
-            Assert.assertEquals(TargetPlatformKind.Jvm[JvmTarget.JVM_1_6], targetPlatformKind)
+            Assert.assertEquals(JvmIdeTargetPlatformKind.Platform(JvmTarget.JVM_1_6), targetPlatformKind)
             Assert.assertEquals("1.6", (compilerArguments as K2JVMCompilerArguments).jvmTarget)
             Assert.assertEquals(
                 "-Xdump-declarations-to=tmpTest",
@@ -593,7 +596,7 @@ compileTestKotlin {
             Assert.assertEquals("1.1", apiLevel!!.versionString)
             Assert.assertFalse(compilerArguments!!.autoAdvanceLanguageVersion)
             Assert.assertFalse(compilerArguments!!.autoAdvanceApiVersion)
-            Assert.assertEquals(TargetPlatformKind.JavaScript, targetPlatformKind)
+            Assert.assertTrue(targetPlatformKind.isJavaScript)
             with(compilerArguments as K2JSCompilerArguments) {
                 Assert.assertEquals(true, sourceMap)
                 Assert.assertEquals("plain", moduleKind)
@@ -609,7 +612,7 @@ compileTestKotlin {
             Assert.assertEquals("1.0", apiLevel!!.versionString)
             Assert.assertFalse(compilerArguments!!.autoAdvanceLanguageVersion)
             Assert.assertFalse(compilerArguments!!.autoAdvanceApiVersion)
-            Assert.assertEquals(TargetPlatformKind.JavaScript, targetPlatformKind)
+            Assert.assertTrue(targetPlatformKind.isJavaScript)
             with(compilerArguments as K2JSCompilerArguments) {
                 Assert.assertEquals(false, sourceMap)
                 Assert.assertEquals("umd", moduleKind)
@@ -679,7 +682,7 @@ compileTestKotlin {
         with(facetSettings) {
             Assert.assertEquals("1.1", languageLevel!!.versionString)
             Assert.assertEquals("1.1", apiLevel!!.versionString)
-            Assert.assertEquals(TargetPlatformKind.JavaScript, targetPlatformKind)
+            Assert.assertTrue(targetPlatformKind.isJavaScript)
         }
 
         val rootManager = ModuleRootManager.getInstance(getModule("project_main"))
@@ -760,7 +763,7 @@ compileTestKotlin {
         with(facetSettings("project_myMain")) {
             Assert.assertEquals("1.1", languageLevel!!.versionString)
             Assert.assertEquals("1.1", apiLevel!!.versionString)
-            Assert.assertEquals(TargetPlatformKind.JavaScript, targetPlatformKind)
+            Assert.assertTrue(targetPlatformKind.isJavaScript)
             with(compilerArguments as K2JSCompilerArguments) {
                 Assert.assertEquals(true, sourceMap)
                 Assert.assertEquals("plain", moduleKind)
@@ -774,7 +777,7 @@ compileTestKotlin {
         with(facetSettings("project_myTest")) {
             Assert.assertEquals("1.1", languageLevel!!.versionString)
             Assert.assertEquals("1.0", apiLevel!!.versionString)
-            Assert.assertEquals(TargetPlatformKind.JavaScript, targetPlatformKind)
+            Assert.assertTrue(targetPlatformKind.isJavaScript)
             with(compilerArguments as K2JSCompilerArguments) {
                 Assert.assertEquals(false, sourceMap)
                 Assert.assertEquals("umd", moduleKind)
@@ -831,7 +834,7 @@ compileTestKotlin {
         importProject()
 
         with(facetSettings) {
-            Assert.assertEquals(TargetPlatformKind.JavaScript, targetPlatformKind)
+            Assert.assertTrue(targetPlatformKind.isJavaScript)
         }
     }
 
@@ -863,7 +866,7 @@ compileTestKotlin {
         with(facetSettings) {
             Assert.assertEquals("1.1", languageLevel!!.versionString)
             Assert.assertEquals("1.1", apiLevel!!.versionString)
-            Assert.assertEquals(TargetPlatformKind.Jvm[JvmTarget.JVM_1_6], targetPlatformKind)
+            Assert.assertEquals(JvmIdeTargetPlatformKind.Platform(JvmTarget.JVM_1_6), targetPlatformKind)
         }
 
         Assert.assertEquals(
@@ -914,7 +917,7 @@ compileTestKotlin {
         with(facetSettings) {
             Assert.assertEquals("1.1", languageLevel!!.versionString)
             Assert.assertEquals("1.1", apiLevel!!.versionString)
-            Assert.assertEquals(TargetPlatformKind.JavaScript, targetPlatformKind)
+            Assert.assertTrue(targetPlatformKind.isJavaScript)
         }
 
         val rootManager = ModuleRootManager.getInstance(getModule("project_main"))
@@ -973,7 +976,7 @@ compileTestKotlin {
         with(facetSettings) {
             Assert.assertEquals("1.1", languageLevel!!.versionString)
             Assert.assertEquals("1.1", apiLevel!!.versionString)
-            Assert.assertEquals(TargetPlatformKind.Common, targetPlatformKind)
+            Assert.assertTrue(targetPlatformKind.isCommon)
         }
 
         val rootManager = ModuleRootManager.getInstance(getModule("project_main"))
@@ -1030,7 +1033,7 @@ compileTestKotlin {
         with(facetSettings("project")) {
             Assert.assertEquals("1.1", languageLevel!!.versionString)
             Assert.assertEquals("1.1", apiLevel!!.versionString)
-            Assert.assertEquals(TargetPlatformKind.Common, targetPlatformKind)
+            Assert.assertTrue(targetPlatformKind.isCommon)
         }
 
         val rootManager = ModuleRootManager.getInstance(getModule("project"))
@@ -1076,7 +1079,7 @@ compileTestKotlin {
         with(facetSettings) {
             Assert.assertEquals("1.1", languageLevel!!.versionString)
             Assert.assertEquals("1.1", apiLevel!!.versionString)
-            Assert.assertEquals(TargetPlatformKind.Jvm[JvmTarget.JVM_1_6], targetPlatformKind)
+            Assert.assertEquals(JvmIdeTargetPlatformKind.Platform(JvmTarget.JVM_1_6), targetPlatformKind)
         }
 
         Assert.assertEquals(
@@ -1121,7 +1124,7 @@ compileTestKotlin {
         with(facetSettings) {
             Assert.assertEquals("1.1", languageLevel!!.versionString)
             Assert.assertEquals("1.1", apiLevel!!.versionString)
-            Assert.assertEquals(TargetPlatformKind.JavaScript, targetPlatformKind)
+            Assert.assertTrue(targetPlatformKind.isJavaScript)
         }
 
         Assert.assertEquals(
@@ -1395,7 +1398,7 @@ compileTestKotlin {
         importProject()
 
         with(facetSettings("js-module")) {
-            Assert.assertEquals(TargetPlatformKind.JavaScript, targetPlatformKind)
+            Assert.assertTrue(targetPlatformKind.isJavaScript)
         }
 
         val rootManager = ModuleRootManager.getInstance(getModule("js-module"))
@@ -2080,7 +2083,7 @@ compileTestKotlin {
             Assert.assertEquals("1.0", apiLevel!!.versionString)
             Assert.assertFalse(compilerArguments!!.autoAdvanceLanguageVersion)
             Assert.assertFalse(compilerArguments!!.autoAdvanceApiVersion)
-            Assert.assertEquals(TargetPlatformKind.Common, targetPlatformKind)
+            Assert.assertTrue(targetPlatformKind.isCommon)
             Assert.assertEquals("my/classpath", (compilerArguments as K2MetadataCompilerArguments).classpath)
             Assert.assertEquals("my/destination", (compilerArguments as K2MetadataCompilerArguments).destination)
         }
@@ -2090,7 +2093,7 @@ compileTestKotlin {
             Assert.assertEquals("1.0", apiLevel!!.versionString)
             Assert.assertFalse(compilerArguments!!.autoAdvanceLanguageVersion)
             Assert.assertFalse(compilerArguments!!.autoAdvanceApiVersion)
-            Assert.assertEquals(TargetPlatformKind.Common, targetPlatformKind)
+            Assert.assertTrue(targetPlatformKind.isCommon)
             Assert.assertEquals("my/test/classpath", (compilerArguments as K2MetadataCompilerArguments).classpath)
             Assert.assertEquals("my/test/destination", (compilerArguments as K2MetadataCompilerArguments).destination)
         }

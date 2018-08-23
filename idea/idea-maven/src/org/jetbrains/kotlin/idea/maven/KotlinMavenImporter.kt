@@ -38,16 +38,20 @@ import org.jetbrains.jps.model.java.JavaSourceRootType
 import org.jetbrains.jps.model.module.JpsModuleSourceRootType
 import org.jetbrains.kotlin.cli.common.arguments.K2JSCompilerArguments
 import org.jetbrains.kotlin.cli.common.arguments.K2JVMCompilerArguments
-import org.jetbrains.kotlin.cli.common.arguments.K2MetadataCompilerArguments
 import org.jetbrains.kotlin.cli.common.arguments.parseCommandLineArguments
 import org.jetbrains.kotlin.compilerRunner.ArgumentUtils
 import org.jetbrains.kotlin.config.*
 import org.jetbrains.kotlin.extensions.ProjectExtensionDescriptor
 import org.jetbrains.kotlin.idea.facet.*
 import org.jetbrains.kotlin.idea.framework.detectLibraryKind
-import org.jetbrains.kotlin.idea.framework.libraryKind
 import org.jetbrains.kotlin.idea.maven.configuration.KotlinMavenConfigurator
-import org.jetbrains.kotlin.idea.project.targetPlatform
+import org.jetbrains.kotlin.idea.platform.tooling
+import org.jetbrains.kotlin.platform.IdeTargetPlatform
+import org.jetbrains.kotlin.platform.IdeTargetPlatformKind
+import org.jetbrains.kotlin.platform.impl.CommonIdeTargetPlatformKind
+import org.jetbrains.kotlin.platform.impl.JsIdeTargetPlatformKind
+import org.jetbrains.kotlin.platform.impl.JvmIdeTargetPlatformKind
+import org.jetbrains.kotlin.platform.impl.isCommon
 import org.jetbrains.kotlin.utils.SmartList
 import org.jetbrains.kotlin.utils.addIfNotNull
 import java.io.File
@@ -105,7 +109,7 @@ class KotlinMavenImporter : MavenImporter(KOTLIN_PLUGIN_GROUP_ID, KOTLIN_PLUGIN_
         if (changes.dependencies) {
             scheduleDownloadStdlibSources(mavenProject, module)
 
-            val targetLibraryKind = detectPlatformByExecutions(mavenProject)?.libraryKind
+            val targetLibraryKind = detectPlatformByExecutions(mavenProject)?.tooling?.libraryKind
             if (targetLibraryKind != null) {
                 modifiableModelsProvider.getModifiableRootModel(module).orderEntries().forEachLibrary { library ->
                     if ((library as LibraryEx).kind == null) {
@@ -177,13 +181,9 @@ class KotlinMavenImporter : MavenImporter(KOTLIN_PLUGIN_GROUP_ID, KOTLIN_PLUGIN_
     private fun getCompilerArgumentsByConfigurationElement(
         mavenProject: MavenProject,
         configuration: Element?,
-        platform: TargetPlatformKind<*>
+        platform: IdeTargetPlatform<*, *>
     ): List<String> {
-        val arguments = when (platform) {
-            is TargetPlatformKind.Jvm -> K2JVMCompilerArguments()
-            TargetPlatformKind.JavaScript -> K2JSCompilerArguments()
-            TargetPlatformKind.Common -> K2MetadataCompilerArguments()
-        }
+        val arguments = platform.createArguments()
 
         arguments.apiVersion = configuration?.getChild("apiVersion")?.text ?:
                 mavenProject.properties["kotlin.compiler.apiVersion"]?.toString()
@@ -252,7 +252,9 @@ class KotlinMavenImporter : MavenImporter(KOTLIN_PLUGIN_GROUP_ID, KOTLIN_PLUGIN_
             false,
             ExternalProjectSystemRegistry.MAVEN_EXTERNAL_SOURCE_ID
         )
-        val platform = detectPlatform(mavenProject)
+
+        // TODO There should be a way to figure out the correct platform version
+        val platform = detectPlatform(mavenProject)?.defaultPlatform
 
         kotlinFacet.configureFacet(compilerVersion, LanguageFeature.Coroutines.defaultState, platform, modifiableModelsProvider)
         val facetSettings = kotlinFacet.configuration.settings
@@ -277,22 +279,28 @@ class KotlinMavenImporter : MavenImporter(KOTLIN_PLUGIN_GROUP_ID, KOTLIN_PLUGIN_
     private fun detectPlatform(mavenProject: MavenProject) =
         detectPlatformByExecutions(mavenProject) ?: detectPlatformByLibraries(mavenProject)
 
-    private fun detectPlatformByExecutions(mavenProject: MavenProject): TargetPlatformKind<*>? {
+    private fun detectPlatformByExecutions(mavenProject: MavenProject): IdeTargetPlatformKind<*>? {
         return mavenProject.findPlugin(KOTLIN_PLUGIN_GROUP_ID, KOTLIN_PLUGIN_ARTIFACT_ID)?.executions?.flatMap { it.goals }
             ?.mapNotNull { goal ->
                 when (goal) {
-                    PomFile.KotlinGoals.Compile, PomFile.KotlinGoals.TestCompile -> TargetPlatformKind.Jvm[JvmTarget.JVM_1_6]
-                    PomFile.KotlinGoals.Js, PomFile.KotlinGoals.TestJs -> TargetPlatformKind.JavaScript
-                    PomFile.KotlinGoals.MetaData -> TargetPlatformKind.Common
+                    PomFile.KotlinGoals.Compile, PomFile.KotlinGoals.TestCompile -> JvmIdeTargetPlatformKind
+                    PomFile.KotlinGoals.Js, PomFile.KotlinGoals.TestJs -> JsIdeTargetPlatformKind
+                    PomFile.KotlinGoals.MetaData -> CommonIdeTargetPlatformKind
                     else -> null
                 }
             }?.distinct()?.singleOrNull()
     }
 
-    private fun detectPlatformByLibraries(mavenProject: MavenProject): TargetPlatformKind<*>? {
-        return TargetPlatformKind.ALL_PLATFORMS.firstOrNull {
-            it.mavenLibraryIds.any { mavenProject.findDependencies(KOTLIN_PLUGIN_GROUP_ID, it).isNotEmpty() }
+    private fun detectPlatformByLibraries(mavenProject: MavenProject): IdeTargetPlatformKind<*>? {
+        for (kind in IdeTargetPlatformKind.ALL_KINDS) {
+            val mavenLibraryIds = kind.tooling.mavenLibraryIds
+            if (mavenLibraryIds.any { mavenProject.findDependencies(KOTLIN_PLUGIN_GROUP_ID, it).isNotEmpty() }) {
+                // TODO we could return here the correct version
+                return kind
+            }
         }
+
+        return null
     }
 
     // TODO in theory it should work like this but it doesn't as it couldn't unmark source roots that are not roots anymore.
@@ -362,12 +370,12 @@ class KotlinMavenImporter : MavenImporter(KOTLIN_PLUGIN_GROUP_ID, KOTLIN_PLUGIN_
         }.distinct()
 
     private fun setImplementedModuleName(kotlinFacet: KotlinFacet, mavenProject: MavenProject, module: Module) {
-        if (kotlinFacet.configuration.settings.targetPlatformKind == TargetPlatformKind.Common) {
+        if (kotlinFacet.configuration.settings.targetPlatformKind.isCommon) {
             kotlinFacet.configuration.settings.implementedModuleNames = emptyList()
         } else {
             val manager = MavenProjectsManager.getInstance(module.project)
             val mavenDependencies = mavenProject.dependencies.mapNotNull { manager?.findProject(it) }
-            val implemented = mavenDependencies.filter { detectPlatformByExecutions(it) == TargetPlatformKind.Common }
+            val implemented = mavenDependencies.filter { detectPlatformByExecutions(it).isCommon }
 
             kotlinFacet.configuration.settings.implementedModuleNames = implemented.map { manager.findModule(it)?.name ?: it.displayName }
         }
