@@ -30,7 +30,7 @@ import org.jetbrains.kotlin.asJava.toLightClass
 import org.jetbrains.kotlin.asJava.toLightMethods
 import org.jetbrains.kotlin.idea.caches.resolve.resolveToDescriptorIfAny
 import org.jetbrains.kotlin.idea.platform.tooling
-import org.jetbrains.kotlin.idea.project.targetPlatform
+import org.jetbrains.kotlin.idea.project.platform
 import org.jetbrains.kotlin.idea.util.projectStructure.module
 import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtNamedDeclaration
@@ -91,7 +91,7 @@ class KotlinTestRunLineMarkerContributor : RunLineMarkerContributor() {
         // To prevent IDEA failing on red code
         val descriptor = declaration.resolveToDescriptorIfAny() ?: return null
 
-        val targetPlatform = declaration.module?.targetPlatform ?: return null
+        val targetPlatform = declaration.module?.platform ?: return null
         val icon = targetPlatform.kind.tooling.getTestIcon(declaration, descriptor) ?: return null
         return RunLineMarkerContributor.Info(icon, { "Run Test" }, ExecutorAction.getActions())
     }

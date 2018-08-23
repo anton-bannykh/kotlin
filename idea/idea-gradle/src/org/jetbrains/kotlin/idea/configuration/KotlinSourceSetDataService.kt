@@ -29,9 +29,9 @@ import org.jetbrains.kotlin.idea.facet.noVersionAutoAdvance
 import org.jetbrains.kotlin.idea.inspections.gradle.findAll
 import org.jetbrains.kotlin.idea.inspections.gradle.findKotlinPluginVersion
 import org.jetbrains.kotlin.idea.roots.migrateNonJvmSourceFolders
-import org.jetbrains.kotlin.platform.impl.CommonIdeTargetPlatformKind
-import org.jetbrains.kotlin.platform.impl.JsIdeTargetPlatformKind
-import org.jetbrains.kotlin.platform.impl.JvmIdeTargetPlatformKind
+import org.jetbrains.kotlin.platform.impl.CommonIdePlatformKind
+import org.jetbrains.kotlin.platform.impl.JsIdePlatformKind
+import org.jetbrains.kotlin.platform.impl.JvmIdePlatformKind
 import org.jetbrains.plugins.gradle.model.data.BuildScriptClasspathData
 import org.jetbrains.plugins.gradle.model.data.GradleSourceSetData
 
@@ -85,10 +85,10 @@ class KotlinSourceSetDataService : AbstractProjectDataService<GradleSourceSetDat
         val platformKind = when (kotlinSourceSet.platform) {
             KotlinPlatform.JVM, KotlinPlatform.ANDROID -> {
                 val target = JvmTarget.fromString(sourceSetData.targetCompatibility ?: "") ?: JvmTarget.DEFAULT
-                JvmIdeTargetPlatformKind.Platform(target)
+                JvmIdePlatformKind.Platform(target)
             }
-            KotlinPlatform.JS -> JsIdeTargetPlatformKind.Platform
-            KotlinPlatform.COMMON -> CommonIdeTargetPlatformKind.Platform
+            KotlinPlatform.JS -> JsIdePlatformKind.Platform
+            KotlinPlatform.COMMON -> CommonIdePlatformKind.Platform
         }
         val coroutinesProperty = CoroutineSupport.byCompilerArgument(
             mainModuleNode.coroutines ?: findKotlinCoroutinesProperty(ideModule.project)

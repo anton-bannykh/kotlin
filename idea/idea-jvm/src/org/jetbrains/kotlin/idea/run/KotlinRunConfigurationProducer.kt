@@ -31,10 +31,10 @@ import org.jetbrains.kotlin.idea.MainFunctionDetector
 import org.jetbrains.kotlin.idea.caches.project.implementingModules
 import org.jetbrains.kotlin.idea.caches.resolve.resolveToDescriptorIfAny
 import org.jetbrains.kotlin.idea.project.TargetPlatformDetector
-import org.jetbrains.kotlin.idea.project.targetPlatform
+import org.jetbrains.kotlin.idea.project.platform
 import org.jetbrains.kotlin.idea.util.ProjectRootsUtil
-import org.jetbrains.kotlin.platform.impl.CommonIdeTargetPlatformKind
-import org.jetbrains.kotlin.platform.impl.JvmIdeTargetPlatformKind
+import org.jetbrains.kotlin.platform.impl.CommonIdePlatformKind
+import org.jetbrains.kotlin.platform.impl.JvmIdePlatformKind
 import org.jetbrains.kotlin.psi.*
 import org.jetbrains.kotlin.psi.psiUtil.getParentOfType
 import org.jetbrains.kotlin.resolve.jvm.platform.JvmPlatform
@@ -128,6 +128,6 @@ class KotlinRunConfigurationProducer : RunConfigurationProducer<KotlinRunConfigu
 }
 
 fun Module.findJvmImplementationModule(): Module? {
-    if (targetPlatform !is CommonIdeTargetPlatformKind.Platform) return null
-    return implementingModules.firstOrNull { it.targetPlatform is JvmIdeTargetPlatformKind.Platform }
+    if (platform !is CommonIdePlatformKind.Platform) return null
+    return implementingModules.firstOrNull { it.platform is JvmIdePlatformKind.Platform }
 }

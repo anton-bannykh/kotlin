@@ -8,10 +8,10 @@ package org.jetbrains.kotlin.platform
 import com.intellij.openapi.components.ServiceManager
 
 interface DefaultIdeTargetPlatformKindProvider {
-    val defaultPlatform: IdeTargetPlatform<*, *>
+    val defaultPlatform: IdePlatform<*, *>
 
     companion object {
-        val defaultPlatform: IdeTargetPlatform<*, *>
+        val defaultPlatform: IdePlatform<*, *>
             get() = ServiceManager.getService(DefaultIdeTargetPlatformKindProvider::class.java).defaultPlatform
     }
 }

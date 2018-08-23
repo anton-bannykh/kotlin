@@ -18,8 +18,8 @@ import org.jetbrains.kotlin.idea.compiler.configuration.Kotlin2JvmCompilerArgume
 import org.jetbrains.kotlin.idea.framework.JavaRuntimeDetectionUtil
 import org.jetbrains.kotlin.idea.framework.JavaRuntimeLibraryDescription
 import org.jetbrains.kotlin.idea.highlighter.KotlinTestRunLineMarkerContributor.Companion.getTestStateIcon
-import org.jetbrains.kotlin.idea.platform.IdeTargetPlatformKindTooling
-import org.jetbrains.kotlin.platform.impl.JvmIdeTargetPlatformKind
+import org.jetbrains.kotlin.idea.platform.IdePlatformKindTooling
+import org.jetbrains.kotlin.platform.impl.JvmIdePlatformKind
 import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtFunction
 import org.jetbrains.kotlin.psi.KtNamedDeclaration
@@ -27,8 +27,8 @@ import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.utils.PathUtil
 import javax.swing.Icon
 
-object JvmIdeTargetPlatformKindTooling : IdeTargetPlatformKindTooling {
-    override val kind = JvmIdeTargetPlatformKind
+object JvmIdePlatformKindTooling : IdePlatformKindTooling {
+    override val kind = JvmIdePlatformKind
 
     override val mavenLibraryIds = listOf(
         PathUtil.KOTLIN_JAVA_STDLIB_NAME,

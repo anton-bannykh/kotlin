@@ -22,14 +22,14 @@ import com.intellij.openapi.roots.ModuleRootManager
 import com.intellij.openapi.roots.ModuleRootModel
 import org.jetbrains.kotlin.idea.platform.tooling
 import org.jetbrains.kotlin.idea.versions.bundledRuntimeVersion
-import org.jetbrains.kotlin.platform.IdeTargetPlatformKind
+import org.jetbrains.kotlin.platform.IdePlatformKind
 
 class KotlinVersionInfoProviderByModuleDependencies : KotlinVersionInfoProvider {
     override fun getCompilerVersion(module: Module) = bundledRuntimeVersion()
 
     override fun getLibraryVersions(
         module: Module,
-        platformKind: IdeTargetPlatformKind<*>,
+        platformKind: IdePlatformKind<*>,
         rootModel: ModuleRootModel?
     ): Collection<String> {
         val versionProvider = platformKind.tooling.getLibraryVersionProvider(module.project)

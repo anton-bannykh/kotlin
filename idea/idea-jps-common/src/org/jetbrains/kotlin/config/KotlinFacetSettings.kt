@@ -20,10 +20,10 @@ import com.intellij.openapi.components.ServiceManager
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
 import org.jetbrains.kotlin.cli.common.arguments.*
-import org.jetbrains.kotlin.platform.IdeTargetPlatform
-import org.jetbrains.kotlin.platform.impl.CommonIdeTargetPlatformKind
-import org.jetbrains.kotlin.platform.impl.JsIdeTargetPlatformKind
-import org.jetbrains.kotlin.platform.impl.JvmIdeTargetPlatformKind
+import org.jetbrains.kotlin.platform.IdePlatform
+import org.jetbrains.kotlin.platform.impl.CommonIdePlatformKind
+import org.jetbrains.kotlin.platform.impl.JsIdePlatformKind
+import org.jetbrains.kotlin.platform.impl.JvmIdePlatformKind
 import org.jetbrains.kotlin.utils.DescriptionAware
 
 object CoroutineSupport {
@@ -153,16 +153,16 @@ class KotlinFacetSettings {
             compilerArguments!!.apiVersion = value?.versionString
         }
 
-    val targetPlatformKind: IdeTargetPlatform<*, *>?
+    val platformKind: IdePlatform<*, *>?
         get() {
             val compilerArguments = this.compilerArguments
             return when (compilerArguments) {
                 is K2JVMCompilerArguments -> {
                     val jvmTarget = compilerArguments.jvmTarget ?: JvmTarget.DEFAULT.description
-                    JvmIdeTargetPlatformKind.platforms.firstOrNull { it.version.description >= jvmTarget }
+                    JvmIdePlatformKind.platforms.firstOrNull { it.version.description >= jvmTarget }
                 }
-                is K2JSCompilerArguments -> JsIdeTargetPlatformKind.Platform
-                is K2MetadataCompilerArguments -> CommonIdeTargetPlatformKind.Platform
+                is K2JSCompilerArguments -> JsIdePlatformKind.Platform
+                is K2MetadataCompilerArguments -> CommonIdePlatformKind.Platform
                 else -> null
             }
         }

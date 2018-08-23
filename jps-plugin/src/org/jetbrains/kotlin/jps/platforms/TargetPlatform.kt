@@ -13,10 +13,10 @@ import org.jetbrains.jps.incremental.ModuleBuildTarget
 import org.jetbrains.jps.model.library.JpsOrderRootType
 import org.jetbrains.jps.model.module.JpsModule
 import org.jetbrains.jps.util.JpsPathUtil
-import org.jetbrains.kotlin.jps.model.targetPlatform
+import org.jetbrains.kotlin.jps.model.platform
 import org.jetbrains.kotlin.platform.DefaultIdeTargetPlatformKindProvider
-import org.jetbrains.kotlin.platform.IdeTargetPlatformKind
-import org.jetbrains.kotlin.platform.impl.JsIdeTargetPlatformKind
+import org.jetbrains.kotlin.platform.IdePlatformKind
+import org.jetbrains.kotlin.platform.impl.JsIdePlatformKind
 import org.jetbrains.kotlin.platform.impl.isCommon
 import org.jetbrains.kotlin.platform.impl.isJavaScript
 import org.jetbrains.kotlin.platform.impl.isJvm
@@ -60,7 +60,7 @@ class KotlinBuildTargets internal constructor(val compileContext: CompileContext
         if (target.targetType !is ModuleBasedBuildTargetType) return null
 
         return byJpsModuleBuildTarget.computeIfAbsent(target) {
-            val platform = target.module.targetPlatform?.kind ?: detectTargetPlatform(target)
+            val platform = target.module.platform?.kind ?: detectTargetPlatform(target)
 
             when {
                 platform.isCommon -> KotlinCommonModuleBuildTarget(compileContext, target)
@@ -75,9 +75,9 @@ class KotlinBuildTargets internal constructor(val compileContext: CompileContext
      * Compatibility for KT-14082
      * todo: remove when all projects migrated to facets
      */
-    private fun detectTargetPlatform(target: ModuleBuildTarget): IdeTargetPlatformKind<*> {
+    private fun detectTargetPlatform(target: ModuleBuildTarget): IdePlatformKind<*> {
         if (hasJsStdLib(target)) {
-            return JsIdeTargetPlatformKind
+            return JsIdePlatformKind
         }
 
         return DefaultIdeTargetPlatformKindProvider.defaultPlatform.kind

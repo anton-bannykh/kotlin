@@ -11,13 +11,13 @@ import org.jetbrains.jps.model.java.JpsJavaExtensionService
 import org.jetbrains.jps.model.module.JpsModule
 import org.jetbrains.kotlin.cli.common.arguments.*
 import org.jetbrains.kotlin.config.*
-import org.jetbrains.kotlin.platform.IdeTargetPlatform
+import org.jetbrains.kotlin.platform.IdePlatform
 
 val JpsModule.kotlinFacet: JpsKotlinFacetModuleExtension?
     get() = container.getChild(JpsKotlinFacetModuleExtension.KIND)
 
-val JpsModule.targetPlatform: IdeTargetPlatform<*, *>?
-    get() = kotlinFacet?.settings?.targetPlatformKind
+val JpsModule.platform: IdePlatform<*, *>?
+    get() = kotlinFacet?.settings?.platformKind
 
 val JpsModule.kotlinKind: KotlinModuleKind
     get() = kotlinFacet?.settings?.kind ?: KotlinModuleKind.DEFAULT

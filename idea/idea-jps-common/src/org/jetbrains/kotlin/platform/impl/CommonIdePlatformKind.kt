@@ -9,11 +9,11 @@ package org.jetbrains.kotlin.platform.impl
 import org.jetbrains.kotlin.cli.common.arguments.CommonCompilerArguments
 import org.jetbrains.kotlin.cli.common.arguments.K2MetadataCompilerArguments
 import org.jetbrains.kotlin.config.TargetPlatformVersion
-import org.jetbrains.kotlin.platform.IdeTargetPlatform
-import org.jetbrains.kotlin.platform.IdeTargetPlatformKind
+import org.jetbrains.kotlin.platform.IdePlatform
+import org.jetbrains.kotlin.platform.IdePlatformKind
 import org.jetbrains.kotlin.resolve.TargetPlatform
 
-object CommonIdeTargetPlatformKind : IdeTargetPlatformKind<CommonIdeTargetPlatformKind>() {
+object CommonIdePlatformKind : IdePlatformKind<CommonIdePlatformKind>() {
     override val compilerPlatform = TargetPlatform.Common
 
     override val platforms = listOf(Platform)
@@ -21,15 +21,15 @@ object CommonIdeTargetPlatformKind : IdeTargetPlatformKind<CommonIdeTargetPlatfo
 
     override val argumentsClass = K2MetadataCompilerArguments::class.java
 
-    object Platform : IdeTargetPlatform<CommonIdeTargetPlatformKind, CommonCompilerArguments>() {
-        override val kind = CommonIdeTargetPlatformKind
+    object Platform : IdePlatform<CommonIdePlatformKind, CommonCompilerArguments>() {
+        override val kind = CommonIdePlatformKind
         override val version = TargetPlatformVersion.NoVersion
         override fun createArguments(init: CommonCompilerArguments.() -> Unit) = K2MetadataCompilerArguments().apply(init)
     }
 }
 
-val IdeTargetPlatformKind<*>?.isCommon
-    get() = this is CommonIdeTargetPlatformKind
+val IdePlatformKind<*>?.isCommon
+    get() = this is CommonIdePlatformKind
 
-val IdeTargetPlatform<*, *>?.isCommon
-    get() = this is CommonIdeTargetPlatformKind.Platform
+val IdePlatform<*, *>?.isCommon
+    get() = this is CommonIdePlatformKind.Platform

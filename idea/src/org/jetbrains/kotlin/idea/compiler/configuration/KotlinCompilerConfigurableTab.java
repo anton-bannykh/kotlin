@@ -15,10 +15,8 @@ import com.intellij.openapi.options.Configurable;
 import com.intellij.openapi.options.ConfigurationException;
 import com.intellij.openapi.options.SearchableConfigurable;
 import com.intellij.openapi.project.Project;
-import com.intellij.openapi.roots.ex.ProjectRootManagerEx;
 import com.intellij.openapi.ui.TextComponentAccessor;
 import com.intellij.openapi.ui.TextFieldWithBrowseButton;
-import com.intellij.openapi.util.EmptyRunnable;
 import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.ui.ListCellRendererWrapper;
 import com.intellij.ui.RawCommandLineEditor;
@@ -44,10 +42,10 @@ import org.jetbrains.kotlin.idea.facet.DescriptionListCellRenderer;
 import org.jetbrains.kotlin.idea.facet.KotlinFacet;
 import org.jetbrains.kotlin.idea.roots.ProjectRootUtilsKt;
 import org.jetbrains.kotlin.idea.util.application.ApplicationUtilsKt;
-import org.jetbrains.kotlin.platform.IdeTargetPlatformKind;
+import org.jetbrains.kotlin.platform.IdePlatformKind;
 import org.jetbrains.kotlin.platform.impl.JsIdePlatformUtil;
 import org.jetbrains.kotlin.platform.impl.JvmIdePlatformUtil;
-import org.jetbrains.kotlin.platform.impl.JvmIdeTargetPlatformKind;
+import org.jetbrains.kotlin.platform.impl.JvmIdePlatformKind;
 
 import javax.swing.*;
 import java.awt.event.ActionEvent;
@@ -351,7 +349,7 @@ public class KotlinCompilerConfigurableTab implements SearchableConfigurable, Co
 
     @SuppressWarnings("unchecked")
     private void fillJvmVersionList() {
-        for (JvmIdeTargetPlatformKind.Platform jvm : JvmIdeTargetPlatformKind.INSTANCE.getPlatforms()) {
+        for (JvmIdePlatformKind.Platform jvm : JvmIdePlatformKind.INSTANCE.getPlatforms()) {
             jvmVersionComboBox.addItem(jvm.getVersion().getDescription());
         }
     }
@@ -382,7 +380,7 @@ public class KotlinCompilerConfigurableTab implements SearchableConfigurable, Co
         coroutineSupportComboBox.setRenderer(new DescriptionListCellRenderer());
     }
 
-    public void setTargetPlatform(@Nullable IdeTargetPlatformKind<?> targetPlatform) {
+    public void setTargetPlatform(@Nullable IdePlatformKind<?> targetPlatform) {
         k2jsPanel.setVisible(JsIdePlatformUtil.isJavaScript(targetPlatform));
         scriptPanel.setVisible(JvmIdePlatformUtil.isJvm(targetPlatform));
     }

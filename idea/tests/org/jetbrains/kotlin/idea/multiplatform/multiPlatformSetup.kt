@@ -20,7 +20,7 @@ import org.jetbrains.kotlin.idea.stubs.AbstractMultiModuleTest
 import org.jetbrains.kotlin.idea.stubs.createFacet
 import org.jetbrains.kotlin.idea.test.ConfigLibraryUtil
 import org.jetbrains.kotlin.idea.test.PluginTestCaseBase
-import org.jetbrains.kotlin.platform.IdeTargetPlatform
+import org.jetbrains.kotlin.platform.IdePlatform
 import org.jetbrains.kotlin.platform.impl.*
 import org.jetbrains.kotlin.test.TestJdkKind
 import java.io.File
@@ -72,7 +72,7 @@ fun AbstractMultiModuleTest.setupMppProjectFromDirStructure(testRoot: File) {
         when {
             platform.isCommon -> module.createFacet(platform, useProjectSettings = false)
             else -> {
-                val commonModuleId = ModuleId(name, CommonIdeTargetPlatformKind.Platform)
+                val commonModuleId = ModuleId(name, CommonIdePlatformKind.Platform)
 
                 module.createFacet(platform, implementedModuleName = commonModuleId.ideaModuleName())
                 module.enableMultiPlatform()
@@ -126,11 +126,11 @@ private fun AbstractMultiModuleTest.createModule(name: String): Module {
 
 private val testSuffixes = setOf("test", "tests")
 private val platformNames = mapOf(
-    listOf("header", "common", "expect") to CommonIdeTargetPlatformKind.Platform,
-    listOf("java", "jvm") to JvmIdeTargetPlatformKind.defaultPlatform,
-    listOf("java8", "jvm8") to JvmIdeTargetPlatformKind.Platform(JvmTarget.JVM_1_8),
-    listOf("java6", "jvm6") to JvmIdeTargetPlatformKind.Platform(JvmTarget.JVM_1_6),
-    listOf("js", "javascript") to JsIdeTargetPlatformKind.Platform
+    listOf("header", "common", "expect") to CommonIdePlatformKind.Platform,
+    listOf("java", "jvm") to JvmIdePlatformKind.defaultPlatform,
+    listOf("java8", "jvm8") to JvmIdePlatformKind.Platform(JvmTarget.JVM_1_8),
+    listOf("java6", "jvm6") to JvmIdePlatformKind.Platform(JvmTarget.JVM_1_6),
+    listOf("js", "javascript") to JsIdePlatformKind.Platform
 )
 
 private fun parseDirName(dir: File): RootInfo {
@@ -176,12 +176,12 @@ private fun parseIsTestRoot(parts: List<String>) =
 
 private data class ModuleId(
     val groupName: String,
-    val platform: IdeTargetPlatform<*, *>
+    val platform: IdePlatform<*, *>
 ) {
     fun ideaModuleName() = "${groupName}_${platform.presentableName}"
 }
 
-private val IdeTargetPlatform<*, *>.presentableName: String
+private val IdePlatform<*, *>.presentableName: String
     get() = when {
         isCommon -> "Common"
         isJvm -> "JVM"

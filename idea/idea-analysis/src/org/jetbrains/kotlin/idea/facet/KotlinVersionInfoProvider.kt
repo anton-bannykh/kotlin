@@ -21,7 +21,7 @@ import com.intellij.openapi.module.Module
 import com.intellij.openapi.roots.ModuleRootModel
 import com.intellij.util.text.VersionComparatorUtil
 import org.jetbrains.kotlin.config.*
-import org.jetbrains.kotlin.platform.IdeTargetPlatformKind
+import org.jetbrains.kotlin.platform.IdePlatformKind
 import org.jetbrains.kotlin.platform.orDefault
 
 interface KotlinVersionInfoProvider {
@@ -32,7 +32,7 @@ interface KotlinVersionInfoProvider {
     fun getCompilerVersion(module: Module): String?
     fun getLibraryVersions(
         module: Module,
-        platformKind: IdeTargetPlatformKind<*>,
+        platformKind: IdePlatformKind<*>,
         rootModel: ModuleRootModel?
     ): Collection<String>
 }
@@ -40,7 +40,7 @@ interface KotlinVersionInfoProvider {
 fun getRuntimeLibraryVersions(
     module: Module,
     rootModel: ModuleRootModel?,
-    platformKind: IdeTargetPlatformKind<*>
+    platformKind: IdePlatformKind<*>
 ): Collection<String> {
     return KotlinVersionInfoProvider.EP_NAME
                    .extensions
@@ -51,7 +51,7 @@ fun getRuntimeLibraryVersions(
 fun getLibraryLanguageLevel(
     module: Module,
     rootModel: ModuleRootModel?,
-    platformKind: IdeTargetPlatformKind<*>?
+    platformKind: IdePlatformKind<*>?
 ): LanguageVersion {
     val minVersion = getRuntimeLibraryVersions(module, rootModel, platformKind.orDefault())
             .minWith(VersionComparatorUtil.COMPARATOR)
@@ -77,7 +77,7 @@ fun getDefaultLanguageLevel(
 }
 
 fun getRuntimeLibraryVersion(module: Module): String? {
-    val targetPlatform = KotlinFacetSettingsProvider.getInstance(module.project).getInitializedSettings(module).targetPlatformKind
+    val targetPlatform = KotlinFacetSettingsProvider.getInstance(module.project).getInitializedSettings(module).platformKind
     val versions = getRuntimeLibraryVersions(module, null, targetPlatform.orDefault().kind)
     return versions.toSet().singleOrNull()
 }

@@ -12,13 +12,13 @@ import com.intellij.openapi.roots.ui.configuration.libraries.CustomLibraryDescri
 import org.jetbrains.kotlin.ApplicationExtensionDescriptor
 import org.jetbrains.kotlin.cli.common.arguments.CommonCompilerArguments
 import org.jetbrains.kotlin.descriptors.DeclarationDescriptor
-import org.jetbrains.kotlin.platform.IdeTargetPlatformKind
+import org.jetbrains.kotlin.platform.IdePlatformKind
 import org.jetbrains.kotlin.psi.KtFunction
 import org.jetbrains.kotlin.psi.KtNamedDeclaration
 import javax.swing.Icon
 
-interface IdeTargetPlatformKindTooling {
-    val kind: IdeTargetPlatformKind<*>
+interface IdePlatformKindTooling {
+    val kind: IdePlatformKind<*>
 
     val libraryKind: PersistentLibraryKind<*>?
 
@@ -35,20 +35,20 @@ interface IdeTargetPlatformKindTooling {
 
     fun acceptsAsEntryPoint(function: KtFunction): Boolean
 
-    companion object : ApplicationExtensionDescriptor<IdeTargetPlatformKindTooling>(
-        "org.jetbrains.kotlin.idea.platform.IdeTargetPlatformKindTooling", IdeTargetPlatformKindTooling::class.java
+    companion object : ApplicationExtensionDescriptor<IdePlatformKindTooling>(
+        "org.jetbrains.kotlin.idea.platform.IdePlatformKindTooling", IdePlatformKindTooling::class.java
     )
 }
 
 private val CACHED_TOOLING_SUPPORT = run {
-    val allPlatformKinds = IdeTargetPlatformKind.ALL_KINDS
-    val groupedTooling = IdeTargetPlatformKindTooling.getInstances().groupBy { it.kind }.mapValues { it.value.single() }
+    val allPlatformKinds = IdePlatformKind.ALL_KINDS
+    val groupedTooling = IdePlatformKindTooling.getInstances().groupBy { it.kind }.mapValues { it.value.single() }
 
     for (kind in allPlatformKinds) {
         if (kind !in groupedTooling) {
             throw IllegalStateException(
                 "Tooling support for the platform '$kind' is missing. " +
-                        "Implement 'IdeTargetPlatformKindTooling' for it."
+                        "Implement 'IdePlatformKindTooling' for it."
             )
         }
     }
@@ -56,5 +56,5 @@ private val CACHED_TOOLING_SUPPORT = run {
     groupedTooling
 }
 
-val IdeTargetPlatformKind<*>.tooling: IdeTargetPlatformKindTooling
+val IdePlatformKind<*>.tooling: IdePlatformKindTooling
     get() = CACHED_TOOLING_SUPPORT[this] ?: error("Unknown platform $this")

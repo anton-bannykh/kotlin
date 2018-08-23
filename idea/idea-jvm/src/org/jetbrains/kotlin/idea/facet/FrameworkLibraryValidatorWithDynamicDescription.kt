@@ -26,7 +26,7 @@ import com.intellij.openapi.roots.ui.configuration.libraries.AddCustomLibraryDia
 import com.intellij.openapi.roots.ui.configuration.libraries.CustomLibraryDescription
 import com.intellij.openapi.roots.ui.configuration.libraries.LibraryPresentationManager
 import org.jetbrains.kotlin.idea.platform.tooling
-import org.jetbrains.kotlin.platform.IdeTargetPlatformKind
+import org.jetbrains.kotlin.platform.IdePlatformKind
 import org.jetbrains.kotlin.platform.impl.isCommon
 import javax.swing.JComponent
 
@@ -35,20 +35,20 @@ class FrameworkLibraryValidatorWithDynamicDescription(
         private val context: LibrariesValidatorContext,
         private val validatorsManager: FacetValidatorsManager,
         private val libraryCategoryName: String,
-        private val getTargetPlatform: () -> IdeTargetPlatformKind<*>
+        private val getPlatform: () -> IdePlatformKind<*>
 ) : FrameworkLibraryValidator() {
-    private val IdeTargetPlatformKind<*>.libraryDescription: CustomLibraryDescription
+    private val IdePlatformKind<*>.libraryDescription: CustomLibraryDescription
         get() = this.tooling.getLibraryDescription(context.module.project)
 
-    private fun checkLibraryIsConfigured(targetPlatform: IdeTargetPlatformKind<*>): Boolean {
+    private fun checkLibraryIsConfigured(platform: IdePlatformKind<*>): Boolean {
         // TODO: propose to configure kotlin-stdlib-common once it's available
-        if (targetPlatform.isCommon) return true
+        if (platform.isCommon) return true
 
         if (KotlinVersionInfoProvider.EP_NAME.extensions.any {
-            it.getLibraryVersions(context.module, targetPlatform, context.rootModel).isNotEmpty()
+            it.getLibraryVersions(context.module, platform, context.rootModel).isNotEmpty()
         }) return true
 
-        val libraryDescription = targetPlatform.libraryDescription
+        val libraryDescription = platform.libraryDescription
         val libraryKinds = libraryDescription.suitableLibraryKinds
         var found = false
         val presentationManager = LibraryPresentationManager.getInstance()
@@ -67,10 +67,10 @@ class FrameworkLibraryValidatorWithDynamicDescription(
     }
 
     override fun check(): ValidationResult {
-        val targetPlatform = getTargetPlatform()
+        val targetPlatform = getPlatform()
 
         if (checkLibraryIsConfigured(targetPlatform)) {
-            val conflictingPlatforms = IdeTargetPlatformKind.getInstances()
+            val conflictingPlatforms = IdePlatformKind.getInstances()
                 .filter { !it.isCommon && it.name != targetPlatform.name && checkLibraryIsConfigured(it) }
 
             if (conflictingPlatforms.isNotEmpty()) {

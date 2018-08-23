@@ -26,7 +26,7 @@ import org.jetbrains.kotlin.cli.common.arguments.*
 import org.jetbrains.kotlin.config.*
 import org.jetbrains.kotlin.idea.compiler.configuration.*
 import org.jetbrains.kotlin.idea.util.onTextChange
-import org.jetbrains.kotlin.platform.IdeTargetPlatformKind
+import org.jetbrains.kotlin.platform.IdePlatformKind
 import org.jetbrains.kotlin.platform.impl.isCommon
 import org.jetbrains.kotlin.platform.impl.isJavaScript
 import org.jetbrains.kotlin.platform.impl.isJvm
@@ -86,7 +86,7 @@ class KotlinFacetEditorGeneralTab(
         val useProjectSettingsCheckBox = ThreeStateCheckBox("Use project settings").apply { isThirdStateEnabled = isMultiEditor }
 
         val targetPlatformComboBox =
-                JComboBox<IdeTargetPlatformKind<*>>(IdeTargetPlatformKind.ALL_KINDS.toTypedArray()).apply {
+                JComboBox<IdePlatformKind<*>>(IdePlatformKind.ALL_KINDS.toTypedArray()).apply {
                     setRenderer(DescriptionListCellRenderer())
                 }
 
@@ -144,13 +144,13 @@ class KotlinFacetEditorGeneralTab(
             compilerConfigurable.reset()
         }
 
-        private val chosenPlatform: IdeTargetPlatformKind<*>?
-            get() = targetPlatformComboBox.selectedItem as IdeTargetPlatformKind<*>?
+        private val chosenPlatform: IdePlatformKind<*>?
+            get() = targetPlatformComboBox.selectedItem as IdePlatformKind<*>?
     }
 
     inner class ArgumentConsistencyValidator : FacetEditorValidator() {
         override fun check(): ValidationResult {
-            val platformKind = editor.targetPlatformComboBox.selectedItem as IdeTargetPlatformKind<*>? ?: return ValidationResult.OK
+            val platformKind = editor.targetPlatformComboBox.selectedItem as IdePlatformKind<*>? ?: return ValidationResult.OK
             val primaryArguments = platformKind.defaultPlatform.createArguments().apply {
                 editor.compilerConfigurable.applyTo(
                         this,
@@ -267,14 +267,14 @@ class KotlinFacetEditorGeneralTab(
 
     override fun isModified(): Boolean {
         if (editor.useProjectSettingsCheckBox.isSelected != configuration.settings.useProjectSettings) return true
-        if (editor.targetPlatformComboBox.selectedItem != configuration.settings.targetPlatformKind) return true
+        if (editor.targetPlatformComboBox.selectedItem != configuration.settings.platformKind) return true
         return !editor.useProjectSettingsCheckBox.isSelected && editor.compilerConfigurable.isModified
     }
 
     override fun reset() {
         validateOnce {
             editor.useProjectSettingsCheckBox.isSelected = configuration.settings.useProjectSettings
-            editor.targetPlatformComboBox.selectedItem = configuration.settings.targetPlatformKind
+            editor.targetPlatformComboBox.selectedItem = configuration.settings.platformKind
             editor.compilerConfigurable.reset()
             editor.updateCompilerConfigurable()
         }
@@ -285,8 +285,8 @@ class KotlinFacetEditorGeneralTab(
             editor.compilerConfigurable.apply()
             with(configuration.settings) {
                 useProjectSettings = editor.useProjectSettingsCheckBox.isSelected
-                (editor.targetPlatformComboBox.selectedItem as IdeTargetPlatformKind<*>?)?.let {
-                    if (it != targetPlatformKind) {
+                (editor.targetPlatformComboBox.selectedItem as IdePlatformKind<*>?)?.let {
+                    if (it != platformKind) {
                         val platformArguments = when {
                             it.isJvm -> editor.compilerConfigurable.k2jvmCompilerArguments
                             it.isJavaScript -> editor.compilerConfigurable.k2jsCompilerArguments

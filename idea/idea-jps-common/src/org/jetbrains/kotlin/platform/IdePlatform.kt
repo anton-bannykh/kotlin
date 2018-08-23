@@ -8,7 +8,7 @@ package org.jetbrains.kotlin.platform
 import org.jetbrains.kotlin.cli.common.arguments.CommonCompilerArguments
 import org.jetbrains.kotlin.config.TargetPlatformVersion
 
-abstract class IdeTargetPlatform<Kind : IdeTargetPlatformKind<Kind>, Arguments : CommonCompilerArguments> {
+abstract class IdePlatform<Kind : IdePlatformKind<Kind>, Arguments : CommonCompilerArguments> {
     abstract val kind: Kind
     abstract val version: TargetPlatformVersion
 

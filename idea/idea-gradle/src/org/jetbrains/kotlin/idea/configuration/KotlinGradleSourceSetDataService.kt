@@ -49,9 +49,8 @@ import org.jetbrains.kotlin.idea.inspections.gradle.findKotlinPluginVersion
 import org.jetbrains.kotlin.idea.inspections.gradle.getResolvedVersionByModuleData
 import org.jetbrains.kotlin.idea.platform.tooling
 import org.jetbrains.kotlin.idea.roots.migrateNonJvmSourceFolders
-import org.jetbrains.kotlin.platform.IdeTargetPlatform
-import org.jetbrains.kotlin.platform.IdeTargetPlatformKind
-import org.jetbrains.kotlin.platform.impl.JsIdeTargetPlatformKind
+import org.jetbrains.kotlin.platform.IdePlatformKind
+import org.jetbrains.kotlin.platform.impl.JsIdePlatformKind
 import org.jetbrains.kotlin.platform.impl.isCommon
 import org.jetbrains.kotlin.platform.impl.isJvm
 import org.jetbrains.kotlin.psi.UserDataProperty
@@ -172,12 +171,12 @@ class KotlinGradleLibraryDataService : AbstractProjectDataService<LibraryData, V
     }
 }
 
-fun detectPlatformByPlugin(moduleNode: DataNode<ModuleData>): IdeTargetPlatformKind<*>? {
+fun detectPlatformByPlugin(moduleNode: DataNode<ModuleData>): IdePlatformKind<*>? {
     val pluginId = moduleNode.platformPluginId
-    return IdeTargetPlatformKind.ALL_KINDS.firstOrNull { it.tooling.gradlePluginId == pluginId }
+    return IdePlatformKind.ALL_KINDS.firstOrNull { it.tooling.gradlePluginId == pluginId }
 }
 
-private fun detectPlatformByLibrary(moduleNode: DataNode<ModuleData>): IdeTargetPlatformKind<*>? {
+private fun detectPlatformByLibrary(moduleNode: DataNode<ModuleData>): IdePlatformKind<*>? {
     val detectedPlatforms =
         mavenLibraryIdToPlatform.entries
             .filter { moduleNode.getResolvedVersionByModuleData(KOTLIN_GROUP_ID, listOf(it.key)) != null }
@@ -263,8 +262,8 @@ fun configureFacetByCompilerArguments(kotlinFacet: KotlinFacet, argsInfo: ArgsIn
     adjustClasspath(kotlinFacet, dependencyClasspath)
 }
 
-private fun getExplicitOutputPath(moduleNode: DataNode<ModuleData>, platformKind: IdeTargetPlatformKind<*>?, sourceSet: String): String? {
-    if (platformKind !is JsIdeTargetPlatformKind) {
+private fun getExplicitOutputPath(moduleNode: DataNode<ModuleData>, platformKind: IdePlatformKind<*>?, sourceSet: String): String? {
+    if (!platformKind.isJvm) {
         return null
     }
 

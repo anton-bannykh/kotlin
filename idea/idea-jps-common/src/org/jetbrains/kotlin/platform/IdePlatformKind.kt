@@ -9,11 +9,11 @@ import org.jetbrains.kotlin.ApplicationExtensionDescriptor
 import org.jetbrains.kotlin.cli.common.arguments.CommonCompilerArguments
 import org.jetbrains.kotlin.resolve.TargetPlatform
 
-abstract class IdeTargetPlatformKind<Kind : IdeTargetPlatformKind<Kind>> {
+abstract class IdePlatformKind<Kind : IdePlatformKind<Kind>> {
     abstract val compilerPlatform: TargetPlatform
-    abstract val platforms: List<IdeTargetPlatform<Kind, *>>
+    abstract val platforms: List<IdePlatform<Kind, *>>
 
-    abstract val defaultPlatform: IdeTargetPlatform<Kind, *>
+    abstract val defaultPlatform: IdePlatform<Kind, *>
 
     abstract val argumentsClass: Class<out CommonCompilerArguments>
 
@@ -22,18 +22,18 @@ abstract class IdeTargetPlatformKind<Kind : IdeTargetPlatformKind<Kind>> {
 
     override fun toString() = name
 
-    companion object : ApplicationExtensionDescriptor<IdeTargetPlatformKind<*>>(
-        "org.jetbrains.kotlin.platform.TargetPlatformKind", IdeTargetPlatformKind::class.java
+    companion object : ApplicationExtensionDescriptor<IdePlatformKind<*>>(
+        "org.jetbrains.kotlin.platform.TargetPlatformKind", IdePlatformKind::class.java
     ) {
         val ALL_KINDS = getInstances()
         val All_PLATFORMS = getInstances().flatMap { it.platforms }
     }
 }
 
-fun IdeTargetPlatformKind<*>?.orDefault(): IdeTargetPlatformKind<*> {
+fun IdePlatformKind<*>?.orDefault(): IdePlatformKind<*> {
     return this ?: DefaultIdeTargetPlatformKindProvider.defaultPlatform.kind
 }
 
-fun IdeTargetPlatform<*, *>?.orDefault(): IdeTargetPlatform<*, *> {
+fun IdePlatform<*, *>?.orDefault(): IdePlatform<*, *> {
     return this ?: DefaultIdeTargetPlatformKindProvider.defaultPlatform
 }

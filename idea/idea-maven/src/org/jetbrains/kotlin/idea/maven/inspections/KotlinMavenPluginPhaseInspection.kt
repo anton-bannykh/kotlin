@@ -40,12 +40,12 @@ import org.jetbrains.kotlin.idea.maven.PomFile
 import org.jetbrains.kotlin.idea.maven.configuration.KotlinMavenConfigurator
 import org.jetbrains.kotlin.idea.platform.tooling
 import org.jetbrains.kotlin.idea.versions.*
-import org.jetbrains.kotlin.platform.impl.JvmIdeTargetPlatformKind
+import org.jetbrains.kotlin.platform.impl.JvmIdePlatformKind
 import java.util.*
 
 class KotlinMavenPluginPhaseInspection : DomElementsInspection<MavenDomProjectModel>(MavenDomProjectModel::class.java) {
     companion object {
-        private val JVM_STDLIB_IDS = JvmIdeTargetPlatformKind.tooling
+        private val JVM_STDLIB_IDS = JvmIdePlatformKind.tooling
             .mavenLibraryIds.map { MavenId(KotlinMavenConfigurator.GROUP_ID, it, null) }
 
         private val JS_STDLIB_MAVEN_ID = MavenId(KotlinMavenConfigurator.GROUP_ID, MAVEN_JS_STDLIB_ID, null)

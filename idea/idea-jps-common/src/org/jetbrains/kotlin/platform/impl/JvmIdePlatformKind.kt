@@ -8,11 +8,11 @@ package org.jetbrains.kotlin.platform.impl
 
 import org.jetbrains.kotlin.cli.common.arguments.K2JVMCompilerArguments
 import org.jetbrains.kotlin.config.JvmTarget
-import org.jetbrains.kotlin.platform.IdeTargetPlatform
-import org.jetbrains.kotlin.platform.IdeTargetPlatformKind
+import org.jetbrains.kotlin.platform.IdePlatform
+import org.jetbrains.kotlin.platform.IdePlatformKind
 import org.jetbrains.kotlin.resolve.jvm.platform.JvmPlatform
 
-object JvmIdeTargetPlatformKind : IdeTargetPlatformKind<JvmIdeTargetPlatformKind>() {
+object JvmIdePlatformKind : IdePlatformKind<JvmIdePlatformKind>() {
     override val compilerPlatform = JvmPlatform
 
     override val platforms = JvmTarget.values().map { ver -> Platform(ver) }
@@ -21,8 +21,8 @@ object JvmIdeTargetPlatformKind : IdeTargetPlatformKind<JvmIdeTargetPlatformKind
 
     override val argumentsClass = K2JVMCompilerArguments::class.java
 
-    data class Platform(override val version: JvmTarget) : IdeTargetPlatform<JvmIdeTargetPlatformKind, K2JVMCompilerArguments>() {
-        override val kind get() = JvmIdeTargetPlatformKind
+    data class Platform(override val version: JvmTarget) : IdePlatform<JvmIdePlatformKind, K2JVMCompilerArguments>() {
+        override val kind get() = JvmIdePlatformKind
 
         override fun createArguments(init: K2JVMCompilerArguments.() -> Unit) = K2JVMCompilerArguments()
             .apply { jvmTarget = this@Platform.version.description }
@@ -30,8 +30,8 @@ object JvmIdeTargetPlatformKind : IdeTargetPlatformKind<JvmIdeTargetPlatformKind
     }
 }
 
-val IdeTargetPlatformKind<*>?.isJvm
-    get() = this is JvmIdeTargetPlatformKind
+val IdePlatformKind<*>?.isJvm
+    get() = this is JvmIdePlatformKind
 
-val IdeTargetPlatform<*, *>?.isJvm
-    get() = this is JvmIdeTargetPlatformKind.Platform
+val IdePlatform<*, *>?.isJvm
+    get() = this is JvmIdePlatformKind.Platform

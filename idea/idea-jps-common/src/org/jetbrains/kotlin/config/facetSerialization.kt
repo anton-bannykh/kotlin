@@ -25,9 +25,9 @@ import org.jdom.Element
 import org.jdom.Text
 import org.jetbrains.kotlin.cli.common.arguments.*
 import org.jetbrains.kotlin.load.java.JvmAbi
-import org.jetbrains.kotlin.platform.IdeTargetPlatform
-import org.jetbrains.kotlin.platform.IdeTargetPlatformKind
-import org.jetbrains.kotlin.platform.impl.JvmIdeTargetPlatformKind
+import org.jetbrains.kotlin.platform.IdePlatform
+import org.jetbrains.kotlin.platform.IdePlatformKind
+import org.jetbrains.kotlin.platform.impl.JvmIdePlatformKind
 import org.jetbrains.kotlin.platform.orDefault
 import java.lang.reflect.Modifier
 import kotlin.reflect.KClass
@@ -47,9 +47,9 @@ private fun readV1Config(element: Element): KotlinFacetSettings {
         val targetPlatformName = versionInfoElement?.getOptionValue("targetPlatformName")
         val languageLevel = versionInfoElement?.getOptionValue("languageLevel")
         val apiLevel = versionInfoElement?.getOptionValue("apiLevel")
-        val targetPlatform = IdeTargetPlatformKind.All_PLATFORMS
+        val targetPlatform = IdePlatformKind.All_PLATFORMS
             .firstOrNull { it.description == targetPlatformName }
-            ?: JvmIdeTargetPlatformKind.defaultPlatform
+            ?: JvmIdePlatformKind.defaultPlatform
 
         val compilerInfoElement = element.getOptionBody("compilerInfo")
 
@@ -98,9 +98,9 @@ private fun readV1Config(element: Element): KotlinFacetSettings {
     }
 }
 
-fun Element.getFacetPlatformByConfigurationElement(): IdeTargetPlatform<*, *> {
+fun Element.getFacetPlatformByConfigurationElement(): IdePlatform<*, *> {
     val platformName = getAttributeValue("platform")
-    return IdeTargetPlatformKind.All_PLATFORMS
+    return IdePlatformKind.All_PLATFORMS
         .firstOrNull { it.description == platformName }
         .orDefault()
 }
@@ -261,7 +261,7 @@ private fun buildChildElement(element: Element, tag: String, bean: Any, filter: 
 private fun KotlinFacetSettings.writeLatestConfig(element: Element) {
     val filter = SkipDefaultsSerializationFilter()
 
-    targetPlatformKind?.let {
+    platformKind?.let {
         element.setAttribute("platform", it.description)
     }
     if (!useProjectSettings) {

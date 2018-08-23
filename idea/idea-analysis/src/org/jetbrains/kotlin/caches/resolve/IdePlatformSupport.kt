@@ -79,7 +79,7 @@ class JvmPlatformSupport : IdePlatformSupport() {
 
     override fun isModuleForPlatform(module: Module): Boolean {
         val settings = KotlinFacetSettingsProvider.getInstance(module.project).getInitializedSettings(module)
-        return settings.targetPlatformKind.isJvm
+        return settings.platformKind.isJvm
     }
 
     override fun createBuiltIns(settings: PlatformAnalysisSettings, sdkContext: GlobalContextImpl): KotlinBuiltIns {
@@ -99,7 +99,7 @@ class JsPlatformSupport : IdePlatformSupport() {
 
     override fun isModuleForPlatform(module: Module): Boolean {
         val settings = KotlinFacetSettingsProvider.getInstance(module.project).getInitializedSettings(module)
-        return settings.targetPlatformKind.isJavaScript
+        return settings.platformKind.isJavaScript
     }
 
     override fun createBuiltIns(settings: PlatformAnalysisSettings, sdkContext: GlobalContextImpl): KotlinBuiltIns {
@@ -119,7 +119,7 @@ class CommonPlatformSupport : IdePlatformSupport() {
 
     override fun isModuleForPlatform(module: Module): Boolean {
         val settings = KotlinFacetSettingsProvider.getInstance(module.project).getInitializedSettings(module)
-        return settings.targetPlatformKind.isCommon
+        return settings.platformKind.isCommon
     }
 
     override fun createBuiltIns(settings: PlatformAnalysisSettings, sdkContext: GlobalContextImpl): KotlinBuiltIns {
