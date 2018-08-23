@@ -136,7 +136,7 @@ private fun readV2AndLaterConfig(element: Element): KotlinFacetSettings {
             XmlSerializer.deserializeInto(compilerSettings!!, it)
         }
         element.getChild("compilerArguments")?.let {
-            compilerArguments = targetPlatform.createArguments { freeArgs = arrayListOf() }
+            compilerArguments = targetPlatform.createArguments { freeArgs = ArrayList() }
             XmlSerializer.deserializeInto(compilerArguments!!, it)
             compilerArguments!!.detectVersionAutoAdvance()
         }

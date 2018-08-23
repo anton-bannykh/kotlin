@@ -25,19 +25,22 @@ import org.jetbrains.kotlin.psi.KtNamedDeclaration
 import javax.swing.Icon
 
 object CommonIdePlatformKindTooling : IdePlatformKindTooling {
+    const val MAVEN_COMMON_STDLIB_ID = "kotlin-stdlib-common" // TODO: KotlinCommonMavenConfigurator
+
     override val kind = CommonIdePlatformKind
 
-    const val MAVEN_COMMON_STDLIB_ID = "kotlin-stdlib-common" // TODO: KotlinCommonMavenConfigurator
+    override fun compilerArgumentsForProject(project: Project): CommonCompilerArguments? = null
+
+    override val mavenLibraryIds = listOf(MAVEN_COMMON_STDLIB_ID)
+    override val gradlePluginId = "kotlin-platform-common"
 
     override val libraryKind = CommonLibraryKind
 
     override fun getLibraryDescription(project: Project) = CommonStandardLibraryDescription(project)
 
-    override fun compilerArgumentsForProject(project: Project): CommonCompilerArguments? = null
-
-    override val mavenLibraryIds = listOf(MAVEN_COMMON_STDLIB_ID)
-
-    override val gradlePluginId = "kotlin-platform-common"
+    override fun getLibraryVersionProvider(project: Project): (Library) -> String? {
+        return ::getCommonRuntimeLibraryVersion
+    }
 
     override fun getTestIcon(declaration: KtNamedDeclaration, descriptor: DeclarationDescriptor): Icon? {
         val icons = IdePlatformKindTooling.getInstances()
@@ -53,9 +56,5 @@ object CommonIdePlatformKindTooling : IdePlatformKindTooling {
         return module.implementingModules.any { implementingModule ->
             implementingModule.platform?.kind?.takeIf { !it.isCommon }?.tooling?.acceptsAsEntryPoint(function) ?: false
         }
-    }
-
-    override fun getLibraryVersionProvider(project: Project): (Library) -> String? {
-        return ::getCommonRuntimeLibraryVersion
     }
 }

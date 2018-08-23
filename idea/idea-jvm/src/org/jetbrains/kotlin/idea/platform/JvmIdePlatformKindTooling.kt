@@ -9,7 +9,6 @@ import com.intellij.codeInsight.TestFrameworks
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.libraries.Library
 import com.intellij.openapi.roots.libraries.PersistentLibraryKind
-import com.intellij.openapi.roots.ui.configuration.libraries.CustomLibraryDescription
 import org.jetbrains.kotlin.asJava.classes.KtLightClass
 import org.jetbrains.kotlin.asJava.toLightClass
 import org.jetbrains.kotlin.asJava.toLightMethods
@@ -30,6 +29,8 @@ import javax.swing.Icon
 object JvmIdePlatformKindTooling : IdePlatformKindTooling {
     override val kind = JvmIdePlatformKind
 
+    override fun compilerArgumentsForProject(project: Project) = Kotlin2JvmCompilerArgumentsHolder.getInstance(project).settings
+
     override val mavenLibraryIds = listOf(
         PathUtil.KOTLIN_JAVA_STDLIB_NAME,
         PathUtil.KOTLIN_JAVA_RUNTIME_JRE7_NAME,
@@ -38,21 +39,14 @@ object JvmIdePlatformKindTooling : IdePlatformKindTooling {
         PathUtil.KOTLIN_JAVA_RUNTIME_JDK8_NAME
     )
 
-    override fun compilerArgumentsForProject(project: Project) = Kotlin2JvmCompilerArgumentsHolder.getInstance(project).settings
-
-    override fun getLibraryDescription(project: Project): CustomLibraryDescription {
-        return JavaRuntimeLibraryDescription(project)
-    }
-
     override val gradlePluginId = "kotlin-platform-jvm"
 
     override val libraryKind: PersistentLibraryKind<*>? = null
+    override fun getLibraryDescription(project: Project) = JavaRuntimeLibraryDescription(project)
 
     override fun getLibraryVersionProvider(project: Project): (Library) -> String? {
         return JavaRuntimeDetectionUtil::getJavaRuntimeVersion
     }
-
-    override fun acceptsAsEntryPoint(function: KtFunction) = true
 
     override fun getTestIcon(declaration: KtNamedDeclaration, descriptor: DeclarationDescriptor): Icon? {
         val (url, framework) = when (declaration) {
@@ -78,4 +72,6 @@ object JvmIdePlatformKindTooling : IdePlatformKindTooling {
         }
         return getTestStateIcon(url, declaration.project) ?: framework.icon
     }
+
+    override fun acceptsAsEntryPoint(function: KtFunction) = true
 }

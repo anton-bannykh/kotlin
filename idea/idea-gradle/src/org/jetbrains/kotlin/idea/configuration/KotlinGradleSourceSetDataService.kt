@@ -52,6 +52,7 @@ import org.jetbrains.kotlin.idea.roots.migrateNonJvmSourceFolders
 import org.jetbrains.kotlin.platform.IdePlatformKind
 import org.jetbrains.kotlin.platform.impl.JsIdePlatformKind
 import org.jetbrains.kotlin.platform.impl.isCommon
+import org.jetbrains.kotlin.platform.impl.isJavaScript
 import org.jetbrains.kotlin.platform.impl.isJvm
 import org.jetbrains.kotlin.psi.UserDataProperty
 import org.jetbrains.plugins.gradle.model.data.BuildScriptClasspathData
@@ -263,7 +264,7 @@ fun configureFacetByCompilerArguments(kotlinFacet: KotlinFacet, argsInfo: ArgsIn
 }
 
 private fun getExplicitOutputPath(moduleNode: DataNode<ModuleData>, platformKind: IdePlatformKind<*>?, sourceSet: String): String? {
-    if (!platformKind.isJvm) {
+    if (!platformKind.isJavaScript) {
         return null
     }
 

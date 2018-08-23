@@ -17,13 +17,13 @@ abstract class IdePlatformKind<Kind : IdePlatformKind<Kind>> {
 
     abstract val argumentsClass: Class<out CommonCompilerArguments>
 
-    val name: String
+    open val name: String
         get() = compilerPlatform.platformName
 
     override fun toString() = name
 
     companion object : ApplicationExtensionDescriptor<IdePlatformKind<*>>(
-        "org.jetbrains.kotlin.platform.TargetPlatformKind", IdePlatformKind::class.java
+        "org.jetbrains.kotlin.idePlatformKind", IdePlatformKind::class.java
     ) {
         val ALL_KINDS = getInstances()
         val All_PLATFORMS = getInstances().flatMap { it.platforms }

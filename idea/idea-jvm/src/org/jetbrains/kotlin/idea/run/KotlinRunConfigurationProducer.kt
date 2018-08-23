@@ -35,6 +35,8 @@ import org.jetbrains.kotlin.idea.project.platform
 import org.jetbrains.kotlin.idea.util.ProjectRootsUtil
 import org.jetbrains.kotlin.platform.impl.CommonIdePlatformKind
 import org.jetbrains.kotlin.platform.impl.JvmIdePlatformKind
+import org.jetbrains.kotlin.platform.impl.isCommon
+import org.jetbrains.kotlin.platform.impl.isJvm
 import org.jetbrains.kotlin.psi.*
 import org.jetbrains.kotlin.psi.psiUtil.getParentOfType
 import org.jetbrains.kotlin.resolve.jvm.platform.JvmPlatform
@@ -128,6 +130,6 @@ class KotlinRunConfigurationProducer : RunConfigurationProducer<KotlinRunConfigu
 }
 
 fun Module.findJvmImplementationModule(): Module? {
-    if (platform !is CommonIdePlatformKind.Platform) return null
-    return implementingModules.firstOrNull { it.platform is JvmIdePlatformKind.Platform }
+    if (!platform.isCommon) return null
+    return implementingModules.firstOrNull { it.platform.isJvm }
 }

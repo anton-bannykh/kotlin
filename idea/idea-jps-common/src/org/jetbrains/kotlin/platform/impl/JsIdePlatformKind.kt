@@ -20,6 +20,8 @@ object JsIdePlatformKind : IdePlatformKind<JsIdePlatformKind>() {
 
     override val argumentsClass = K2JSCompilerArguments::class.java
 
+    override val name = "JavaScript"
+
     object Platform : IdePlatform<JsIdePlatformKind, K2JSCompilerArguments>() {
         override val kind = JsIdePlatformKind
         override val version = TargetPlatformVersion.NoVersion

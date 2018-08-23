@@ -20,15 +20,13 @@ import javax.swing.Icon
 interface IdePlatformKindTooling {
     val kind: IdePlatformKind<*>
 
-    val libraryKind: PersistentLibraryKind<*>?
+    fun compilerArgumentsForProject(project: Project): CommonCompilerArguments?
 
     val mavenLibraryIds: List<String>
     val gradlePluginId: String
 
-    fun compilerArgumentsForProject(project: Project): CommonCompilerArguments?
-
+    val libraryKind: PersistentLibraryKind<*>?
     fun getLibraryDescription(project: Project): CustomLibraryDescription
-
     fun getLibraryVersionProvider(project: Project): (Library) -> String?
 
     fun getTestIcon(declaration: KtNamedDeclaration, descriptor: DeclarationDescriptor): Icon?
@@ -36,7 +34,7 @@ interface IdePlatformKindTooling {
     fun acceptsAsEntryPoint(function: KtFunction): Boolean
 
     companion object : ApplicationExtensionDescriptor<IdePlatformKindTooling>(
-        "org.jetbrains.kotlin.idea.platform.IdePlatformKindTooling", IdePlatformKindTooling::class.java
+        "org.jetbrains.kotlin.idePlatformKindTooling", IdePlatformKindTooling::class.java
     )
 }
 

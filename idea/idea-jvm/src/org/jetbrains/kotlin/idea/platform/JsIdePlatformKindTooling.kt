@@ -32,45 +32,23 @@ import org.jetbrains.kotlin.utils.PathUtil
 import javax.swing.Icon
 
 object JsIdePlatformKindTooling : IdePlatformKindTooling {
-    override val kind = JsIdePlatformKind
-
-    const val MAVEN_OLD_JS_STDLIB_ID = "kotlin-js-library"
+    private const val MAVEN_OLD_JS_STDLIB_ID = "kotlin-js-library"
 
     private val TEST_FQ_NAME = FqName("kotlin.test.Test")
     private val IGNORE_FQ_NAME = FqName("kotlin.test.Ignore")
 
-    override val libraryKind = JSLibraryKind
+    override val kind = JsIdePlatformKind
+
     override fun compilerArgumentsForProject(project: Project) = Kotlin2JsCompilerArgumentsHolder.getInstance(project).settings
 
+    override val mavenLibraryIds = listOf(PathUtil.JS_LIB_NAME, MAVEN_OLD_JS_STDLIB_ID)
+    override val gradlePluginId = "kotlin-platform-js"
+
+    override val libraryKind = JSLibraryKind
     override fun getLibraryDescription(project: Project) = JSLibraryStdDescription(project)
 
-    private fun DeclarationDescriptor.isIgnored(): Boolean =
-        annotations.any { it.fqName == IGNORE_FQ_NAME } || ((containingDeclaration as? ClassDescriptor)?.isIgnored() ?: false)
-
-    private fun DeclarationDescriptor.isTest(): Boolean {
-        if (isIgnored()) return false
-
-        if (annotations.any { it.fqName == TEST_FQ_NAME }) return true
-        if (this is ClassDescriptorWithResolutionScopes) {
-            return declaredCallableMembers.any { it.isTest() }
-        }
-        return false
-    }
-
-    override fun acceptsAsEntryPoint(function: KtFunction): Boolean {
-        return RunConfigurationProducer
-            .getProducers(function.project)
-            .asSequence()
-            .filterIsInstance<KotlinJSRunConfigurationDataProvider<*>>()
-            .filter { !it.isForTests }
-            .mapNotNull { it.getConfigurationData(function) }
-            .firstOrNull() != null
-    }
-
-    override fun getLibraryVersionProvider(project: Project): (Library) -> String? {
-        return { library ->
-            JsLibraryStdDetectionUtil.getJsLibraryStdVersion(library, project)
-        }
+    override fun getLibraryVersionProvider(project: Project) = { library: Library ->
+        JsLibraryStdDetectionUtil.getJsLibraryStdVersion(library, project)
     }
 
     override fun getTestIcon(declaration: KtNamedDeclaration, descriptor: DeclarationDescriptor): Icon? {
@@ -107,7 +85,26 @@ object JsIdePlatformKindTooling : IdePlatformKindTooling {
         return getTestStateIcon(url, declaration.project)
     }
 
-    override val mavenLibraryIds = listOf(PathUtil.JS_LIB_NAME, MAVEN_OLD_JS_STDLIB_ID)
+    override fun acceptsAsEntryPoint(function: KtFunction): Boolean {
+        return RunConfigurationProducer
+            .getProducers(function.project)
+            .asSequence()
+            .filterIsInstance<KotlinJSRunConfigurationDataProvider<*>>()
+            .filter { !it.isForTests }
+            .mapNotNull { it.getConfigurationData(function) }
+            .firstOrNull() != null
+    }
 
-    override val gradlePluginId = "kotlin-platform-js"
+    private fun DeclarationDescriptor.isIgnored(): Boolean =
+        annotations.any { it.fqName == IGNORE_FQ_NAME } || ((containingDeclaration as? ClassDescriptor)?.isIgnored() ?: false)
+
+    private fun DeclarationDescriptor.isTest(): Boolean {
+        if (isIgnored()) return false
+
+        if (annotations.any { it.fqName == TEST_FQ_NAME }) return true
+        if (this is ClassDescriptorWithResolutionScopes) {
+            return declaredCallableMembers.any { it.isTest() }
+        }
+        return false
+    }
 }
