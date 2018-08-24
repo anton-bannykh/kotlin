@@ -16,6 +16,28 @@ package kotlin.collections
 import kotlin.*
 import kotlin.text.*
 import kotlin.comparisons.*
+import kotlin.random.*
+
+/**
+ * Returns a random entry from this map.
+ * 
+ * @throws NoSuchElementException if this map is empty.
+ */
+@SinceKotlin("1.3")
+@kotlin.internal.InlineOnly
+public inline fun <K, V> Map<out K, V>.random(): Map.Entry<K, V> {
+    return random(Random)
+}
+
+/**
+ * Returns a random entry from this map using the specified source of randomness.
+ * 
+ * @throws NoSuchElementException if this map is empty.
+ */
+@SinceKotlin("1.3")
+public fun <K, V> Map<out K, V>.random(random: Random): Map.Entry<K, V> {
+    return entries.random(random)
+}
 
 /**
  * Returns a [List] containing all key-value pairs.
