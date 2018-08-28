@@ -163,6 +163,10 @@ class JsIntrinsicTransformers(backendContext: JsIrBackendContext) {
                 val value = args[2]
                 JsBinaryOperation(JsBinaryOperator.ASG, JsArrayAccess(array, index), value)
             }
+
+            add(intrinsics.arrayLiteral) { call, context ->
+                JsArrayLiteral(translateCallArguments(call, context))
+            }
         }
     }
 

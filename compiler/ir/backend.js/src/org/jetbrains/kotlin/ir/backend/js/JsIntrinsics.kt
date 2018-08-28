@@ -17,6 +17,7 @@ import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.descriptors.IrBuiltIns
+import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
 import org.jetbrains.kotlin.ir.util.DeclarationStubGenerator
 import org.jetbrains.kotlin.js.resolve.JsPlatform.builtIns
 import org.jetbrains.kotlin.name.FqName
@@ -192,6 +193,16 @@ class JsIntrinsics(
 
     val jsPrimitiveArrayIteratorFunctions =
         PrimitiveType.values().associate { it to getInternalFunction("${it.typeName.asString().toLowerCase()}ArrayIterator") }
+
+    val arrayLiteral: IrSimpleFunctionSymbol
+        get() = getInternalFunction("arrayLiteral")
+
+//    val primitiveArrayOf by lazy {
+//        PrimitiveType.values().associate { it to getInternalWithoutPackage("kotlin.${it.typeName.asString().toLowerCase()}ArrayOf") }
+//    }
+
+    val arrayConcat: IrSimpleFunctionSymbol
+        get() = getInternalFunction("arrayConcat")
 
     // Helpers:
 

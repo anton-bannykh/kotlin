@@ -132,3 +132,43 @@ internal fun longArrayIterator(array: LongArray) = object : LongIterator() {
     override fun hasNext() = index != array.size
     override fun nextLong() = if (index != array.size) array[index++] else throw NoSuchElementException("$index")
 }
+
+
+/** Concat regular Array's and TypedArray's into an Array.
+ */
+internal fun <T> arrayConcat(args: Array<T>): T {
+    val typed = js("Array")(args.size).unsafeCast<Array<T>>()
+    for (i in 0..args.size - 1) {
+        val arr = args[i]
+        if (arr !is Array<*>) {
+            typed[i] = js("[]").slice.call(arr)
+        } else {
+            typed[i] = arr
+        }
+    }
+    return js("[]").concat.apply(js("[]"), typed);
+}
+
+/** Concat primitive arrays. Main use: prepare vararg arguments.
+ */
+@Suppress("UNUSED_PARAMETER")
+internal fun <T> primitiveArrayConcat(args: Array<T>): T {
+    var size = 0
+    for (i in 0..args.size - 1) {
+        size += args[i].asDynamic().length as Int
+    }
+    val a = args[0]
+    val result = js("new a.constructor(size)")
+//    kotlin.copyArrayType(a, result)
+    size = 0
+    for (i in 0..args.size - 1) {
+        val arr = args[i].asDynamic()
+        for (j in 0 until arr.length) {
+            result[size++] = arr[j]
+        }
+    }
+    return result
+}
+
+// Intrinsic. Do we need a declaration?
+internal external fun <T> arrayLiteral(vararg a: T): Array<T>
