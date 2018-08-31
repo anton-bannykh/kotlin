@@ -5,77 +5,45 @@
 
 package kotlin.js
 
-external fun <T> Array(size: Int): Array<T>
+internal external fun <T> Array(size: Int): Array<T>
 
-fun <T> newArray(size: Int, initValue: T) = fillArrayVal(Array<T>(size), initValue)
+internal fun <T> newArray(size: Int, initValue: T) = fillArrayVal(Array<T>(size), initValue)
 
-inline fun <T> arrayWithFun(size: Int, init: (Int) -> T) = fillArrayFun(Array<T>(size), init)
-
-inline fun <T> fillArrayFun(array: Array<T>, init: (Int) -> T): Array<T> {
-    var i = 0
-    while (i != array.size) {
-        array[i] = init(i)
-        ++i
-    }
-    return array
-}
-
-//fun booleanArray(size: Int, init: dynamic): Array<Boolean> {
-//    val result: dynamic = Array<Boolean>(size)
-//    result.`$type$` = "BooleanArray"
-//    return when (init) {
-//        null, true -> fillArrayVal(result, false)
-//        false -> result
-//        else -> fillArrayFun<Boolean>(result, init)
-//    }
-//}
-//
-//inline fun booleanArrayWithFun(size: Int, init: (Int) -> Boolean): Array<Boolean> = fillArrayFun(booleanArray(size, false), init)
-//
-//fun charArray(size: Int, init: dynamic): Array<Char> {
-//    val result = js("new Uint16Array(size)")
-//    result.`$type$` = "CharArray"
-//    return when (init) {
-//        null, true, false -> result // For consistency
-//        else -> fillArrayFun<Char>(result, init)
-//    }
-//}
-//
-//inline fun charArrayWithFun(size: Int, init: (Int) -> Char): Array<Char> {
-//    val array = charArray(size, null)
-//    for (i in 0..array.size - 1) {
-//        val value = init(i)
-//        js("array[i] = value;")
-//    }
-//    return array
-//}
-//
-//inline fun untypedCharArrayWithFun(size: Int, init: (Int) -> Char): Array<Char> {
-//    val array = Array<Char>(size)
-//    for (i in 0..array.size - 1) {
-//        val value = init(i)
-//        js("array[i] = value;")
-//    }
-//    return array
-//}
-//
-//fun longArray(size: Int, init: dynamic): Array<Long> {
-//    val result: dynamic = Array<Long>(size)
-//    result.`$type$` = "LongArray"
-//    return when (init) {
-//        null, true -> fillArrayVal(result, 0L)
-//        false -> result
-//        else -> fillArrayFun<Long>(result, init)
-//    }
-//}
-//
-//inline fun longArrayWithFun(size: Int, init: (Int) -> Long): Array<Long> = fillArrayFun(longArray(size, false), init)
-
-private fun <T> fillArrayVal(array: Array<T>, initValue: T): Array<T> {
+internal fun <T> fillArrayVal(array: Array<T>, initValue: T): Array<T> {
     for (i in 0..array.size - 1) {
         array[i] = initValue
     }
     return array
+}
+
+internal inline fun <T> arrayWithFun(size: Int, init: (Int) -> T) = fillArrayFun(Array<T>(size), init)
+
+internal inline fun <T> fillArrayFun(array: dynamic, init: (Int) -> T): Array<T> {
+    val result = array.unsafeCast<Array<T>>()
+    var i = 0
+    while (i != result.size) {
+        result[i] = init(i)
+        ++i
+    }
+    return result
+}
+
+internal fun booleanArray(size: Int): BooleanArray {
+    val result: dynamic = Array<Boolean>(size)
+    result.`$type$` = "BooleanArray"
+    return result.unsafeCast<BooleanArray>()
+}
+
+internal fun charArray(size: Int): CharArray {
+    val result: dynamic = Array<Char>(size)
+    result.`$type$` = "CharArray"
+    return result.unsafeCast<CharArray>()
+}
+
+internal fun longArray(size: Int): LongArray {
+    val result: dynamic = Array<Long>(size)
+    result.`$type$` = "LongArray"
+    return result.unsafeCast<LongArray>()
 }
 
 internal fun <T> arrayIterator(array: Array<T>) = object : Iterator<T> {
@@ -83,7 +51,6 @@ internal fun <T> arrayIterator(array: Array<T>) = object : Iterator<T> {
     override fun hasNext() = index != array.size
     override fun next() = if (index != array.size) array[index++] else throw NoSuchElementException("$index")
 }
-
 
 internal fun booleanArrayIterator(array: BooleanArray) = object : BooleanIterator() {
     var index = 0

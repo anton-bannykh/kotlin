@@ -68,8 +68,6 @@ fun compile(
         moduleFragment
     )
 
-//    dependencies.forEach { context.originalModuleIndex.addModule(it.moduleFragment) }
-
     ExternalDependenciesGenerator(psi2IrContext.moduleDescriptor, psi2IrContext.symbolTable, psi2IrContext.irBuiltIns)
         .generateUnboundSymbolsAsDependencies(moduleFragment)
 
@@ -80,18 +78,11 @@ fun compile(
 
     MoveExternalDeclarationsToSeparatePlace().lower(moduleFragment.files)
 
-//    if (dependencies.size > 0) println(moduleFragment.dump())
-
-    moduleFragment.files.forEach { ArrayLowering(context, false).lower(it) }
+    moduleFragment.files.forEach { ArrayInlineConstructorLowering(context).lower(it) }
 
     val moduleFragmentCopy = moduleFragment.deepCopyWithSymbols()
 
-//    if (dependencies.size > 0) println(moduleFragment.dump())
-
     context.performInlining(moduleFragment)
-
-
-//    if (dependencies.size > 0) println(moduleFragment.dump())
 
     context.lower(moduleFragment)
 
@@ -114,6 +105,7 @@ private fun JsIrBackendContext.performInlining(moduleFragment: IrModuleFragment)
 
 private fun JsIrBackendContext.lower(moduleFragment: IrModuleFragment) {
     moduleFragment.files.forEach(VarargLowering(this)::lower)
+    moduleFragment.files.forEach(ArrayLowering(this)::lower)
     moduleFragment.files.forEach(LateinitLowering(this, true)::lower)
     moduleFragment.files.forEach(DefaultArgumentStubGenerator(this)::runOnFilePostfix)
     moduleFragment.files.forEach(DefaultParameterInjector(this)::runOnFilePostfix)
@@ -141,7 +133,6 @@ private fun JsIrBackendContext.lower(moduleFragment: IrModuleFragment) {
     moduleFragment.files.forEach(clble.getReferenceReplacer())
     moduleFragment.files.forEach(ClassReferenceLowering(this)::lower)
     moduleFragment.files.forEach(PrimitiveCompanionLowering(this)::lower)
-    moduleFragment.files.forEach { ArrayLowering(this, true).lower(it) }
     moduleFragment.files.forEach(IntrinsicifyCallsLowering(this)::lower)
 }
 
