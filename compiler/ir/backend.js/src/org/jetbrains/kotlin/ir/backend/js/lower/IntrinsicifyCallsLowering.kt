@@ -9,16 +9,17 @@ import org.jetbrains.kotlin.backend.common.FileLoweringPass
 import org.jetbrains.kotlin.backend.common.utils.isNullable
 import org.jetbrains.kotlin.backend.common.utils.isSubtypeOf
 import org.jetbrains.kotlin.backend.common.utils.isSubtypeOfClass
+import org.jetbrains.kotlin.builtins.PrimitiveType
 import org.jetbrains.kotlin.descriptors.PropertyAccessorDescriptor
+import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
 import org.jetbrains.kotlin.ir.backend.js.JsIrBackendContext
 import org.jetbrains.kotlin.ir.backend.js.ir.JsIrBuilder
 import org.jetbrains.kotlin.ir.backend.js.utils.*
-import org.jetbrains.kotlin.ir.declarations.IrClass
-import org.jetbrains.kotlin.ir.declarations.IrFile
-import org.jetbrains.kotlin.ir.declarations.IrFunction
-import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
+import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.expressions.impl.IrCallImpl
+import org.jetbrains.kotlin.ir.expressions.impl.IrConstImpl
+import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.symbols.IrFunctionSymbol
 import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
 import org.jetbrains.kotlin.ir.symbols.impl.IrFieldSymbolImpl
@@ -135,6 +136,36 @@ class IntrinsicifyCallsLowering(private val context: JsIrBackendContext) : FileL
             add(irBuiltIns.lessOrEqualFunByOperandType, intrinsics.jsLtEq)
             add(irBuiltIns.greaterFunByOperandType, intrinsics.jsGt)
             add(irBuiltIns.greaterOrEqualFunByOperandType, intrinsics.jsGtEq)
+
+            // Arrays
+            add(context.intrinsics.array.sizeProperty, context.intrinsics.jsArrayLength, true)
+            add(context.intrinsics.array.getFunction, context.intrinsics.jsArrayGet, true)
+            add(context.intrinsics.array.setFunction, context.intrinsics.jsArraySet, true)
+            add(context.intrinsics.array.iterator, context.intrinsics.jsArrayIteratorFunction.owner, true)
+            for ((key, elementType) in context.intrinsics.primitiveArrays) {
+                add(key.sizeProperty, context.intrinsics.jsArrayLength, true)
+                add(key.getFunction, context.intrinsics.jsArrayGet, true)
+                add(key.setFunction, context.intrinsics.jsArraySet, true)
+                add(key.iterator, context.intrinsics.jsPrimitiveArrayIteratorFunctions[elementType]!!.owner, true)
+
+                // TODO create a map?
+                val default = when (elementType) {
+                    PrimitiveType.BOOLEAN -> IrConstImpl.boolean(UNDEFINED_OFFSET, UNDEFINED_OFFSET, context.irBuiltIns.booleanType, false)
+                    PrimitiveType.BYTE -> IrConstImpl.byte(UNDEFINED_OFFSET, UNDEFINED_OFFSET, context.irBuiltIns.byteType, 0)
+                    PrimitiveType.SHORT -> IrConstImpl.short(UNDEFINED_OFFSET, UNDEFINED_OFFSET, context.irBuiltIns.shortType, 0)
+                    PrimitiveType.CHAR -> lowerCharConst('\u0000')
+                    PrimitiveType.INT -> IrConstImpl.int(UNDEFINED_OFFSET, UNDEFINED_OFFSET, context.irBuiltIns.byteType, 0)
+                    PrimitiveType.FLOAT -> IrConstImpl.float(UNDEFINED_OFFSET, UNDEFINED_OFFSET, context.irBuiltIns.byteType, 0f)
+                    PrimitiveType.DOUBLE -> IrConstImpl.double(UNDEFINED_OFFSET, UNDEFINED_OFFSET, context.irBuiltIns.byteType, 0.0)
+                    PrimitiveType.LONG -> lowerLongConst(0L)
+                }
+                add(key.sizeConstructor) { call ->
+                    IrCallImpl(call.startOffset, call.endOffset, call.type, context.intrinsics.jsNewArray).apply {
+                        putValueArgument(0, call.getValueArgument(0))
+                        putValueArgument(1, default)
+                    }
+                }
+            }
         }
 
         memberToTransformer.run {
@@ -279,33 +310,40 @@ class IntrinsicifyCallsLowering(private val context: JsIrBackendContext) : FileL
         }
     }
 
+    private fun lowerLongConst(value: Long, startOffset: Int = UNDEFINED_OFFSET, endOffset: Int = UNDEFINED_OFFSET): IrExpression {
+        val high = (value shr 32).toInt()
+        val low = value.toInt()
+        return IrCallImpl(
+            startOffset,
+            endOffset,
+            irBuiltIns.longType,
+            context.intrinsics.longConstructor
+        ).apply {
+            putValueArgument(0, JsIrBuilder.buildInt(context.irBuiltIns.intType, low))
+            putValueArgument(1, JsIrBuilder.buildInt(context.irBuiltIns.intType, high))
+        }
+    }
+
+    private fun lowerCharConst(value: Char, startOffset: Int = UNDEFINED_OFFSET, endOffset: Int = UNDEFINED_OFFSET): IrExpression {
+        return IrCallImpl(
+            startOffset,
+            endOffset,
+            irBuiltIns.charType,
+            context.intrinsics.charConstructor
+        ).apply {
+            putValueArgument(0, JsIrBuilder.buildInt(context.irBuiltIns.intType, value.toInt()))
+        }
+    }
+
     override fun lower(irFile: IrFile) {
         irFile.transform(object : IrElementTransformerVoid() {
 
             // TODO should this be a separate lowering?
             override fun <T> visitConst(expression: IrConst<T>): IrExpression {
                 if (expression.kind is IrConstKind.Long) {
-                    val value = IrConstKind.Long.valueOf(expression)
-                    val high = (value shr 32).toInt()
-                    val low = value.toInt()
-                    return IrCallImpl(
-                        expression.startOffset,
-                        expression.endOffset,
-                        irBuiltIns.longType,
-                        context.intrinsics.longConstructor
-                    ).apply {
-                        putValueArgument(0, JsIrBuilder.buildInt(context.irBuiltIns.intType, low))
-                        putValueArgument(1, JsIrBuilder.buildInt(context.irBuiltIns.intType, high))
-                    }
+                    return lowerLongConst(IrConstKind.Long.valueOf(expression), expression.startOffset, expression.endOffset)
                 } else if (expression.kind is IrConstKind.Char) {
-                    return IrCallImpl(
-                        expression.startOffset,
-                        expression.endOffset,
-                        irBuiltIns.charType,
-                        context.intrinsics.charConstructor
-                    ).apply {
-                        putValueArgument(0, JsIrBuilder.buildInt(context.irBuiltIns.intType, IrConstKind.Char.valueOf(expression).toInt()))
-                    }
+                    return lowerCharConst(IrConstKind.Char.valueOf(expression), expression.startOffset, expression.endOffset)
                 }
                 return super.visitConst(expression)
             }
@@ -733,8 +771,8 @@ private fun SymbolToTransformer.add(from: IrFunctionSymbol, to: (IrCall) -> IrEx
     put(from, to)
 }
 
-private fun SymbolToTransformer.add(from: IrFunctionSymbol, to: IrSimpleFunction) {
-    put(from, { call -> irCall(call, to.symbol) })
+private fun SymbolToTransformer.add(from: IrFunctionSymbol, to: IrSimpleFunction, dispatchReceiverAsFirstArgument: Boolean = false) {
+    put(from, { call -> irCall(call, to.symbol, dispatchReceiverAsFirstArgument) })
 }
 
 private fun <K> MutableMap<K, (IrCall) -> IrExpression>.addWithPredicate(
@@ -768,3 +806,19 @@ private class SimpleMemberKey(val klass: IrType, val name: Name) {
         return result
     }
 }
+
+
+private val IrClassSymbol.sizeProperty
+    get() = owner.declarations.filterIsInstance<IrProperty>().first { it.name.asString() == "size" }.getter!!.symbol
+
+private val IrClassSymbol.getFunction
+    get() = owner.declarations.filterIsInstance<IrFunction>().first { it.name.asString() == "get" }.symbol
+
+private val IrClassSymbol.setFunction
+    get() = owner.declarations.filterIsInstance<IrFunction>().first { it.name.asString() == "set" }.symbol
+
+private val IrClassSymbol.iterator
+    get() = owner.declarations.filterIsInstance<IrFunction>().first { it.name.asString() == "iterator" }.symbol
+
+private val IrClassSymbol.sizeConstructor
+    get() = owner.declarations.filterIsInstance<IrConstructor>().first { it.valueParameters.size == 1 }.symbol

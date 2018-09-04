@@ -185,9 +185,9 @@ class JsIntrinsics(
     val jsFillArray = getInternalFunction("fillArrayFun")
     val jsNewArray = getInternalFunction("newArray")
 
-    val jsArrayLength = unOp("jsArrayLength").symbol
-    val jsArrayGet = binOp("jsArrayGet").symbol
-    val jsArraySet = tripleOp("jsArraySet").symbol
+    val jsArrayLength = unOp("jsArrayLength")
+    val jsArrayGet = binOp("jsArrayGet")
+    val jsArraySet = tripleOp("jsArraySet")
 
     val jsArrayIteratorFunction = getInternalFunction("arrayIterator")
 

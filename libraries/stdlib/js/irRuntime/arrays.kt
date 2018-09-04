@@ -5,7 +5,7 @@
 
 package kotlin.js
 
-internal external fun <T> Array(size: Int): Array<T>
+external fun <T> Array(size: Int): Array<T>
 
 internal fun <T> newArray(size: Int, initValue: T) = fillArrayVal(Array<T>(size), initValue)
 
@@ -104,7 +104,8 @@ internal fun longArrayIterator(array: LongArray) = object : LongIterator() {
 /** Concat regular Array's and TypedArray's into an Array.
  */
 internal fun <T> arrayConcat(args: Array<T>): T {
-    val typed = js("Array")(args.size).unsafeCast<Array<T>>()
+    val len = args.size
+    val typed = js("Array(len)").unsafeCast<Array<T>>()
     for (i in 0..args.size - 1) {
         val arr = args[i]
         if (arr !is Array<*>) {
