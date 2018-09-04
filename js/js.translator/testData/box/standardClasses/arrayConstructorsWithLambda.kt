@@ -2,6 +2,9 @@
 package foo
 
 fun box(): String {
+    val a = IntArray(10)
+    if (a !is IntArray) return "fail"
+
     val s = Array<String>(3) { it.toString() }
     if (s.size != 3) return "Fail Array size: ${s.size}"
     if (s[1] != "1") return "Fail Array value: ${s[1]}"

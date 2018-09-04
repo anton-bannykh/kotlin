@@ -192,8 +192,7 @@ class JsIntrinsics(
     val jsPrimitiveArrayIteratorFunctions =
         PrimitiveType.values().associate { it to getInternalFunction("${it.typeName.asString().toLowerCase()}ArrayIterator") }
 
-    val arrayLiteral: IrSimpleFunctionSymbol
-        get() = getInternalFunction("arrayLiteral")
+    val arrayLiteral = unOp("arrayLiteral").symbol
 
     val primitiveToTypedArrayMap = EnumMap(mapOf(
         PrimitiveType.BYTE to "Int8",

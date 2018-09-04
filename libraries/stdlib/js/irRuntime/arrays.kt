@@ -136,6 +136,3 @@ internal fun <T> primitiveArrayConcat(args: Array<T>): T {
     }
     return result
 }
-
-// Intrinsic. Do we need a declaration?
-internal external fun <T> arrayLiteral(vararg a: T): Array<T>
