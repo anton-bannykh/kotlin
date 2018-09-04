@@ -61,8 +61,8 @@ private class ArrayConstructorTransformer(
     }
 }
 
+// TODO it.isInline doesn't work =(
 private val IrClassSymbol.inlineConstructor
-// TODO it.isInline
     get() = owner.declarations.filterIsInstance<IrConstructor>().first { it.valueParameters.size == 2 }.symbol
 
 private val IrClassSymbol.sizeConstructor
