@@ -148,21 +148,10 @@ class IntrinsicifyCallsLowering(private val context: JsIrBackendContext) : FileL
                 add(key.setFunction, context.intrinsics.jsArraySet, true)
                 add(key.iterator, context.intrinsics.jsPrimitiveArrayIteratorFunctions[elementType]!!.owner, true)
 
-                // TODO create a map?
-                val default = when (elementType) {
-                    PrimitiveType.BOOLEAN -> IrConstImpl.boolean(UNDEFINED_OFFSET, UNDEFINED_OFFSET, context.irBuiltIns.booleanType, false)
-                    PrimitiveType.BYTE -> IrConstImpl.byte(UNDEFINED_OFFSET, UNDEFINED_OFFSET, context.irBuiltIns.byteType, 0)
-                    PrimitiveType.SHORT -> IrConstImpl.short(UNDEFINED_OFFSET, UNDEFINED_OFFSET, context.irBuiltIns.shortType, 0)
-                    PrimitiveType.CHAR -> lowerCharConst('\u0000')
-                    PrimitiveType.INT -> IrConstImpl.int(UNDEFINED_OFFSET, UNDEFINED_OFFSET, context.irBuiltIns.byteType, 0)
-                    PrimitiveType.FLOAT -> IrConstImpl.float(UNDEFINED_OFFSET, UNDEFINED_OFFSET, context.irBuiltIns.byteType, 0f)
-                    PrimitiveType.DOUBLE -> IrConstImpl.double(UNDEFINED_OFFSET, UNDEFINED_OFFSET, context.irBuiltIns.byteType, 0.0)
-                    PrimitiveType.LONG -> lowerLongConst(0L)
-                }
+                // TODO irCall?
                 add(key.sizeConstructor) { call ->
-                    IrCallImpl(call.startOffset, call.endOffset, call.type, context.intrinsics.jsNewArray).apply {
+                    IrCallImpl(call.startOffset, call.endOffset, call.type, context.intrinsics.primitiveToSizeConstructor[elementType]!!).apply {
                         putValueArgument(0, call.getValueArgument(0))
-                        putValueArgument(1, default)
                     }
                 }
             }

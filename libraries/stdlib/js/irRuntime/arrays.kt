@@ -28,23 +28,22 @@ internal inline fun <T> fillArrayFun(array: dynamic, init: (Int) -> T): Array<T>
     return result
 }
 
-internal fun booleanArray(size: Int): BooleanArray {
-    val result: dynamic = Array<Boolean>(size)
-    result.`$type$` = "BooleanArray"
-    return result.unsafeCast<BooleanArray>()
+internal inline fun withType(type: String, array: dynamic): dynamic {
+    array.`$type$` = type
+    return array
 }
 
-internal fun charArray(size: Int): CharArray {
-    val result: dynamic = Array<Char>(size)
-    result.`$type$` = "CharArray"
-    return result.unsafeCast<CharArray>()
-}
+internal fun booleanArray(size: Int): BooleanArray = withType("BooleanArray", fillArrayVal(Array<Boolean>(size), false)).unsafeCast<BooleanArray>()
 
-internal fun longArray(size: Int): LongArray {
-    val result: dynamic = Array<Long>(size)
-    result.`$type$` = "LongArray"
-    return result.unsafeCast<LongArray>()
-}
+internal fun booleanArrayOf(arr: Array<Boolean>): BooleanArray = withType("BooleanArray", arr.asDynamic().slice()).unsafeCast<BooleanArray>()
+
+internal fun charArray(size: Int): CharArray = withType("CharArray", fillArrayVal(Array<Char>(size), '\u0000')).unsafeCast<CharArray>()
+
+internal fun charArrayOf(arr: Array<Char>): CharArray = withType("CharArray", arr.asDynamic().slice()).unsafeCast<CharArray>()
+
+internal fun longArray(size: Int): LongArray = withType("LongArray", fillArrayVal(Array<Long>(size), 0L)).unsafeCast<LongArray>()
+
+internal fun longArrayOf(arr: Array<Long>): LongArray = withType("LongArray", arr.asDynamic().slice()).unsafeCast<LongArray>()
 
 internal fun <T> arrayIterator(array: Array<T>) = object : Iterator<T> {
     var index = 0

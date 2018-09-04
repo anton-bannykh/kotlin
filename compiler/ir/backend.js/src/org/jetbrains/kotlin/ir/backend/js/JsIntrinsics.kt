@@ -12,9 +12,6 @@ import org.jetbrains.kotlin.descriptors.annotations.Annotations
 import org.jetbrains.kotlin.descriptors.impl.SimpleFunctionDescriptorImpl
 import org.jetbrains.kotlin.descriptors.impl.TypeParameterDescriptorImpl
 import org.jetbrains.kotlin.ir.backend.js.utils.createValueParameter
-import org.jetbrains.kotlin.ir.declarations.IrConstructor
-import org.jetbrains.kotlin.ir.declarations.IrFunction
-import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.descriptors.IrBuiltIns
 import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
@@ -26,6 +23,7 @@ import org.jetbrains.kotlin.psi2ir.findSingleFunction
 import org.jetbrains.kotlin.types.KotlinType
 import org.jetbrains.kotlin.types.KotlinTypeFactory
 import org.jetbrains.kotlin.types.Variance
+import java.util.*
 
 class JsIntrinsics(
     private val module: ModuleDescriptor,
@@ -196,6 +194,27 @@ class JsIntrinsics(
 
     val arrayLiteral: IrSimpleFunctionSymbol
         get() = getInternalFunction("arrayLiteral")
+
+    val primitiveToTypedArrayMap = EnumMap(mapOf(
+        PrimitiveType.BYTE to "Int8",
+        PrimitiveType.SHORT to "Int16",
+        PrimitiveType.INT to "Int32",
+        PrimitiveType.FLOAT to "Float32",
+        PrimitiveType.DOUBLE to "Float64"))
+
+    val primitiveToSizeConstructor =
+        PrimitiveType.values().associate { type ->
+            type to (primitiveToTypedArrayMap[type]?.let {
+                unOp("${it.toLowerCase()}Array").symbol
+            } ?: getInternalFunction("${type.typeName.asString().toLowerCase()}Array"))
+        }
+
+    val primitiveToLiteralConstructor =
+        PrimitiveType.values().associate { type ->
+            type to (primitiveToTypedArrayMap[type]?.let {
+                unOp("${it.toLowerCase()}ArrayOf").symbol
+            } ?: getInternalFunction("${type.typeName.asString().toLowerCase()}ArrayOf"))
+        }
 
 //    val primitiveArrayOf by lazy {
 //        PrimitiveType.values().associate { it to getInternalWithoutPackage("kotlin.${it.typeName.asString().toLowerCase()}ArrayOf") }

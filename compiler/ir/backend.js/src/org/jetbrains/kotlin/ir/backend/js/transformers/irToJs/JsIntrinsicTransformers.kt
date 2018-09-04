@@ -167,6 +167,19 @@ class JsIntrinsicTransformers(backendContext: JsIrBackendContext) {
             add(intrinsics.arrayLiteral) { call, context ->
                 JsArrayLiteral(translateCallArguments(call, context))
             }
+
+            for ((type, prefix) in intrinsics.primitiveToTypedArrayMap) {
+                add(intrinsics.primitiveToSizeConstructor[type]!!) { call, context ->
+                    val args = translateCallArguments(call, context)
+                    val array = args[0]
+                    JsNew(JsNameRef("${prefix}Array"), listOf(array))
+                }
+                add(intrinsics.primitiveToLiteralConstructor[type]!!) { call, context ->
+                    val args = translateCallArguments(call, context)
+                    val array = args[0]
+                    JsNew(JsNameRef("${prefix}Array"), listOf(array))
+                }
+            }
         }
     }
 
