@@ -209,9 +209,9 @@ class JsIntrinsics(private val irBuiltIns: IrBuiltIns, val context: JsIrBackendC
             } ?: getInternalFunction("${type.typeName.asString().toLowerCase()}ArrayOf"))
         }
 
-    val arrayConcat = getInternalFunction("arrayConcat")
+    val arrayConcat = getInternalWithoutPackage("arrayConcat")
 
-    val primitiveArrayConcat = getInternalFunction("primitiveArrayConcat")
+    val primitiveArrayConcat = getInternalWithoutPackage("primitiveArrayConcat")
 
     val jsArraySlice = unOp("slice")
 

@@ -299,6 +299,8 @@ class IntrinsicifyCallsLowering(private val context: JsIrBackendContext) : FileL
             put(IrStatementOrigin.PREFIX_DECR, context.intrinsics.jsPrefixDec)
             put(IrStatementOrigin.POSTFIX_INCR, context.intrinsics.jsPostfixInc)
             put(IrStatementOrigin.POSTFIX_DECR, context.intrinsics.jsPostfixDec)
+            put(IrStatementOrigin.GET_ARRAY_ELEMENT, context.intrinsics.jsArrayGet)
+//            put(IrStatementOrigin.EQ, context.intrinsics.jsArrayGet)
         }
     }
 
@@ -462,9 +464,10 @@ class IntrinsicifyCallsLowering(private val context: JsIrBackendContext) : FileL
     private fun withLongCoercion(intrinsic: IrSimpleFunction): (IrCall) -> IrExpression = { call ->
         assert(call.valueArgumentsCount == 1)
         val arg = call.getValueArgument(0)!!
-        val receiverType = call.dispatchReceiver!!.type
 
         if (arg.type.isLong()) {
+            val receiverType = call.dispatchReceiver!!.type
+
             when {
             // Double OP Long => Double OP Long.toDouble()
                 receiverType.isDouble() -> {
@@ -503,7 +506,7 @@ class IntrinsicifyCallsLowering(private val context: JsIrBackendContext) : FileL
             }
         }
 
-        if (receiverType.isLong()) {
+        if (call.dispatchReceiver!!.type.isLong()) {
             // LHS is Long => use as is
             call
         } else {

@@ -73,7 +73,10 @@ private val runtimeSources = listOfKtFilesFrom(
     // TODO: Reuse coroutine code from common (and current JS BE?)
     "libraries/stdlib/js/src/kotlin/coroutines.kt",
     "libraries/stdlib/js/src/kotlin/coroutinesIntrinsics.kt",
-    "libraries/stdlib/src/kotlin/coroutines"
+    "libraries/stdlib/src/kotlin/coroutines",
+
+    // Mostly array-specific stuff
+    "libraries/stdlib/js/src/kotlin/builtins.kt"
 ) + listOfKtFilesFrom(
     "libraries/stdlib/src/kotlin/coroutines/experimental/SequenceBuilder.kt",
     "libraries/stdlib/src/kotlin/coroutines/experimental/Coroutines.kt"
