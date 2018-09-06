@@ -29,19 +29,8 @@ private class VarargTransformer(
     val context: JsIrBackendContext
 ) : IrElementTransformerVoid() {
 
-    private val irSymbolToPrimitive = mapOf(
-        context.irBuiltIns.booleanClass to PrimitiveType.BOOLEAN,
-        context.irBuiltIns.byteClass to PrimitiveType.BYTE,
-        context.irBuiltIns.shortClass to PrimitiveType.SHORT,
-        context.irBuiltIns.charClass to PrimitiveType.CHAR,
-        context.irBuiltIns.intClass to PrimitiveType.INT,
-        context.irBuiltIns.floatClass to PrimitiveType.FLOAT,
-        context.irBuiltIns.doubleClass to PrimitiveType.DOUBLE,
-        context.irBuiltIns.longClass to PrimitiveType.LONG
-    )
-
     private fun List<IrExpression>.toArrayLiteral(type: IrType, varargElementType: IrType): IrExpression {
-        val intrinsic = irSymbolToPrimitive[varargElementType.classifierOrNull]?.let { primitiveType ->
+        val intrinsic = context.intrinsics.primitiveArrays[type.classifierOrNull]?.let { primitiveType ->
             context.intrinsics.primitiveToLiteralConstructor[primitiveType]
         } ?: context.intrinsics.arrayLiteral
 
@@ -103,7 +92,7 @@ private class VarargTransformer(
 
         val arrayLiteral = segments.toArrayLiteral(IrSimpleTypeImpl(context.intrinsics.array, false, listOf(), listOf()), context.irBuiltIns.anyType)
 
-        val concatFun = if (expression.varargElementType.classifierOrNull in irSymbolToPrimitive) {
+        val concatFun = if (expression.type.classifierOrNull in context.intrinsics.primitiveArrays.keys) {
             context.intrinsics.primitiveArrayConcat
         } else {
             context.intrinsics.arrayConcat

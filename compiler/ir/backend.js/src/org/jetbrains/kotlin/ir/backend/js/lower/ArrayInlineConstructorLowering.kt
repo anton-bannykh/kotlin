@@ -31,13 +31,17 @@ private class ArrayConstructorTransformer(
     val context: JsIrBackendContext
 ) : IrElementTransformerVoid() {
 
+    private val primitiveArrayInlineToSizeConstructorMap = context.intrinsics.primitiveArrays.keys.associate {
+        it.inlineConstructor to it.sizeConstructor
+    }
+
     override fun visitCall(expression: IrCall): IrExpression {
         expression.transformChildrenVoid(this)
 
         if (expression.symbol == context.intrinsics.array.inlineConstructor) {
             return irCall(expression, context.intrinsics.jsArray)
         } else {
-            context.intrinsics.primitiveArrays.keys.firstOrNull { it.inlineConstructor == expression.symbol }?.let { classSymbol ->
+            primitiveArrayInlineToSizeConstructorMap[expression.symbol]?.let { sizeConstructor ->
                 return IrCallImpl(
                     expression.startOffset,
                     expression.endOffset,
@@ -48,7 +52,7 @@ private class ArrayConstructorTransformer(
                         expression.startOffset,
                         expression.endOffset,
                         expression.type,
-                        classSymbol.sizeConstructor
+                        sizeConstructor
                     ).apply {
                         putValueArgument(0, expression.getValueArgument(0))
                     })
