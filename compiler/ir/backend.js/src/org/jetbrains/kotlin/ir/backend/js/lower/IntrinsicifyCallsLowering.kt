@@ -158,6 +158,8 @@ class IntrinsicifyCallsLowering(private val context: JsIrBackendContext) : FileL
                     }
                 }
             }
+
+            add(context.irBuiltIns.stringClass.lengthProperty, context.intrinsics.jsArrayLength, true)
         }
 
         memberToTransformer.run {
@@ -822,3 +824,6 @@ private val IrClassSymbol.iterator
 
 private val IrClassSymbol.sizeConstructor
     get() = owner.declarations.filterIsInstance<IrConstructor>().first { it.valueParameters.size == 1 }.symbol
+
+private val IrClassSymbol.lengthProperty
+    get() = owner.declarations.filterIsInstance<IrProperty>().first { it.name.asString() == "length" }.getter!!.symbol
