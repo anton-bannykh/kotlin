@@ -12,6 +12,7 @@ import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.IrTypeProjection
 import org.jetbrains.kotlin.ir.types.impl.IrSimpleTypeImpl
 import org.jetbrains.kotlin.ir.types.impl.IrTypeProjectionImpl
+import org.jetbrains.kotlin.ir.types.impl.originalKotlinType
 
 class DeepCopyTypeRemapper(
     private val symbolRemapper: SymbolRemapper
@@ -30,7 +31,7 @@ class DeepCopyTypeRemapper(
     // TODODO
     override fun remapType(type: IrType): IrType
             = if (type !is IrSimpleType) type else {
-        IrSimpleTypeImpl(symbolRemapper.getReferencedClassifier(type.classifier), type.hasQuestionMark, type.arguments.map {
+        IrSimpleTypeImpl(type.originalKotlinType, symbolRemapper.getReferencedClassifier(type.classifier), type.hasQuestionMark, type.arguments.map {
             if (it !is IrTypeProjection) it else {
                 IrTypeProjectionImpl(this.remapType(it.type), it.variance)
             }
