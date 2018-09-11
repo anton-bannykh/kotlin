@@ -108,6 +108,7 @@ private fun JsIrBackendContext.performInlining(moduleFragment: IrModuleFragment)
 }
 
 private fun JsIrBackendContext.lower(moduleFragment: IrModuleFragment, dependencies: List<IrModuleFragment>) {
+    moduleFragment.files.forEach(VarargLowering(this)::lower)
     moduleFragment.files.forEach(LateinitLowering(this, true)::lower)
     moduleFragment.files.forEach(DefaultArgumentStubGenerator(this)::runOnFilePostfix)
     moduleFragment.files.forEach(DefaultParameterInjector(this)::runOnFilePostfix)
