@@ -29,12 +29,8 @@ import org.jetbrains.kotlin.ir.symbols.impl.IrConstructorSymbolImpl
 import org.jetbrains.kotlin.ir.symbols.impl.IrSimpleFunctionSymbolImpl
 import org.jetbrains.kotlin.ir.symbols.impl.IrValueParameterSymbolImpl
 import org.jetbrains.kotlin.ir.types.*
-import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
-import org.jetbrains.kotlin.ir.util.defaultType
-import org.jetbrains.kotlin.ir.util.patchDeclarationParents
-import org.jetbrains.kotlin.ir.util.transformDeclarationsFlat
-import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
-import org.jetbrains.kotlin.ir.visitors.transformChildrenVoid
+import org.jetbrains.kotlin.ir.util.*
+import org.jetbrains.kotlin.ir.visitors.*
 import org.jetbrains.kotlin.name.Name
 
 // TODO: fix expect/actual default parameters
@@ -168,158 +164,207 @@ private fun markerParameterDeclaration(function: IrFunction) =
 open class DefaultParameterInjector constructor(
     val context: CommonBackendContext,
     private val skipInline: Boolean = true
-) : BodyLoweringPass {
-    override fun lower(irBody: IrBody) {
+) : FileLoweringPass {
 
-        irBody.transformChildrenVoid(object : IrElementTransformerVoid() {
-            override fun visitDelegatingConstructorCall(expression: IrDelegatingConstructorCall): IrExpression {
-                super.visitDelegatingConstructorCall(expression)
-
-                val declaration = expression.symbol.owner as IrFunction
-
-                if (!declaration.needsDefaultArgumentsLowering(skipInline))
-                    return expression
-
-                val argumentsCount = argumentCount(expression)
-
-                if (argumentsCount == declaration.valueParameters.size)
-                    return expression
-
-                val (symbolForCall, params) = parametersForCall(expression)
-                symbolForCall as IrConstructorSymbol
-                return IrDelegatingConstructorCallImpl(
-                    startOffset = expression.startOffset,
-                    endOffset = expression.endOffset,
-                    type = context.irBuiltIns.unitType,
-                    symbol = symbolForCall,
-                    descriptor = symbolForCall.descriptor,
-                    typeArgumentsCount = symbolForCall.owner.typeParameters.size
-                )
-                    .apply {
-                        params.forEach {
-                            log { "call::params@${it.first.index}/${it.first.name.asString()}: ${ir2string(it.second)}" }
-                            putValueArgument(it.first.index, it.second)
-                        }
-                        dispatchReceiver = expression.dispatchReceiver
-                    }
-
+    override fun lower(irFile: IrFile) {
+        irFile.accept(object: IrElementVisitorVoid {
+            override fun visitElement(element: IrElement) {
+                element.acceptChildrenVoid(this)
             }
 
-            override fun visitCall(expression: IrCall): IrExpression {
-                super.visitCall(expression)
-                val functionDeclaration = expression.symbol.owner
-
-                if (!functionDeclaration.needsDefaultArgumentsLowering(skipInline))
-                    return expression
-
-                val argumentsCount = argumentCount(expression)
-                if (argumentsCount == functionDeclaration.valueParameters.size)
-                    return expression
-
-                val (symbol, params) = parametersForCall(expression)
-                val descriptor = symbol.descriptor
-                val declaration = symbol.owner
-
-                for (i in 0 until expression.typeArgumentsCount) {
-                    log { "$descriptor [$i]: $expression.getTypeArgument(i)" }
+            override fun visitEnumEntry(declaration: IrEnumEntry) {
+                super.visitEnumEntry(declaration)
+                declaration.initializerExpression?.let {
+                    declaration.initializerExpression = it.transform(transformer, it)
                 }
-                declaration.typeParameters.forEach { log { "$declaration[${it.index}] : $it" } }
+            }
 
-                return IrCallImpl(
-                    startOffset = expression.startOffset,
-                    endOffset = expression.endOffset,
-                    type = symbol.owner.returnType,
-                    symbol = symbol,
-                    descriptor = descriptor,
-                    typeArgumentsCount = expression.typeArgumentsCount
-                )
-                    .apply {
-                        this.copyTypeArgumentsFrom(expression)
+            override fun visitBody(body: IrBody) {
+                body.transformChildren(transformer, body)
+            }
 
-                        params.forEach {
-                            log { "call::params@${it.first.index}/${it.first.name.asString()}: ${ir2string(it.second)}" }
-                            putValueArgument(it.first.index, it.second)
+            private val transformer = object : IrElementTransformer<IrElement> {
+                override fun visitEnumConstructorCall(expression: IrEnumConstructorCall, data: IrElement): IrElement {
+                    super.visitEnumConstructorCall(expression, data)
+
+                    val declaration = expression.symbol.owner as IrFunction
+
+                    if (!declaration.needsDefaultArgumentsLowering(skipInline))
+                        return expression
+
+                    val argumentsCount = argumentCount(expression)
+
+                    if (argumentsCount == declaration.valueParameters.size)
+                        return expression
+
+                    val (symbolForCall, params) = parametersForCall(expression, data)
+                    symbolForCall as IrConstructorSymbol
+                    return IrEnumConstructorCallImpl(
+                        startOffset = expression.startOffset,
+                        endOffset = expression.endOffset,
+                        type = context.irBuiltIns.unitType,
+                        symbol = symbolForCall,
+                        typeArgumentsCount = symbolForCall.owner.typeParameters.size
+                    )
+                        .apply {
+                            params.forEach {
+                                log { "call::params@${it.first.index}/${it.first.name.asString()}: ${ir2string(it.second)}" }
+                                putValueArgument(it.first.index, it.second)
+                            }
+                            dispatchReceiver = expression.dispatchReceiver
                         }
 
-                        dispatchReceiver = expression.dispatchReceiver
-                        extensionReceiver = expression.extensionReceiver
-
-                        log { "call::extension@: ${ir2string(expression.extensionReceiver)}" }
-                        log { "call::dispatch@: ${ir2string(expression.dispatchReceiver)}" }
-                    }
-            }
-
-            private fun IrFunction.findSuperMethodWithDefaultArguments(): IrFunction? {
-                if (!needsDefaultArgumentsLowering(skipInline)) return null
-
-                if (this !is IrSimpleFunction) return this
-
-                for (s in overriddenSymbols) {
-                    s.owner.findSuperMethodWithDefaultArguments()?.let { return it }
                 }
 
-                return this
-            }
+                override fun visitDelegatingConstructorCall(expression: IrDelegatingConstructorCall, data: IrElement): IrExpression {
+                    super.visitDelegatingConstructorCall(expression, data)
 
-            private fun parametersForCall(expression: IrFunctionAccessExpression): Pair<IrFunctionSymbol, List<Pair<IrValueParameter, IrExpression?>>> {
-                val declaration = expression.symbol.owner
+                    val declaration = expression.symbol.owner as IrFunction
 
-                val keyFunction = declaration.findSuperMethodWithDefaultArguments()!!
-                val realFunction =
-                    keyFunction.generateDefaultsFunction(context, DECLARATION_ORIGIN_FUNCTION_FOR_DEFAULT_PARAMETER, skipInline)
+                    if (!declaration.needsDefaultArgumentsLowering(skipInline))
+                        return expression
 
-                log { "$declaration -> $realFunction" }
-                val maskValues = Array((declaration.valueParameters.size + 31) / 32) { 0 }
-                val params = mutableListOf<Pair<IrValueParameter, IrExpression?>>()
-                params += declaration.valueParameters.mapIndexed { i, _ ->
-                    val valueArgument = expression.getValueArgument(i)
-                    if (valueArgument == null) {
-                        val maskIndex = i / 32
-                        maskValues[maskIndex] = maskValues[maskIndex] or (1 shl (i % 32))
-                    }
-                    val valueParameterDeclaration = realFunction.valueParameters[i]
-                    val defaultValueArgument = if (valueParameterDeclaration.varargElementType != null) {
-                        null
-                    } else {
-                        nullConst(expression, realFunction.valueParameters[i].type)
-                    }
-                    valueParameterDeclaration to (valueArgument ?: defaultValueArgument)
-                }
+                    val argumentsCount = argumentCount(expression)
 
-                maskValues.forEachIndexed { i, maskValue ->
-                    params += maskParameterDeclaration(realFunction, i) to IrConstImpl.int(
-                        startOffset = irBody.startOffset,
-                        endOffset = irBody.endOffset,
-                        type = context.irBuiltIns.intType,
-                        value = maskValue
+                    if (argumentsCount == declaration.valueParameters.size)
+                        return expression
+
+                    val (symbolForCall, params) = parametersForCall(expression, data)
+                    symbolForCall as IrConstructorSymbol
+                    return IrDelegatingConstructorCallImpl(
+                        startOffset = expression.startOffset,
+                        endOffset = expression.endOffset,
+                        type = symbolForCall.owner.constructedClassType,
+                        symbol = symbolForCall,
+                        descriptor = symbolForCall.descriptor,
+                        typeArgumentsCount = symbolForCall.owner.typeParameters.size
                     )
-                }
-                if (expression.symbol is IrConstructorSymbol) {
-                    val defaultArgumentMarker = context.ir.symbols.defaultConstructorMarker
-                    params += markerParameterDeclaration(realFunction) to IrGetObjectValueImpl(
-                        startOffset = irBody.startOffset,
-                        endOffset = irBody.endOffset,
-                        type = defaultArgumentMarker.owner.defaultType,
-                        symbol = defaultArgumentMarker
-                    )
-                } else if (context.ir.shouldGenerateHandlerParameterForDefaultBodyFun()) {
-                    params += realFunction.valueParameters.last() to
-                            IrConstImpl.constNull(irBody.startOffset, irBody.endOffset, context.irBuiltIns.nothingNType)
-                }
-                params.forEach {
-                    log { "descriptor::${realFunction.name.asString()}#${it.first.index}: ${it.first.name.asString()}" }
-                }
-                return Pair(realFunction.symbol, params)
-            }
+                        .apply {
+                            params.forEach {
+                                log { "call::params@${it.first.index}/${it.first.name.asString()}: ${ir2string(it.second)}" }
+                                putValueArgument(it.first.index, it.second)
+                            }
+                            dispatchReceiver = expression.dispatchReceiver
+                        }
 
-            private fun argumentCount(expression: IrMemberAccessExpression): Int {
-                var result = 0
-                for (i in 0 until expression.valueArgumentsCount) {
-                    expression.getValueArgument(i)?.run { ++result }
                 }
-                return result
+
+                override fun visitCall(expression: IrCall, data: IrElement): IrExpression {
+                    super.visitCall(expression, data)
+                    val functionDeclaration = expression.symbol.owner
+
+                    if (!functionDeclaration.needsDefaultArgumentsLowering(skipInline))
+                        return expression
+
+                    val argumentsCount = argumentCount(expression)
+                    if (argumentsCount == functionDeclaration.valueParameters.size)
+                        return expression
+
+                    val (symbol, params) = parametersForCall(expression, data)
+                    val descriptor = symbol.descriptor
+                    val declaration = symbol.owner
+
+                    for (i in 0 until expression.typeArgumentsCount) {
+                        log { "$descriptor [$i]: $expression.getTypeArgument(i)" }
+                    }
+                    declaration.typeParameters.forEach { log { "$declaration[${it.index}] : $it" } }
+
+                    return IrCallImpl(
+                        startOffset = expression.startOffset,
+                        endOffset = expression.endOffset,
+                        type = symbol.owner.returnType,
+                        symbol = symbol,
+                        descriptor = descriptor,
+                        typeArgumentsCount = expression.typeArgumentsCount
+                    )
+                        .apply {
+                            this.copyTypeArgumentsFrom(expression)
+
+                            params.forEach {
+                                log { "call::params@${it.first.index}/${it.first.name.asString()}: ${ir2string(it.second)}" }
+                                putValueArgument(it.first.index, it.second)
+                            }
+
+                            dispatchReceiver = expression.dispatchReceiver
+                            extensionReceiver = expression.extensionReceiver
+
+                            log { "call::extension@: ${ir2string(expression.extensionReceiver)}" }
+                            log { "call::dispatch@: ${ir2string(expression.dispatchReceiver)}" }
+                        }
+                }
+
+                private fun IrFunction.findSuperMethodWithDefaultArguments(): IrFunction? {
+                    if (!needsDefaultArgumentsLowering(skipInline)) return null
+
+                    if (this !is IrSimpleFunction) return this
+
+                    for (s in overriddenSymbols) {
+                        s.owner.findSuperMethodWithDefaultArguments()?.let { return it }
+                    }
+
+                    return this
+                }
+
+                private fun parametersForCall(expression: IrFunctionAccessExpression, container: IrElement): Pair<IrFunctionSymbol, List<Pair<IrValueParameter, IrExpression?>>> {
+                    val declaration = expression.symbol.owner
+
+                    val keyFunction = declaration.findSuperMethodWithDefaultArguments()!!
+                    val realFunction =
+                        keyFunction.generateDefaultsFunction(context, DECLARATION_ORIGIN_FUNCTION_FOR_DEFAULT_PARAMETER, skipInline)
+
+                    log { "$declaration -> $realFunction" }
+                    val maskValues = Array((declaration.valueParameters.size + 31) / 32) { 0 }
+                    val params = mutableListOf<Pair<IrValueParameter, IrExpression?>>()
+                    params += declaration.valueParameters.mapIndexed { i, _ ->
+                        val valueArgument = expression.getValueArgument(i)
+                        if (valueArgument == null) {
+                            val maskIndex = i / 32
+                            maskValues[maskIndex] = maskValues[maskIndex] or (1 shl (i % 32))
+                        }
+                        val valueParameterDeclaration = realFunction.valueParameters[i]
+                        val defaultValueArgument = if (valueParameterDeclaration.varargElementType != null) {
+                            null
+                        } else {
+                            nullConst(expression, realFunction.valueParameters[i].type)
+                        }
+                        valueParameterDeclaration to (valueArgument ?: defaultValueArgument)
+                    }
+
+                    maskValues.forEachIndexed { i, maskValue ->
+                        params += maskParameterDeclaration(realFunction, i) to IrConstImpl.int(
+                            startOffset = container.startOffset,
+                            endOffset = container.endOffset,
+                            type = context.irBuiltIns.intType,
+                            value = maskValue
+                        )
+                    }
+                    if (expression.symbol is IrConstructorSymbol) {
+                        val defaultArgumentMarker = context.ir.symbols.defaultConstructorMarker
+                        params += markerParameterDeclaration(realFunction) to IrGetObjectValueImpl(
+                            startOffset = container.startOffset,
+                            endOffset = container.endOffset,
+                            type = defaultArgumentMarker.owner.defaultType,
+                            symbol = defaultArgumentMarker
+                        )
+                    } else if (context.ir.shouldGenerateHandlerParameterForDefaultBodyFun()) {
+                        params += realFunction.valueParameters.last() to
+                                IrConstImpl.constNull(container.startOffset, container.endOffset, context.irBuiltIns.nothingNType)
+                    }
+                    params.forEach {
+                        log { "descriptor::${realFunction.name.asString()}#${it.first.index}: ${it.first.name.asString()}" }
+                    }
+                    return Pair(realFunction.symbol, params)
+                }
+
+                private fun argumentCount(expression: IrMemberAccessExpression): Int {
+                    var result = 0
+                    for (i in 0 until expression.valueArgumentsCount) {
+                        expression.getValueArgument(i)?.run { ++result }
+                    }
+                    return result
+                }
             }
-        })
+        }, null)
     }
 
     protected open fun nullConst(expression: IrElement, type: IrType) = when {
