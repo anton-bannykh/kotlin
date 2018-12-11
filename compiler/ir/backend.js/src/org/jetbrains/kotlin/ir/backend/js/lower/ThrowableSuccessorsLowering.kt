@@ -26,6 +26,7 @@ import org.jetbrains.kotlin.ir.types.makeNullable
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.isThrowable
 import org.jetbrains.kotlin.ir.util.isThrowableTypeOrSubtype
+import org.jetbrains.kotlin.ir.util.transformFlat
 import org.jetbrains.kotlin.ir.visitors.*
 import org.jetbrains.kotlin.name.Name
 
@@ -145,12 +146,25 @@ class ThrowableSuccessorsLowering(context: JsIrBackendContext) : FileLoweringPas
             if (isDirectChildOfThrowable(declaration)) {
                 val messageField = createBackingField(declaration, messagePropertyName, messageGetter.returnType)
                 val causeField = createBackingField(declaration, causePropertyName, causeGetter.returnType)
+
                 val existedMessageAccessor = ownPropertyAccessor(declaration, messageGetter)
-                if (existedMessageAccessor.origin == IrDeclarationOrigin.FAKE_OVERRIDE)
+                val newMessageAccessor = if (existedMessageAccessor.origin == IrDeclarationOrigin.FAKE_OVERRIDE) {
                     createPropertyAccessor(existedMessageAccessor, messageField)
+                } else existedMessageAccessor
+
                 val existedCauseAccessor = ownPropertyAccessor(declaration, causeGetter)
-                if (existedCauseAccessor.origin == IrDeclarationOrigin.FAKE_OVERRIDE)
+                val newCauseAccessor = if (existedCauseAccessor.origin == IrDeclarationOrigin.FAKE_OVERRIDE) {
                     createPropertyAccessor(existedCauseAccessor, causeField)
+                } else existedCauseAccessor
+
+
+                declaration.declarations.transformFlat {
+                    when (it) {
+                        existedMessageAccessor -> listOf(newMessageAccessor)
+                        existedCauseAccessor -> listOf(newCauseAccessor)
+                        else -> null
+                    }
+                }
 
                 pendingSuperUsages += DirectThrowableSuccessors(declaration, messageField, causeField)
             }
@@ -179,7 +193,7 @@ class ThrowableSuccessorsLowering(context: JsIrBackendContext) : FileLoweringPas
             return fieldDeclaration
         }
 
-        private fun createPropertyAccessor(fakeAccessor: IrSimpleFunction, field: IrField) {
+        private fun createPropertyAccessor(fakeAccessor: IrSimpleFunction, field: IrField): IrSimpleFunction {
             val name = fakeAccessor.name
             val function = JsIrBuilder.buildFunction(name, fakeAccessor.returnType, fakeAccessor.parent).apply {
                 overriddenSymbols += fakeAccessor.overriddenSymbols
@@ -192,7 +206,8 @@ class ThrowableSuccessorsLowering(context: JsIrBackendContext) : FileLoweringPas
             val returnStatement = JsIrBuilder.buildReturn(function.symbol, returnValue, nothingType)
             function.body = JsIrBuilder.buildBlockBody(listOf(returnStatement))
 
-            fakeAccessor.correspondingProperty?.getter = function
+            return function
+//            fakeAccessor.correspondingProperty?.getter = function
         }
     }
 
@@ -313,7 +328,8 @@ class ThrowableSuccessorsLowering(context: JsIrBackendContext) : FileLoweringPas
     private fun isDirectChildOfThrowable(irClass: IrClass) = irClass.superTypes.any { it.isThrowable() }
     private fun ownPropertyAccessor(irClass: IrClass, irBase: IrFunction) =
         irClass.declarations.filterIsInstance<IrProperty>().mapNotNull { it.getter }
-            .single { it.overriddenSymbols.any { s -> s.owner == irBase } }
+            .singleOrNull { it.overriddenSymbols.any { s -> s.owner == irBase } }
+            ?: irClass.declarations.filterIsInstance<IrSimpleFunction>().single { it.overriddenSymbols.any { s -> s.owner == irBase } }
 
     inner class ThrowablePropertiesUsageTransformer : IrElementTransformerVoid() {
         override fun visitCall(expression: IrCall): IrExpression {
