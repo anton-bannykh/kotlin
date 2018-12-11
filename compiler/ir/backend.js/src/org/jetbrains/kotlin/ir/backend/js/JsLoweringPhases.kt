@@ -343,28 +343,33 @@ val jsPhases = listOf(
     LateinitLoweringPhase,
     ModuleCopyingPhase,
     FunctionInliningPhase,
-    RemoveInlineFunctionsWithReifiedTypeParametersLoweringPhase,
-    ThrowableSuccessorsLoweringPhase,
+    RemoveInlineFunctionsWithReifiedTypeParametersLoweringPhase, //
     TailrecLoweringPhase,
-    UnitMaterializationLoweringPhase,
-    EnumClassLoweringPhase,
-    EnumUsageLoweringPhase,
+    UnitMaterializationLoweringPhase,  //?
     SharedVariablesLoweringPhase,
-    ReturnableBlockLoweringPhase,
-    LocalDelegatedPropertiesLoweringPhase,
+    LocalDelegatedPropertiesLoweringPhase, // !
     LocalDeclarationsLoweringPhase,
     InnerClassesLoweringPhase,
     InnerClassConstructorCallsLoweringPhase,
     SuspendFunctionsLoweringPhase,
-    PrivateMembersLoweringPhase,
+    PrivateMembersLoweringPhase, // *
     CallableReferenceLoweringPhase,
     DefaultArgumentStubGeneratorPhase,
     DefaultParameterInjectorPhase,
     DefaultParameterCleanerPhase,
-    JsDefaultCallbackGeneratorPhase,
-    VarargLoweringPhase,
+    JsDefaultCallbackGeneratorPhase, // *
     PropertiesLoweringPhase,
-    InitializersLoweringPhase,
+
+
+    // JS-specific lowerings
+
+    EnumClassLoweringPhase, //
+    EnumUsageLoweringPhase, //
+    InitializersLoweringPhase, // make common?
+    ThrowableSuccessorsLoweringPhase, //
+    ReturnableBlockLoweringPhase,  //
+    VarargLoweringPhase,  //
+
     MultipleCatchesLoweringPhase,
     BridgesConstructionPhase,
     TypeOperatorLoweringPhase,
