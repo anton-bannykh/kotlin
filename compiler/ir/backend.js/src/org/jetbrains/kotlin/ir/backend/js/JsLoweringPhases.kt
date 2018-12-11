@@ -318,33 +318,38 @@ private val IrToJsPhase = makeJsPhase(
 
 val jsPhases = listOf(
     IrModuleStartPhase,
-    MoveExternalDeclarationsToSeparatePlacePhase,
+    MoveExternalDeclarationsToSeparatePlacePhase, //
     ExpectDeclarationsRemovingPhase,
     CoroutineIntrinsicLoweringPhase,
     ArrayInlineConstructorLoweringPhase,
     LateinitLoweringPhase,
     ModuleCopyingPhase,
     FunctionInliningPhase,
-    RemoveInlineFunctionsWithReifiedTypeParametersLoweringPhase,
-    ThrowableSuccessorsLoweringPhase,
+    RemoveInlineFunctionsWithReifiedTypeParametersLoweringPhase, //
     TailrecLoweringPhase,
-    UnitMaterializationLoweringPhase,
-    EnumClassLoweringPhase,
-    EnumUsageLoweringPhase,
+    UnitMaterializationLoweringPhase,  //?
     SharedVariablesLoweringPhase,
-    ReturnableBlockLoweringPhase,
-    LocalDelegatedPropertiesLoweringPhase,
+    LocalDelegatedPropertiesLoweringPhase, // !
     LocalDeclarationsLoweringPhase,
     InnerClassesLoweringPhase,
     InnerClassConstructorCallsLoweringPhase,
-    SuspendFunctionsLoweringPhase,
-    CallableReferenceLoweringPhase,
+    SuspendFunctionsLoweringPhase, //!
+    CallableReferenceLoweringPhase, //!
     DefaultArgumentStubGeneratorPhase,
     DefaultParameterInjectorPhase,
     DefaultParameterCleanerPhase,
-    VarargLoweringPhase,
     PropertiesLoweringPhase,
-    InitializersLoweringPhase,
+
+
+    // JS-specific lowerings
+
+    EnumClassLoweringPhase, //
+    EnumUsageLoweringPhase, //
+    InitializersLoweringPhase, // make common?
+    ThrowableSuccessorsLoweringPhase, //
+    ReturnableBlockLoweringPhase,  //
+    VarargLoweringPhase,  //
+
     MultipleCatchesLoweringPhase,
     BridgesConstructionPhase,
     TypeOperatorLoweringPhase,
