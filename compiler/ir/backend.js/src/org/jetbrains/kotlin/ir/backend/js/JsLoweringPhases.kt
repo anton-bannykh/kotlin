@@ -76,8 +76,7 @@ private val LateinitLoweringPhase = makeJsPhase(
 private val ModuleCopyingPhase = makeJsPhase(
     { context, module -> context.moduleFragmentCopy = module.deepCopyWithSymbols() },
     name = "ModuleCopying",
-    description = "<Supposed to be removed> Copy current module to make it accessible from different one",
-    prerequisite = setOf(LateinitLoweringPhase)
+    description = "<Supposed to be removed> Copy current module to make it accessible from different one"
 )
 
 private val FunctionInliningPhase = makeJsPhase(
@@ -88,7 +87,7 @@ private val FunctionInliningPhase = makeJsPhase(
     },
     name = "FunctionInliningPhase",
     description = "Perform function inlining",
-    prerequisite = setOf(ModuleCopyingPhase, LateinitLoweringPhase, ArrayInlineConstructorLoweringPhase, CoroutineIntrinsicLoweringPhase)
+    prerequisite = setOf(ModuleCopyingPhase, ArrayInlineConstructorLoweringPhase, CoroutineIntrinsicLoweringPhase)
 )
 
 private val RemoveInlineFunctionsWithReifiedTypeParametersLoweringPhase = makeJsPhase(
@@ -318,31 +317,31 @@ private val IrToJsPhase = makeJsPhase(
 
 val jsPhases = listOf(
     IrModuleStartPhase,
-    MoveExternalDeclarationsToSeparatePlacePhase, //
-    ExpectDeclarationsRemovingPhase,
+    ExpectDeclarationsRemovingPhase,  // *
     CoroutineIntrinsicLoweringPhase,
     ArrayInlineConstructorLoweringPhase,
-    LateinitLoweringPhase,
-    ModuleCopyingPhase,
-    FunctionInliningPhase,
-    RemoveInlineFunctionsWithReifiedTypeParametersLoweringPhase, //
-    TailrecLoweringPhase,
-    UnitMaterializationLoweringPhase,  //?
-    SharedVariablesLoweringPhase,
-    LocalDelegatedPropertiesLoweringPhase, // !
-    LocalDeclarationsLoweringPhase,
-    InnerClassesLoweringPhase,
-    InnerClassConstructorCallsLoweringPhase,
-    SuspendFunctionsLoweringPhase, //!
-    CallableReferenceLoweringPhase, //!
-    DefaultArgumentStubGeneratorPhase,
-    DefaultParameterInjectorPhase,
-    DefaultParameterCleanerPhase,
-    PropertiesLoweringPhase,
+    ModuleCopyingPhase, // keep
+    FunctionInliningPhase, // *
+    LateinitLoweringPhase, // *
+    TailrecLoweringPhase, // *
+    UnitMaterializationLoweringPhase,  // move
+    SharedVariablesLoweringPhase, // *
+    LocalDelegatedPropertiesLoweringPhase, // may keep - discuss
+    LocalDeclarationsLoweringPhase, // *
+    InnerClassesLoweringPhase, // *
+    InnerClassConstructorCallsLoweringPhase, // *
+    SuspendFunctionsLoweringPhase, // move
+    CallableReferenceLoweringPhase, // move
+    DefaultArgumentStubGeneratorPhase, // *
+    DefaultParameterInjectorPhase, // *
+    DefaultParameterCleanerPhase, // *
+    PropertiesLoweringPhase, // *
 
 
     // JS-specific lowerings
 
+    MoveExternalDeclarationsToSeparatePlacePhase, //
+    RemoveInlineFunctionsWithReifiedTypeParametersLoweringPhase, // move
     EnumClassLoweringPhase, //
     EnumUsageLoweringPhase, //
     InitializersLoweringPhase, // make common?

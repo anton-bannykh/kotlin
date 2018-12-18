@@ -192,7 +192,7 @@ fun IrConstructor.callsSuper(irBuiltIns: IrBuiltIns): Boolean {
     val constructedClass = parent as IrClass
     val superClass = constructedClass.superTypes
         .mapNotNull { it as? IrSimpleType }
-        .firstOrNull { (it.classifier.owner as IrClass).run { kind == ClassKind.CLASS || kind == ClassKind.ANNOTATION_CLASS || kind == ClassKind.ANNOTATION_CLASS } }
+        .firstOrNull { (it.classifier.owner as IrClass).run { kind == ClassKind.CLASS || kind == ClassKind.ANNOTATION_CLASS || kind == ClassKind.ANNOTATION_CLASS || kind == ClassKind.ENUM_CLASS } }
         ?: irBuiltIns.anyType
     var callsSuper = false
     var numberOfCalls = 0
@@ -206,6 +206,19 @@ fun IrConstructor.callsSuper(irBuiltIns: IrBuiltIns): Boolean {
         }
 
         override fun visitDelegatingConstructorCall(expression: IrDelegatingConstructorCall) {
+            assert(++numberOfCalls == 1) { "More than one delegating constructor call: ${symbol.owner}" }
+            val delegatingClass = expression.symbol.owner.parent as IrClass
+            // TODO: figure out why Lazy IR multiplies Declarations for descriptors and fix it
+            if (delegatingClass.descriptor == superClass.classifierOrFail.descriptor)
+                callsSuper = true
+            else if (delegatingClass.descriptor != constructedClass.descriptor)
+                throw AssertionError(
+                    "Expected either call to another constructor of the class being constructed or" +
+                            " call to super class constructor. But was: $delegatingClass"
+                )
+        }
+
+        override fun visitEnumConstructorCall(expression: IrEnumConstructorCall) {
             assert(++numberOfCalls == 1) { "More than one delegating constructor call: ${symbol.owner}" }
             val delegatingClass = expression.symbol.owner.parent as IrClass
             // TODO: figure out why Lazy IR multiplies Declarations for descriptors and fix it

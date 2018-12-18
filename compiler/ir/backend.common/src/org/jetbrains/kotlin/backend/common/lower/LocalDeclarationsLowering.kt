@@ -91,6 +91,7 @@ class LocalDeclarationsLowering(
                 is IrProperty -> LocalDeclarationsTransformer(memberDeclaration).lowerLocalDeclarations()
                 is IrField -> LocalDeclarationsTransformer(memberDeclaration).lowerLocalDeclarations()
                 is IrAnonymousInitializer -> LocalDeclarationsTransformer(memberDeclaration).lowerLocalDeclarations()
+                is IrEnumEntry -> LocalDeclarationsTransformer(memberDeclaration).lowerLocalDeclarations()
                 // TODO: visit children as well
                 else -> null
             }
@@ -395,7 +396,9 @@ class LocalDeclarationsLowering(
                 .filter { it.declaration.callsSuper(context.irBuiltIns) }
                 .toList()
 
-            assert(constructorsCallingSuper.any()) { "Expected at least one constructor calling super; class: $irClass" }
+            assert(constructorsCallingSuper.any()) {
+                "Expected at least one constructor calling super; class: $irClass"
+            }
 
             localClassContext.capturedValueToField.forEach { capturedValue, field ->
                 val startOffset = irClass.startOffset
