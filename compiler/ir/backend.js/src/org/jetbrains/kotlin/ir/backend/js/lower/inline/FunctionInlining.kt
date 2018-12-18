@@ -155,11 +155,12 @@ internal class FunctionInlining(val context: Context): IrElementTransformerWithC
         val functionDescriptor = callSite.descriptor
         if (!functionDescriptor.needsInlining) return callSite                                // This call does not need inlining.
 
+        if (callSite.symbol == context.ir.symbols.lateinitIsInitializedPropertyGetter) return callSite
+
         val callee = getFunctionDeclaration(callSite)                            // Get declaration of the function to be inlined.
         if (callee == null) {                                                  // We failed to get the declaration.
             val message = "Inliner failed to obtain function declaration: " +
                     functionDescriptor.fqNameSafe.toString()
-            callee
             context.reportWarning(message, currentFile, callSite)                             // Report warning.
             return callSite
         }
