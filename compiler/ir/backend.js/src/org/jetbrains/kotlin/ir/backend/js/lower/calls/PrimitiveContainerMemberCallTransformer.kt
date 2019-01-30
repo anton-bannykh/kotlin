@@ -65,7 +65,8 @@ class PrimitiveContainerMemberCallTransformer(private val context: JsIrBackendCo
 }
 
 private val IrClassSymbol.sizeProperty
-    get() = owner.declarations.filterIsInstance<IrProperty>().first { it.name.asString() == "size" }.getter!!.symbol
+    get() = owner.declarations.filterIsInstance<IrProperty>().firstOrNull { it.name.asString() == "size" }?.getter?.symbol
+        ?: owner.declarations.filterIsInstance<IrFunction>().first { it.name.asString() == "<get-size>" }.symbol
 
 private val IrClassSymbol.getFunction
     get() = owner.declarations.filterIsInstance<IrFunction>().first { it.name.asString() == "get" }.symbol
@@ -80,7 +81,8 @@ private val IrClassSymbol.sizeConstructor
     get() = owner.declarations.filterIsInstance<IrConstructor>().first { it.valueParameters.size == 1 }.symbol
 
 private val IrClassSymbol.lengthProperty
-    get() = owner.declarations.filterIsInstance<IrProperty>().first { it.name.asString() == "length" }.getter!!.symbol
+    get() = owner.declarations.filterIsInstance<IrProperty>().firstOrNull { it.name.asString() == "length" }?.getter?.symbol
+        ?: owner.declarations.filterIsInstance<IrFunction>().first { it.name.asString() == "<get-length>" }.symbol
 
 private val IrClassSymbol.subSequence
     get() = owner.declarations.filterIsInstance<IrFunction>().single { it.name.asString() == "subSequence" }.symbol
