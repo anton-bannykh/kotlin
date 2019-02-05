@@ -238,6 +238,10 @@ class TypeOperatorLowering(val context: JsIrBackendContext) : FileLoweringPass {
                 }
                 val typeParameter = typeParameterSymbol.owner
 
+                if (typeParameter.isReified) {
+                    println("Botva!")
+                }
+
                 assert(!typeParameter.isReified) { "reified parameters have to be lowered before" }
                 return typeParameter.superTypes.fold(litTrue) { r, t ->
                     val check = generateTypeCheckNonNull(argument.copy(), t.makeNotNull())

@@ -345,6 +345,9 @@ val jsPhases = listOf(
     UnitMaterializationLoweringPhase,  // move
     SharedVariablesLoweringPhase, // *
     LocalDelegatedPropertiesLoweringPhase, // may keep - discuss
+
+    RemoveInlineFunctionsWithReifiedTypeParametersLoweringPhase, // move
+
     LocalDeclarationsLoweringPhase, // *
     InnerClassesLoweringPhase, // *
     InnerClassConstructorCallsLoweringPhase, // *
@@ -361,7 +364,7 @@ val jsPhases = listOf(
     // JS-specific lowerings
 
     MoveBodilessDeclarationsToSeparatePlacePhase, //
-    RemoveInlineFunctionsWithReifiedTypeParametersLoweringPhase, // move
+
     EnumClassLoweringPhase, //
     EnumUsageLoweringPhase, //
     InitializersLoweringPhase, // make common?
