@@ -17,11 +17,13 @@ import java.io.File
 
 private val fullRuntimeKlibPath = "js/js.translator/testData/out/klibs/runtimeFull/"
 private val defaultRuntimeKlibPath = "js/js.translator/testData/out/klibs/runtimeDefault/"
+private val kotlinTestKlibPath = "js/js.translator/testData/out/klibs/kotlin.test/"
 
 private val JS_IR_RUNTIME_MODULE_NAME = "JS_IR_RUNTIME"
 
 private val fullRuntimeKlib = KlibModuleRef(JS_IR_RUNTIME_MODULE_NAME, fullRuntimeKlibPath)
 private val defaultRuntimeKlib = KlibModuleRef(JS_IR_RUNTIME_MODULE_NAME, defaultRuntimeKlibPath)
+private val kotlinTestKLib = KlibModuleRef("kotlin.test", kotlinTestKlibPath)
 
 abstract class BasicIrBoxTest(
     pathToTestDir: String,
@@ -90,11 +92,11 @@ abstract class BasicIrBoxTest(
         val transitiveLibraries = config.configuration[JSConfigurationKeys.TRANSITIVE_LIBRARIES]!!.map { File(it).name }
 
         // TODO: Add proper depencencies
-        val dependencies = listOf(runtimeKlib) + libraries.map {
+        val dependencies = listOf(runtimeKlib, kotlinTestKLib) + libraries.map {
             compilationCache[it] ?: error("Can't find compiled module for dependency $it")
         }
 
-        val allDependencies = listOf(runtimeKlib) + transitiveLibraries.map {
+        val allDependencies = listOf(runtimeKlib, kotlinTestKLib) + transitiveLibraries.map {
             compilationCache[it] ?: error("Can't find compiled module for dependency $it")
         }
 

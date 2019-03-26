@@ -21,16 +21,19 @@ sourceSets {
     "test" { projectDefault() }
 }
 
-val generateIrRuntimeKlib by task<NoDebugJavaExec> {
-    val inDirs = arrayOf(fileFrom(rootDir, "core", "builtins", "src"),
-                         fileFrom(rootDir, "core", "builtins", "native"),
-                         fileFrom(rootDir, "libraries", "stdlib", "common", "src"),
-                         fileFrom(rootDir, "libraries", "stdlib", "src", "kotlin"),
-                         fileFrom(rootDir, "libraries", "stdlib", "js", "src", "generated"),
-                         fileFrom(rootDir, "libraries", "stdlib", "js", "irRuntime"),
-                         fileFrom(rootDir, "libraries", "stdlib", "unsigned"),
-                         fileFrom(rootDir, "js", "js.translator", "testData", "_commonFiles"))
-    inDirs.forEach { inputs.dir(it) }
+val generateIrRuntimeKlib by task<NoDebugJavaExec> { 
+    val inDirs = arrayOf("core/builtins/src",
+                         "core/builtins/native",
+                         "libraries/stdlib/common/src",
+                         "libraries/stdlib/src/kotlin",
+                         "libraries/stdlib/js/src/generated",
+                         "libraries/stdlib/js/irRuntime",
+                         "libraries/stdlib/unsigned",
+                         "js/js.translator/testData/_commonFiles",
+                         "libraries/kotlin.test/annotations-common/src/main",
+                         "libraries/kotlin.test/common/src/main",
+                         "libraries/kotlin.test/js/src/main")
+    inDirs.forEach { inputs.dir("$rootDir/$it") }
 
     val outDir = "$rootDir/js/js.translator/testData/out/klibs/"
     outputs.dir(outDir)

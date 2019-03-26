@@ -17,9 +17,9 @@ import com.intellij.openapi.Disposable
 import org.jetbrains.kotlin.cli.jvm.compiler.EnvironmentConfigFiles
 import org.jetbrains.kotlin.cli.jvm.compiler.KotlinCoreEnvironment
 
-fun buildConfiguration(environment: KotlinCoreEnvironment): CompilerConfiguration {
+fun buildConfiguration(environment: KotlinCoreEnvironment, moduleName: String): CompilerConfiguration {
     val runtimeConfiguration = environment.configuration.copy()
-    runtimeConfiguration.put(CommonConfigurationKeys.MODULE_NAME, "JS_IR_RUNTIME")
+    runtimeConfiguration.put(CommonConfigurationKeys.MODULE_NAME, moduleName)
     runtimeConfiguration.put(JSConfigurationKeys.MODULE_KIND, ModuleKind.PLAIN)
 
     runtimeConfiguration.languageVersionSettings = LanguageVersionSettingsImpl(
@@ -39,6 +39,7 @@ fun buildConfiguration(environment: KotlinCoreEnvironment): CompilerConfiguratio
 
 private val fullRuntimeKlibPath = "js/js.translator/testData/out/klibs/runtimeFull/"
 private val defaultRuntimeKlibPath = "js/js.translator/testData/out/klibs/runtimeDefault/"
+private val kotlinTestKlibPath = "js/js.translator/testData/out/klibs/kotlin.test/"
 
 fun main() {
 
@@ -54,17 +55,18 @@ fun main() {
     }
 
 
-    fun buildKlib(sources: List<String>, outputPath: String) {
-        generateKLib(
+    fun buildKlib(moduleName: String, sources: List<String>, outputPath: String, vararg dependencies: KlibModuleRef): KlibModuleRef {
+        return generateKLib(
             project = environment.project,
             files = sources.map(::createPsiFile),
-            configuration = buildConfiguration(environment),
-            immediateDependencies = emptyList(),
-            allDependencies = emptyList(),
+            configuration = buildConfiguration(environment, moduleName),
+            immediateDependencies = dependencies.toList(),
+            allDependencies = dependencies.toList(),
             outputKlibPath = outputPath
         )
     }
 
-    buildKlib(JsIrTestRuntime.FULL.sources, fullRuntimeKlibPath)
-    buildKlib(JsIrTestRuntime.DEFAULT.sources, defaultRuntimeKlibPath)
+    val fullRuntime = buildKlib("JS_IR_RUNTIME", JsIrTestRuntime.FULL.sources, fullRuntimeKlibPath)
+    buildKlib("JS_IR_RUNTIME", JsIrTestRuntime.DEFAULT.sources, defaultRuntimeKlibPath)
+    buildKlib("kotlin.test", JsIrTestRuntime.KOTLIN_TEST.sources, kotlinTestKlibPath, fullRuntime)
 }

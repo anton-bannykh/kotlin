@@ -24,6 +24,12 @@ enum class JsIrTestRuntime(
     FULL(
         sources = fullRuntimeSources,
         path = "$runtimeDir/testRuntimeFull.js"
+    ),
+
+    // Includes almost full stdlib
+    KOTLIN_TEST(
+        sources = kotlinTestSources,
+        path = "$runtimeDir/kotlinTest.js"
     )
 }
 
@@ -114,7 +120,10 @@ private val fullRuntimeSources = listOfKtFilesFrom(
     "libraries/stdlib/js/src/kotlin/collections/utils.kt",
 
     // TODO: Remove stub
-    "libraries/stdlib/js/src/kotlin/builtins.kt"
+    "libraries/stdlib/js/src/kotlin/builtins.kt",
+
+    // Expect declarations get thrown away and libraries/kotlin.test/common/src/main/kotlin/kotlin/test/Assertions.kt doesn't compile
+    "libraries/stdlib/common/src/kotlin/NativeAnnotationsH.kt"
 )
 
 private val reducedRuntimeSources = fullRuntimeSources - listOfKtFilesFrom(
@@ -164,6 +173,12 @@ private val reducedRuntimeSources = fullRuntimeSources - listOfKtFilesFrom(
     "libraries/stdlib/src/kotlin/util/Tuples.kt"
 ) + listOfKtFilesFrom(
     "libraries/stdlib/js/irRuntime/smallRuntimeMissingDeclarations.kt"
+)
+
+private val kotlinTestSources = listOfKtFilesFrom(
+    "libraries/kotlin.test/annotations-common/src/main",
+    "libraries/kotlin.test/common/src/main",
+    "libraries/kotlin.test/js/src/main"
 )
 
 private fun listOfKtFilesFrom(vararg paths: String): List<String> {
