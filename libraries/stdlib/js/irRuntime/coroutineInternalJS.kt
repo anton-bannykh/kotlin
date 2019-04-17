@@ -15,7 +15,8 @@ internal fun <T> getContinuation(): ContinuationAlias<T> { throw Exception("Impl
 
 @PublishedApi
 internal suspend fun <T> returnIfSuspended(@Suppress("UNUSED_PARAMETER") argument: Any?): T {
-    throw Exception("Implemented as intrinsic")
+    return argument as T
+//    throw Exception("Implemented as intrinsic")
 }
 
 @PublishedApi

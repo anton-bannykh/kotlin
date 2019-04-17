@@ -60,12 +60,12 @@ internal class FunctionInlining(val context: Context): IrElementTransformerVoidW
                 return callSite
             // Handle coroutine intrinsics
             // TODO These should actually be inlined.
-            callSite.descriptor.isBuiltInIntercepted(languageVersionSettings) ->
-                error("Continuation.intercepted is not available with release coroutines")
-            callSite.symbol.descriptor.isBuiltInSuspendCoroutineUninterceptedOrReturn(languageVersionSettings) ->
-                return irCall(callSite, context.coroutineSuspendOrReturn)
-            callSite.symbol == context.intrinsics.jsCoroutineContext ->
-                return irCall(callSite, context.coroutineGetContextJs)
+//            callSite.descriptor.isBuiltInIntercepted(languageVersionSettings) ->
+//                error("Continuation.intercepted is not available with release coroutines")
+//            callSite.symbol.descriptor.isBuiltInSuspendCoroutineUninterceptedOrReturn(languageVersionSettings) ->
+//                return irCall(callSite, context.coroutineSuspendOrReturn)
+//            callSite.symbol == context.intrinsics.jsCoroutineContext ->
+//                return irCall(callSite, context.coroutineGetContextJs)
         }
 
         val callee = getFunctionDeclaration(callSite.symbol)                   // Get declaration of the function to be inlined.
@@ -81,14 +81,14 @@ internal class FunctionInlining(val context: Context): IrElementTransformerVoidW
         val languageVersionSettings = context.configuration.languageVersionSettings
         // TODO: Remove these hacks when coroutine intrinsics are fixed.
         return when {
-//            descriptor.isBuiltInIntercepted(languageVersionSettings) ->
-//                error("Continuation.intercepted is not available with release coroutines")
-//
-//            descriptor.isBuiltInSuspendCoroutineUninterceptedOrReturn(languageVersionSettings) ->
-//                context.ir.symbols.konanSuspendCoroutineUninterceptedOrReturn.owner
-//
-//            descriptor == context.ir.symbols.coroutineContextGetter ->
-//                context.ir.symbols.konanCoroutineContextGetter.owner
+            descriptor.isBuiltInIntercepted(languageVersionSettings) ->
+                error("Continuation.intercepted is not available with release coroutines")
+
+            descriptor.isBuiltInSuspendCoroutineUninterceptedOrReturn(languageVersionSettings) ->
+                context.coroutineSuspendOrReturn.owner
+
+            symbol == context.intrinsics.jsCoroutineContext ->
+                context.coroutineGetContextJs.owner
 
             else -> (symbol.owner as? IrSimpleFunction)?.resolveFakeOverride() ?: symbol.owner
         }
