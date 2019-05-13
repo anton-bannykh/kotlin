@@ -7,16 +7,15 @@ package org.jetbrains.kotlin.ir.backend.js.lower
 
 import org.jetbrains.kotlin.backend.common.FileLoweringPass
 import org.jetbrains.kotlin.backend.common.ir.addChild
-import org.jetbrains.kotlin.descriptors.PackageFragmentDescriptor
+import org.jetbrains.kotlin.descriptors.impl.EmptyPackageFragmentDescriptor
 import org.jetbrains.kotlin.ir.backend.js.JsIrBackendContext
 import org.jetbrains.kotlin.ir.backend.js.utils.getJsModule
 import org.jetbrains.kotlin.ir.backend.js.utils.getJsQualifier
 import org.jetbrains.kotlin.ir.declarations.*
-import org.jetbrains.kotlin.ir.declarations.impl.IrExternalPackageFragmentImpl
-import org.jetbrains.kotlin.ir.symbols.IrExternalPackageFragmentSymbol
+import org.jetbrains.kotlin.ir.declarations.impl.IrFileImpl
+import org.jetbrains.kotlin.ir.symbols.impl.IrFileSymbolImpl
 import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
 import org.jetbrains.kotlin.ir.util.isEffectivelyExternal
-import org.jetbrains.kotlin.ir.util.transformFlat
 import org.jetbrains.kotlin.name.FqName
 
 private val BODILESS_BUILTIN_CLASSES = listOf(
@@ -41,42 +40,8 @@ private val BODILESS_BUILTIN_CLASSES = listOf(
     "kotlin.Function"
 ).map { FqName(it) }.toSet()
 
-private class DescriptorlessExternalPackageFragmentSymbol : IrExternalPackageFragmentSymbol {
-    override val descriptor: PackageFragmentDescriptor
-        get() = error("Operation is unsupported")
 
-    private var _owner: IrExternalPackageFragment? = null
-    override val owner get() = _owner!!
-
-    override val isBound get() = _owner != null
-
-    override fun bind(owner: IrExternalPackageFragment) {
-        _owner = owner
-    }
-}
-
-//class MoveBodilessDeclarationsToSeparatePlaceLowering(context: JsIrBackendContext): FileLoweringPass {
-//    override fun lower(irFile: IrFile) {
-//        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-//    }
-//
-//
-//}
-
-fun moveBodilessDeclarationsToSeparatePlace(context: JsIrBackendContext, module: IrModuleFragment) {
-    val externalPackageFragment = IrExternalPackageFragmentImpl(
-        DescriptorlessExternalPackageFragmentSymbol(),
-        FqName.ROOT
-    )
-
-    context.externalPackageFragment = externalPackageFragment
-
-    val bodilessBuiltInsPackageFragment = IrExternalPackageFragmentImpl(
-        DescriptorlessExternalPackageFragmentSymbol(),
-        FqName("kotlin")
-    )
-
-    context.bodilessBuiltInsPackageFragment = bodilessBuiltInsPackageFragment
+class MoveBodilessDeclarationsToSeparatePlaceLowering(private val context: JsIrBackendContext): FileLoweringPass {
 
     fun isBuiltInClass(declaration: IrDeclaration): Boolean =
         declaration is IrClass && declaration.fqNameWhenAvailable in BODILESS_BUILTIN_CLASSES
@@ -94,35 +59,36 @@ fun moveBodilessDeclarationsToSeparatePlace(context: JsIrBackendContext, module:
             nestedExternalClasses
     }
 
-    fun lowerFile(irFile: IrFile): IrFile? {
+    override fun lower(irFile: IrFile) {
         context.externalNestedClasses += collectExternalClasses(irFile, includeCurrentLevel = false)
 
         if (irFile.getJsModule() != null || irFile.getJsQualifier() != null) {
-            context.packageLevelJsModules.add(irFile)
-            return null
-        }
+            val newFragmentDescriptor = EmptyPackageFragmentDescriptor(context.module, irFile.fqName)
+            val newFragmentSymbol = IrFileSymbolImpl(newFragmentDescriptor)
+            val newFragment = IrFileImpl(irFile.fileEntry, newFragmentSymbol, (irFile as IrFileImpl).stageController)
+            newFragment.declarations += irFile.declarations
+            newFragment.annotations += irFile.annotations
 
-        irFile.declarations.transformFlat {
-            val d = it as? IrDeclarationWithName ?: return@transformFlat null
+            context.packageLevelJsModules.add(newFragment)
 
-            if (isBuiltInClass(d)) {
-                bodilessBuiltInsPackageFragment.addChild(d)
-                return@transformFlat emptyList()
-            } else if (d.isEffectivelyExternal()) {
-                if (d.getJsModule() != null)
-                    context.declarationLevelJsModules.add(d)
+            irFile.declarations.clear()
+        } else {
+            irFile.declarations.transformFlat {
+                val d = it as? IrDeclarationWithName ?: return@transformFlat null
 
-                externalPackageFragment.addChild(d)
-                return@transformFlat emptyList()
+                if (isBuiltInClass(d)) {
+                    context.bodilessBuiltInsPackageFragment.addChild(d)
+                    return@transformFlat emptyList()
+                } else if (d.isEffectivelyExternal()) {
+                    if (d.getJsModule() != null)
+                        context.declarationLevelJsModules.add(d)
+
+                    context.externalPackageFragment.addChild(d)
+                    return@transformFlat emptyList()
+                }
+
+                null
             }
-
-            null
         }
-
-        return irFile
-    }
-
-    module.files.transformFlat { irFile ->
-        listOfNotNull(lowerFile(irFile))
     }
 }

@@ -12,10 +12,7 @@ import org.jetbrains.kotlin.backend.common.ir.Symbols
 import org.jetbrains.kotlin.backend.js.JsDeclarationFactory
 import org.jetbrains.kotlin.builtins.PrimitiveType
 import org.jetbrains.kotlin.config.CompilerConfiguration
-import org.jetbrains.kotlin.descriptors.ClassDescriptor
-import org.jetbrains.kotlin.descriptors.ModuleDescriptor
-import org.jetbrains.kotlin.descriptors.PropertyDescriptor
-import org.jetbrains.kotlin.descriptors.SimpleFunctionDescriptor
+import org.jetbrains.kotlin.descriptors.*
 import org.jetbrains.kotlin.descriptors.impl.EmptyPackageFragmentDescriptor
 import org.jetbrains.kotlin.incremental.components.NoLookupLocation
 import org.jetbrains.kotlin.ir.IrElement
@@ -27,6 +24,7 @@ import org.jetbrains.kotlin.ir.backend.js.lower.CallableReferenceKey
 import org.jetbrains.kotlin.ir.backend.js.lower.ConstructorPair
 import org.jetbrains.kotlin.ir.backend.js.utils.OperatorNames
 import org.jetbrains.kotlin.ir.declarations.*
+import org.jetbrains.kotlin.ir.declarations.impl.IrExternalPackageFragmentImpl
 import org.jetbrains.kotlin.ir.declarations.impl.IrFileImpl
 import org.jetbrains.kotlin.ir.descriptors.IrBuiltIns
 import org.jetbrains.kotlin.ir.symbols.*
@@ -56,8 +54,29 @@ class JsIrBackendContext(
 
     override var inVerbosePhase: Boolean = false
 
-    lateinit var externalPackageFragment: IrPackageFragment
-    lateinit var bodilessBuiltInsPackageFragment: IrPackageFragment
+    private class DescriptorlessExternalPackageFragmentSymbol : IrExternalPackageFragmentSymbol {
+        override val descriptor: PackageFragmentDescriptor
+            get() = error("Operation is unsupported")
+
+        private var _owner: IrExternalPackageFragment? = null
+        override val owner get() = _owner!!
+
+        override val isBound get() = _owner != null
+
+        override fun bind(owner: IrExternalPackageFragment) {
+            _owner = owner
+        }
+    }
+
+    val externalPackageFragment: IrPackageFragment = IrExternalPackageFragmentImpl(
+        DescriptorlessExternalPackageFragmentSymbol(),
+        FqName.ROOT
+    )
+
+    val bodilessBuiltInsPackageFragment: IrPackageFragment  = IrExternalPackageFragmentImpl(
+        DescriptorlessExternalPackageFragmentSymbol(),
+        FqName("kotlin")
+    )
 
     val externalNestedClasses = mutableListOf<IrClass>()
     val packageLevelJsModules = mutableListOf<IrFile>()

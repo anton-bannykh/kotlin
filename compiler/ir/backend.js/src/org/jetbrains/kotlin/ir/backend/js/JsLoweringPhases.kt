@@ -17,7 +17,7 @@ import org.jetbrains.kotlin.ir.backend.js.lower.inline.RemoveInlineFunctionsLowe
 import org.jetbrains.kotlin.ir.backend.js.lower.inline.ReturnableBlockLowering
 import org.jetbrains.kotlin.ir.declarations.IrFile
 import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
-import org.jetbrains.kotlin.ir.declarations.stageController
+import org.jetbrains.kotlin.ir.declarations.calculateStageController
 import org.jetbrains.kotlin.ir.util.patchDeclarationParents
 
 private fun ClassLoweringPass.runOnFilesPostfix(moduleFragment: IrModuleFragment) = moduleFragment.files.forEach { runOnFilePostfix(it) }
@@ -64,10 +64,8 @@ private fun makeCustomJsModulePhase(
     }
 )
 
-private val moveBodilessDeclarationsToSeparatePlacePhase = makeCustomJsModulePhase(
-    { context, module ->
-        moveBodilessDeclarationsToSeparatePlace(context, module)
-    },
+private val moveBodilessDeclarationsToSeparatePlacePhase = makeJsModulePhase(
+    ::MoveBodilessDeclarationsToSeparatePlaceLowering,
     name = "MoveBodilessDeclarationsToSeparatePlace",
     description = "Move `external` and `built-in` declarations into separate place to make the following lowerings do not care about them"
 )
@@ -360,6 +358,8 @@ private val staticMembersLoweringPhase = makeJsModulePhase(
 )
 
 val perFilePhaseList = listOf(
+    listOf(expectDeclarationsRemovingPhase),
+    listOf(moveBodilessDeclarationsToSeparatePlacePhase),
     listOf(functionInliningPhase),
     listOf(removeInlineFunctionsLoweringPhase),
     listOf(lateinitLoweringPhase),
@@ -405,7 +405,7 @@ fun compositePhase(): CompilerPhase<JsIrBackendContext, IrFile, IrFile> {
             context: JsIrBackendContext,
             input: IrFile
         ): IrFile {
-            stageController.lowerUpTo(input, perFilePhaseList.size + 1)
+            calculateStageController.lowerUpTo(input, perFilePhaseList.size + 1)
             return input
         }
     }
@@ -420,13 +420,11 @@ val jsPerFileStages = performByIrFile(
 val jsPhases = namedIrModulePhase(
     name = "IrModuleLowering",
     description = "IR module lowering",
-    lower = expectDeclarationsRemovingPhase then
-            moveBodilessDeclarationsToSeparatePlacePhase then
-            jsPerFileStages
+    lower = jsPerFileStages
 )
 
 fun generateTests(context: JsIrBackendContext, moduleFragment: IrModuleFragment) {
-    context.stage = 0
+    context.stageController.currentStage = 0
     val generator = TestGenerator(context)
     moduleFragment.files.forEach {
         generator.lower(it)
@@ -435,10 +433,10 @@ fun generateTests(context: JsIrBackendContext, moduleFragment: IrModuleFragment)
     stageController.lowerUpTo(context.implicitDeclarationFile, perFilePhaseList.size + 1)
 }
 
-fun <T> JsIrBackendContext.withStage(stage: Int, fn: () -> T): T {
-    val currentStage = this.stage
-    this.stage = stage
-    val result = fn()
-    this.stage = currentStage
-    return result
-}
+//fun <T> JsIrBackendContext.withStage(stage: Int, fn: () -> T): T {
+//    val currentStage = this.stage
+//    this.stage = stage
+//    val result = fn()
+//    this.stage = currentStage
+//    return result
+//}
