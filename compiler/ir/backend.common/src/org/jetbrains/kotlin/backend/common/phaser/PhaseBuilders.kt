@@ -21,7 +21,7 @@ private class CompositePhase<Context : CommonBackendContext, Input, Output>(
         var currentState = phaserState as PhaserState<Any?>
         // TODO proper stage management
 
-        var stageIndex = context.stage
+        var stageIndex = context.stageController.currentStage
 
         if (stageIndex > 0) context.stage = stageIndex++
         var result = phases.first().invoke(phaseConfig, currentState, context, input)

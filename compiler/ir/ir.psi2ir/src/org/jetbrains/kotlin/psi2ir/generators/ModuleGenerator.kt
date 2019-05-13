@@ -76,7 +76,7 @@ class ModuleGenerator(override val context: GeneratorContext) : Generator {
     private fun createEmptyIrFile(ktFile: KtFile): IrFileImpl {
         val fileEntry = context.sourceManager.getOrCreateFileEntry(ktFile)
         val packageFragmentDescriptor = context.moduleDescriptor.findPackageFragmentForFile(ktFile)!!
-        val irFile = IrFileImpl(fileEntry, packageFragmentDescriptor).apply {
+        val irFile = IrFileImpl(fileEntry, packageFragmentDescriptor, context.stageController).apply {
             metadata = MetadataSource.File(CodegenUtil.getMemberDescriptorsToGenerate(ktFile, context.bindingContext))
         }
         context.sourceManager.putFileEntry(irFile, fileEntry)

@@ -25,6 +25,7 @@ import org.jetbrains.kotlin.codegen.CodegenTestCase
 import org.jetbrains.kotlin.config.languageVersionSettings
 import org.jetbrains.kotlin.ir.declarations.IrFile
 import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
+import org.jetbrains.kotlin.ir.declarations.NoopController
 import org.jetbrains.kotlin.js.analyze.TopDownAnalyzerFacadeForJS
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi2ir.Psi2IrConfiguration
@@ -86,7 +87,7 @@ abstract class AbstractIrGeneratorTestCase : CodegenTestCase() {
     protected open fun generateIrModule(ignoreErrors: Boolean = false): IrModuleFragment {
         assert(myFiles != null) { "myFiles not initialized" }
         assert(myEnvironment != null) { "myEnvironment not initialized" }
-        return doGenerateIrModule(Psi2IrTranslator(myEnvironment.configuration.languageVersionSettings, Psi2IrConfiguration(ignoreErrors)))
+        return doGenerateIrModule(Psi2IrTranslator(myEnvironment.configuration.languageVersionSettings, NoopController, Psi2IrConfiguration(ignoreErrors)))
     }
 
     protected open fun doGenerateIrModule(psi2IrTranslator: Psi2IrTranslator): IrModuleFragment =

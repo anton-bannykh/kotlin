@@ -31,8 +31,7 @@ abstract class IrDeclarationBase(
 
     override var parent: IrDeclarationParent by LateInitPersistentVar()
 
-    override val annotations: SimpleList<IrCall> =
-        DumbPersistentList()
+    override val annotations: SimpleList<IrCall> = DumbPersistentList()
 
     override val metadata: MetadataSource?
         get() = null

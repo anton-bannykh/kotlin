@@ -10,6 +10,7 @@ import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.descriptors.ClassDescriptor
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.declarations.IrFile
+import org.jetbrains.kotlin.ir.declarations.StageController
 import org.jetbrains.kotlin.name.FqName
 
 interface LoggingContext {
@@ -24,5 +25,5 @@ interface CommonBackendContext : BackendContext, LoggingContext {
 
     val configuration: CompilerConfiguration
 
-    var stage: Int
+    val stageController: StageController
 }

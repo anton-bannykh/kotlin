@@ -110,7 +110,8 @@ open class DeepCopyIrTreeWithSymbols(
         IrFileImpl(
             declaration.fileEntry,
             symbolRemapper.getDeclaredFile(declaration.symbol),
-            symbolRenamer.getFileName(declaration.symbol)
+            symbolRenamer.getFileName(declaration.symbol),
+            (declaration as? IrFileImpl)?.stageController ?: NoopController
         ).apply {
             transformAnnotations(declaration)
             declaration.transformDeclarationsTo(this)

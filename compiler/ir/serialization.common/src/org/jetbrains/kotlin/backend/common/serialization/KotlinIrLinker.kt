@@ -10,10 +10,7 @@ import org.jetbrains.kotlin.backend.common.descriptors.*
 import org.jetbrains.kotlin.descriptors.*
 import org.jetbrains.kotlin.descriptors.impl.EmptyPackageFragmentDescriptor
 import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
-import org.jetbrains.kotlin.ir.declarations.IrDeclaration
-import org.jetbrains.kotlin.ir.declarations.IrFile
-import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
-import org.jetbrains.kotlin.ir.declarations.IrProperty
+import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.declarations.impl.IrClassImpl
 import org.jetbrains.kotlin.ir.declarations.impl.IrFileImpl
 import org.jetbrains.kotlin.ir.declarations.impl.IrModuleFragmentImpl
@@ -46,6 +43,8 @@ abstract class KotlinIrLinker(
     private val forwardModuleDescriptor: ModuleDescriptor?,
     private val firstKnownBuiltinsIndex: Long
 ) : DescriptorUniqIdAware, IrDeserializer {
+
+    protected open val stageController: StageController get() = NoopController
 
     protected val deserializedSymbols = mutableMapOf<UniqIdKey, IrSymbol>()
     private val reachableTopLevels = mutableSetOf<UniqIdKey>()
@@ -211,7 +210,7 @@ abstract class KotlinIrLinker(
             val packageFragmentDescriptor = EmptyPackageFragmentDescriptor(moduleDescriptor, fqName)
 
             val symbol = IrFileSymbolImpl(packageFragmentDescriptor)
-            val file = IrFileImpl(fileEntry, symbol, fqName)
+            val file = IrFileImpl(fileEntry, symbol, fqName, stageController)
 
             // We deserialize file annotations on first file use.
             fileAnnotations.put(file, fileProto.annotations)
@@ -386,7 +385,7 @@ abstract class KotlinIrLinker(
 
         packageFragments.forEach { packageFragment ->
             val symbol = IrFileSymbolImpl(packageFragment)
-            val file = IrFileImpl(NaiveSourceBasedFileEntryImpl("forward declarations pseudo-file"), symbol)
+            val file = IrFileImpl(NaiveSourceBasedFileEntryImpl("forward declarations pseudo-file"), symbol, stageController)
             val symbols = forwardDeclarations
                 .filter { !it.isBound }
                 .filter { it.descriptor.findPackage() == packageFragment }

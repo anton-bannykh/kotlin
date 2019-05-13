@@ -48,9 +48,9 @@ class JsIrBackendContext(
     override val irBuiltIns: IrBuiltIns,
     val symbolTable: SymbolTable,
     irModuleFragment: IrModuleFragment,
-    override val configuration: CompilerConfiguration
+    override val configuration: CompilerConfiguration,
+    override val stageController: MutableController
 ) : CommonBackendContext {
-    override var stage: Int = 0
 
     override val builtIns = module.builtIns
 
@@ -65,24 +65,28 @@ class JsIrBackendContext(
 
     val internalPackageFragmentDescriptor = EmptyPackageFragmentDescriptor(builtIns.builtInsModule, FqName("kotlin.js.internal"))
     val implicitDeclarationFile by lazy {
-        IrFileImpl(object : SourceManager.FileEntry {
-            override val name = "<implicitDeclarations>"
-            override val maxOffset = UNDEFINED_OFFSET
+        IrFileImpl(
+            object : SourceManager.FileEntry {
+                override val name = "<implicitDeclarations>"
+                override val maxOffset = UNDEFINED_OFFSET
 
-            override fun getSourceRangeInfo(beginOffset: Int, endOffset: Int) =
-                SourceRangeInfo(
-                    "",
-                    UNDEFINED_OFFSET,
-                    UNDEFINED_OFFSET,
-                    UNDEFINED_OFFSET,
-                    UNDEFINED_OFFSET,
-                    UNDEFINED_OFFSET,
-                    UNDEFINED_OFFSET
-                )
+                override fun getSourceRangeInfo(beginOffset: Int, endOffset: Int) =
+                    SourceRangeInfo(
+                        "",
+                        UNDEFINED_OFFSET,
+                        UNDEFINED_OFFSET,
+                        UNDEFINED_OFFSET,
+                        UNDEFINED_OFFSET,
+                        UNDEFINED_OFFSET,
+                        UNDEFINED_OFFSET
+                    )
 
-            override fun getLineNumber(offset: Int) = UNDEFINED_OFFSET
-            override fun getColumnNumber(offset: Int) = UNDEFINED_OFFSET
-        }, internalPackageFragmentDescriptor).also {
+                override fun getLineNumber(offset: Int) = UNDEFINED_OFFSET
+                override fun getColumnNumber(offset: Int) = UNDEFINED_OFFSET
+            },
+            internalPackageFragmentDescriptor,
+            stageController
+        ).also {
             irModuleFragment.files += it
         }
     }

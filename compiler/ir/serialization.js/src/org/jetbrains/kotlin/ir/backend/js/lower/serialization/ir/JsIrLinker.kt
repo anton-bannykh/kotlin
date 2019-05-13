@@ -12,6 +12,7 @@ import org.jetbrains.kotlin.backend.common.serialization.*
 import org.jetbrains.kotlin.descriptors.ModuleDescriptor
 import org.jetbrains.kotlin.ir.backend.js.JS_KLIBRARY_CAPABILITY
 import org.jetbrains.kotlin.ir.backend.js.moduleHeaderFileName
+import org.jetbrains.kotlin.ir.declarations.StageController
 import org.jetbrains.kotlin.ir.descriptors.IrBuiltIns
 import org.jetbrains.kotlin.ir.symbols.IrClassifierSymbol
 import org.jetbrains.kotlin.ir.util.SymbolTable
@@ -21,7 +22,8 @@ class JsIrLinker(
     currentModule: ModuleDescriptor,
     logger: LoggingContext,
     builtIns: IrBuiltIns,
-    symbolTable: SymbolTable
+    symbolTable: SymbolTable,
+    override val stageController: StageController
 ) : KotlinIrLinker(logger, builtIns, symbolTable, emptyList<ModuleDescriptor>(), null, 0x1_0000_0000L),
     DescriptorUniqIdAware by JsDescriptorUniqIdAware {
 

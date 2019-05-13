@@ -21,6 +21,7 @@ import org.jetbrains.kotlin.config.LanguageVersionSettings
 import org.jetbrains.kotlin.descriptors.ModuleDescriptor
 import org.jetbrains.kotlin.descriptors.NotFoundClasses
 import org.jetbrains.kotlin.ir.builders.IrGeneratorContext
+import org.jetbrains.kotlin.ir.declarations.StageController
 import org.jetbrains.kotlin.ir.descriptors.IrBuiltIns
 import org.jetbrains.kotlin.ir.util.ConstantValueGenerator
 import org.jetbrains.kotlin.ir.util.SymbolTable
@@ -36,7 +37,8 @@ class GeneratorContext(
     val bindingContext: BindingContext,
     val languageVersionSettings: LanguageVersionSettings,
     val symbolTable: SymbolTable,
-    val extensions: GeneratorExtensions
+    val extensions: GeneratorExtensions,
+    val stageController: StageController
 ) : IrGeneratorContext() {
 
     val constantValueGenerator: ConstantValueGenerator = ConstantValueGenerator(moduleDescriptor, symbolTable)

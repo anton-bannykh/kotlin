@@ -9,6 +9,7 @@ import org.jetbrains.kotlin.backend.common.phaser.PhaseConfig
 import org.jetbrains.kotlin.codegen.CompilationErrorHandler
 import org.jetbrains.kotlin.codegen.state.GenerationState
 import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
+import org.jetbrains.kotlin.ir.declarations.NoopController
 import org.jetbrains.kotlin.ir.util.ExternalDependenciesGenerator
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi2ir.Psi2IrTranslator
@@ -21,7 +22,7 @@ object JvmBackendFacade {
         errorHandler: CompilationErrorHandler,
         phaseConfig: PhaseConfig
     ) {
-        val psi2ir = Psi2IrTranslator(state.languageVersionSettings)
+        val psi2ir = Psi2IrTranslator(state.languageVersionSettings, NoopController)
         val psi2irContext = psi2ir.createGeneratorContext(state.module, state.bindingContext, extensions = JvmGeneratorExtensions)
         val irModuleFragment = psi2ir.generateModuleFragment(psi2irContext, files)
 
