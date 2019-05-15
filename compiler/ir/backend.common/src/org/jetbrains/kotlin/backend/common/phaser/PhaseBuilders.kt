@@ -19,13 +19,13 @@ private class CompositePhase<Context : CommonBackendContext, Input, Output>(
 
     override fun invoke(phaseConfig: PhaseConfig, phaserState: PhaserState<Input>, context: Context, input: Input): Output {
         var currentState = phaserState as PhaserState<Any?>
-        // TODO proper stage management
-
-        var stageIndex = context.stageController.currentStage
-
-        if (stageIndex > 0) context.stage = stageIndex++
+//        // TODO proper stage management
+//
+//        var stageIndex = context.stageController.currentStage
+//
+//        if (stageIndex > 0) context.stage = stageIndex++
         var result = phases.first().invoke(phaseConfig, currentState, context, input)
-        (result as? IrFileImpl)?.loweredUpTo = stageIndex - 1
+//        (result as? IrFileImpl)?.loweredUpTo = stageIndex - 1
 
         for ((previous, next) in phases.zip(phases.drop(1))) {
             if (next !is SameTypeCompilerPhase<*, *>) {
@@ -34,9 +34,9 @@ private class CompositePhase<Context : CommonBackendContext, Input, Output>(
             }
             currentState.stickyPostconditions.addAll(previous.stickyPostconditions)
 
-            if (stageIndex > 0) context.stage = stageIndex++
+//            if (stageIndex > 0) context.stage = stageIndex++
             result = next.invoke(phaseConfig, currentState, context, result)
-            (result as? IrFileImpl)?.loweredUpTo = stageIndex - 1
+//            (result as? IrFileImpl)?.loweredUpTo = stageIndex - 1
         }
         return result as Output
     }
