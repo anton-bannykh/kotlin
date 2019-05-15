@@ -6,7 +6,7 @@
 package org.jetbrains.kotlin.ir.declarations
 
 import org.jetbrains.kotlin.ir.declarations.impl.IrFileImpl
-import org.jetbrains.kotlin.ir.util.file
+import org.jetbrains.kotlin.ir.util.fileOrNull
 import org.jetbrains.kotlin.ir.util.transformFlat
 import java.util.*
 import kotlin.NoSuchElementException
@@ -15,57 +15,73 @@ import kotlin.reflect.KProperty
 interface StageController {
     val currentStage: Int
 
-    fun lowerUpTo(file: IrFile, stageNonInclusive: Int)
-
-    val hasBody: Boolean
-        get() = true
+    fun lazyLower(declaration: IrDeclaration) {}
 }
 
 object NoopController : StageController {
     override val currentStage: Int = 0
-
-    override fun lowerUpTo(file: IrFile, stageNonInclusive: Int) {}
 }
 
-open class PersistentPropertyBase(private val stageControllerCalculator: () -> StageController) {
-    val stageController: StageController
-        get() = stageControllerCalculator()
+typealias StageControllerCalculator = () -> StageController?
+
+open class PersistentPropertyBase<T>(private val stageControllerCalculator: StageControllerCalculator) {
+    protected val currentStage: Int
+        get() = stageControllerCalculator()?.currentStage ?: 0
+
+    private val changes = TreeMap<Int, T?>()
+
+    private fun ensureLowered(thisRef: Any) {
+        (thisRef as? IrDeclaration)?.let { stageControllerCalculator()?.lazyLower(it) }
+    }
+
+    protected fun getValue(thisRef: Any): T? {
+        ensureLowered(thisRef)
+        return changes.lowerEntry(currentStage + 1).value
+    }
+
+    protected fun setValue(thisRef: Any, value: T?) {
+        ensureLowered(thisRef)
+        changes[currentStage] = value
+    }
 }
 
-class PersistentVar<T : Any>(initValue: T, stageControllerCalculator: () -> StageController) :
-    PersistentPropertyBase(stageControllerCalculator) {
-    val changes = TreeMap(mapOf(0 to initValue))
+class PersistentVar<T : Any>(initValue: T, stageControllerCalculator: StageControllerCalculator) :
+    PersistentPropertyBase<T?>(stageControllerCalculator) {
+
+    init {
+        // TODO hide currentStage
+        setValue(currentStage, initValue)
+    }
 
     operator fun getValue(thisRef: Any, property: KProperty<*>): T {
-        return changes.lowerEntry(stageController.currentStage + 1)!!.value
+        return getValue(thisRef)!!
     }
 
     operator fun setValue(thisRef: Any, property: KProperty<*>, value: T) {
-        changes[stageController.currentStage] = value
+        setValue(thisRef, value)
     }
 }
 
-class NullablePersistentVar<T>(stageControllerCalculator: () -> StageController) : PersistentPropertyBase(stageControllerCalculator) {
-    private val changes = TreeMap<Int, T?>()
+class NullablePersistentVar<T>(stageControllerCalculator: StageControllerCalculator) : PersistentPropertyBase<T>(stageControllerCalculator) {
 
     operator fun getValue(thisRef: Any, property: KProperty<*>): T? {
-        return changes.lowerEntry(stageController.currentStage + 1)?.value
+        return getValue(thisRef)
     }
 
     operator fun setValue(thisRef: Any, property: KProperty<*>, value: T?) {
-        changes[stageController.currentStage] = value
+        setValue(thisRef, value)
     }
 }
 
-class LateInitPersistentVar<T : Any>(stageControllerCalculator: () -> StageController) : PersistentPropertyBase(stageControllerCalculator) {
+class LateInitPersistentVar<T : Any>(stageControllerCalculator: StageControllerCalculator) : PersistentPropertyBase<T?>(stageControllerCalculator) {
     val changes = TreeMap<Int, T>()
 
     operator fun getValue(thisRef: Any, property: KProperty<*>): T {
-        return changes.lowerEntry(stageController.currentStage + 1)!!.value
+        return getValue(thisRef)!!
     }
 
     operator fun setValue(thisRef: Any, property: KProperty<*>, value: T) {
-        changes[stageController.currentStage] = value
+        setValue(thisRef, value)
     }
 }
 
@@ -153,20 +169,23 @@ class SimpleMutableList<T>(private val list: MutableList<T>) : SimpleList<T>, Li
 
 class DumbPersistentList<T>(
     list: List<T> = emptyList(),
-    stageControllerCalculator: () -> StageController
-) : PersistentPropertyBase(stageControllerCalculator), SimpleList<T> {
+    private val stageControllerCalculator: StageControllerCalculator
+) : SimpleList<T> {
+
+    private val currentStage: Int
+        get() = stageControllerCalculator()?.currentStage ?: 0
 
     private inner class Wrapper<T>(
         val value: T
     ) {
-        private val addedOn: Int = stageController.currentStage
+        private val addedOn: Int = currentStage
         private var removedOn: Int = Int.MAX_VALUE
 
         val alive: Boolean
-            get() = stageController.currentStage in addedOn until removedOn
+            get() = currentStage in addedOn until removedOn
 
         fun remove() {
-            removedOn = stageController.currentStage
+            removedOn = currentStage
         }
     }
 
@@ -386,7 +405,7 @@ class DumbPersistentList<T>(
 }
 
 
-fun IrDeclaration.calculateStageController() = (this.file as? IrFileImpl)?.stageController ?: NoopController
+fun IrDeclaration.calculateStageController() = (this.fileOrNull as? IrFileImpl)?.stageController
 
 fun <T : Any> IrDeclaration.PersistentVar(initValue: T) =
     PersistentVar(initValue, this::calculateStageController)

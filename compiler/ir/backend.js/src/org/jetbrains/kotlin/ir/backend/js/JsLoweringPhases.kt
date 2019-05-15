@@ -15,9 +15,10 @@ import org.jetbrains.kotlin.ir.backend.js.lower.coroutines.JsSuspendFunctionsLow
 import org.jetbrains.kotlin.ir.backend.js.lower.inline.FunctionInlining
 import org.jetbrains.kotlin.ir.backend.js.lower.inline.RemoveInlineFunctionsLowering
 import org.jetbrains.kotlin.ir.backend.js.lower.inline.ReturnableBlockLowering
-import org.jetbrains.kotlin.ir.declarations.IrFile
-import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
-import org.jetbrains.kotlin.ir.declarations.calculateStageController
+import org.jetbrains.kotlin.ir.declarations.*
+import org.jetbrains.kotlin.ir.declarations.impl.IrDeclarationBase
+import org.jetbrains.kotlin.ir.declarations.impl.IrFileImpl
+import org.jetbrains.kotlin.ir.util.fileOrNull
 import org.jetbrains.kotlin.ir.util.patchDeclarationParents
 
 private fun ClassLoweringPass.runOnFilesPostfix(moduleFragment: IrModuleFragment) = moduleFragment.files.forEach { runOnFilePostfix(it) }
@@ -70,8 +71,8 @@ private val moveBodilessDeclarationsToSeparatePlacePhase = makeJsModulePhase(
     description = "Move `external` and `built-in` declarations into separate place to make the following lowerings do not care about them"
 )
 
-private val expectDeclarationsRemovingPhase = makeCustomJsModulePhase(
-    { context, module -> ExpectDeclarationsRemoving(context).lower(module) },
+private val expectDeclarationsRemovingPhase = makeJsModulePhase(
+    ::ExpectDeclarationsRemoving,
     name = "ExpectDeclarationsRemoving",
     description = "Remove expect declaration from module fragment"
 )
@@ -357,6 +358,7 @@ private val staticMembersLoweringPhase = makeJsModulePhase(
     description = "Move static member declarations to top-level"
 )
 
+// TODO flatten
 val perFilePhaseList = listOf(
     listOf(expectDeclarationsRemovingPhase),
     listOf(moveBodilessDeclarationsToSeparatePlacePhase),
@@ -405,7 +407,7 @@ fun compositePhase(): CompilerPhase<JsIrBackendContext, IrFile, IrFile> {
             context: JsIrBackendContext,
             input: IrFile
         ): IrFile {
-            calculateStageController.lowerUpTo(input, perFilePhaseList.size + 1)
+            context.stageController.invokeLowerings(input)
             return input
         }
     }
@@ -424,19 +426,76 @@ val jsPhases = namedIrModulePhase(
 )
 
 fun generateTests(context: JsIrBackendContext, moduleFragment: IrModuleFragment) {
-    context.stageController.currentStage = 0
-    val generator = TestGenerator(context)
-    moduleFragment.files.forEach {
-        generator.lower(it)
+    context.stageController.withInitialIr {
+        val generator = TestGenerator(context)
+        moduleFragment.files.forEach {
+            generator.lower(it)
+        }
+        context.implicitDeclarationFile.loweredUpTo = 0
     }
-    context.implicitDeclarationFile.loweredUpTo = 0
-    stageController.lowerUpTo(context.implicitDeclarationFile, perFilePhaseList.size + 1)
+    context.stageController.invokeLowerings(context.implicitDeclarationFile)
+//    stageController.lowerUpTo(context.implicitDeclarationFile, perFilePhaseList.size + 1)
 }
 
-//fun <T> JsIrBackendContext.withStage(stage: Int, fn: () -> T): T {
-//    val currentStage = this.stage
-//    this.stage = stage
-//    val result = fn()
-//    this.stage = currentStage
-//    return result
-//}
+class MutableController: StageController {
+    override var currentStage: Int = 0
+        private set
+
+    private fun <T> withStage(stage: Int, fn: () -> T): T {
+        val previousStage = currentStage
+        currentStage = stage
+        val result = fn()
+        currentStage = previousStage
+        return result
+    }
+
+    lateinit var context: JsIrBackendContext
+
+    private fun lowerUpTo(file: IrFile, stageNonInclusive: Int) {
+        val loweredUpTo = (file as? IrFileImpl)?.loweredUpTo ?: 0
+        for (i in loweredUpTo + 1 until stageNonInclusive) {
+            withStage(i) {
+                perFilePhaseList[i - 1].forEach {
+                    it(context).lower(file)
+
+                    // TODO only way?
+                    file.declarations.forEach {
+                        (it as? IrDeclarationBase)?.loweredUpTo = i
+                    }
+                }
+            }
+            (file as? IrFileImpl)?.loweredUpTo = i
+        }
+    }
+
+    // TODO Special API to check only top level declarations are added?
+    fun withInitialIr(block: () -> Unit) {
+        withStage(0) {
+            block()
+        }
+    }
+
+    fun invokeTopLevel(phaseConfig: PhaseConfig, moduleFragment: IrModuleFragment) {
+        jsPhases.invokeToplevel(phaseConfig, context, moduleFragment)
+        currentStage = perFilePhaseList.size + 1
+    }
+
+    fun invokeLowerings(file: IrFile) {
+        lowerUpTo(file, perFilePhaseList.size + 1)
+    }
+
+    override fun lazyLower(declaration: IrDeclaration) {
+        declaration.fileOrNull?.let {
+            lowerUpTo(it, currentStage)
+        }
+//        val topLevelDeclaration = declaration.findTopLevelDeclaration()
+
+//        lowerUpTo(declaration)
+        // TODO a better way to find loweredUpTo
+//        (topLevelDeclaration as? IrDeclarationBase)?.let {
+//            if (it.loweredUpTo < currentStage - 1) {
+//                // TODO sequential lowering
+//            }
+//        }
+    }
+}

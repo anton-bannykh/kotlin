@@ -463,3 +463,11 @@ val IrDeclaration.file: IrFile get() = parent.let {
         else -> TODO("Unexpected declaration parent")
     }
 }
+
+val IrDeclaration.fileOrNull: IrFile? get() = parent.let {
+    when (it) {
+        is IrFile -> it
+        is IrDeclaration -> it.file
+        else -> null
+    }
+}

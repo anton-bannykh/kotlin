@@ -50,6 +50,10 @@ class JsIrBackendContext(
     override val stageController: MutableController
 ) : CommonBackendContext {
 
+    init {
+        stageController.context = this
+    }
+
     override val builtIns = module.builtIns
 
     override var inVerbosePhase: Boolean = false

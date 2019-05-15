@@ -33,6 +33,8 @@ abstract class IrDeclarationBase(
 
     override val annotations: SimpleList<IrCall> = DumbPersistentList()
 
+    var loweredUpTo: Int = 0
+
     override val metadata: MetadataSource?
         get() = null
 }
