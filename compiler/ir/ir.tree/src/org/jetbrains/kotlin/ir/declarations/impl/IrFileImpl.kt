@@ -57,10 +57,10 @@ class IrFileImpl(
     var loweredUpTo = 0
 
     override val declarations: SimpleList<IrDeclaration> =
-        DumbPersistentList(emptyList()) { stageController }
+        DumbPersistentList(null, emptyList()) { stageController }
 
     override val annotations: SimpleList<IrCall> =
-        DumbPersistentList(emptyList()) { stageController }
+        DumbPersistentList(null, emptyList()) { stageController }
 
     override var metadata: MetadataSource.File? by NullablePersistentVar() { stageController }
 

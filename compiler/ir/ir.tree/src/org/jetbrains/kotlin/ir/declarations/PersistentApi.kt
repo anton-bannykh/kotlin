@@ -210,6 +210,7 @@ class SimpleMutableList<T>(private val list: MutableList<T>) : SimpleList<T>, Li
 }
 
 class DumbPersistentList<T>(
+    private val container: IrDeclaration?,
     list: List<T> = emptyList(),
     private val stageControllerCalculator: StageControllerCalculator
 ) : SimpleList<T> {
@@ -231,30 +232,45 @@ class DumbPersistentList<T>(
         }
     }
 
+    private fun ensureLowered() {
+        container?.let { stageControllerCalculator()?.lazyLower(it) }
+    }
+
     private val innerList: MutableList<Wrapper<T>> =
         list.mapTo(mutableListOf()) { Wrapper(it) }
 
-    override fun add(element: T): Boolean = innerList.add(Wrapper(element))
+    override fun add(element: T): Boolean {
+        ensureLowered()
+        return innerList.add(Wrapper(element))
+    }
 
     override fun addFirst(element: T) {
+        ensureLowered()
         innerList.add(0, Wrapper(element))
     }
 
-    override fun addAll(elements: Collection<T>): Boolean = innerList.addAll(elements.map { Wrapper(it) })
+    override fun addAll(elements: Collection<T>): Boolean {
+        ensureLowered()
+        return innerList.addAll(elements.map { Wrapper(it) })
+    }
 
     override fun addFirstAll(elements: Collection<T>) {
+        ensureLowered()
         innerList.addAll(0, elements.map { Wrapper(it) })
     }
 
     override fun plusAssign(element: T) {
+        ensureLowered()
         add(element)
     }
 
     override fun plusAssign(elements: Collection<T>) {
+        ensureLowered()
         addAll(elements)
     }
 
     override fun removeAll(predicate: (T) -> Boolean): Boolean {
+        ensureLowered()
         var result = false
         innerList.forEach {
             if (it.alive && predicate(it.value)) {
@@ -266,14 +282,17 @@ class DumbPersistentList<T>(
     }
 
     override fun removeAll(elements: Collection<T>): Boolean {
+        ensureLowered()
         return removeAll { it in elements }
     }
 
     override fun clear() {
+        ensureLowered()
         removeAll { true }
     }
 
     override fun transform(transformation: (T) -> T) {
+        ensureLowered()
         innerList.transformFlat {
             if (it.alive) {
                 val newValue = transformation(it.value)
@@ -286,6 +305,7 @@ class DumbPersistentList<T>(
     }
 
     override fun transformFlat(transformation: (T) -> List<T>?) {
+        ensureLowered()
         innerList.transformFlat {
             if (!it.alive) null else {
                 transformation(it.value)?.let { newElements ->
@@ -312,6 +332,7 @@ class DumbPersistentList<T>(
     }
 
     override fun remove(element: T): Boolean {
+        ensureLowered()
         innerList.forEach {
             if (it.alive && it.value == element) {
                 it.remove()
@@ -323,13 +344,18 @@ class DumbPersistentList<T>(
     }
 
     override val size: Int
-        get() = innerList.count { it.alive }
+        get(): Int {
+            ensureLowered()
+            return innerList.count { it.alive }
+        }
 
     override fun contains(element: T): Boolean {
+        ensureLowered()
         return innerList.find { it.alive && it.value == element } != null
     }
 
     override fun containsAll(elements: Collection<T>): Boolean {
+        ensureLowered()
         return elements.all { contains(it) }
     }
 
@@ -346,10 +372,12 @@ class DumbPersistentList<T>(
     }
 
     override fun get(index: Int): T {
+        ensureLowered()
         return innerList[skipNAlive(index + 1) - 1].value
     }
 
     override fun indexOf(element: T): Int {
+        ensureLowered()
         var translatedIndex = -1;
         for (i in 0 until innerList.size) {
             val w = innerList[i]
@@ -362,14 +390,17 @@ class DumbPersistentList<T>(
     }
 
     override fun isEmpty(): Boolean {
+        ensureLowered()
         return size == 0
     }
 
     override fun iterator(): Iterator<T> {
+        ensureLowered()
         return listIterator()
     }
 
     override fun lastIndexOf(element: T): Int {
+        ensureLowered()
         var translatedIndex = -1;
         var result = -1
         for (i in 0 until innerList.size) {
@@ -383,12 +414,14 @@ class DumbPersistentList<T>(
     }
 
     override fun listIterator(index: Int): ListIterator<T> {
+        ensureLowered()
         val result = listIterator()
         for (i in 0..index) result.next()
         return result
     }
 
     override fun listIterator(): ListIterator<T> {
+        ensureLowered()
         return object : ListIterator<T> {
             val innerIterator = innerList.listIterator()
 
@@ -482,4 +515,4 @@ fun <T : Any> IrDeclaration.LateInitPersistentVar() =
     LateInitPersistentVar<T>(this::calculateStageController)
 
 fun <T> IrDeclaration.DumbPersistentList() =
-    DumbPersistentList<T>(emptyList(), this::calculateStageController)
+    DumbPersistentList<T>(this, emptyList(), this::calculateStageController)
