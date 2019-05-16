@@ -488,14 +488,10 @@ class MutableController: StageController {
         declaration.fileOrNull?.let {
             lowerUpTo(it, currentStage)
         }
-//        val topLevelDeclaration = declaration.findTopLevelDeclaration()
-
-//        lowerUpTo(declaration)
-        // TODO a better way to find loweredUpTo
-//        (topLevelDeclaration as? IrDeclarationBase)?.let {
-//            if (it.loweredUpTo < currentStage - 1) {
-//                // TODO sequential lowering
-//            }
-//        }
     }
+
+    override fun lazyLower(file: IrFile) {
+        lowerUpTo(file, currentStage)
+    }
+
 }

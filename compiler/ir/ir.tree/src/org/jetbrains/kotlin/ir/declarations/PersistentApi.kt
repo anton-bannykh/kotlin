@@ -5,6 +5,7 @@
 
 package org.jetbrains.kotlin.ir.declarations
 
+import org.jetbrains.kotlin.ir.declarations.impl.IrDeclarationBase
 import org.jetbrains.kotlin.ir.declarations.impl.IrFileImpl
 import org.jetbrains.kotlin.ir.util.fileOrNull
 import org.jetbrains.kotlin.ir.util.transformFlat
@@ -16,6 +17,8 @@ interface StageController {
     val currentStage: Int
 
     fun lazyLower(declaration: IrDeclaration) {}
+
+    fun lazyLower(file: IrFile) {}
 }
 
 object NoopController : StageController {
@@ -24,25 +27,32 @@ object NoopController : StageController {
 
 typealias StageControllerCalculator = () -> StageController?
 
-open class PersistentPropertyBase<T>(private val stageControllerCalculator: StageControllerCalculator) {
+abstract class AbstractPersistentProperty<T> {
+    abstract val stageController: StageController?
+
     protected val currentStage: Int
-        get() = stageControllerCalculator()?.currentStage ?: 0
+        get() = stageController?.currentStage ?: 0
 
-    private val changes = TreeMap<Int, T?>()
+    protected val changes = TreeMap<Int, T?>()
 
-    private fun ensureLowered(thisRef: Any) {
-        (thisRef as? IrDeclaration)?.let { stageControllerCalculator()?.lazyLower(it) }
+    protected open fun ensureLowered(thisRef: Any) {
+        (thisRef as? IrDeclaration)?.let { stageController?.lazyLower(it) }
     }
 
     protected fun getValue(thisRef: Any): T? {
         ensureLowered(thisRef)
-        return changes.lowerEntry(currentStage + 1).value
+        return changes.lowerEntry(currentStage + 1)?.value
     }
 
     protected fun setValue(thisRef: Any, value: T?) {
         ensureLowered(thisRef)
         changes[currentStage] = value
     }
+}
+
+open class PersistentPropertyBase<T>(private val stageControllerCalculator: StageControllerCalculator): AbstractPersistentProperty<T>() {
+    override val stageController: StageController?
+        get() = stageControllerCalculator()
 }
 
 class PersistentVar<T : Any>(initValue: T, stageControllerCalculator: StageControllerCalculator) :
@@ -74,7 +84,6 @@ class NullablePersistentVar<T>(stageControllerCalculator: StageControllerCalcula
 }
 
 class LateInitPersistentVar<T : Any>(stageControllerCalculator: StageControllerCalculator) : PersistentPropertyBase<T?>(stageControllerCalculator) {
-    val changes = TreeMap<Int, T>()
 
     operator fun getValue(thisRef: Any, property: KProperty<*>): T {
         return getValue(thisRef)!!
@@ -82,6 +91,39 @@ class LateInitPersistentVar<T : Any>(stageControllerCalculator: StageControllerC
 
     operator fun setValue(thisRef: Any, property: KProperty<*>, value: T) {
         setValue(thisRef, value)
+    }
+}
+
+class DeclarationParentNullableVar(private val container: IrDeclarationBase): AbstractPersistentProperty<IrDeclarationParent>() {
+    override val stageController: StageController?
+        get() = changes.ceilingEntry(-1)?.value?.let { declarationParent ->
+            return when (declarationParent) {
+                is IrFileImpl -> declarationParent.stageController
+                is IrDeclarationBase -> declarationParent.calculateStageController()
+                else -> null
+            }
+        }
+
+    override fun ensureLowered(thisRef: Any) {
+        val parent = changes.lowerEntry(currentStage + 1)?.value
+        if (parent is IrDeclaration) {
+            stageController?.lazyLower(parent)
+        } else if (parent is IrFile) {
+            stageController?.lazyLower(parent)
+        }
+    }
+
+    operator fun getValue(thisRef: Any, property: KProperty<*>): IrDeclarationParent? {
+        if (0 !in changes) return null
+        return getValue(thisRef)
+    }
+
+    operator fun setValue(thisRef: Any, property: KProperty<*>, value: IrDeclarationParent?) {
+        if (0 !in changes) {
+            changes[0] = value
+        } else {
+            setValue(thisRef, value)
+        }
     }
 }
 
@@ -404,8 +446,31 @@ class DumbPersistentList<T>(
     }
 }
 
+//fun IrDeclaration.fileOrNullSafe(): IrFile? {
+//    if (this is IrDeclarationBase) {
+//        val parent = this.parentNullable
+//        return when (parent) {
+//            is IrFileImpl -> parent
+//            is IrDeclaration -> parent.fileOrNullSafe()
+//            else -> null
+//        }
+//    } else {
+//        return this.fileOrNull
+//    }
+//}
 
-fun IrDeclaration.calculateStageController() = (this.fileOrNull as? IrFileImpl)?.stageController
+fun IrDeclaration.calculateStageController(): StageController? {
+    if (this is IrDeclarationBase) {
+        val parent = this.parentNullable
+        return when (parent) {
+            is IrFileImpl -> parent.stageController
+            is IrDeclaration -> parent.calculateStageController()
+            else -> null
+        }
+    } else {
+        return (this.fileOrNull as? IrFileImpl)?.stageController
+    }
+}
 
 fun <T : Any> IrDeclaration.PersistentVar(initValue: T) =
     PersistentVar(initValue, this::calculateStageController)

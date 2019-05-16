@@ -27,9 +27,15 @@ abstract class IrDeclarationBase(
 ) : IrElementBase(startOffset, endOffset),
     IrDeclaration{
 
+    var parentNullable: IrDeclarationParent? by DeclarationParentNullableVar(this)
+
     override var origin: IrDeclarationOrigin by PersistentVar(origin)
 
-    override var parent: IrDeclarationParent by LateInitPersistentVar()
+    override var parent: IrDeclarationParent
+        get() = parentNullable!!
+        set(v) {
+            parentNullable = v
+        }
 
     override val annotations: SimpleList<IrCall> = DumbPersistentList()
 
