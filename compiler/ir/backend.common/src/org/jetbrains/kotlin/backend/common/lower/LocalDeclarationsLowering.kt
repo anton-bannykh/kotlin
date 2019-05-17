@@ -135,7 +135,7 @@ class LocalDeclarationsLowering(
         }
     }
 
-    private class LocalFunctionContext(override val declaration: IrFunction) : LocalContextWithClosureAsParameters() {
+    private class LocalFunctionContext(override val declaration: IrSimpleFunction) : LocalContextWithClosureAsParameters() {
         lateinit var closure: Closure
 
         override lateinit var transformedDeclaration: IrSimpleFunction
@@ -194,17 +194,17 @@ class LocalDeclarationsLowering(
             collectLocalDeclarations()
             if (localFunctions.isEmpty() && localClasses.isEmpty()) return listOf(memberDeclaration)
 
-            collectClosures()
+            collectClosureForLocalDeclarations()
 
             transformDeclarations()
 
             rewriteDeclarations()
 
-            val rewrittenDeclarations = collectRewrittenDeclarations()
-            rewrittenDeclarations.forEach {
-                it.patchDeclarationParents(memberDeclaration.parent)
+            return collectRewrittenDeclarations().apply {
+                forEach { newDeclaration ->
+                    newDeclaration.patchDeclarationParents(memberDeclaration.parent)
+                }
             }
-            return rewrittenDeclarations
         }
 
         private fun collectRewrittenDeclarations(): ArrayList<IrDeclaration> =
@@ -415,7 +415,7 @@ class LocalDeclarationsLowering(
 
             assert(constructorsCallingSuper.any()) { "Expected at least one constructor calling super; class: $irClass" }
 
-            localClassContext.capturedValueToField.forEach { capturedValue, field ->
+            localClassContext.capturedValueToField.forEach { (capturedValue, field) ->
                 val startOffset = irClass.startOffset
                 val endOffset = irClass.endOffset
                 irClass.declarations.add(field)
@@ -503,7 +503,7 @@ class LocalDeclarationsLowering(
             )
 
         private fun createLiftedDeclaration(localFunctionContext: LocalFunctionContext) {
-            val oldDeclaration = localFunctionContext.declaration as IrSimpleFunction
+            val oldDeclaration = localFunctionContext.declaration
 
             val memberOwner = memberDeclaration.parent
             val newDescriptor = WrappedSimpleFunctionDescriptor(oldDeclaration.descriptor)
@@ -564,7 +564,7 @@ class LocalDeclarationsLowering(
                 val p = capturedValue.owner
                 IrValueParameterImpl(
                     p.startOffset, p.endOffset, BOUND_VALUE_PARAMETER, IrValueParameterSymbolImpl(parameterDescriptor),
-                    suggestNameForCapturedValue(p), i, p.type, null, false, false
+                    suggestNameForCapturedValue(p), i, p.type, null, isCrossinline = false, isNoinline = false
                 ).also {
                     parameterDescriptor.bind(it)
                     it.parent = newDeclaration
@@ -653,9 +653,9 @@ class LocalDeclarationsLowering(
                 name,
                 fieldType,
                 visibility,
-                true,
-                false,
-                false
+                isFinal = true,
+                isExternal = false,
+                isStatic = false
             ).also {
                 descriptor.bind(it)
                 it.parent = parent
@@ -696,14 +696,14 @@ class LocalDeclarationsLowering(
                 declaration.name
 
 
-        private fun collectClosures() {
+        private fun collectClosureForLocalDeclarations() {
             val annotator = ClosureAnnotator(memberDeclaration)
 
-            localFunctions.forEach { declaration, context ->
+            localFunctions.forEach { (declaration, context) ->
                 context.closure = annotator.getFunctionClosure(declaration)
             }
 
-            localClasses.forEach { declaration, context ->
+            localClasses.forEach { (declaration, context) ->
                 context.closure = annotator.getClassClosure(declaration)
             }
         }
@@ -715,8 +715,8 @@ class LocalDeclarationsLowering(
                     element.acceptChildrenVoid(this)
                 }
 
-                override fun visitFunction(declaration: IrFunction) {
-                    declaration.acceptChildrenVoid(this)
+                override fun visitSimpleFunction(declaration: IrSimpleFunction) {
+                    super.visitSimpleFunction(declaration)
 
                     if (declaration.visibility == Visibilities.LOCAL) {
                         val localFunctionContext = LocalFunctionContext(declaration)
@@ -730,7 +730,7 @@ class LocalDeclarationsLowering(
                 }
 
                 override fun visitConstructor(declaration: IrConstructor) {
-                    declaration.acceptChildrenVoid(this)
+                    super.visitConstructor(declaration)
 
                     assert(declaration.visibility != Visibilities.LOCAL)
 
@@ -740,7 +740,7 @@ class LocalDeclarationsLowering(
                 }
 
                 override fun visitClass(declaration: IrClass) {
-                    declaration.acceptChildrenVoid(this)
+                    super.visitClass(declaration)
 
                     if (declaration.isInner) return
 
