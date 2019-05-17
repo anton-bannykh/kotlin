@@ -360,47 +360,60 @@ private val staticMembersLoweringPhase = makeJsModulePhase(
 
 // TODO flatten
 val perFilePhaseList = listOf(
-    listOf(expectDeclarationsRemovingPhase),
-    listOf(moveBodilessDeclarationsToSeparatePlacePhase),
-    listOf(functionInliningPhase),
-    listOf(removeInlineFunctionsLoweringPhase),
-    listOf(lateinitLoweringPhase),
-    listOf(tailrecLoweringPhase),
-    listOf(enumClassConstructorLoweringPhase),
-    listOf(sharedVariablesLoweringPhase),
-    listOf(localDelegatedPropertiesLoweringPhase),
-    listOf(localDeclarationsLoweringPhase),
-    listOf(innerClassesLoweringPhase, innerClassConstructorCallsLoweringPhase),
-    listOf(propertiesLoweringPhase),
-    listOf(initializersLoweringPhase),
+    expectDeclarationsRemovingPhase,
+    moveBodilessDeclarationsToSeparatePlacePhase,
+    functionInliningPhase,
+    removeInlineFunctionsLoweringPhase,
+    lateinitLoweringPhase,
+    tailrecLoweringPhase,
+    enumClassConstructorLoweringPhase,
+    sharedVariablesLoweringPhase,
+    localDelegatedPropertiesLoweringPhase,
+    localDeclarationsLoweringPhase,
+
+    innerClassesLoweringPhase,
+    innerClassConstructorCallsLoweringPhase,
+
+    propertiesLoweringPhase,
+    initializersLoweringPhase,
     // Common prefix ends
-    listOf(enumClassLoweringPhase, enumUsageLoweringPhase),
-    listOf(returnableBlockLoweringPhase),
-    listOf(unitMaterializationLoweringPhase),
-    listOf(suspendFunctionsLoweringPhase),
-    listOf(privateMembersLoweringPhase),
-    listOf(callableReferenceLoweringPhase),
+    enumClassLoweringPhase,
+    enumUsageLoweringPhase,
 
-    listOf(defaultArgumentStubGeneratorPhase, defaultParameterInjectorPhase, jsDefaultCallbackGeneratorPhase),
+    returnableBlockLoweringPhase,
+    unitMaterializationLoweringPhase,
+    suspendFunctionsLoweringPhase,
+    privateMembersLoweringPhase,
+    callableReferenceLoweringPhase,
 
-    listOf(throwableSuccessorsLoweringPhase),
-    listOf(varargLoweringPhase),
-    listOf(multipleCatchesLoweringPhase),
-    listOf(bridgesConstructionPhase),
-    listOf(typeOperatorLoweringPhase),
-    listOf(secondaryConstructorLoweringPhase, secondaryFactoryInjectorLoweringPhase),
-    listOf(classReferenceLoweringPhase),
-    listOf(inlineClassDeclarationsLoweringPhase, inlineClassUsageLoweringPhase),
-    listOf(autoboxingTransformerPhase),
-    listOf(blockDecomposerLoweringPhase),
-    listOf(primitiveCompanionLoweringPhase),
-    listOf(constLoweringPhase),
-    listOf(callsLoweringPhase),
-    listOf(staticMembersLoweringPhase)
+    defaultArgumentStubGeneratorPhase,
+    defaultParameterInjectorPhase,
+    jsDefaultCallbackGeneratorPhase,
+
+    throwableSuccessorsLoweringPhase,
+    varargLoweringPhase,
+    multipleCatchesLoweringPhase,
+    bridgesConstructionPhase,
+    typeOperatorLoweringPhase,
+
+    secondaryConstructorLoweringPhase,
+    secondaryFactoryInjectorLoweringPhase,
+
+    classReferenceLoweringPhase,
+
+    inlineClassDeclarationsLoweringPhase,
+    inlineClassUsageLoweringPhase,
+
+    autoboxingTransformerPhase,
+    blockDecomposerLoweringPhase,
+    primitiveCompanionLoweringPhase,
+    constLoweringPhase,
+    callsLoweringPhase,
+    staticMembersLoweringPhase
 )
 
 fun compositePhase(): CompilerPhase<JsIrBackendContext, IrFile, IrFile> {
-    return object: CompilerPhase<JsIrBackendContext, IrFile, IrFile> {
+    return object : CompilerPhase<JsIrBackendContext, IrFile, IrFile> {
         override fun invoke(
             phaseConfig: PhaseConfig,
             phaserState: PhaserState<IrFile>,
@@ -437,7 +450,7 @@ fun generateTests(context: JsIrBackendContext, moduleFragment: IrModuleFragment)
 //    stageController.lowerUpTo(context.implicitDeclarationFile, perFilePhaseList.size + 1)
 }
 
-class MutableController: StageController {
+class MutableController : StageController {
     override var currentStage: Int = 0
         private set
 
@@ -455,13 +468,11 @@ class MutableController: StageController {
         val loweredUpTo = (file as? IrFileImpl)?.loweredUpTo ?: 0
         for (i in loweredUpTo + 1 until stageNonInclusive) {
             withStage(i) {
-                perFilePhaseList[i - 1].forEach {
-                    it(context).lower(file)
+                perFilePhaseList[i - 1](context).lower(file)
 
-                    // TODO only way?
-                    file.declarations.forEach {
-                        (it as? IrDeclarationBase)?.loweredUpTo = i
-                    }
+                // TODO only way?
+                file.declarations.forEach {
+                    (it as? IrDeclarationBase)?.loweredUpTo = i
                 }
             }
             (file as? IrFileImpl)?.loweredUpTo = i
@@ -493,5 +504,4 @@ class MutableController: StageController {
     override fun lazyLower(file: IrFile) {
         lowerUpTo(file, currentStage)
     }
-
 }
