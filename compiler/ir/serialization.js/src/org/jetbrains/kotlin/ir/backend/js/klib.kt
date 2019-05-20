@@ -29,7 +29,6 @@ import org.jetbrains.kotlin.ir.backend.js.lower.serialization.metadata.createJsK
 import org.jetbrains.kotlin.ir.backend.js.lower.serialization.metadata.*
 import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
 import org.jetbrains.kotlin.ir.declarations.NoopController
-import org.jetbrains.kotlin.ir.declarations.StageController
 import org.jetbrains.kotlin.ir.descriptors.IrBuiltIns
 import org.jetbrains.kotlin.ir.util.SymbolTable
 import org.jetbrains.kotlin.js.analyze.TopDownAnalyzerFacadeForJS
@@ -79,9 +78,9 @@ fun generateKLib(
 ): KlibModuleRef {
     val depsDescriptors = ModulesStructure(project, files, configuration, immediateDependencies, allDependencies)
 
-    val psi2IrContext = runAnalysisAndPreparePsi2Ir(depsDescriptors, NoopController)
+    val psi2IrContext = runAnalysisAndPreparePsi2Ir(depsDescriptors)
 
-    val moduleFragment = psi2IrContext.generateModuleFragment(files, NoopController)
+    val moduleFragment = psi2IrContext.generateModuleFragment(files)
 
     val moduleName = configuration[CommonConfigurationKeys.MODULE_NAME]!!
     serializeModuleIntoKlib(
@@ -110,29 +109,28 @@ fun loadIr(
     files: List<KtFile>,
     configuration: CompilerConfiguration,
     immediateDependencies: List<KlibModuleRef>,
-    allDependencies: List<KlibModuleRef>,
-    stageController: StageController
+    allDependencies: List<KlibModuleRef>
 ): IrModuleInfo {
     val depsDescriptors = ModulesStructure(project, files, configuration, immediateDependencies, allDependencies)
 
-    val psi2IrContext = runAnalysisAndPreparePsi2Ir(depsDescriptors, stageController)
+    val psi2IrContext = runAnalysisAndPreparePsi2Ir(depsDescriptors)
 
     val irBuiltIns = psi2IrContext.irBuiltIns
     val symbolTable = psi2IrContext.symbolTable
     val moduleDescriptor = psi2IrContext.moduleDescriptor
 
-    val deserializer = JsIrLinker(moduleDescriptor, emptyLoggingContext, irBuiltIns, symbolTable, stageController)
+    val deserializer = JsIrLinker(moduleDescriptor, emptyLoggingContext, irBuiltIns, symbolTable)
 
     val deserializedModuleFragments = depsDescriptors.sortedImmediateDependencies.map {
         deserializer.deserializeIrModuleHeader(depsDescriptors.getModuleDescriptor(it))!!
     }
 
-    val moduleFragment = psi2IrContext.generateModuleFragment(files, stageController, deserializer)
+    val moduleFragment = psi2IrContext.generateModuleFragment(files, deserializer)
 
     return IrModuleInfo(moduleFragment, deserializedModuleFragments, irBuiltIns, symbolTable, deserializer)
 }
 
-private fun runAnalysisAndPreparePsi2Ir(depsDescriptors: ModulesStructure, stageController: StageController): GeneratorContext {
+private fun runAnalysisAndPreparePsi2Ir(depsDescriptors: ModulesStructure): GeneratorContext {
     val analysisResult = depsDescriptors.runAnalysis()
 
     return GeneratorContext(
@@ -141,13 +139,12 @@ private fun runAnalysisAndPreparePsi2Ir(depsDescriptors: ModulesStructure, stage
         analysisResult.bindingContext,
         depsDescriptors.compilerConfiguration.languageVersionSettings,
         SymbolTable(),
-        GeneratorExtensions(),
-        stageController
+        GeneratorExtensions()
     )
 }
 
-private fun GeneratorContext.generateModuleFragment(files: List<KtFile>, stageController: StageController, deserializer: JsIrLinker? = null) =
-    Psi2IrTranslator(languageVersionSettings, stageController, configuration).generateModuleFragment(this, files, deserializer)
+private fun GeneratorContext.generateModuleFragment(files: List<KtFile>, deserializer: JsIrLinker? = null) =
+    Psi2IrTranslator(languageVersionSettings, configuration).generateModuleFragment(this, files, deserializer)
 
 
 private fun loadKlibMetadataParts(

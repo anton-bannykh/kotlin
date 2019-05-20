@@ -34,8 +34,6 @@ class JvmBackendContext(
     symbolTable: SymbolTable,
     val phaseConfig: PhaseConfig
 ) : CommonBackendContext {
-    override val stageController: StageController
-        get() = NoopController
 
     override val builtIns = state.module.builtIns
     override val declarationFactory: JvmDeclarationFactory = JvmDeclarationFactory(state)

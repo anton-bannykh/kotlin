@@ -25,7 +25,7 @@ fun compile(
     val stageController = MutableController()
 
     val (moduleFragment, dependencyModules, irBuiltIns, symbolTable, deserializer) =
-        loadIr(project, files, configuration, immediateDependencies, allDependencies, stageController)
+        loadIr(project, files, configuration, immediateDependencies, allDependencies)
 
     val moduleDescriptor = moduleFragment.descriptor
 
@@ -43,13 +43,6 @@ fun compile(
 
     // TODO: check the order
     val irFiles = dependencyModules.flatMap { it.files } + moduleFragment.files
-
-    // Check all controllers are the correct ones
-    irFiles.forEach { file ->
-        (file as? IrFileImpl)?.let { fileImpl ->
-            check(fileImpl.stageController === stageController)
-        }
-    }
 
     moduleFragment.files.clear()
     moduleFragment.files += irFiles

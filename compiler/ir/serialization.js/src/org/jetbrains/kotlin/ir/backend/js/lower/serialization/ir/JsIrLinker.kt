@@ -22,8 +22,7 @@ class JsIrLinker(
     currentModule: ModuleDescriptor,
     logger: LoggingContext,
     builtIns: IrBuiltIns,
-    symbolTable: SymbolTable,
-    override val stageController: StageController
+    symbolTable: SymbolTable
 ) : KotlinIrLinker(logger, builtIns, symbolTable, emptyList<ModuleDescriptor>(), null, 0x1_0000_0000L),
     DescriptorUniqIdAware by JsDescriptorUniqIdAware {
 

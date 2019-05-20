@@ -451,6 +451,10 @@ fun generateTests(context: JsIrBackendContext, moduleFragment: IrModuleFragment)
 }
 
 class MutableController : StageController {
+    init {
+        stageController = this
+    }
+
     override var currentStage: Int = 0
         private set
 
@@ -470,10 +474,10 @@ class MutableController : StageController {
             withStage(i) {
                 perFilePhaseList[i - 1](context).lower(file)
 
-                // TODO only way?
-                file.declarations.forEach {
-                    (it as? IrDeclarationBase)?.loweredUpTo = i
-                }
+//                // TODO only way?
+//                file.declarations.forEach {
+//                    (it as? IrDeclarationBase)?.loweredUpTo = i
+//                }
             }
             (file as? IrFileImpl)?.loweredUpTo = i
         }
@@ -496,6 +500,9 @@ class MutableController : StageController {
     }
 
     override fun lazyLower(declaration: IrDeclaration) {
+        // Parents may be not initialized during stage 0
+        if (currentStage == 0 || currentStage == (declaration as? IrDeclarationBase)?.createdOn) return
+
         declaration.fileOrNull?.let {
             lowerUpTo(it, currentStage)
         }

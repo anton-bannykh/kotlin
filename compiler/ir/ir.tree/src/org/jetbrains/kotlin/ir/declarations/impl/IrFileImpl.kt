@@ -30,23 +30,20 @@ import org.jetbrains.kotlin.name.FqName
 class IrFileImpl(
     override val fileEntry: SourceManager.FileEntry,
     override val symbol: IrFileSymbol,
-    override val fqName: FqName,
-    val stageController: StageController
+    override val fqName: FqName
 ) :
     IrElementBase(0, fileEntry.maxOffset),
     IrFile {
 
     constructor(
         fileEntry: SourceManager.FileEntry,
-        symbol: IrFileSymbol,
-        stageController: StageController
-    ) : this(fileEntry, symbol, symbol.descriptor.fqName, stageController)
+        symbol: IrFileSymbol
+    ) : this(fileEntry, symbol, symbol.descriptor.fqName)
 
     constructor(
         fileEntry: SourceManager.FileEntry,
-        packageFragmentDescriptor: PackageFragmentDescriptor,
-        stageController: StageController
-    ) : this(fileEntry, IrFileSymbolImpl(packageFragmentDescriptor), packageFragmentDescriptor.fqName, stageController)
+        packageFragmentDescriptor: PackageFragmentDescriptor
+    ) : this(fileEntry, IrFileSymbolImpl(packageFragmentDescriptor), packageFragmentDescriptor.fqName)
 
     init {
         symbol.bind(this)
@@ -57,12 +54,12 @@ class IrFileImpl(
     var loweredUpTo = 0
 
     override val declarations: SimpleList<IrDeclaration> =
-        DumbPersistentList(null, emptyList()) { stageController }
+        DumbPersistentList(null, emptyList())
 
     override val annotations: SimpleList<IrCall> =
-        DumbPersistentList(null, emptyList()) { stageController }
+        DumbPersistentList(null, emptyList())
 
-    override var metadata: MetadataSource.File? by NullablePersistentVar() { stageController }
+    override var metadata: MetadataSource.File? by NullablePersistentVar(null)
 
     override fun <R, D> accept(visitor: IrElementVisitor<R, D>, data: D): R =
         visitor.visitFile(this, data)

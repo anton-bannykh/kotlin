@@ -47,7 +47,7 @@ class JsIrBackendContext(
     val symbolTable: SymbolTable,
     irModuleFragment: IrModuleFragment,
     override val configuration: CompilerConfiguration,
-    override val stageController: MutableController
+    val stageController: MutableController
 ) : CommonBackendContext {
 
     init {
@@ -107,8 +107,7 @@ class JsIrBackendContext(
                 override fun getLineNumber(offset: Int) = UNDEFINED_OFFSET
                 override fun getColumnNumber(offset: Int) = UNDEFINED_OFFSET
             },
-            internalPackageFragmentDescriptor,
-            stageController
+            internalPackageFragmentDescriptor
         ).also {
             irModuleFragment.files += it
         }

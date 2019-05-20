@@ -65,7 +65,7 @@ class MoveBodilessDeclarationsToSeparatePlaceLowering(private val context: JsIrB
         if (irFile.getJsModule() != null || irFile.getJsQualifier() != null) {
             val newFragmentDescriptor = EmptyPackageFragmentDescriptor(context.module, irFile.fqName)
             val newFragmentSymbol = IrFileSymbolImpl(newFragmentDescriptor)
-            val newFragment = IrFileImpl(irFile.fileEntry, newFragmentSymbol, (irFile as IrFileImpl).stageController)
+            val newFragment = IrFileImpl(irFile.fileEntry, newFragmentSymbol)
             newFragment.declarations += irFile.declarations
             newFragment.annotations += irFile.annotations
 

@@ -36,7 +36,6 @@ import org.jetbrains.kotlin.utils.SmartList
 
 class Psi2IrTranslator(
     val languageVersionSettings: LanguageVersionSettings,
-    val stageController: StageController,
     val configuration: Psi2IrConfiguration = Psi2IrConfiguration()
 ) {
     interface PostprocessingStep {
@@ -65,7 +64,7 @@ class Psi2IrTranslator(
         symbolTable: SymbolTable = SymbolTable(),
         extensions: GeneratorExtensions = GeneratorExtensions()
     ): GeneratorContext =
-        GeneratorContext(configuration, moduleDescriptor, bindingContext, languageVersionSettings, symbolTable, extensions, stageController)
+        GeneratorContext(configuration, moduleDescriptor, bindingContext, languageVersionSettings, symbolTable, extensions)
 
     fun generateModuleFragment(context: GeneratorContext, ktFiles: Collection<KtFile>, deserializer: IrDeserializer? = null): IrModuleFragment {
         val moduleGenerator = ModuleGenerator(context)

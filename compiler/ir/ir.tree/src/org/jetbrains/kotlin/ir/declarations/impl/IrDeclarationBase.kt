@@ -27,19 +27,13 @@ abstract class IrDeclarationBase(
 ) : IrElementBase(startOffset, endOffset),
     IrDeclaration{
 
-    var parentNullable: IrDeclarationParent? by DeclarationParentNullableVar(this)
-
     override var origin: IrDeclarationOrigin by PersistentVar(origin)
 
-    override var parent: IrDeclarationParent
-        get() = parentNullable!!
-        set(v) {
-            parentNullable = v
-        }
+    override var parent: IrDeclarationParent by ParentPersistentVar()
 
     override val annotations: SimpleList<IrCall> = DumbPersistentList()
 
-    var loweredUpTo: Int = 0
+    val createdOn: Int = stageController.currentStage
 
     override val metadata: MetadataSource?
         get() = null

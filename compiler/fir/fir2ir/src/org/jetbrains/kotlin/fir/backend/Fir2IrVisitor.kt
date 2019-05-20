@@ -140,8 +140,7 @@ internal class Fir2IrVisitor(
     override fun visitFile(file: FirFile, data: Any?): IrFile {
         return IrFileImpl(
             PsiSourceManager.PsiFileEntry(file.psi as PsiFile),
-            moduleDescriptor.findPackageFragmentForFile(file),
-            NoopController
+            moduleDescriptor.findPackageFragmentForFile(file)
         ).withParent {
             file.declarations.forEach {
                 val irDeclaration = it.toIrDeclaration() ?: return@forEach

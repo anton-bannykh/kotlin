@@ -44,8 +44,6 @@ abstract class KotlinIrLinker(
     private val firstKnownBuiltinsIndex: Long
 ) : DescriptorUniqIdAware, IrDeserializer {
 
-    protected open val stageController: StageController get() = NoopController
-
     protected val deserializedSymbols = mutableMapOf<UniqIdKey, IrSymbol>()
     private val reachableTopLevels = mutableSetOf<UniqIdKey>()
     private val deserializedTopLevels = mutableSetOf<UniqIdKey>()
@@ -210,7 +208,7 @@ abstract class KotlinIrLinker(
             val packageFragmentDescriptor = EmptyPackageFragmentDescriptor(moduleDescriptor, fqName)
 
             val symbol = IrFileSymbolImpl(packageFragmentDescriptor)
-            val file = IrFileImpl(fileEntry, symbol, fqName, stageController)
+            val file = IrFileImpl(fileEntry, symbol, fqName)
 
             // We deserialize file annotations on first file use.
             fileAnnotations.put(file, fileProto.annotations)
@@ -385,7 +383,7 @@ abstract class KotlinIrLinker(
 
         packageFragments.forEach { packageFragment ->
             val symbol = IrFileSymbolImpl(packageFragment)
-            val file = IrFileImpl(NaiveSourceBasedFileEntryImpl("forward declarations pseudo-file"), symbol, stageController)
+            val file = IrFileImpl(NaiveSourceBasedFileEntryImpl("forward declarations pseudo-file"), symbol)
             val symbols = forwardDeclarations
                 .filter { !it.isBound }
                 .filter { it.descriptor.findPackage() == packageFragment }
