@@ -137,7 +137,7 @@ private val enumUsageLoweringPhase = makeJsModulePhase(
 )
 
 private val sharedVariablesLoweringPhase = makeJsModulePhase(
-    ::SharedVariablesLowering,
+    { context -> SharedVariablesLowering(context).toDeclarationTransformer().toFileLoweringPass() },
     name = "SharedVariablesLowering",
     description = "Box captured mutable variables"
 )
