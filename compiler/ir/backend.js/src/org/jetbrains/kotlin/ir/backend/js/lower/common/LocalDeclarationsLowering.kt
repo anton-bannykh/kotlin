@@ -7,6 +7,7 @@ package org.jetbrains.kotlin.ir.backend.js.lower.common
 
 import org.jetbrains.kotlin.backend.common.BackendContext
 import org.jetbrains.kotlin.backend.common.DeclarationContainerLoweringPass
+import org.jetbrains.kotlin.backend.common.DeclarationTransformer
 import org.jetbrains.kotlin.backend.common.descriptors.*
 import org.jetbrains.kotlin.backend.common.ir.copyTo
 import org.jetbrains.kotlin.backend.common.ir.copyTypeParametersFrom
@@ -49,14 +50,13 @@ val IrDeclaration.parentsWithSelf: Sequence<IrDeclarationParent>
 val IrDeclaration.parents: Sequence<IrDeclarationParent>
     get() = parentsWithSelf.drop(1)
 
-object BOUND_VALUE_PARAMETER: IrDeclarationOriginImpl("BOUND_VALUE_PARAMETER")
+object BOUND_VALUE_PARAMETER : IrDeclarationOriginImpl("BOUND_VALUE_PARAMETER")
 
 class LocalDeclarationsLowering(
     val context: BackendContext,
     val localNameProvider: LocalNameProvider = LocalNameProvider.DEFAULT,
     val loweredConstructorVisibility: Visibility = Visibilities.PRIVATE
-) :
-    DeclarationContainerLoweringPass {
+) : DeclarationTransformer {
 
     private object DECLARATION_ORIGIN_FIELD_FOR_CAPTURED_VALUE :
         IrDeclarationOriginImpl("FIELD_FOR_CAPTURED_VALUE", isSynthetic = true)
@@ -64,39 +64,38 @@ class LocalDeclarationsLowering(
     private object STATEMENT_ORIGIN_INITIALIZER_OF_FIELD_FOR_CAPTURED_VALUE :
         IrStatementOriginImpl("INITIALIZER_OF_FIELD_FOR_CAPTURED_VALUE")
 
-    override fun lower(irDeclarationContainer: IrDeclarationContainer) {
-        if (irDeclarationContainer is IrDeclaration) {
-            val parents = irDeclarationContainer.parents
+    override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
+        val parent = declaration.parent
+        if (parent is IrDeclaration) {
+            val parents = parent.parents
 
             if (parents.any { it is IrFunction || it is IrField }) {
                 // Lowering of non-local declarations handles all local declarations inside.
                 // This declaration is local and shouldn't be considered.
-                return
+                return null
             }
         }
 
         // Continuous numbering across all declarations in the container.
-        lambdasCount = 0
+        lambdasCount = 0 // TODO fix
 
-        irDeclarationContainer.transformDeclarationsFlat { memberDeclaration ->
-            // TODO: may be do the opposite - specify the list of IR elements which need not to be transformed
-            when (memberDeclaration) {
-                is IrFunction -> LocalDeclarationsTransformer(memberDeclaration).lowerLocalDeclarations()
-                is IrProperty -> LocalDeclarationsTransformer(memberDeclaration).lowerLocalDeclarations()
-                is IrField -> LocalDeclarationsTransformer(memberDeclaration).lowerLocalDeclarations()
-                is IrAnonymousInitializer -> LocalDeclarationsTransformer(memberDeclaration).lowerLocalDeclarations()
-                is IrEnumEntry -> {
-                    // The responsibility of pulling up classes for enum entries is on EnumClassLowering.
-                    // Moreover, EnumClassLowering needs information whether a enum entry has its own class or not.
-                    val correspondingClass = memberDeclaration.correspondingClass
-                    memberDeclaration.correspondingClass = null
-                    LocalDeclarationsTransformer(memberDeclaration).lowerLocalDeclarations().also {
-                        memberDeclaration.correspondingClass = correspondingClass
-                    }
+        // TODO: may be do the opposite - specify the list of IR elements which need not to be transformed
+        return when (declaration) {
+            is IrFunction -> LocalDeclarationsTransformer(declaration).lowerLocalDeclarations()
+            is IrProperty -> LocalDeclarationsTransformer(declaration).lowerLocalDeclarations()
+            is IrField -> LocalDeclarationsTransformer(declaration).lowerLocalDeclarations()
+            is IrAnonymousInitializer -> LocalDeclarationsTransformer(declaration).lowerLocalDeclarations()
+            is IrEnumEntry -> {
+                // The responsibility of pulling up classes for enum entries is on EnumClassLowering.
+                // Moreover, EnumClassLowering needs information whether a enum entry has its own class or not.
+                val correspondingClass = declaration.correspondingClass
+                declaration.correspondingClass = null
+                LocalDeclarationsTransformer(declaration).lowerLocalDeclarations().also {
+                    declaration.correspondingClass = correspondingClass
                 }
-                // TODO: visit children as well
-                else -> null
             }
+            // TODO: visit children as well
+            else -> null
         }
     }
 
