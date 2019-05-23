@@ -31,21 +31,19 @@ class PropertiesLowering(
     private val originOfSyntheticMethodForAnnotations: IrDeclarationOrigin? = null,
     private val skipExternalProperties: Boolean = false,
     private val computeSyntheticMethodName: ((Name) -> String)? = null
-) : IrElementTransformerVoid(), FileLoweringPass {
-    override fun lower(irFile: IrFile) {
-        irFile.accept(this, null)
+) : IrElementVisitorVoid, DeclarationTransformer {
+    override fun visitElement(element: IrElement) {
+        element.acceptChildrenVoid(this)
     }
 
-    override fun visitFile(declaration: IrFile): IrFile {
-        declaration.transformChildrenVoid(this)
-        declaration.transformDeclarationsFlat { lowerProperty(it, ClassKind.CLASS) }
-        return declaration
+    override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
+        declaration.acceptVoid(this)
+        return lowerProperty(declaration, ClassKind.CLASS)
     }
 
-    override fun visitClass(declaration: IrClass): IrStatement {
-        declaration.transformChildrenVoid(this)
+    override fun visitClass(declaration: IrClass) {
+        declaration.acceptChildrenVoid(this)
         declaration.transformDeclarationsFlat { lowerProperty(it, declaration.kind) }
-        return declaration
     }
 
     private fun lowerProperty(declaration: IrDeclaration, kind: ClassKind): List<IrDeclaration>? =
