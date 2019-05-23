@@ -66,7 +66,7 @@ private fun makeCustomJsModulePhase(
 )
 
 private val moveBodilessDeclarationsToSeparatePlacePhase = makeJsModulePhase(
-    ::MoveBodilessDeclarationsToSeparatePlaceLowering,
+    { context -> MoveBodilessDeclarationsToSeparatePlaceLowering(context).toFileLoweringPass() },
     name = "MoveBodilessDeclarationsToSeparatePlace",
     description = "Move `external` and `built-in` declarations into separate place to make the following lowerings do not care about them"
 )
