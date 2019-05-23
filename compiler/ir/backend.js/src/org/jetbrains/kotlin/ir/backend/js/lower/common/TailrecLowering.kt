@@ -20,6 +20,7 @@ import org.jetbrains.kotlin.backend.common.*
 import org.jetbrains.kotlin.backend.common.lower.at
 import org.jetbrains.kotlin.backend.common.lower.createIrBuilder
 import org.jetbrains.kotlin.backend.common.lower.irBlock
+import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.builders.*
 import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.expressions.*
@@ -28,6 +29,8 @@ import org.jetbrains.kotlin.ir.symbols.IrValueParameterSymbol
 import org.jetbrains.kotlin.ir.util.explicitParameters
 import org.jetbrains.kotlin.ir.util.getArgumentsWithIr
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
+import org.jetbrains.kotlin.ir.visitors.IrElementVisitorVoid
+import org.jetbrains.kotlin.ir.visitors.acceptChildrenVoid
 import org.jetbrains.kotlin.ir.visitors.transformChildrenVoid
 
 /**
@@ -36,9 +39,22 @@ import org.jetbrains.kotlin.ir.visitors.transformChildrenVoid
  * Note: it currently can't handle local functions and classes declared in default arguments.
  * See [deepCopyWithVariables].
  */
-class TailrecLowering(val context: BackendContext) : FunctionLoweringPass {
-    override fun lower(irFunction: IrFunction) {
-        lowerTailRecursionCalls(context, irFunction)
+class TailrecLowering(val context: BackendContext) : DeclarationTransformer {
+
+    private val visitor = object : IrElementVisitorVoid {
+        override fun visitElement(element: IrElement) {
+            element.acceptChildrenVoid(this)
+        }
+
+        override fun visitFunction(declaration: IrFunction) {
+            declaration.acceptChildrenVoid(this)
+            lowerTailRecursionCalls(context, declaration)
+        }
+    }
+
+    override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
+        declaration.accept(visitor, null)
+        return null
     }
 }
 
