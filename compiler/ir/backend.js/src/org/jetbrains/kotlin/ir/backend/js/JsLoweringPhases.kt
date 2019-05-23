@@ -252,7 +252,7 @@ private val multipleCatchesLoweringPhase = makeJsModulePhase(
 )
 
 private val bridgesConstructionPhase = makeJsModulePhase(
-    ::BridgesConstruction,
+    { context -> BridgesConstruction(context).toDeclarationTransformer().toFileLoweringPass() },
     name = "BridgesConstruction",
     description = "Generate bridges",
     prerequisite = setOf(suspendFunctionsLoweringPhase)
