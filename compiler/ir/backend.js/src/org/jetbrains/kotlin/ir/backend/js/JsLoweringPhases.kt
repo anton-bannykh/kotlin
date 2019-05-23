@@ -91,7 +91,7 @@ private val functionInliningPhase = makeJsModulePhase(
 )
 
 private val removeInlineFunctionsLoweringPhase = makeJsModulePhase(
-    { RemoveInlineFunctionsLowering(it) },
+    { context -> RemoveInlineFunctionsLowering(context).toFileLoweringPass() },
     name = "RemoveInlineFunctionsLowering",
     description = "Remove Inline functions with reified parameters from context",
     prerequisite = setOf(functionInliningPhase)
