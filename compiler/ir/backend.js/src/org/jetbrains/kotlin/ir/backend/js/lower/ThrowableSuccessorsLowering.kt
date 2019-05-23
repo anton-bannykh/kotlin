@@ -5,7 +5,7 @@
 
 package org.jetbrains.kotlin.ir.backend.js.lower
 
-import org.jetbrains.kotlin.backend.common.FileLoweringPass
+import org.jetbrains.kotlin.backend.common.DeclarationTransformer
 import org.jetbrains.kotlin.backend.common.atMostOne
 import org.jetbrains.kotlin.backend.common.descriptors.WrappedFieldDescriptor
 import org.jetbrains.kotlin.backend.common.ir.copyTo
@@ -31,7 +31,7 @@ import org.jetbrains.kotlin.ir.util.transformFlat
 import org.jetbrains.kotlin.ir.visitors.*
 import org.jetbrains.kotlin.name.Name
 
-class ThrowableSuccessorsLowering(val context: JsIrBackendContext) : FileLoweringPass {
+class ThrowableSuccessorsLowering(val context: JsIrBackendContext) : DeclarationTransformer {
     private val unitType get() = context.irBuiltIns.unitType
     private val nothingNType get() = context.irBuiltIns.nothingNType
     private val nothingType get() = context.irBuiltIns.nothingType
@@ -72,14 +72,15 @@ class ThrowableSuccessorsLowering(val context: JsIrBackendContext) : FileLowerin
 
     private data class DirectThrowableSuccessors(val klass: IrClass, val message: IrField, val cause: IrField)
 
-    override fun lower(irFile: IrFile) {
-
+    override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
         pendingSuperUsages.clear()
-        irFile.acceptChildrenVoid(ThrowableAccessorCreationVisitor())
+        declaration.accept(ThrowableAccessorCreationVisitor(), null)
         pendingSuperUsages.forEach { it.klass.transformChildren(ThrowableDirectSuccessorTransformer(it), it.klass) }
-        irFile.transformChildren(ThrowableNameSetterTransformer(), irFile)
-        irFile.transformChildrenVoid(ThrowablePropertiesUsageTransformer())
-        irFile.transformChildrenVoid(ThrowableInstanceCreationLowering())
+        declaration.transform(ThrowableNameSetterTransformer(), declaration.parent)
+        declaration.transform(ThrowablePropertiesUsageTransformer(), null)
+        declaration.transform(ThrowableInstanceCreationLowering(), null)
+
+        return null
     }
 
     inner class ThrowableNameSetterTransformer : IrElementTransformer<IrDeclarationParent> {

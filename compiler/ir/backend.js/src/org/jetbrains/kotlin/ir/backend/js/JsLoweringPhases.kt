@@ -98,7 +98,7 @@ private val removeInlineFunctionsLoweringPhase = makeJsModulePhase(
 )
 
 private val throwableSuccessorsLoweringPhase = makeJsModulePhase(
-    ::ThrowableSuccessorsLowering,
+    { context -> ThrowableSuccessorsLowering(context).toFileLoweringPass() },
     name = "ThrowableSuccessorsLowering",
     description = "Link kotlin.Throwable and JavaScript Error together to provide proper interop between language and platform exceptions"
 )
