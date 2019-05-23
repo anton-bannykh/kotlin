@@ -6,7 +6,7 @@
 package org.jetbrains.kotlin.ir.backend.js.lower.common
 
 import org.jetbrains.kotlin.backend.common.BackendContext
-import org.jetbrains.kotlin.backend.common.FileLoweringPass
+import org.jetbrains.kotlin.backend.common.DeclarationTransformer
 import org.jetbrains.kotlin.descriptors.MemberDescriptor
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.declarations.*
@@ -27,18 +27,16 @@ import org.jetbrains.kotlin.resolve.multiplatform.ExpectedActualResolver
 /**
  * This pass removes all declarations with `isExpect == true`.
  */
-class ExpectDeclarationsRemoving(val context: BackendContext) : FileLoweringPass {
+class ExpectDeclarationsRemoving(val context: BackendContext) : DeclarationTransformer {
 
-    override fun lower(irFile: IrFile) {
+    override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
         // All declarations with `isExpect == true` are nested into a top-level declaration with `isExpect == true`.
-        irFile.declarations.removeAll {
-            val descriptor = it.descriptor
-            if (descriptor is MemberDescriptor && descriptor.isExpect) {
-                copyDefaultArgumentsFromExpectToActual(it)
-                true
-            } else {
-                false
-            }
+        val descriptor = declaration.descriptor
+        if (descriptor is MemberDescriptor && descriptor.isExpect) {
+            copyDefaultArgumentsFromExpectToActual(declaration)
+            return emptyList()
+        } else {
+            return null
         }
     }
 

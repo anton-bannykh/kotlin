@@ -72,7 +72,7 @@ private val moveBodilessDeclarationsToSeparatePlacePhase = makeJsModulePhase(
 )
 
 private val expectDeclarationsRemovingPhase = makeJsModulePhase(
-    ::ExpectDeclarationsRemoving,
+    { context -> ExpectDeclarationsRemoving(context).toFileLoweringPass() },
     name = "ExpectDeclarationsRemoving",
     description = "Remove expect declaration from module fragment"
 )
