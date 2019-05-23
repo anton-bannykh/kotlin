@@ -316,7 +316,7 @@ private val classReferenceLoweringPhase = makeJsModulePhase(
 )
 
 private val primitiveCompanionLoweringPhase = makeJsModulePhase(
-    ::PrimitiveCompanionLowering,
+    { context -> PrimitiveCompanionLowering(context).toFileLoweringPass() },
     name = "PrimitiveCompanionLowering",
     description = "Replace common companion object access with platform one"
 )
