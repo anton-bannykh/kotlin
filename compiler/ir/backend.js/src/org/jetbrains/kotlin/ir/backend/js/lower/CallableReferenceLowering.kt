@@ -5,6 +5,7 @@
 
 package org.jetbrains.kotlin.ir.backend.js.lower
 
+import org.jetbrains.kotlin.backend.common.DeclarationTransformer
 import org.jetbrains.kotlin.backend.common.FileLoweringPass
 import org.jetbrains.kotlin.backend.common.descriptors.WrappedTypeParameterDescriptor
 import org.jetbrains.kotlin.backend.common.descriptors.WrappedValueParameterDescriptor
@@ -29,6 +30,7 @@ import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.IrTypeProjection
 import org.jetbrains.kotlin.ir.types.impl.IrSimpleTypeImpl
+import org.jetbrains.kotlin.ir.util.file
 import org.jetbrains.kotlin.ir.util.isInlined
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
 import org.jetbrains.kotlin.ir.visitors.transformChildrenVoid
@@ -41,7 +43,7 @@ data class CallableReferenceKey(
 )
 
 // TODO: generate $metadata$ property and fill it with corresponding KFunction/KProperty interface
-class CallableReferenceLowering(val context: JsIrBackendContext) : FileLoweringPass {
+class CallableReferenceLowering(val context: JsIrBackendContext) : DeclarationTransformer {
     private val callableNameConst get() = JsIrBuilder.buildString(context.irBuiltIns.stringType, Namer.KCALLABLE_NAME)
     private val getterConst get() = JsIrBuilder.buildString(context.irBuiltIns.stringType, Namer.KPROPERTY_GET)
     private val setterConst get() = JsIrBuilder.buildString(context.irBuiltIns.stringType, Namer.KPROPERTY_SET)
@@ -50,12 +52,12 @@ class CallableReferenceLowering(val context: JsIrBackendContext) : FileLoweringP
     private val newDeclarations = mutableListOf<IrDeclaration>()
     private lateinit var implicitDeclarationFile: IrFile// = context.implicitDeclarationFile
 
-    override fun lower(irFile: IrFile) {
+    override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
         newDeclarations.clear()
         callableToFactoryFunction.clear()
-        implicitDeclarationFile = irFile
-        irFile.transformChildrenVoid(CallableReferenceLowerTransformer())
-        irFile.declarations += newDeclarations
+        implicitDeclarationFile = declaration.file // TODO
+        declaration.transformChildrenVoid(CallableReferenceLowerTransformer())
+        return listOf(declaration) + newDeclarations
     }
 
     private fun makeCallableKey(declaration: IrFunction, reference: IrCallableReference) =

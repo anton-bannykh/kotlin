@@ -188,7 +188,7 @@ private val privateMembersLoweringPhase = makeJsModulePhase(
 )
 
 private val callableReferenceLoweringPhase = makeJsModulePhase(
-    ::CallableReferenceLowering,
+    { context -> CallableReferenceLowering(context).toFileLoweringPass() },
     name = "CallableReferenceLowering",
     description = "Handle callable references",
     prerequisite = setOf(
