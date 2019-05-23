@@ -115,7 +115,7 @@ fun DeclarationTransformer.toFileLoweringPass(): FileLoweringPass {
     }
 }
 
-fun DeclarationTransformer.toDeclarationContainerLoweringPass(): FileLoweringPass {
+fun DeclarationTransformer.toDeclarationContainerLoweringPass(): DeclarationContainerLoweringPass {
     return object : DeclarationContainerLoweringPass {
         override fun lower(irDeclarationContainer: IrDeclarationContainer) {
             irDeclarationContainer.declarations.transformFlat(this@toDeclarationContainerLoweringPass::transformFlat)
