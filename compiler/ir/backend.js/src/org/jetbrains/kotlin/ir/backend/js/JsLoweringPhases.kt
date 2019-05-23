@@ -239,7 +239,7 @@ private val propertiesLoweringPhase = makeJsModulePhase(
 )
 
 private val initializersLoweringPhase = makeJsModulePhase(
-    { context -> InitializersLowering(context, JsLoweredDeclarationOrigin.CLASS_STATIC_INITIALIZER, false) },
+    { context -> InitializersLowering(context, JsLoweredDeclarationOrigin.CLASS_STATIC_INITIALIZER, false).toDeclarationTransformer().toFileLoweringPass() },
     name = "InitializersLowering",
     description = "Merge init block and field initializers into [primary] constructor",
     prerequisite = setOf(enumClassConstructorLoweringPhase)
