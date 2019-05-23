@@ -78,7 +78,7 @@ private val expectDeclarationsRemovingPhase = makeJsModulePhase(
 )
 
 private val lateinitLoweringPhase = makeJsModulePhase(
-    ::LateinitLowering,
+    { context -> LateinitLowering(context).toFileLoweringPass() },
     name = "LateinitLowering",
     description = "Insert checks for lateinit field references"
 )
