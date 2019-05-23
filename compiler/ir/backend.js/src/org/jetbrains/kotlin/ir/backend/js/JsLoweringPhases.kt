@@ -310,7 +310,7 @@ private val blockDecomposerLoweringPhase = makeJsModulePhase(
 )
 
 private val classReferenceLoweringPhase = makeJsModulePhase(
-    ::ClassReferenceLowering,
+    { context -> ClassReferenceLowering(context).toFileLoweringPass() },
     name = "ClassReferenceLowering",
     description = "Handle class references"
 )
