@@ -6,6 +6,7 @@
 package org.jetbrains.kotlin.ir.backend.js.lower.common
 
 import org.jetbrains.kotlin.backend.common.BackendContext
+import org.jetbrains.kotlin.backend.common.DeclarationTransformer
 import org.jetbrains.kotlin.backend.common.FileLoweringPass
 import org.jetbrains.kotlin.backend.common.descriptors.WrappedSimpleFunctionDescriptor
 import org.jetbrains.kotlin.descriptors.ClassKind
@@ -104,9 +105,10 @@ class PropertiesLowering(
     }
 }
 
-class LocalDelegatedPropertiesLowering : IrElementTransformerVoid(), FileLoweringPass {
-    override fun lower(irFile: IrFile) {
-        irFile.accept(this, null)
+class LocalDelegatedPropertiesLowering : IrElementTransformerVoid(), DeclarationTransformer {
+    override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
+        declaration.accept(this, null)
+        return null
     }
 
     override fun visitLocalDelegatedProperty(declaration: IrLocalDelegatedProperty): IrStatement {
