@@ -175,7 +175,7 @@ private val innerClassConstructorCallsLoweringPhase = makeJsModulePhase(
 )
 
 private val suspendFunctionsLoweringPhase = makeJsModulePhase(
-    ::JsSuspendFunctionsLowering,
+    { context -> JsSuspendFunctionsLowering(context).toFileLoweringPass() },
     name = "SuspendFunctionsLowering",
     description = "Transform suspend functions into CoroutineImpl instance and build state machine",
     prerequisite = setOf(unitMaterializationLoweringPhase)
