@@ -110,7 +110,7 @@ private val tailrecLoweringPhase = makeJsModulePhase(
 )
 
 private val unitMaterializationLoweringPhase = makeJsModulePhase(
-    ::UnitMaterializationLowering,
+    { context -> UnitMaterializationLowering(context).toFileLoweringPass() },
     name = "UnitMaterializationLowering",
     description = "Insert Unit object where it is supposed to be",
     prerequisite = setOf(tailrecLoweringPhase)
