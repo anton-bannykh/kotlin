@@ -182,7 +182,7 @@ private val suspendFunctionsLoweringPhase = makeJsModulePhase(
 )
 
 private val privateMembersLoweringPhase = makeJsModulePhase(
-    ::PrivateMembersLowering,
+    { context -> PrivateMembersLowering(context).toDeclarationTransformer().toFileLoweringPass() },
     name = "PrivateMembersLowering",
     description = "Extract private members from classes"
 )
