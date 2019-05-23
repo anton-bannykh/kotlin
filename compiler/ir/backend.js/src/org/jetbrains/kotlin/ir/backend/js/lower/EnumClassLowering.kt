@@ -6,7 +6,7 @@
 package org.jetbrains.kotlin.ir.backend.js.lower
 
 import org.jetbrains.kotlin.backend.common.DeclarationContainerLoweringPass
-import org.jetbrains.kotlin.backend.common.FileLoweringPass
+import org.jetbrains.kotlin.backend.common.DeclarationTransformer
 import org.jetbrains.kotlin.backend.common.descriptors.WrappedClassConstructorDescriptor
 import org.jetbrains.kotlin.backend.common.descriptors.WrappedFieldDescriptor
 import org.jetbrains.kotlin.backend.common.ir.copyParameterDeclarationsFrom
@@ -38,16 +38,20 @@ import org.jetbrains.kotlin.ir.visitors.acceptVoid
 import org.jetbrains.kotlin.ir.visitors.transformChildrenVoid
 import java.util.*
 
-class EnumUsageLowering(val context: JsIrBackendContext) : FileLoweringPass {
-    override fun lower(irFile: IrFile) {
-        irFile.transformChildrenVoid(object : IrElementTransformerVoid() {
+class EnumUsageLowering(val context: JsIrBackendContext) : DeclarationTransformer {
+
+    override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
+        declaration.transformChildrenVoid(object : IrElementTransformerVoid() {
             override fun visitGetEnumValue(expression: IrGetEnumValue): IrExpression {
                 val enumEntry = expression.symbol.owner
                 val klass = enumEntry.parent as IrClass
                 return if (klass.isExternal) lowerExternalEnumEntry(enumEntry, klass) else lowerEnumEntry(enumEntry, klass)
             }
         })
+
+        return null
     }
+
 
     private fun lowerExternalEnumEntry(enumEntry: IrEnumEntry, klass: IrClass) =
         context.enumEntryExternalToInstanceField.getOrPut(enumEntry.symbol) { createFieldForEntry(enumEntry, klass) }.let {
@@ -81,15 +85,14 @@ class EnumUsageLowering(val context: JsIrBackendContext) : FileLoweringPass {
         }.run { JsIrBuilder.buildCall(symbol) }
 }
 
-class EnumClassLowering(val context: JsIrBackendContext) : DeclarationContainerLoweringPass {
-    override fun lower(irDeclarationContainer: IrDeclarationContainer) {
-        irDeclarationContainer.transformDeclarationsFlat { declaration ->
-            if (declaration is IrClass && declaration.isEnumClass &&
-                !declaration.descriptor.isExpect && !declaration.isEffectivelyExternal()
-            ) {
-                EnumClassTransformer(context, declaration).transform()
-            } else null
-        }
+// Should be applied recursively
+class EnumClassLowering(val context: JsIrBackendContext) : DeclarationTransformer {
+    override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
+        return if (declaration is IrClass && declaration.isEnumClass &&
+            !declaration.descriptor.isExpect && !declaration.isEffectivelyExternal()
+        ) {
+            EnumClassTransformer(context, declaration).transform()
+        } else null
     }
 }
 
@@ -99,15 +102,15 @@ private fun createEntryAccessorName(enumName: String, enumEntry: IrEnumEntry) =
 
 private fun IrEnumEntry.getType(irClass: IrClass) = (correspondingClass ?: irClass).defaultType
 
-class EnumClassConstructorLowering(val context: JsIrBackendContext) : DeclarationContainerLoweringPass {
-    override fun lower(irDeclarationContainer: IrDeclarationContainer) {
-        irDeclarationContainer.transformDeclarationsFlat { declaration ->
-            if (declaration is IrClass && declaration.isEnumClass &&
-                !declaration.descriptor.isExpect && !declaration.isEffectivelyExternal()
-            ) {
-                EnumClassConstructorTransformer(context, declaration).transform()
-            } else null
-        }
+// Should be applied recursively
+class EnumClassConstructorLowering(val context: JsIrBackendContext) : DeclarationTransformer {
+
+    override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
+        return if (declaration is IrClass && declaration.isEnumClass &&
+            !declaration.descriptor.isExpect && !declaration.isEffectivelyExternal()
+        ) {
+            EnumClassConstructorTransformer(context, declaration).transform()
+        } else null
     }
 }
 

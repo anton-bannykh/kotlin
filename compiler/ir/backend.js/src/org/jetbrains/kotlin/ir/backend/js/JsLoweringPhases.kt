@@ -117,20 +117,20 @@ private val unitMaterializationLoweringPhase = makeJsModulePhase(
 )
 
 private val enumClassConstructorLoweringPhase = makeJsModulePhase(
-    ::EnumClassConstructorLowering,
+    { context -> EnumClassConstructorLowering(context).toDeclarationContainerLoweringPass() },
     name = "EnumClassConstructorLowering",
     description = "Transform Enum Class into regular Class"
 )
 
 private val enumClassLoweringPhase = makeJsModulePhase(
-    ::EnumClassLowering,
+    { context -> EnumClassLowering(context).toDeclarationContainerLoweringPass() },
     name = "EnumClassLowering",
     description = "Transform Enum Class into regular Class",
     prerequisite = setOf(enumClassConstructorLoweringPhase)
 )
 
 private val enumUsageLoweringPhase = makeJsModulePhase(
-    ::EnumUsageLowering,
+    { context -> EnumUsageLowering(context).toFileLoweringPass() },
     name = "EnumUsageLowering",
     description = "Replace enum access with invocation of corresponding function",
     prerequisite = setOf(enumClassLoweringPhase)
