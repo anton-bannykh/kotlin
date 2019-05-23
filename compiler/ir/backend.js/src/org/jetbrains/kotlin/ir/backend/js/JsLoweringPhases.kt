@@ -226,7 +226,7 @@ private val jsDefaultCallbackGeneratorPhase = makeJsModulePhase(
 )
 
 private val varargLoweringPhase = makeJsModulePhase(
-    ::VarargLowering,
+    { context -> VarargLowering(context).toFileLoweringPass() },
     name = "VarargLowering",
     description = "Lower vararg arguments",
     prerequisite = setOf(callableReferenceLoweringPhase)

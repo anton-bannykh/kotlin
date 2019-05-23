@@ -5,10 +5,12 @@
 
 package org.jetbrains.kotlin.ir.backend.js.lower
 
+import org.jetbrains.kotlin.backend.common.DeclarationTransformer
 import org.jetbrains.kotlin.backend.common.FileLoweringPass
 import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
 import org.jetbrains.kotlin.ir.backend.js.JsIrBackendContext
 import org.jetbrains.kotlin.ir.declarations.IrClass
+import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrFile
 import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
@@ -27,9 +29,11 @@ import org.jetbrains.kotlin.ir.util.getInlinedClass
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
 import org.jetbrains.kotlin.ir.visitors.transformChildrenVoid
 
-class VarargLowering(val context: JsIrBackendContext) : FileLoweringPass {
-    override fun lower(irFile: IrFile) {
-        irFile.transformChildrenVoid(VarargTransformer(context))
+class VarargLowering(val context: JsIrBackendContext) : DeclarationTransformer {
+
+    override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
+        declaration.transformChildrenVoid(VarargTransformer(context))
+        return null
     }
 }
 
