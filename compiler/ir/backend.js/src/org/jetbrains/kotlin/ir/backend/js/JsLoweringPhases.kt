@@ -266,7 +266,7 @@ private val typeOperatorLoweringPhase = makeJsModulePhase(
 )
 
 private val secondaryConstructorLoweringPhase = makeJsModulePhase(
-    ::SecondaryConstructorLowering,
+    { context -> SecondaryConstructorLowering(context).toDeclarationTransformer().toFileLoweringPass() },
     name = "SecondaryConstructorLoweringPhase",
     description = "Generate static functions for each secondary constructor",
     prerequisite = setOf(innerClassesLoweringPhase)
