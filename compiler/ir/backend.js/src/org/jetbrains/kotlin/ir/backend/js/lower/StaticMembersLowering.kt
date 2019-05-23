@@ -5,6 +5,7 @@
 
 package org.jetbrains.kotlin.ir.backend.js.lower
 
+import org.jetbrains.kotlin.backend.common.DeclarationTransformer
 import org.jetbrains.kotlin.backend.common.FileLoweringPass
 import org.jetbrains.kotlin.backend.common.ir.addChild
 import org.jetbrains.kotlin.ir.IrElement
@@ -15,13 +16,14 @@ import org.jetbrains.kotlin.ir.util.isEffectivelyExternal
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.visitors.IrElementVisitorVoid
 import org.jetbrains.kotlin.ir.visitors.acceptChildrenVoid
+import org.jetbrains.kotlin.ir.visitors.acceptVoid
 
 // Move static member declarations from classes to top level
-class StaticMembersLowering(val context: JsIrBackendContext) : FileLoweringPass {
+class StaticMembersLowering(val context: JsIrBackendContext) : DeclarationTransformer {
 
-    override fun lower(irFile: IrFile) {
+    override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
         val staticDeclarationsInClasses = mutableListOf<IrDeclaration>()
-        irFile.acceptChildrenVoid(object : IrElementVisitorVoid {
+        declaration.acceptVoid(object : IrElementVisitorVoid {
             override fun visitElement(element: IrElement) {
                 element.acceptChildrenVoid(this)
             }
@@ -46,11 +48,12 @@ class StaticMembersLowering(val context: JsIrBackendContext) : FileLoweringPass 
             }
         })
 
-        for (declaration in staticDeclarationsInClasses) {
-            val klass = declaration.parentAsClass
-            klass.declarations.remove(declaration)
-            irFile.addChild(declaration)
-            declaration.parent = irFile
+        staticDeclarationsInClasses.forEach {
+            val klass = it.parentAsClass
+            klass.declarations.remove(it)
+            it.parent = declaration.parent
         }
+
+        return if (staticDeclarationsInClasses.isEmpty()) null else listOf(declaration) + staticDeclarationsInClasses
     }
 }

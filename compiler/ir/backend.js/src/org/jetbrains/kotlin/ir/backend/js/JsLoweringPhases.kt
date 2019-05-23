@@ -340,7 +340,7 @@ private val testGenerationPhase = makeJsModulePhase(
 )
 
 private val staticMembersLoweringPhase = makeJsModulePhase(
-    ::StaticMembersLowering,
+    { context -> StaticMembersLowering(context).toFileLoweringPass() },
     name = "StaticMembersLowering",
     description = "Move static member declarations to top-level"
 )
