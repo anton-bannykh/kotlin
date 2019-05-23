@@ -259,7 +259,7 @@ private val bridgesConstructionPhase = makeJsModulePhase(
 )
 
 private val typeOperatorLoweringPhase = makeJsModulePhase(
-    ::TypeOperatorLowering,
+    { context -> TypeOperatorLowering(context).toFileLoweringPass() },
     name = "TypeOperatorLowering",
     description = "Lower IrTypeOperator with corresponding logic",
     prerequisite = setOf(bridgesConstructionPhase, removeInlineFunctionsLoweringPhase)
