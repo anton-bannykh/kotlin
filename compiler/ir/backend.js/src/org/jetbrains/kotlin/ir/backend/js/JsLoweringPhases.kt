@@ -84,14 +84,7 @@ private val lateinitLoweringPhase = makeJsModulePhase(
 )
 
 private val functionInliningPhase = makeJsModulePhase(
-    { context ->
-        object : FileLoweringPass {
-            override fun lower(irFile: IrFile) {
-                FunctionInlining(context).inline(irFile)
-                irFile.patchDeclarationParents()
-            }
-        }
-    },
+    { context -> FunctionInlining(context).toFileLoweringPass() },
     name = "FunctionInliningPhase",
     description = "Perform function inlining",
     prerequisite = setOf(expectDeclarationsRemovingPhase)

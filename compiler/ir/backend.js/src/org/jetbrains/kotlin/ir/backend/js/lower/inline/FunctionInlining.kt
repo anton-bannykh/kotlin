@@ -7,6 +7,7 @@
 
 package org.jetbrains.kotlin.ir.backend.js.lower.inline
 
+import org.jetbrains.kotlin.backend.common.DeclarationTransformer
 import org.jetbrains.kotlin.backend.common.IrElementTransformerVoidWithContext
 import org.jetbrains.kotlin.backend.common.ir.Symbols
 import org.jetbrains.kotlin.backend.common.isBuiltInIntercepted
@@ -20,7 +21,13 @@ import org.jetbrains.kotlin.ir.symbols.IrFunctionSymbol
 import org.jetbrains.kotlin.ir.util.*
 import org.jetbrains.kotlin.ir.visitors.transformChildrenVoid
 
-class FunctionInlining(val context: JsIrBackendContext) : IrElementTransformerVoidWithContext() {
+class FunctionInlining(val context: JsIrBackendContext) : IrElementTransformerVoidWithContext(), DeclarationTransformer {
+    override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
+        declaration.accept(this, null)
+        declaration.patchDeclarationParents(declaration.parent)
+        return null
+    }
+
     fun inline(irFile: IrFile): IrElement {
         return irFile.accept(this, data = null)
     }
