@@ -5,6 +5,7 @@
 
 package org.jetbrains.kotlin.ir.backend.js.lower.inline
 
+import org.jetbrains.kotlin.backend.common.DeclarationTransformer
 import org.jetbrains.kotlin.backend.common.FileLoweringPass
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.backend.js.JsIrBackendContext
@@ -69,9 +70,10 @@ import org.jetbrains.kotlin.ir.visitors.IrElementTransformer
  * }
  *
  */
-class ReturnableBlockLowering(val context: JsIrBackendContext) : FileLoweringPass {
-    override fun lower(irFile: IrFile) {
-        irFile.transform(ReturnableBlockTransformer(context), ReturnableBlockLoweringContext(irFile))
+class ReturnableBlockLowering(val context: JsIrBackendContext) : DeclarationTransformer {
+    override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
+        declaration.transform(ReturnableBlockTransformer(context), ReturnableBlockLoweringContext(declaration.parent))
+        return null
     }
 }
 

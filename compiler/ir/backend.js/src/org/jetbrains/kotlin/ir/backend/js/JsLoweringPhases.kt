@@ -143,7 +143,7 @@ private val sharedVariablesLoweringPhase = makeJsModulePhase(
 )
 
 private val returnableBlockLoweringPhase = makeJsModulePhase(
-    ::ReturnableBlockLowering,
+    { context -> ReturnableBlockLowering(context).toFileLoweringPass() },
     name = "ReturnableBlockLowering",
     description = "Replace returnable block with do-while loop",
     prerequisite = setOf(functionInliningPhase)
