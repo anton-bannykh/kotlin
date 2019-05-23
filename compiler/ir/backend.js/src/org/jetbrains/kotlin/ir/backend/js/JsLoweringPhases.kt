@@ -281,7 +281,7 @@ private val secondaryFactoryInjectorLoweringPhase = makeJsModulePhase(
 
 private val inlineClassDeclarationsLoweringPhase = makeJsModulePhase(
     { context ->
-        InlineClassLowering(context).inlineClassDeclarationLowering
+        InlineClassLowering(context).inlineClassDeclarationLowering.toDeclarationTransformer().toFileLoweringPass()
     },
     name = "InlineClassDeclarationsLowering",
     description = "Handle inline classes declarations"
@@ -289,7 +289,7 @@ private val inlineClassDeclarationsLoweringPhase = makeJsModulePhase(
 
 private val inlineClassUsageLoweringPhase = makeJsModulePhase(
     { context ->
-        InlineClassLowering(context).inlineClassUsageLowering
+        InlineClassLowering(context).inlineClassUsageLowering.toFileLoweringPass()
     },
     name = "InlineClassUsageLowering",
     description = "Handle inline classes usages"
