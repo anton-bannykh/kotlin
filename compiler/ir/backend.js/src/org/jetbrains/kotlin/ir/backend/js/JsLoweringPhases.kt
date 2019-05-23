@@ -322,7 +322,7 @@ private val primitiveCompanionLoweringPhase = makeJsModulePhase(
 )
 
 private val constLoweringPhase = makeJsModulePhase(
-    ::ConstLowering,
+    { context -> ConstLowering(context).toFileLoweringPass() },
     name = "ConstLowering",
     description = "Wrap Long and Char constants into constructor invocation"
 )
