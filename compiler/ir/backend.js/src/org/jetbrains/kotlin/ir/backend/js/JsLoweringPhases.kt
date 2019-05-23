@@ -297,7 +297,7 @@ private val inlineClassUsageLoweringPhase = makeJsModulePhase(
 
 
 private val autoboxingTransformerPhase = makeJsModulePhase(
-    ::AutoboxingTransformer,
+    { context -> AutoboxingTransformer(context).toFileLoweringPass() },
     name = "AutoboxingTransformer",
     description = "Insert box/unbox intrinsics"
 )
