@@ -102,3 +102,77 @@ fun FunctionLoweringPass.runOnFilePostfix(irFile: IrFile) {
         }
     })
 }
+
+interface DeclarationTransformer {
+    fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>?
+}
+
+fun DeclarationTransformer.toFileLoweringPass(): FileLoweringPass {
+    return object : FileLoweringPass {
+        override fun lower(irFile: IrFile) {
+            irFile.declarations.transformFlat(this@toFileLoweringPass::transformFlat)
+        }
+    }
+}
+
+fun DeclarationTransformer.toDeclarationContainerLoweringPass(): FileLoweringPass {
+    return object : DeclarationContainerLoweringPass {
+        override fun lower(irDeclarationContainer: IrDeclarationContainer) {
+            irDeclarationContainer.declarations.transformFlat(this@toDeclarationContainerLoweringPass::transformFlat)
+        }
+    }
+}
+
+fun ClassLoweringPass.toDeclarationTransformer(): DeclarationTransformer {
+    return object : DeclarationTransformer {
+        override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
+            declaration.acceptVoid(object : IrElementVisitorVoid {
+                override fun visitElement(element: IrElement) {
+                    element.acceptChildrenVoid(this)
+                }
+
+                override fun visitClass(declaration: IrClass) {
+                    declaration.acceptChildrenVoid(this)
+                    this@toDeclarationTransformer.lower(declaration)
+                }
+            })
+            return null
+        }
+    }
+}
+
+fun FunctionLoweringPass.toDeclarationTransformer(): DeclarationTransformer {
+    return object : DeclarationTransformer {
+        override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
+            declaration.acceptVoid(object : IrElementVisitorVoid {
+                override fun visitElement(element: IrElement) {
+                    element.acceptChildrenVoid(this)
+                }
+
+                override fun visitFunction(declaration: IrFunction) {
+                    declaration.acceptChildrenVoid(this)
+                    this@toDeclarationTransformer.lower(declaration)
+                }
+            })
+            return null
+        }
+    }
+}
+
+fun BodyLoweringPass.toDeclarationTransformer(): DeclarationTransformer {
+    return object : DeclarationTransformer {
+        override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
+            declaration.acceptVoid(object : IrElementVisitorVoid {
+                override fun visitElement(element: IrElement) {
+                    element.acceptChildrenVoid(this)
+                }
+
+                override fun visitBody(body: IrBody) {
+                    body.acceptChildrenVoid(this)
+                    this@toDeclarationTransformer.lower(body)
+                }
+            })
+            return null
+        }
+    }
+}
