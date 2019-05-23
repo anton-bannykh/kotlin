@@ -246,7 +246,7 @@ private val initializersLoweringPhase = makeJsModulePhase(
 )
 
 private val multipleCatchesLoweringPhase = makeJsModulePhase(
-    ::MultipleCatchesLowering,
+    { context -> MultipleCatchesLowering(context).toFileLoweringPass() },
     name = "MultipleCatchesLowering",
     description = "Replace multiple catches with single one"
 )
