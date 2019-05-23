@@ -273,7 +273,7 @@ private val secondaryConstructorLoweringPhase = makeJsModulePhase(
 )
 
 private val secondaryFactoryInjectorLoweringPhase = makeJsModulePhase(
-    ::SecondaryFactoryInjectorLowering,
+    { context -> SecondaryFactoryInjectorLowering(context).toFileLoweringPass() },
     name = "SecondaryFactoryInjectorLoweringPhase",
     description = "Replace usage of secondary constructor with corresponding static function",
     prerequisite = setOf(innerClassesLoweringPhase)

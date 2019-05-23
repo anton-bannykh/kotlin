@@ -6,6 +6,7 @@
 package org.jetbrains.kotlin.ir.backend.js.lower
 
 import org.jetbrains.kotlin.backend.common.ClassLoweringPass
+import org.jetbrains.kotlin.backend.common.DeclarationTransformer
 import org.jetbrains.kotlin.backend.common.FileLoweringPass
 import org.jetbrains.kotlin.backend.common.ir.copyTo
 import org.jetbrains.kotlin.backend.common.ir.copyTypeParametersFrom
@@ -181,9 +182,10 @@ private fun buildFactoryDeclaration(constructor: IrConstructor, irClass: IrClass
 private fun buildConstructorStubDeclarations(constructor: IrConstructor, klass: IrClass) =
     ConstructorPair(buildInitDeclaration(constructor, klass), buildFactoryDeclaration(constructor, klass))
 
-class SecondaryFactoryInjectorLowering(val context: JsIrBackendContext) : FileLoweringPass {
-    override fun lower(irFile: IrFile) {
-        irFile.accept(CallsiteRedirectionTransformer(context), null)
+class SecondaryFactoryInjectorLowering(val context: JsIrBackendContext) : DeclarationTransformer {
+    override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
+        declaration.accept(CallsiteRedirectionTransformer(context), null)
+        return null
     }
 }
 
