@@ -328,7 +328,7 @@ private val constLoweringPhase = makeJsModulePhase(
 )
 
 private val callsLoweringPhase = makeJsModulePhase(
-    ::CallsLowering,
+    { context -> CallsLowering(context).toFileLoweringPass() },
     name = "CallsLowering",
     description = "Handle intrinsics"
 )

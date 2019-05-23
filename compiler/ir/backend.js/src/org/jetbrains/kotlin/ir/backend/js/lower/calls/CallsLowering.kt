@@ -5,9 +5,11 @@
 
 package org.jetbrains.kotlin.ir.backend.js.lower.calls
 
+import org.jetbrains.kotlin.backend.common.DeclarationTransformer
 import org.jetbrains.kotlin.backend.common.FileLoweringPass
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.backend.js.JsIrBackendContext
+import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrFile
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.expressions.IrCall
@@ -16,7 +18,7 @@ import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
 import org.jetbrains.kotlin.ir.visitors.transformChildrenVoid
 
-class CallsLowering(val context: JsIrBackendContext) : FileLoweringPass {
+class CallsLowering(val context: JsIrBackendContext) : DeclarationTransformer {
     private val transformers = listOf(
         NumberOperatorCallsTransformer(context),
         NumberConversionCallsTransformer(context),
@@ -28,8 +30,8 @@ class CallsLowering(val context: JsIrBackendContext) : FileLoweringPass {
         ExceptionHelperCallsTransformer(context)
     )
 
-    override fun lower(irFile: IrFile) {
-        irFile.transformChildrenVoid(object : IrElementTransformerVoid() {
+    override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
+        declaration.accept(object : IrElementTransformerVoid() {
             override fun visitFunction(declaration: IrFunction): IrStatement {
                 if (declaration.hasAnnotation(context.intrinsics.doNotIntrinsifyAnnotationSymbol))
                     return declaration
@@ -48,7 +50,9 @@ class CallsLowering(val context: JsIrBackendContext) : FileLoweringPass {
                 }
                 return call
             }
-        })
+        }, null)
+
+        return null
     }
 }
 
