@@ -212,6 +212,7 @@ private val defaultParameterInjectorPhase = makeJsModulePhase(
     prerequisite = setOf(callableReferenceLoweringPhase, innerClassesLoweringPhase)
 )
 
+// TODO use?
 private val defaultParameterCleanerPhase = makeJsModulePhase(
     ::DefaultParameterCleaner,
     name = "DefaultParameterCleaner",
