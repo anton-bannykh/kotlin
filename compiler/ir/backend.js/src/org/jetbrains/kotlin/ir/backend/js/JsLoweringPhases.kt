@@ -303,14 +303,7 @@ private val autoboxingTransformerPhase = makeJsModulePhase(
 )
 
 private val blockDecomposerLoweringPhase = makeJsModulePhase(
-    { context ->
-        object : FileLoweringPass {
-            override fun lower(irFile: IrFile) {
-                BlockDecomposerLowering(context).lower(irFile)
-                irFile.patchDeclarationParents()
-            }
-        }
-    },
+    { context -> BlockDecomposerLowering(context).toDeclarationContainerLoweringPass() },
     name = "BlockDecomposerLowering",
     description = "Transform statement-like-expression nodes into pure-statement to make it easily transform into JS",
     prerequisite = setOf(typeOperatorLoweringPhase, suspendFunctionsLoweringPhase)

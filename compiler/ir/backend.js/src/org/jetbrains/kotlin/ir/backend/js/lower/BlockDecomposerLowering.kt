@@ -6,6 +6,7 @@
 package org.jetbrains.kotlin.ir.backend.js.lower
 
 import org.jetbrains.kotlin.backend.common.DeclarationContainerLoweringPass
+import org.jetbrains.kotlin.backend.common.DeclarationTransformer
 import org.jetbrains.kotlin.backend.common.ir.isElseBranch
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.IrStatement
@@ -21,21 +22,21 @@ import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
 import org.jetbrains.kotlin.ir.visitors.transformChildrenVoid
 import org.jetbrains.kotlin.utils.addIfNotNull
 
-class BlockDecomposerLowering(context: JsIrBackendContext) : DeclarationContainerLoweringPass {
+class BlockDecomposerLowering(context: JsIrBackendContext) : DeclarationTransformer {
 
     private val decomposerTransformer = BlockDecomposerTransformer(context)
     private val nothingType = context.irBuiltIns.nothingType
 
-    override fun lower(irDeclarationContainer: IrDeclarationContainer) {
-        irDeclarationContainer.transformDeclarationsFlat { declaration ->
-            when (declaration) {
-                is IrFunction -> {
-                    lower(declaration)
-                    listOf(declaration)
-                }
-                is IrField -> lower(declaration, irDeclarationContainer)
-                else -> listOf(declaration)
+    override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
+        return when (declaration) {
+            is IrFunction -> {
+                lower(declaration)
+                listOf(declaration)
             }
+            is IrField -> lower(declaration)
+            else -> listOf(declaration)
+        }.also { result ->
+            result.forEach { it.patchDeclarationParents(it.parent) }
         }
     }
 
@@ -54,12 +55,12 @@ class BlockDecomposerLowering(context: JsIrBackendContext) : DeclarationContaine
         }
     }
 
-    fun lower(irField: IrField, container: IrDeclarationContainer): List<IrDeclaration> {
+    fun lower(irField: IrField): List<IrDeclaration> {
         irField.initializer?.apply {
             val initFunction = JsIrBuilder.buildFunction(
                 irField.name.asString() + "\$init\$",
                 expression.type,
-                container,
+                irField.parent,
                 irField.visibility
             )
 
