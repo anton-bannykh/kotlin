@@ -40,7 +40,7 @@ abstract class IrBindableSymbolBase<out D : DeclarationDescriptor, B : IrSymbolO
 
     private var _owner: B? = null
     override val owner: B
-        get() = _owner ?: throw IllegalStateException("Symbol for $descriptor is unbound")
+        get() = _owner ?: tryLoad() ?: throw IllegalStateException("Symbol for $descriptor is unbound")
 
     override fun bind(owner: B) {
         if (_owner == null) {
@@ -51,7 +51,12 @@ abstract class IrBindableSymbolBase<out D : DeclarationDescriptor, B : IrSymbolO
     }
 
     override val isBound: Boolean
-        get() = _owner != null
+        get() = _owner != null /*|| tryLoad() != null*/
+
+    private fun tryLoad(): B? {
+        stageController.tryLoad(this)
+        return _owner
+    }
 }
 
 class IrFileSymbolImpl(descriptor: PackageFragmentDescriptor) :

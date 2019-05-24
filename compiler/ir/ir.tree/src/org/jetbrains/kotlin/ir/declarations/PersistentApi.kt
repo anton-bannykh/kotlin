@@ -5,6 +5,8 @@
 
 package org.jetbrains.kotlin.ir.declarations
 
+import org.jetbrains.kotlin.descriptors.DeclarationDescriptor
+import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.util.transformFlat
 import java.util.*
 import kotlin.NoSuchElementException
@@ -19,6 +21,8 @@ interface StageController {
     fun lazyLower(declaration: IrDeclaration) {}
 
     fun lazyLower(file: IrFile) {}
+
+    fun tryLoad(symbol: IrSymbol) {}
 }
 
 class NoopController : StageController {

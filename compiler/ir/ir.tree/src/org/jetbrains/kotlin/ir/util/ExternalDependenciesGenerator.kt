@@ -18,9 +18,9 @@ package org.jetbrains.kotlin.ir.util
 
 import org.jetbrains.kotlin.descriptors.DeclarationDescriptor
 import org.jetbrains.kotlin.descriptors.ModuleDescriptor
-import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
+import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.descriptors.IrBuiltIns
-import org.jetbrains.kotlin.ir.symbols.IrSymbol
+import org.jetbrains.kotlin.ir.symbols.*
 import kotlin.math.min
 
 class ExternalDependenciesGenerator(
@@ -73,6 +73,18 @@ class ExternalDependenciesGenerator(
         assert(s.isEmpty()) {
             "$marker: ${s.size} unbound:\n" +
                     s.toList().subList(0, min(10, s.size)).joinToString(separator = "\n") { it.descriptor.toString() }
+        }
+    }
+
+    fun loadSymbol(symbol: IrSymbol) {
+        when (symbol) {
+            is IrClassSymbol -> stubGenerator.generateClassStub(symbol.descriptor)
+            is IrConstructorSymbol -> stubGenerator.generateConstructorStub(symbol.descriptor)
+            is IrEnumEntrySymbol -> stubGenerator.generateEnumEntryStub(symbol.descriptor)
+            is IrFieldSymbol -> stubGenerator.generateFieldStub(symbol.descriptor)
+            is IrSimpleFunctionSymbol -> stubGenerator.generateFunctionStub(symbol.descriptor)
+            is IrPropertySymbol -> stubGenerator.generatePropertyStub(symbol.descriptor)
+            is IrTypeParameterSymbol -> stubGenerator.generateOrGetTypeParameterStub(symbol.descriptor)
         }
     }
 }

@@ -529,4 +529,20 @@ class MutableController : StageController {
     override fun lazyLower(file: IrFile) {
         lowerUpTo(file, currentStage)
     }
+
+    lateinit var dependencyGenerator: ExternalDependenciesGenerator
+
+    override fun tryLoad(symbol: IrSymbol) {
+        if (symbol.isBound) return
+
+//        if (::dependencyGenerator.isInitialized) {
+        withStage(0) {
+            dependencyGenerator.loadSymbol(symbol)
+        }
+//        }
+
+        if (!symbol.isBound) {
+            error("Couldn't bind symbol")
+        }
+    }
 }
