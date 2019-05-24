@@ -18,6 +18,8 @@ import org.jetbrains.kotlin.ir.backend.js.lower.inline.ReturnableBlockLowering
 import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.declarations.impl.IrDeclarationBase
 import org.jetbrains.kotlin.ir.declarations.impl.IrFileImpl
+import org.jetbrains.kotlin.ir.symbols.IrSymbol
+import org.jetbrains.kotlin.ir.util.ExternalDependenciesGenerator
 import org.jetbrains.kotlin.ir.util.fileOrNull
 import org.jetbrains.kotlin.ir.util.patchDeclarationParents
 
@@ -461,10 +463,10 @@ class MutableController : StageController {
             withStage(i) {
                 perFilePhaseList[i - 1](context).lower(file)
 
-//                // TODO only way?
-//                file.declarations.forEach {
-//                    (it as? IrDeclarationBase)?.loweredUpTo = i
-//                }
+                // TODO better way?
+                file.declarations.forEach {
+                    (it as? IrDeclarationBase)?.loweredUpTo = i
+                }
             }
             (file as? IrFileImpl)?.loweredUpTo = i
         }
@@ -487,11 +489,19 @@ class MutableController : StageController {
     }
 
     override fun lazyLower(declaration: IrDeclaration) {
-        // Parents may be not initialized during stage 0
-        if (currentStage == 0 || currentStage == (declaration as? IrDeclarationBase)?.createdOn) return
+        // TODO other declarations
+        if (declaration is IrDeclarationBase && currentStage > declaration.loweredUpTo) {
+            declaration.fileOrNull?.let {
+                lowerUpTo(it, currentStage)
+                declaration.loweredUpTo = currentStage // TODO can loweredUpTo be more than currentStage at this point?
+            }
+        }
+    }
 
-        declaration.fileOrNull?.let {
-            lowerUpTo(it, currentStage)
+    val IrDeclaration.topLevel: IrDeclaration get() = parent.let {
+        when (it) {
+            is IrDeclaration -> it.topLevel
+            else -> this
         }
     }
 

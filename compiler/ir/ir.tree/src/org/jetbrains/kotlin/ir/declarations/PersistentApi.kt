@@ -64,8 +64,6 @@ class NullablePersistentVar<T>(private val container: IrDeclaration?) {
 }
 
 class LateInitPersistentVar<T : Any>(private val container: IrDeclaration?) {
-    private val createdOn = stageController.currentStage
-
     private fun ensureLowered() {
         container?.let { stageController.lazyLower(it) }
     }
@@ -73,19 +71,17 @@ class LateInitPersistentVar<T : Any>(private val container: IrDeclaration?) {
     val changes = TreeMap<Int, T>()
 
     operator fun getValue(thisRef: Any, property: KProperty<*>): T {
-        if (stageController.currentStage != createdOn) ensureLowered()
+        ensureLowered()
         return changes.lowerEntry(stageController.currentStage + 1)!!.value
     }
 
     operator fun setValue(thisRef: Any, property: KProperty<*>, value: T) {
-        if (stageController.currentStage != createdOn) ensureLowered()
+        ensureLowered()
         changes[stageController.currentStage] = value
     }
 }
 
 class ParentPersistentVar<T : Any>(private val container: IrDeclaration?) {
-    private val createdOn = stageController.currentStage
-
     private fun ensureLowered() {
         val parent = changes.lowerEntry(stageController.currentStage + 1)?.value
         if (parent is IrDeclaration) {
@@ -98,12 +94,12 @@ class ParentPersistentVar<T : Any>(private val container: IrDeclaration?) {
     val changes = TreeMap<Int, T>()
 
     operator fun getValue(thisRef: Any, property: KProperty<*>): T {
-        if (stageController.currentStage != createdOn) ensureLowered()
+        ensureLowered()
         return changes.lowerEntry(stageController.currentStage + 1)!!.value
     }
 
     operator fun setValue(thisRef: Any, property: KProperty<*>, value: T) {
-        if (stageController.currentStage != createdOn) ensureLowered()
+        ensureLowered()
         changes[stageController.currentStage] = value
     }
 }

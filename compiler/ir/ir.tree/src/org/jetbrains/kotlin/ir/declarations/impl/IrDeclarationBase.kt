@@ -33,7 +33,7 @@ abstract class IrDeclarationBase(
 
     override val annotations: SimpleList<IrCall> = DumbPersistentList()
 
-    val createdOn: Int = stageController.currentStage
+    var loweredUpTo = stageController.currentStage
 
     override val metadata: MetadataSource?
         get() = null
