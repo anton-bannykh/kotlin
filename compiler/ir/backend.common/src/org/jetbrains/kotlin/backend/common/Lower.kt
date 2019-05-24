@@ -123,6 +123,25 @@ fun DeclarationTransformer.toDeclarationContainerLoweringPass(): DeclarationCont
     }
 }
 
+fun DeclarationTransformer.runPostfix(): DeclarationTransformer {
+    return object : DeclarationTransformer {
+        override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
+            declaration.acceptVoid(object : IrElementVisitorVoid {
+                override fun visitElement(element: IrElement) {
+                    element.acceptChildrenVoid(this)
+                }
+
+                override fun visitClass(declaration: IrClass) {
+                    declaration.acceptChildrenVoid(this)
+                    declaration.declarations.transformFlat(this@runPostfix::transformFlat)
+                }
+            })
+
+            return this@runPostfix.transformFlat(declaration)
+        }
+    }
+}
+
 fun ClassLoweringPass.toDeclarationTransformer(): DeclarationTransformer {
     return object : DeclarationTransformer {
         override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
