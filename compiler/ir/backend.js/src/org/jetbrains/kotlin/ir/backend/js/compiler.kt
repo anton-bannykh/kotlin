@@ -47,12 +47,6 @@ fun compile(
     moduleFragment.files.clear()
     moduleFragment.files += irFiles
 
-    // Create stubs
-    ExternalDependenciesGenerator(
-        moduleDescriptor = moduleDescriptor,
-        symbolTable = symbolTable,
-        irBuiltIns = irBuiltIns
-    ).generateUnboundSymbolsAsDependencies()
     moduleFragment.patchDeclarationParents()
 
     stageController.invokeTopLevel(phaseConfig, moduleFragment)
