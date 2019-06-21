@@ -462,37 +462,50 @@ class MutableController : StageController {
         val loweredUpTo = (file as? IrFileImpl)?.loweredUpTo ?: 0
         for (i in loweredUpTo + 1 until stageNonInclusive) {
             withStage(i) {
-                val lowering = perFilePhaseList[i - 1](context)
-
-                file.declarations.transformFlat {
-                    val result = lowering.transformFlat(it)
-                    (it as? IrDeclarationBase)?.loweredUpTo = i
-                    result?.forEach { (it as? IrDeclarationBase)?.loweredUpTo = i }
-                    result
+                ArrayList(file.declarations).forEach {
+                    lowerUpTo(it, i + 1)
                 }
-
             }
             (file as? IrFileImpl)?.loweredUpTo = i
         }
     }
 
     private fun lowerUpTo(declaration: IrDeclaration, stageNonInclusive: Int) {
-        val loweredUpTo = (declaration as? IrDeclarationBase)?.loweredUpTo ?: 0
+        val loweredUpTo = declaration.loweredUpTo
         for (i in loweredUpTo + 1 until stageNonInclusive) {
             withStage(i) {
-                val result = perFilePhaseList[i - 1](context).transformFlat(declaration)
-                (declaration as? IrDeclarationBase)?.loweredUpTo = i
-                if (result != null) {
-                    result.forEach { (it as? IrDeclarationBase)?.loweredUpTo = i }
-                    val file = declaration.parent as IrPackageFragment
-                    if (declaration !in result) {
-                        file.declarations.remove(declaration)
-                    }
-                    file.declarations += result
+                val topLevelDeclaration = declaration.topLevel
+
+                if (topLevelDeclaration is IrDeclarationBase && topLevelDeclaration.loweredUpTo < i - 1) {
+                    error("WTF?")
                 }
+
+                if (topLevelDeclaration.loweredUpTo == i - 1 && topLevelDeclaration.parent is IrFile) {
+                    val fileBefore = topLevelDeclaration.parent as IrFileImpl
+
+                    if (topLevelDeclaration in fileBefore.declarations && fileBefore.loweredUpTo < i) {
+                        val result = perFilePhaseList[i - 1](context).transformFlat(topLevelDeclaration)
+                        topLevelDeclaration.loweredUpTo = i
+                        if (result != null) {
+                            result.forEach { it.loweredUpTo = i }
+
+                            fileBefore.declarations.remove(topLevelDeclaration)
+
+                            fileBefore.declarations += result
+                        }
+                    }
+                }
+
+                declaration.loweredUpTo = i
             }
         }
     }
+
+    private var IrDeclaration.loweredUpTo: Int
+        get() = (this as? IrDeclarationBase)?.loweredUpTo ?: 0
+        set(v) {
+            (this as? IrDeclarationBase)?.loweredUpTo = v
+        }
 
     // TODO Special API to check only top level declarations are added?
     fun withInitialIr(block: () -> Unit) {
@@ -513,18 +526,14 @@ class MutableController : StageController {
     override fun lazyLower(declaration: IrDeclaration) {
         // TODO other declarations
         if (declaration is IrDeclarationBase && currentStage > declaration.loweredUpTo) {
-            declaration.topLevel.let {
-                if (declaration.parent is IrFile) {
-                    lowerUpTo(it, currentStage)
-                }
-                declaration.loweredUpTo = currentStage // TODO can loweredUpTo be more than currentStage at this point?
-            }
+            lowerUpTo(declaration, currentStage)
         }
     }
 
-    private val IrDeclaration.topLevel: IrDeclaration get() = parent.let {
-        if (it is IrDeclaration) it.topLevel else this
-    }
+    private val IrDeclaration.topLevel: IrDeclaration
+        get() = parent.let {
+            if (it is IrDeclaration) it.topLevel else this
+        }
 
     override fun lazyLower(file: IrFile) {
         lowerUpTo(file, currentStage)

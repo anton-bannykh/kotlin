@@ -154,7 +154,7 @@ class NameTables(packages: List<IrPackageFragment>) {
                 return
 
             declaration.isEffectivelyExternal() ->
-                globalNames.declareStableName(declaration, declaration.getJsNameOrKotlinName().identifier)
+                globalNames.declareStableName(declaration, declaration.getJsNameOrKotlinName().asString())
 
             else ->
                 globalNames.declareFreshName(declaration, declaration.name.asString())

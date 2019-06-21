@@ -81,30 +81,6 @@ class LateInitPersistentVar<T : Any>(private val container: IrDeclaration?) {
     }
 }
 
-class ParentPersistentVar<T : Any>(private val container: IrDeclaration?) {
-    private fun ensureLowered() {
-        val parent = changes.lowerEntry(stageController.currentStage + 1)?.value
-        if (parent is IrDeclaration) {
-            stageController.lazyLower(parent)
-        } else if (parent is IrFile) {
-            stageController.lazyLower(parent)
-        }
-    }
-
-    val changes = TreeMap<Int, T>()
-
-    operator fun getValue(thisRef: Any, property: KProperty<*>): T {
-        ensureLowered()
-        return changes.lowerEntry(stageController.currentStage + 1)!!.value
-    }
-
-    operator fun setValue(thisRef: Any, property: KProperty<*>, value: T) {
-        ensureLowered()
-        changes[stageController.currentStage] = value
-    }
-}
-
-
 interface SimpleList<T> : List<T> {
 
     fun add(element: T): Boolean
@@ -461,9 +437,6 @@ fun <T> IrDeclaration.NullablePersistentVar() =
 
 fun <T : Any> IrDeclaration.LateInitPersistentVar() =
     LateInitPersistentVar<T>(this)
-
-fun <T : Any> IrDeclaration.ParentPersistentVar() =
-    ParentPersistentVar<T>(this)
 
 fun <T> IrDeclaration.DumbPersistentList() =
     DumbPersistentList<T>(this, kotlin.collections.emptyList())

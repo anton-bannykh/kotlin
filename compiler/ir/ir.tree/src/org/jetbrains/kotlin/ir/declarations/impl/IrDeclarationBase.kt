@@ -29,7 +29,7 @@ abstract class IrDeclarationBase(
 
     override var origin: IrDeclarationOrigin by PersistentVar(origin)
 
-    override var parent: IrDeclarationParent by ParentPersistentVar()
+    override var parent: IrDeclarationParent by LateInitPersistentVar()
 
     override val annotations: SimpleList<IrCall> = DumbPersistentList()
 
