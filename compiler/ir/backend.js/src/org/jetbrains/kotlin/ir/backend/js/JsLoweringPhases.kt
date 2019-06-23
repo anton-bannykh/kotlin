@@ -483,7 +483,7 @@ class MutableController : StageController {
                 if (topLevelDeclaration.loweredUpTo == i - 1 && topLevelDeclaration.parent is IrFile) {
                     val fileBefore = topLevelDeclaration.parent as IrFileImpl
 
-                    if (topLevelDeclaration in fileBefore.declarations && fileBefore.loweredUpTo < i) {
+                    if (topLevelDeclaration in fileBefore.declarations) {
                         val result = perFilePhaseList[i - 1](context).transformFlat(topLevelDeclaration)
                         topLevelDeclaration.loweredUpTo = i
                         if (result != null) {
