@@ -18,10 +18,11 @@ import org.jetbrains.kotlin.ir.backend.js.lower.inline.ReturnableBlockLowering
 import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.declarations.impl.IrDeclarationBase
 import org.jetbrains.kotlin.ir.declarations.impl.IrFileImpl
+import org.jetbrains.kotlin.ir.declarations.name
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
-import org.jetbrains.kotlin.ir.util.ExternalDependenciesGenerator
-import org.jetbrains.kotlin.ir.util.fileOrNull
-import org.jetbrains.kotlin.ir.util.patchDeclarationParents
+import org.jetbrains.kotlin.ir.util.*
+import java.util.*
+import kotlin.collections.ArrayList
 
 private fun ClassLoweringPass.runOnFilesPostfix(moduleFragment: IrModuleFragment) = moduleFragment.files.forEach { runOnFilePostfix(it) }
 
@@ -427,7 +428,7 @@ val jsPhases = namedIrModulePhase(
     lower = jsPerFileStages
 )
 
-fun generateTests(context: JsIrBackendContext, moduleFragment: IrModuleFragment) {
+fun generateTests(context: JsIrBackendContext, moduleFragment: IrModuleFragment, phaseConfig: PhaseConfig) {
     context.stageController.withInitialIr {
         val generator = TestGenerator(context)
         moduleFragment.files.forEach {
@@ -435,7 +436,7 @@ fun generateTests(context: JsIrBackendContext, moduleFragment: IrModuleFragment)
         }
         context.implicitDeclarationFile.loweredUpTo = 0
     }
-    context.stageController.invokeLowerings(context.implicitDeclarationFile)
+    context.stageController.invokeTopLevel(phaseConfig, moduleFragment)
 //    stageController.lowerUpTo(context.implicitDeclarationFile, perFilePhaseList.size + 1)
 }
 
@@ -461,6 +462,7 @@ class MutableController : StageController {
     private fun lowerUpTo(file: IrFile, stageNonInclusive: Int) {
         val loweredUpTo = (file as? IrFileImpl)?.loweredUpTo ?: 0
         for (i in loweredUpTo + 1 until stageNonInclusive) {
+            if (frozen) error("frozen!")
             withStage(i) {
                 ArrayList(file.declarations).forEach {
                     lowerUpTo(it, i + 1)
@@ -480,10 +482,17 @@ class MutableController : StageController {
                     error("WTF?")
                 }
 
+//                if (topLevelDeclaration is IrProperty && topLevelDeclaration.name.asString() == "coroutineContext") {
+//                    println("!!!")
+//                }
+
                 if (topLevelDeclaration.loweredUpTo == i - 1 && topLevelDeclaration.parent is IrFile) {
                     val fileBefore = topLevelDeclaration.parent as IrFileImpl
 
                     if (topLevelDeclaration in fileBefore.declarations) {
+                        if (frozen) {
+                            error("frozen! ${topLevelDeclaration.name.asString()} in ${fileBefore.fileEntry.name}")
+                        }
                         val result = perFilePhaseList[i - 1](context).transformFlat(topLevelDeclaration)
                         topLevelDeclaration.loweredUpTo = i
                         if (result != null) {
@@ -514,13 +523,60 @@ class MutableController : StageController {
         }
     }
 
+    private var frozen = false
+
     fun invokeTopLevel(phaseConfig: PhaseConfig, moduleFragment: IrModuleFragment) {
         jsPhases.invokeToplevel(phaseConfig, context, moduleFragment)
+
         currentStage = perFilePhaseList.size + 1
+
+        ArrayList(context.symbolTable.unboundClasses).forEach {
+            tryLoad(it)
+        }
+        ArrayList(context.symbolTable.unboundConstructors).forEach {
+            tryLoad(it)
+        }
+        ArrayList(context.symbolTable.unboundEnumEntries).forEach {
+            tryLoad(it)
+        }
+        ArrayList(context.symbolTable.unboundFields).forEach {
+            tryLoad(it)
+        }
+        ArrayList(context.symbolTable.unboundSimpleFunctions).forEach {
+            tryLoad(it)
+        }
+        ArrayList(context.symbolTable.unboundProperties).forEach {
+            tryLoad(it)
+        }
+        ArrayList(context.symbolTable.unboundTypeParameters).forEach {
+            tryLoad(it)
+        }
+
+        while (true) {
+            var changed = false
+            for (file in moduleFragment.files) {
+                for (decl in ArrayList(file.declarations)) {
+                    if (decl.loweredUpTo < currentStage - 1) {
+                        lazyLower(decl)
+                        changed = true
+                    }
+                }
+            }
+            if (!changed) break
+        }
+
+//        while (!loaded.isEmpty()) {
+//            val decl = loaded.pop()
+//            lazyLower(decl)
+//        }
     }
 
     fun invokeLowerings(file: IrFile) {
         lowerUpTo(file, perFilePhaseList.size + 1)
+    }
+
+    fun freeze() {
+        frozen = true
     }
 
     override fun lazyLower(declaration: IrDeclaration) {
@@ -537,5 +593,31 @@ class MutableController : StageController {
 
     override fun lazyLower(file: IrFile) {
         lowerUpTo(file, currentStage)
+    }
+
+    var dependencyGenerator: ExternalDependenciesGenerator? = null
+
+    val loaded = ArrayDeque<IrDeclaration>()
+
+    override fun tryLoad(symbol: IrSymbol) {
+        dependencyGenerator?.let { generator ->
+            try {
+                dependencyGenerator = null
+                if (!symbol.isBound) {
+                    withStage(0) {
+                        generator.loadSymbol(symbol)
+                        if (symbol.isBound) {
+                            (symbol.owner as? IrDeclaration)?.let { loaded.add(it) }
+                        }
+                    }
+                }
+            } finally {
+                dependencyGenerator = generator
+            }
+        }
+    }
+
+    fun deinit() {
+        stageController = NoopController()
     }
 }

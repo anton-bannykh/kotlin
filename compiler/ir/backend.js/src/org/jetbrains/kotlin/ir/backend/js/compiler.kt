@@ -9,7 +9,9 @@ import com.intellij.openapi.project.Project
 import org.jetbrains.kotlin.backend.common.phaser.PhaseConfig
 import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.ir.backend.js.transformers.irToJs.IrModuleToJsTransformer
+import org.jetbrains.kotlin.ir.declarations.NoopController
 import org.jetbrains.kotlin.ir.declarations.impl.IrFileImpl
+import org.jetbrains.kotlin.ir.util.DeclarationStubGenerator
 import org.jetbrains.kotlin.ir.util.ExternalDependenciesGenerator
 import org.jetbrains.kotlin.ir.util.patchDeclarationParents
 import org.jetbrains.kotlin.psi.KtFile
@@ -31,16 +33,23 @@ fun compile(
 
     val context = JsIrBackendContext(moduleDescriptor, irBuiltIns, symbolTable, moduleFragment, configuration, stageController)
 
-    // Load declarations referenced during `context` initialization
-    dependencyModules.forEach {
-        ExternalDependenciesGenerator(
-            it.descriptor,
-            symbolTable,
-            irBuiltIns,
-            deserializer = deserializer
-        ).generateUnboundSymbolsAsDependencies()
-    }
+    stageController.dependencyGenerator = ExternalDependenciesGenerator(
+        moduleDescriptor,
+        symbolTable,
+        irBuiltIns,
+        deserializer = deserializer
+    )
 
+    // Load declarations referenced during `context` initialization
+//    dependencyModules.forEach {
+//        ExternalDependenciesGenerator(
+//            it.descriptor,
+//            symbolTable,
+//            irBuiltIns,
+//            deserializer = deserializer
+//        ).generateUnboundSymbolsAsDependencies()
+//    }
+//
     // TODO: check the order
     val irFiles = dependencyModules.flatMap { it.files } + moduleFragment.files
 
@@ -51,8 +60,13 @@ fun compile(
 
     stageController.invokeTopLevel(phaseConfig, moduleFragment)
 
-    generateTests(context, moduleFragment)
+    generateTests(context, moduleFragment, phaseConfig)
+
+    stageController.freeze()
 
     val jsProgram = moduleFragment.accept(IrModuleToJsTransformer(context), null)
+
+    stageController.deinit()
+
     return jsProgram.toString()
 }
