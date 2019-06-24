@@ -31,14 +31,14 @@ fun compile(
 
     val moduleDescriptor = moduleFragment.descriptor
 
-    val context = JsIrBackendContext(moduleDescriptor, irBuiltIns, symbolTable, moduleFragment, configuration, stageController)
-
     stageController.dependencyGenerator = ExternalDependenciesGenerator(
         moduleDescriptor,
         symbolTable,
         irBuiltIns,
         deserializer = deserializer
     )
+
+    val context = JsIrBackendContext(moduleDescriptor, irBuiltIns, symbolTable, moduleFragment, configuration, stageController)
 
     // Load declarations referenced during `context` initialization
 //    dependencyModules.forEach {

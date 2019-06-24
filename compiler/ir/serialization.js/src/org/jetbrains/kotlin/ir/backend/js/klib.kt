@@ -125,7 +125,7 @@ fun loadIr(
         deserializer.deserializeIrModuleHeader(depsDescriptors.getModuleDescriptor(it))!!
     }
 
-    val moduleFragment = psi2IrContext.generateModuleFragment(files, deserializer)
+    val moduleFragment = psi2IrContext.generateModuleFragment(files, null, true)
 
     return IrModuleInfo(moduleFragment, deserializedModuleFragments, irBuiltIns, symbolTable, deserializer)
 }
@@ -143,8 +143,8 @@ private fun runAnalysisAndPreparePsi2Ir(depsDescriptors: ModulesStructure): Gene
     )
 }
 
-private fun GeneratorContext.generateModuleFragment(files: List<KtFile>, deserializer: JsIrLinker? = null) =
-    Psi2IrTranslator(languageVersionSettings, configuration).generateModuleFragment(this, files, deserializer)
+private fun GeneratorContext.generateModuleFragment(files: List<KtFile>, deserializer: JsIrLinker? = null, allowUnbound: Boolean = false) =
+    Psi2IrTranslator(languageVersionSettings, configuration).generateModuleFragment(this, files, deserializer, allowUnbound)
 
 
 private fun loadKlibMetadataParts(
