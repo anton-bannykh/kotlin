@@ -191,6 +191,13 @@ private val localDeclarationsLoweringPhase = makeJsModulePhase(
     prerequisite = setOf(sharedVariablesLoweringPhase, localDelegatedPropertiesLoweringPhase)
 )
 
+private val localClassExtractionPhase = makeJsModulePhase(
+    ::LocalClassPopupLowering,
+    name = "LocalClassExtractionPhase",
+    description = "Move local declarations into nearest declaration container",
+    prerequisite = setOf(localDeclarationsLoweringPhase)
+)
+
 private val innerClassesDeclarationLoweringPhase = makeJsModulePhase(
     { context -> InnerClassesDeclarationLowering(context).toDeclarationTransformer() },
     name = "InnerClassesDeclarationLowering",
@@ -443,6 +450,8 @@ val perFilePhaseList = listOf(
     sharedVariablesLoweringPhase to true, // OK
     localDelegatedPropertiesLoweringPhase to true, // OK
     localDeclarationsLoweringPhase to true,
+
+    localClassExtractionPhase to true,
 
     innerClassesDeclarationLoweringPhase to false, // OK
     innerClassesConstructorBodyLoweringPhase to true, // OK
