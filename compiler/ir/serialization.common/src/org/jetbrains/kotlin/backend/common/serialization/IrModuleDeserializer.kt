@@ -969,7 +969,7 @@ abstract class IrModuleDeserializer(
             enumEntry.correspondingClass = deserializeDeclaration(proto.correspondingClass, null) as IrClass
         }
         if (proto.hasInitializer()) {
-            enumEntry.initializerExpression = deserializeExpression(proto.initializer)
+            enumEntry.initializerExpression = IrExpressionBodyImpl(deserializeExpression(proto.initializer))
         }
 
         return enumEntry

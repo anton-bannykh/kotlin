@@ -471,7 +471,7 @@ class EnumClassTransformer(val context: JsIrBackendContext, private val irClass:
         +irIfThen(irGet(entryInstancesInitializedVar), irReturnUnit())
         +irSetVar(entryInstancesInitializedVar.symbol, irBoolean(true))
         for ((entry, instanceVar) in enumEntries.zip(entryInstances)) {
-            +irSetVar(instanceVar.symbol, entry.initializerExpression!!)
+            +irSetVar(instanceVar.symbol, entry.initializerExpression!!.expression)
         }
     }.also {
         // entry.initializerExpression can have local declarations

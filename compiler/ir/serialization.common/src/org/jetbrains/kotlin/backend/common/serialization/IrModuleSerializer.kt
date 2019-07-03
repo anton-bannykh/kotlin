@@ -1069,7 +1069,7 @@ open class IrModuleSerializer(
             .setSymbol(serializeIrSymbol(enumEntry.symbol))
 
         enumEntry.initializerExpression?.let {
-            proto.initializer = serializeExpression(it)
+            proto.initializer = serializeExpression(it.expression)
         }
         enumEntry.correspondingClass?.let {
             proto.correspondingClass = serializeDeclaration(it)
