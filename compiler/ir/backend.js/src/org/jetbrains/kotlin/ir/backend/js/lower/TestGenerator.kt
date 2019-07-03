@@ -13,11 +13,13 @@ import org.jetbrains.kotlin.ir.backend.js.JsIrBackendContext
 import org.jetbrains.kotlin.ir.backend.js.ir.JsIrBuilder
 import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.expressions.IrBlockBody
+import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
 import org.jetbrains.kotlin.ir.types.impl.IrSimpleTypeImpl
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.fqNameSafe
+import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.isEffectivelyExternal
 import org.jetbrains.kotlin.name.FqName
 
@@ -145,17 +147,14 @@ class TestGenerator(val context: JsIrBackendContext) : FileLoweringPass {
     }
 
     private val IrAnnotationContainer.isTest
-        get() = hasAnnotation("kotlin.test.Test")
+        get() = hasAnnotation(FqName("kotlin.test.Test"))
 
     private val IrAnnotationContainer.isIgnored
-        get() = hasAnnotation("kotlin.test.Ignore")
+        get() = hasAnnotation(FqName("kotlin.test.Ignore"))
 
     private val IrAnnotationContainer.isBefore
-        get() = hasAnnotation("kotlin.test.BeforeTest")
+        get() = hasAnnotation(FqName("kotlin.test.BeforeTest"))
 
     private val IrAnnotationContainer.isAfter
-        get() = hasAnnotation("kotlin.test.AfterTest")
-
-    private fun IrAnnotationContainer.hasAnnotation(fqName: String) =
-        annotations.any { it.symbol.owner.parent.fqNameSafe == FqName(fqName) }
+        get() = hasAnnotation(FqName("kotlin.test.AfterTest"))
 }

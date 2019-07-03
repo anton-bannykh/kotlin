@@ -132,11 +132,12 @@ class SerializerIrGenerator(val irClass: IrClass, override val compilerContext: 
     }
 
     private fun IrBlockBodyBuilder.copySerialInfoAnnotationsToDescriptor(
-        annotations: List<IrCall>,
+        annotations: List<IrExpressionBody>,
         receiver: IrExpression,
         method: IrFunctionSymbol
     ) {
-        annotations.forEach { annotationCall ->
+        annotations.forEach { annotationContainer ->
+            val annotationCall = annotationContainer.expression as IrCall
             if ((annotationCall.descriptor as? ClassConstructorDescriptor)?.constructedClass?.isSerialInfoAnnotation == true)
                 +irInvoke(receiver, method, annotationCall)
         }

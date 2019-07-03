@@ -53,7 +53,8 @@ class AnnotationCodegen(
 
         val annotations = annotated.annotations
 
-        for (annotation in annotations) {
+        for (annotationContainer in annotations) {
+            val annotation = annotationContainer.expression as IrCall
             val applicableTargets = annotation.applicableTargetSet()
             if (annotated is IrSimpleFunction &&
                 annotated.origin === IrDeclarationOrigin.LOCAL_FUNCTION_FOR_LAMBDA &&

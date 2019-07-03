@@ -79,11 +79,11 @@ class RenderIrElementVisitor : IrElementVisitor<String, Nothing?> {
         }
 
 
-    private fun renderTypeAnnotations(annotations: List<IrCall>) =
+    private fun renderTypeAnnotations(annotations: List<IrExpressionBody>) =
         if (annotations.isEmpty())
             ""
         else
-            annotations.joinToString(prefix = "", postfix = " ", separator = " ") { "@[${it.render()}]" }
+            annotations.joinToString(prefix = "", postfix = " ", separator = " ") { "@[${(it.expression as IrCall).render()}]" }
 
     private fun IrSymbol.renderReference() =
         if (isBound)

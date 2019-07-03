@@ -83,9 +83,10 @@ abstract class IrModuleDeserializer(
 
     }
 
-    fun deserializeAnnotations(annotations: KotlinIr.Annotations): List<IrCall> {
+    fun deserializeAnnotations(annotations: KotlinIr.Annotations): List<IrExpressionBody> {
         return annotations.annotationList.map {
-            deserializeCall(it, 0, 0, builtIns.unitType) // TODO: need a proper deserialization here
+            // TODO: need a proper deserialization here
+            IrExpressionBodyImpl(deserializeCall(it, 0, 0, builtIns.unitType))
         }
     }
 

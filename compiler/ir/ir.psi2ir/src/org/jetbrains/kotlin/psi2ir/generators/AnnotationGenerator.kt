@@ -7,6 +7,8 @@ package org.jetbrains.kotlin.psi2ir.generators
 
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.declarations.*
+import org.jetbrains.kotlin.ir.expressions.IrExpressionBody
+import org.jetbrains.kotlin.ir.expressions.impl.IrExpressionBodyImpl
 import org.jetbrains.kotlin.ir.visitors.IrElementVisitorVoid
 import org.jetbrains.kotlin.ir.visitors.acceptChildrenVoid
 import kotlin.collections.mapTo
@@ -39,7 +41,7 @@ class AnnotationGenerator(context: GeneratorContext) : IrElementVisitorVoid {
             else declaration.descriptor
 
         annotatedDescriptor?.annotations?.mapTo(declaration.annotations) {
-            constantValueGenerator.generateAnnotationConstructorCall(it)
+            IrExpressionBodyImpl(constantValueGenerator.generateAnnotationConstructorCall(it))
         }
     }
 }

@@ -149,7 +149,7 @@ internal class Fir2IrVisitor(
 
             file.annotations.forEach {
                 val irCall = it.accept(this@Fir2IrVisitor, data) as? IrCall ?: return@forEach
-                annotations += irCall
+                annotations += IrExpressionBodyImpl(irCall)
             }
         }
     }
@@ -257,7 +257,7 @@ internal class Fir2IrVisitor(
             addFakeOverrides(klass, processedFunctionNames)
             klass.annotations.forEach {
                 val irCall = it.accept(this@Fir2IrVisitor, null) as? IrCall ?: return@forEach
-                annotations += irCall
+                annotations += IrExpressionBodyImpl(irCall)
             }
         }
         if (irPrimaryConstructor != null) {
@@ -487,7 +487,7 @@ internal class Fir2IrVisitor(
             setter = property.setter.accept(this@Fir2IrVisitor, type) as IrSimpleFunction
         }
         property.annotations.forEach {
-            annotations += it.accept(this@Fir2IrVisitor, null) as IrCall
+            annotations += IrExpressionBodyImpl(it.accept(this@Fir2IrVisitor, null) as IrCall)
         }
         return this
     }

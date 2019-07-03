@@ -169,7 +169,7 @@ internal class DeepCopyIrTreeWithSymbolsForInliner(
                 kotlinType = null
                 classifier = symbolRemapper.getReferencedClassifier(type.classifier)
                 arguments = remapTypeArguments(type.arguments)
-                annotations = type.annotations.map { it.transform(copier, null) as IrCall }
+                annotations = type.annotations.map { it.transform(copier, null) }
             }
         }
     }

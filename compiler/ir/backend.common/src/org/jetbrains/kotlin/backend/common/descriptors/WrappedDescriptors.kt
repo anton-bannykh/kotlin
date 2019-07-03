@@ -45,7 +45,7 @@ abstract class WrappedDeclarationDescriptor<T : IrDeclaration>(annotations: Anno
 
     private val annotationsFromOwner by lazy {
         val ownerAnnotations = (owner as? IrAnnotationContainer)?.annotations ?: return@lazy Annotations.EMPTY
-        Annotations.create(ownerAnnotations.map { it.toAnnotationDescriptor() })
+        Annotations.create(ownerAnnotations.map { (it.expression as IrCall).toAnnotationDescriptor() })
     }
 
     private fun IrCall.toAnnotationDescriptor(): AnnotationDescriptor {
