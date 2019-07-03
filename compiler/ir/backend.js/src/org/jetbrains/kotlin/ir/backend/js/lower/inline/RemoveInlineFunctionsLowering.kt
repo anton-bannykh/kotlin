@@ -11,6 +11,7 @@ import org.jetbrains.kotlin.ir.backend.js.JsIrBackendContext
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrFunction
+import org.jetbrains.kotlin.ir.expressions.IrBody
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
 
 
@@ -21,6 +22,11 @@ class RemoveInlineFunctionsLowering(val context: JsIrBackendContext) : Declarati
         if (declaration is IrFunction && declaration.isInline) return emptyList()
 
         declaration.transform(object : IrElementTransformerVoid() {
+
+            override fun visitBody(body: IrBody): IrBody {
+                return body
+            }
+
             override fun visitClass(declaration: IrClass): IrStatement {
                 declaration.transformChildrenVoid()
 

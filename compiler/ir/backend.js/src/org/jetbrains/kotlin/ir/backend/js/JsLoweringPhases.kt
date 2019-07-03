@@ -353,7 +353,7 @@ val perFilePhaseList = listOf(
     expectDeclarationsRemovingPhase to false,
     moveBodilessDeclarationsToSeparatePlacePhase to true,
     functionInliningPhase to true,
-    removeInlineFunctionsLoweringPhase to true,
+    removeInlineFunctionsLoweringPhase to false,
     lateinitLoweringPhase to true,
     tailrecLoweringPhase to true,
     enumClassConstructorLoweringPhase to true,
