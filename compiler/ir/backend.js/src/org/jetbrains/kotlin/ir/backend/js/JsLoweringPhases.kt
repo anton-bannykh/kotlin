@@ -350,7 +350,7 @@ private val staticMembersLoweringPhase = makeJsModulePhase(
 
 // Second value means if body access is allowed
 val perFilePhaseList = listOf(
-    expectDeclarationsRemovingPhase to true,
+    expectDeclarationsRemovingPhase to false,
     moveBodilessDeclarationsToSeparatePlacePhase to true,
     functionInliningPhase to true,
     removeInlineFunctionsLoweringPhase to true,
