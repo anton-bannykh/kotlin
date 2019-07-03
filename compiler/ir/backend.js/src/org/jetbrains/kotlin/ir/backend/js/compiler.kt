@@ -26,6 +26,8 @@ fun compile(
 ): String {
     val stageController = MutableController()
 
+    stageController.bodiesEnabled = true
+
     val (moduleFragment, dependencyModules, irBuiltIns, symbolTable, deserializer) =
         loadIr(project, files, configuration, immediateDependencies, allDependencies)
 
@@ -58,7 +60,11 @@ fun compile(
 
     moduleFragment.patchDeclarationParents()
 
+    stageController.bodiesEnabled = false
+
     stageController.invokeTopLevel(phaseConfig, moduleFragment)
+
+    stageController.bodiesEnabled = true
 
     generateTests(context, moduleFragment, phaseConfig)
 

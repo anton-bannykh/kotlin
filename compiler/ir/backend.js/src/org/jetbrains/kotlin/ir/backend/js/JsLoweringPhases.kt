@@ -348,58 +348,58 @@ private val staticMembersLoweringPhase = makeJsModulePhase(
     description = "Move static member declarations to top-level"
 )
 
-// TODO flatten
+// Second value means if body access is allowed
 val perFilePhaseList = listOf(
-    expectDeclarationsRemovingPhase,
-    moveBodilessDeclarationsToSeparatePlacePhase,
-    functionInliningPhase,
-    removeInlineFunctionsLoweringPhase,
-    lateinitLoweringPhase,
-    tailrecLoweringPhase,
-    enumClassConstructorLoweringPhase,
-    sharedVariablesLoweringPhase,
-    localDelegatedPropertiesLoweringPhase,
-    localDeclarationsLoweringPhase,
+    expectDeclarationsRemovingPhase to true,
+    moveBodilessDeclarationsToSeparatePlacePhase to true,
+    functionInliningPhase to true,
+    removeInlineFunctionsLoweringPhase to true,
+    lateinitLoweringPhase to true,
+    tailrecLoweringPhase to true,
+    enumClassConstructorLoweringPhase to true,
+    sharedVariablesLoweringPhase to true,
+    localDelegatedPropertiesLoweringPhase to true,
+    localDeclarationsLoweringPhase to true,
 
-    innerClassesLoweringPhase,
-    innerClassConstructorCallsLoweringPhase,
+    innerClassesLoweringPhase to true,
+    innerClassConstructorCallsLoweringPhase to true,
 
-    propertiesLoweringPhase,
-    initializersLoweringPhase,
+    propertiesLoweringPhase to true,
+    initializersLoweringPhase to true,
     // Common prefix ends
-    enumClassLoweringPhase,
-    enumUsageLoweringPhase,
+    enumClassLoweringPhase to true,
+    enumUsageLoweringPhase to true,
 
-    returnableBlockLoweringPhase,
-    unitMaterializationLoweringPhase,
-    suspendFunctionsLoweringPhase,
-    privateMembersLoweringPhase,
-    callableReferenceLoweringPhase,
+    returnableBlockLoweringPhase to true,
+    unitMaterializationLoweringPhase to true,
+    suspendFunctionsLoweringPhase to true,
+    privateMembersLoweringPhase to true,
+    callableReferenceLoweringPhase to true,
 
-    defaultArgumentStubGeneratorPhase,
-    defaultParameterInjectorPhase,
-    jsDefaultCallbackGeneratorPhase,
+    defaultArgumentStubGeneratorPhase to true,
+    defaultParameterInjectorPhase to true,
+    jsDefaultCallbackGeneratorPhase to true,
 
-    throwableSuccessorsLoweringPhase,
-    varargLoweringPhase,
-    multipleCatchesLoweringPhase,
-    bridgesConstructionPhase,
-    typeOperatorLoweringPhase,
+    throwableSuccessorsLoweringPhase to true,
+    varargLoweringPhase to true,
+    multipleCatchesLoweringPhase to true,
+    bridgesConstructionPhase to true,
+    typeOperatorLoweringPhase to true,
 
-    secondaryConstructorLoweringPhase,
-    secondaryFactoryInjectorLoweringPhase,
+    secondaryConstructorLoweringPhase to true,
+    secondaryFactoryInjectorLoweringPhase to true,
 
-    classReferenceLoweringPhase,
+    classReferenceLoweringPhase to true,
 
-    inlineClassDeclarationsLoweringPhase,
-    inlineClassUsageLoweringPhase,
+    inlineClassDeclarationsLoweringPhase to true,
+    inlineClassUsageLoweringPhase to true,
 
-    autoboxingTransformerPhase,
-    blockDecomposerLoweringPhase,
-    primitiveCompanionLoweringPhase,
-    constLoweringPhase,
-    callsLoweringPhase,
-    staticMembersLoweringPhase
+    autoboxingTransformerPhase to true,
+    blockDecomposerLoweringPhase to true,
+    primitiveCompanionLoweringPhase to true,
+    constLoweringPhase to true,
+    callsLoweringPhase to true,
+    staticMembersLoweringPhase to true
 )
 
 fun compositePhase(): CompilerPhase<JsIrBackendContext, IrFile, IrFile> {
@@ -472,6 +472,19 @@ class MutableController : StageController {
         }
     }
 
+    override var bodiesEnabled = false
+
+    private fun <T> withBodies(fn: () -> T): T {
+        val previousBodies = bodiesEnabled
+        bodiesEnabled = true
+
+        return try {
+            fn()
+        } finally {
+            bodiesEnabled = previousBodies
+        }
+    }
+
     private fun lowerUpTo(declaration: IrDeclaration, stageNonInclusive: Int) {
         val loweredUpTo = declaration.loweredUpTo
         for (i in loweredUpTo + 1 until stageNonInclusive) {
@@ -493,7 +506,13 @@ class MutableController : StageController {
                         if (frozen) {
                             error("frozen! ${topLevelDeclaration.name.asString()} in ${fileBefore.fileEntry.name}")
                         }
-                        val result = perFilePhaseList[i - 1](context).transformFlat(topLevelDeclaration)
+                        val (lowering, bodiesEnabled) = perFilePhaseList[i - 1]
+
+                        val result = if (bodiesEnabled)
+                            withBodies { lowering(context).transformFlat(topLevelDeclaration) }
+                        else
+                            lowering(context).transformFlat(topLevelDeclaration)
+
                         topLevelDeclaration.loweredUpTo = i
                         if (result != null) {
                             result.forEach { it.loweredUpTo = i }
@@ -601,18 +620,20 @@ class MutableController : StageController {
 
     override fun tryLoad(symbol: IrSymbol) {
         dependencyGenerator?.let { generator ->
-            try {
-                dependencyGenerator = null
-                if (!symbol.isBound) {
-                    withStage(0) {
-                        generator.loadSymbol(symbol)
-                        if (symbol.isBound) {
-                            (symbol.owner as? IrDeclaration)?.let { loaded.add(it) }
+            withBodies {
+                try {
+                    dependencyGenerator = null
+                    if (!symbol.isBound) {
+                        withStage(0) {
+                            generator.loadSymbol(symbol)
+                            if (symbol.isBound) {
+                                (symbol.owner as? IrDeclaration)?.let { loaded.add(it) }
+                            }
                         }
                     }
+                } finally {
+                    dependencyGenerator = generator
                 }
-            } finally {
-                dependencyGenerator = generator
             }
         }
     }

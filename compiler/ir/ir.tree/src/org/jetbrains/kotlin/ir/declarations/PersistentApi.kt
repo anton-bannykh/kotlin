@@ -22,10 +22,15 @@ interface StageController {
     fun lazyLower(file: IrFile) {}
 
     fun tryLoad(symbol: IrSymbol) {}
+
+    abstract val bodiesEnabled: Boolean
 }
 
 class NoopController : StageController {
     override val currentStage: Int = 0
+
+    override val bodiesEnabled: Boolean
+        get() = true
 }
 
 class PersistentVar<T : Any>(private val container: IrDeclaration?,
@@ -81,6 +86,23 @@ class LateInitPersistentVar<T : Any>(private val container: IrDeclaration?) {
     operator fun setValue(thisRef: Any, property: KProperty<*>, value: T) {
         ensureLowered()
         changes[stageController.currentStage] = value
+    }
+}
+
+class BodyEnabledVar<T>(value: T) {
+
+    private var storage = value
+
+    operator fun getValue(thisRef: Any, property: KProperty<*>): T {
+        if (!stageController.bodiesEnabled)
+            error("Bodies disabled!")
+        return storage
+    }
+
+    operator fun setValue(thisRef: Any, property: KProperty<*>, value: T) {
+        if (!stageController.bodiesEnabled)
+            error("Bodies disabled!")
+        storage = value
     }
 }
 
