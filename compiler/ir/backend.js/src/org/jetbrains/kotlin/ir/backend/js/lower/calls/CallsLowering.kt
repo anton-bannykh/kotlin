@@ -5,39 +5,21 @@
 
 package org.jetbrains.kotlin.ir.backend.js.lower.calls
 
-import org.jetbrains.kotlin.backend.common.DeclarationTransformer
-import org.jetbrains.kotlin.backend.common.FileLoweringPass
-import org.jetbrains.kotlin.ir.IrStatement
+import org.jetbrains.kotlin.backend.common.BodyLoweringPass
 import org.jetbrains.kotlin.ir.backend.js.JsIrBackendContext
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
-import org.jetbrains.kotlin.ir.declarations.IrFile
 import org.jetbrains.kotlin.ir.declarations.IrFunction
+import org.jetbrains.kotlin.ir.expressions.IrBody
 import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
-import org.jetbrains.kotlin.ir.visitors.transformChildrenVoid
 
-class CallsLowering(val context: JsIrBackendContext) : DeclarationTransformer {
-    private val transformers = listOf(
-        NumberOperatorCallsTransformer(context),
-        NumberConversionCallsTransformer(context),
-        EqualityAndComparisonCallsTransformer(context),
-        PrimitiveContainerMemberCallTransformer(context),
-        MethodsOfAnyCallsTransformer(context),
-        ReflectionCallsTransformer(context),
-        EnumIntrinsicsTransformer(context),
-        ExceptionHelperCallsTransformer(context)
-    )
+class CallsLowering(val context: JsIrBackendContext) : BodyLoweringPass {
+    override fun lower(irBody: IrBody, container: IrDeclaration) {
+        if (container is IrFunction && container.hasAnnotation(context.intrinsics.doNotIntrinsifyAnnotationSymbol)) return
 
-    override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
-        declaration.accept(object : IrElementTransformerVoid() {
-            override fun visitFunction(declaration: IrFunction): IrStatement {
-                if (declaration.hasAnnotation(context.intrinsics.doNotIntrinsifyAnnotationSymbol))
-                    return declaration
-                return super.visitFunction(declaration)
-            }
-
+        irBody.accept(object : IrElementTransformerVoid() {
             override fun visitCall(expression: IrCall): IrExpression {
                 val call = super.visitCall(expression)
                 if (call is IrCall) {
@@ -51,9 +33,18 @@ class CallsLowering(val context: JsIrBackendContext) : DeclarationTransformer {
                 return call
             }
         }, null)
-
-        return null
     }
+
+    private val transformers = listOf(
+        NumberOperatorCallsTransformer(context),
+        NumberConversionCallsTransformer(context),
+        EqualityAndComparisonCallsTransformer(context),
+        PrimitiveContainerMemberCallTransformer(context),
+        MethodsOfAnyCallsTransformer(context),
+        ReflectionCallsTransformer(context),
+        EnumIntrinsicsTransformer(context),
+        ExceptionHelperCallsTransformer(context)
+    )
 }
 
 interface CallsTransformer {

@@ -331,7 +331,7 @@ private val constLoweringPhase = makeJsModulePhase(
 )
 
 private val callsLoweringPhase = makeJsModulePhase(
-    { context -> CallsLowering(context) },
+    { context -> CallsLowering(context).toDeclarationTransformer() },
     name = "CallsLowering",
     description = "Handle intrinsics"
 )
@@ -398,8 +398,8 @@ val perFilePhaseList = listOf(
     blockDecomposerLoweringPhase to true,
     primitiveCompanionLoweringPhase to true,
     constLoweringPhase to true,
-    callsLoweringPhase to true,
-    staticMembersLoweringPhase to false
+    callsLoweringPhase to true, // OK
+    staticMembersLoweringPhase to false // OK
 )
 
 fun compositePhase(): CompilerPhase<JsIrBackendContext, IrFile, IrFile> {
