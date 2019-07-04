@@ -39,7 +39,12 @@ import org.jetbrains.kotlin.ir.visitors.transformChildrenVoid
  * Note: it currently can't handle local functions and classes declared in default arguments.
  * See [deepCopyWithVariables].
  */
-class TailrecLowering(val context: BackendContext) : DeclarationTransformer {
+class TailrecLowering(val context: BackendContext) : BodyLoweringPass {
+    override fun lower(irBody: IrBody, container: IrDeclaration) {
+        if (container is IrFunction) {
+            container.accept(visitor, null)
+        }
+    }
 
     private val visitor = object : IrElementVisitorVoid {
         override fun visitElement(element: IrElement) {
@@ -52,10 +57,6 @@ class TailrecLowering(val context: BackendContext) : DeclarationTransformer {
         }
     }
 
-    override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
-        declaration.accept(visitor, null)
-        return null
-    }
 }
 
 private fun lowerTailRecursionCalls(context: BackendContext, irFunction: IrFunction) {
@@ -69,6 +70,7 @@ private fun lowerTailRecursionCalls(context: BackendContext, irFunction: IrFunct
 
     val parameters = irFunction.explicitParameters
 
+    // TODO is this OK?
     irFunction.body = builder.irBlockBody {
         // Define variables containing current values of parameters:
         val parameterToVariable = parameters.associate {

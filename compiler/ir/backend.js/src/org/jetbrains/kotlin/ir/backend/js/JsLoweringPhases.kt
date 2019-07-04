@@ -107,7 +107,7 @@ private val throwableSuccessorsLoweringPhase = makeJsModulePhase(
 )
 
 private val tailrecLoweringPhase = makeJsModulePhase(
-    { context -> TailrecLowering(context) },
+    { context -> TailrecLowering(context).toDeclarationTransformer() },
     name = "TailrecLowering",
     description = "Replace `tailrec` callsites with equivalent loop"
 )
@@ -355,7 +355,7 @@ val perFilePhaseList = listOf(
     functionInliningPhase to true, // OK
     removeInlineFunctionsLoweringPhase to false, // OK
     lateinitLoweringPhase to true, // OK
-    tailrecLoweringPhase to true,
+    tailrecLoweringPhase to true, // OK
     enumClassConstructorLoweringPhase to true,
     sharedVariablesLoweringPhase to true,
     localDelegatedPropertiesLoweringPhase to true,
