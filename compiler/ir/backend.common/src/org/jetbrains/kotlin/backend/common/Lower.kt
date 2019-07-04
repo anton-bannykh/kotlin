@@ -131,6 +131,10 @@ fun DeclarationTransformer.runPostfix(): DeclarationTransformer {
                     element.acceptChildrenVoid(this)
                 }
 
+                override fun visitBody(body: IrBody) {
+                    // Stop
+                }
+
                 override fun visitClass(declaration: IrClass) {
                     declaration.acceptChildrenVoid(this)
                     declaration.declarations.transformFlat(this@runPostfix::transformFlat)

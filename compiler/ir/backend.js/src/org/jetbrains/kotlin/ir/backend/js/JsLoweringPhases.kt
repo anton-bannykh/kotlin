@@ -351,7 +351,7 @@ private val staticMembersLoweringPhase = makeJsModulePhase(
 // Second value means if body access is allowed
 val perFilePhaseList = listOf(
     expectDeclarationsRemovingPhase to false,
-    moveBodilessDeclarationsToSeparatePlacePhase to true,
+    moveBodilessDeclarationsToSeparatePlacePhase to true, // Needs to detect @JsModule and @JsQualifier. TODO: read those on use only
     functionInliningPhase to true,
     removeInlineFunctionsLoweringPhase to false,
     lateinitLoweringPhase to true,
@@ -399,7 +399,7 @@ val perFilePhaseList = listOf(
     primitiveCompanionLoweringPhase to true,
     constLoweringPhase to true,
     callsLoweringPhase to true,
-    staticMembersLoweringPhase to true
+    staticMembersLoweringPhase to false
 )
 
 fun compositePhase(): CompilerPhase<JsIrBackendContext, IrFile, IrFile> {
