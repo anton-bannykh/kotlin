@@ -424,10 +424,7 @@ private fun IrFunction.generateDefaultsFunctionImpl(
     }
 
     newFunction.copyTypeParametersFrom(this)
-    val newValueParameters = valueParameters.map { it.copyTo(newFunction) } + syntheticParameters
-    newValueParameters.forEach {
-        it.defaultValue = null
-    }
+    val newValueParameters = valueParameters.map { it.copyTo(newFunction, defaultValue = null) } + syntheticParameters
 
     newFunction.returnType = returnType
     newFunction.dispatchReceiverParameter = dispatchReceiverParameter?.copyTo(newFunction)
