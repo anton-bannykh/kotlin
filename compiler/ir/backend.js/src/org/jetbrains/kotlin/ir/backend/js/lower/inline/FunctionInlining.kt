@@ -7,11 +7,8 @@
 
 package org.jetbrains.kotlin.ir.backend.js.lower.inline
 
-import org.jetbrains.kotlin.backend.common.DeclarationTransformer
-import org.jetbrains.kotlin.backend.common.IrElementTransformerVoidWithContext
+import org.jetbrains.kotlin.backend.common.*
 import org.jetbrains.kotlin.backend.common.ir.Symbols
-import org.jetbrains.kotlin.backend.common.isBuiltInIntercepted
-import org.jetbrains.kotlin.backend.common.isBuiltInSuspendCoroutineUninterceptedOrReturn
 import org.jetbrains.kotlin.config.languageVersionSettings
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.backend.js.JsIrBackendContext
@@ -21,11 +18,10 @@ import org.jetbrains.kotlin.ir.symbols.IrFunctionSymbol
 import org.jetbrains.kotlin.ir.util.*
 import org.jetbrains.kotlin.ir.visitors.transformChildrenVoid
 
-class FunctionInlining(val context: JsIrBackendContext) : IrElementTransformerVoidWithContext(), DeclarationTransformer {
-    override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
-        declaration.accept(this, null)
-        declaration.patchDeclarationParents(declaration.parent)
-        return null
+class FunctionInlining(val context: JsIrBackendContext) : IrElementTransformerVoidWithContext(), BodyLoweringPass {
+    override fun lower(irBody: IrBody, container: IrDeclaration) {
+        container.accept(this, data = null)
+        container.patchDeclarationParents(container.parent)
     }
 
     fun inline(irFile: IrFile): IrElement {
@@ -59,7 +55,8 @@ class FunctionInlining(val context: JsIrBackendContext) : IrElementTransformerVo
         val callee = getFunctionDeclaration(callSite.symbol)                   // Get declaration of the function to be inlined.
         callee.transformChildrenVoid(this)                            // Process recursive inline.
 
-        val parent = allScopes.map { it.irElement }.filterIsInstance<IrDeclarationParent>().lastOrNull()
+        val parent = allScopes.map { it.irElement }.filterIsInstance<IrDeclarationParent>().lastOrNull() ?:
+            allScopes.map { it.irElement }.filterIsInstance<IrDeclaration>().lastOrNull()?.parent
         val inliner = Inliner(callSite, callee, currentScope!!, parent, context, this)
         return inliner.inline()
     }

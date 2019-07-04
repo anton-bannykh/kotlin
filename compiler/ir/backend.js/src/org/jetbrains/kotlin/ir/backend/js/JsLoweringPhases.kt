@@ -87,7 +87,7 @@ private val lateinitLoweringPhase = makeJsModulePhase(
 )
 
 private val functionInliningPhase = makeJsModulePhase(
-    { context -> FunctionInlining(context) },
+    { context -> FunctionInlining(context).toDeclarationTransformer() },
     name = "FunctionInliningPhase",
     description = "Perform function inlining",
     prerequisite = setOf(expectDeclarationsRemovingPhase)
@@ -350,10 +350,10 @@ private val staticMembersLoweringPhase = makeJsModulePhase(
 
 // Second value means if body access is allowed
 val perFilePhaseList = listOf(
-    expectDeclarationsRemovingPhase to false,
+    expectDeclarationsRemovingPhase to false, // OK
     moveBodilessDeclarationsToSeparatePlacePhase to true, // Needs to detect @JsModule and @JsQualifier. TODO: read those on use only
-    functionInliningPhase to true,
-    removeInlineFunctionsLoweringPhase to false,
+    functionInliningPhase to true, // OK
+    removeInlineFunctionsLoweringPhase to false, // OK
     lateinitLoweringPhase to true,
     tailrecLoweringPhase to true,
     enumClassConstructorLoweringPhase to true,

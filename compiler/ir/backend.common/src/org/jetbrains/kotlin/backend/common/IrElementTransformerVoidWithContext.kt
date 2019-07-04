@@ -65,6 +65,20 @@ abstract class IrElementTransformerVoidWithContext : IrElementTransformerVoid() 
         return result
     }
 
+    override fun visitAnonymousInitializer(declaration: IrAnonymousInitializer): IrStatement {
+        scopeStack.push(ScopeWithIr(Scope(declaration.symbol), declaration))
+        val result = visitAnonymousInitializerNew(declaration)
+        scopeStack.pop()
+        return result
+    }
+
+    override fun visitValueParameter(declaration: IrValueParameter): IrStatement {
+        scopeStack.push(ScopeWithIr(Scope(declaration.symbol), declaration))
+        val result = visitIrValueParameterNew(declaration)
+        scopeStack.pop()
+        return result
+    }
+
     protected val currentFile get() = scopeStack.lastOrNull { it.irElement is IrFile }!!.irElement as IrFile
     protected val currentClass get() = scopeStack.lastOrNull { it.scope.scopeOwner is ClassDescriptor }
     protected val currentFunction get() = scopeStack.lastOrNull { it.scope.scopeOwner is FunctionDescriptor }
@@ -95,6 +109,14 @@ abstract class IrElementTransformerVoidWithContext : IrElementTransformerVoid() 
 
     open fun visitFieldNew(declaration: IrField): IrStatement {
         return super.visitField(declaration)
+    }
+
+    open fun visitAnonymousInitializerNew(declaration: IrAnonymousInitializer): IrStatement {
+        return super.visitAnonymousInitializer(declaration)
+    }
+
+    open fun visitIrValueParameterNew(declaration: IrValueParameter): IrStatement {
+        return super.visitValueParameter(declaration)
     }
 }
 

@@ -19,6 +19,7 @@ package org.jetbrains.kotlin.backend.common
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.expressions.IrBody
+import org.jetbrains.kotlin.ir.visitors.IrElementVisitor
 import org.jetbrains.kotlin.ir.visitors.IrElementVisitorVoid
 import org.jetbrains.kotlin.ir.visitors.acceptChildrenVoid
 import org.jetbrains.kotlin.ir.visitors.acceptVoid
@@ -46,7 +47,7 @@ interface FunctionLoweringPass : FileLoweringPass {
 }
 
 interface BodyLoweringPass : FileLoweringPass {
-    fun lower(irBody: IrBody)
+    fun lower(irBody: IrBody, container: IrDeclaration)
 
     override fun lower(irFile: IrFile) = runOnFilePostfix(irFile)
 }
@@ -78,16 +79,20 @@ fun DeclarationContainerLoweringPass.runOnFilePostfix(irFile: IrFile) {
 }
 
 fun BodyLoweringPass.runOnFilePostfix(irFile: IrFile) {
-    irFile.acceptVoid(object : IrElementVisitorVoid {
-        override fun visitElement(element: IrElement) {
-            element.acceptChildrenVoid(this)
+    irFile.accept(object : IrElementVisitor<Unit, IrDeclaration?> {
+        override fun visitElement(element: IrElement, data: IrDeclaration?) {
+            element.acceptChildren(this, data)
         }
 
-        override fun visitBody(body: IrBody) {
-            body.acceptChildrenVoid(this)
-            lower(body)
+        override fun visitDeclaration(declaration: IrDeclaration, data: IrDeclaration?) {
+            declaration.acceptChildren(this, declaration)
         }
-    })
+
+        override fun visitBody(body: IrBody, data: IrDeclaration?) {
+            body.acceptChildren(this, data)
+            lower(body, data!!)
+        }
+    }, null)
 }
 
 fun FunctionLoweringPass.runOnFilePostfix(irFile: IrFile) {
@@ -185,16 +190,20 @@ fun FunctionLoweringPass.toDeclarationTransformer(): DeclarationTransformer {
 fun BodyLoweringPass.toDeclarationTransformer(): DeclarationTransformer {
     return object : DeclarationTransformer {
         override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
-            declaration.acceptVoid(object : IrElementVisitorVoid {
-                override fun visitElement(element: IrElement) {
-                    element.acceptChildrenVoid(this)
+            declaration.accept(object : IrElementVisitor<Unit, IrDeclaration> {
+                override fun visitElement(element: IrElement, data: IrDeclaration) {
+                    element.acceptChildren(this, data)
                 }
 
-                override fun visitBody(body: IrBody) {
-                    body.acceptChildrenVoid(this)
-                    this@toDeclarationTransformer.lower(body)
+                override fun visitDeclaration(declaration: IrDeclaration, data: IrDeclaration) {
+                    declaration.acceptChildren(this, declaration)
                 }
-            })
+
+                override fun visitBody(body: IrBody, data: IrDeclaration) {
+                    body.acceptChildren(this, data)
+                    lower(body, data)
+                }
+            }, declaration)
             return null
         }
     }
