@@ -16,19 +16,15 @@
 
 package org.jetbrains.kotlin.ir.backend.js.lower.common
 
+import org.jetbrains.kotlin.backend.common.BodyLoweringPass
 import org.jetbrains.kotlin.backend.common.CommonBackendContext
-import org.jetbrains.kotlin.backend.common.DeclarationTransformer
-import org.jetbrains.kotlin.backend.common.FileLoweringPass
 import org.jetbrains.kotlin.backend.common.ir.Symbols
 import org.jetbrains.kotlin.backend.common.lower.createIrBuilder
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
 import org.jetbrains.kotlin.ir.builders.*
 import org.jetbrains.kotlin.ir.declarations.*
-import org.jetbrains.kotlin.ir.expressions.IrCall
-import org.jetbrains.kotlin.ir.expressions.IrExpression
-import org.jetbrains.kotlin.ir.expressions.IrGetValue
-import org.jetbrains.kotlin.ir.expressions.IrPropertyReference
+import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.expressions.impl.IrBlockBodyImpl
 import org.jetbrains.kotlin.ir.expressions.impl.IrConstImpl
 import org.jetbrains.kotlin.ir.types.isPrimitiveType
@@ -36,18 +32,21 @@ import org.jetbrains.kotlin.ir.util.resolveFakeOverride
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
 import org.jetbrains.kotlin.ir.visitors.transformChildrenVoid
 
-class LateinitLowering(val context: CommonBackendContext) : DeclarationTransformer {
-    override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
-        declaration.transform(transformer, null)
-        return null
+class LateinitLowering(val context: CommonBackendContext) : BodyLoweringPass {
+    override fun lower(irBody: IrBody, container: IrDeclaration) {
+        irBody.transform(transformer, null)
+        (container as? IrSimpleFunction)?.correspondingPropertySymbol?.let {
+            val property = it.owner
+            if (property.isLateinit && property.origin != IrDeclarationOrigin.FAKE_OVERRIDE && container === property.getter) {
+                transformGetter(property.backingField!!, container)
+            }
+        }
     }
 
+
     val transformer = object : IrElementTransformerVoid() {
-        override fun visitProperty(declaration: IrProperty): IrStatement {
-            declaration.transformChildrenVoid(this)
-            if (declaration.isLateinit && declaration.origin != IrDeclarationOrigin.FAKE_OVERRIDE) {
-                transformGetter(declaration.backingField!!, declaration.getter!!)
-            }
+        override fun visitDeclaration(declaration: IrDeclaration): IrStatement {
+            // Stop
             return declaration
         }
 
@@ -92,29 +91,29 @@ class LateinitLowering(val context: CommonBackendContext) : DeclarationTransform
                 irNotEquals(irGetField(receiver.dispatchReceiver, property.backingField!!), irNull())
             }
         }
+    }
 
-        private fun transformGetter(backingField: IrField, getter: IrFunction) {
-            val type = backingField.type
-            assert(!type.isPrimitiveType()) { "'lateinit' modifier is not allowed on primitive types" }
-            val startOffset = getter.startOffset
-            val endOffset = getter.endOffset
-            val irBuilder = context.createIrBuilder(getter.symbol, startOffset, endOffset)
-            irBuilder.run {
-                val body = IrBlockBodyImpl(startOffset, endOffset)
-                val resultVar = scope.createTemporaryVariable(
-                    irGetField(getter.dispatchReceiverParameter?.let { irGet(it) }, backingField)
-                )
-                resultVar.parent = getter
-                body.statements.add(resultVar)
-                val throwIfNull = irIfThenElse(
-                    context.irBuiltIns.nothingType,
-                    irNotEquals(irGet(resultVar), irNull()),
-                    irReturn(irGet(resultVar)),
-                    throwUninitializedPropertyAccessException(backingField.name.asString())
-                )
-                body.statements.add(throwIfNull)
-                getter.body = body
-            }
+    private fun transformGetter(backingField: IrField, getter: IrFunction) {
+        val type = backingField.type
+        assert(!type.isPrimitiveType()) { "'lateinit' modifier is not allowed on primitive types" }
+        val startOffset = getter.startOffset
+        val endOffset = getter.endOffset
+        val irBuilder = context.createIrBuilder(getter.symbol, startOffset, endOffset)
+        irBuilder.run {
+            val body = IrBlockBodyImpl(startOffset, endOffset)
+            val resultVar = scope.createTemporaryVariable(
+                irGetField(getter.dispatchReceiverParameter?.let { irGet(it) }, backingField)
+            )
+            resultVar.parent = getter
+            body.statements.add(resultVar)
+            val throwIfNull = irIfThenElse(
+                context.irBuiltIns.nothingType,
+                irNotEquals(irGet(resultVar), irNull()),
+                irReturn(irGet(resultVar)),
+                throwUninitializedPropertyAccessException(backingField.name.asString())
+            )
+            body.statements.add(throwIfNull)
+            getter.body = body
         }
     }
 

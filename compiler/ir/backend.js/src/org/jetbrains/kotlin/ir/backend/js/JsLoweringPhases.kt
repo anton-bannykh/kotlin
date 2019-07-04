@@ -81,7 +81,7 @@ private val expectDeclarationsRemovingPhase = makeJsModulePhase(
 )
 
 private val lateinitLoweringPhase = makeJsModulePhase(
-    { context -> LateinitLowering(context) },
+    { context -> LateinitLowering(context).toDeclarationTransformer() },
     name = "LateinitLowering",
     description = "Insert checks for lateinit field references"
 )
@@ -354,7 +354,7 @@ val perFilePhaseList = listOf(
     moveBodilessDeclarationsToSeparatePlacePhase to true, // Needs to detect @JsModule and @JsQualifier. TODO: read those on use only
     functionInliningPhase to true, // OK
     removeInlineFunctionsLoweringPhase to false, // OK
-    lateinitLoweringPhase to true,
+    lateinitLoweringPhase to true, // OK
     tailrecLoweringPhase to true,
     enumClassConstructorLoweringPhase to true,
     sharedVariablesLoweringPhase to true,
