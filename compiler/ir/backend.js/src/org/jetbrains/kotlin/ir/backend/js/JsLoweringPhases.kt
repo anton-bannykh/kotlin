@@ -146,7 +146,7 @@ private val sharedVariablesLoweringPhase = makeJsModulePhase(
 )
 
 private val returnableBlockLoweringPhase = makeJsModulePhase(
-    { context -> ReturnableBlockLowering(context) },
+    { context -> ReturnableBlockLowering(context).toDeclarationTransformer() },
     name = "ReturnableBlockLowering",
     description = "Replace returnable block with do-while loop",
     prerequisite = setOf(functionInliningPhase)
@@ -370,7 +370,7 @@ val perFilePhaseList = listOf(
     enumClassLoweringPhase to true,
     enumUsageLoweringPhase to true, // OK
 
-    returnableBlockLoweringPhase to true,
+    returnableBlockLoweringPhase to true, // OK
     unitMaterializationLoweringPhase to true, // OK
     suspendFunctionsLoweringPhase to true,
     privateMembersLoweringPhase to true,
