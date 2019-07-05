@@ -362,7 +362,7 @@ val perFilePhaseList = listOf(
     localDeclarationsLoweringPhase to true,
 
     innerClassesLoweringPhase to true,
-    innerClassConstructorCallsLoweringPhase to true,
+    innerClassConstructorCallsLoweringPhase to true, // OK
 
     propertiesLoweringPhase to true,
     initializersLoweringPhase to true,
@@ -378,7 +378,7 @@ val perFilePhaseList = listOf(
 
     defaultArgumentStubGeneratorPhase to true,
     defaultParameterInjectorPhase to true,
-    jsDefaultCallbackGeneratorPhase to true,
+    jsDefaultCallbackGeneratorPhase to true, // OK
 
     throwableSuccessorsLoweringPhase to true,
     varargLoweringPhase to true,
