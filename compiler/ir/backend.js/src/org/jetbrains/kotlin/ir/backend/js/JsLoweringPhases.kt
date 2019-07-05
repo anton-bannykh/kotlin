@@ -249,7 +249,7 @@ private val initializersLoweringPhase = makeJsModulePhase(
 )
 
 private val multipleCatchesLoweringPhase = makeJsModulePhase(
-    { context -> MultipleCatchesLowering(context) },
+    { context -> MultipleCatchesLowering(context).toDeclarationTransformer() },
     name = "MultipleCatchesLowering",
     description = "Replace multiple catches with single one"
 )
@@ -382,7 +382,7 @@ val perFilePhaseList = listOf(
 
     throwableSuccessorsLoweringPhase to true,
     varargLoweringPhase to true, // OK
-    multipleCatchesLoweringPhase to true,
+    multipleCatchesLoweringPhase to true, // OK
     bridgesConstructionPhase to true,
     typeOperatorLoweringPhase to true,
 

@@ -5,14 +5,12 @@
 
 package org.jetbrains.kotlin.ir.backend.js.lower
 
-import org.jetbrains.kotlin.backend.common.DeclarationTransformer
-import org.jetbrains.kotlin.backend.common.FileLoweringPass
+import org.jetbrains.kotlin.backend.common.BodyLoweringPass
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.backend.js.JsIrBackendContext
 import org.jetbrains.kotlin.ir.backend.js.ir.JsIrBuilder
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
-import org.jetbrains.kotlin.ir.declarations.IrFile
 import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.expressions.impl.IrBranchImpl
 import org.jetbrains.kotlin.ir.expressions.impl.IrCatchImpl
@@ -50,13 +48,13 @@ import org.jetbrains.kotlin.ir.visitors.IrElementTransformer
  * finally {}
  */
 
-class MultipleCatchesLowering(val context: JsIrBackendContext) : DeclarationTransformer {
+class MultipleCatchesLowering(val context: JsIrBackendContext) : BodyLoweringPass {
     val litTrue get() = JsIrBuilder.buildBoolean(context.irBuiltIns.booleanType, true)
     val unitType = context.irBuiltIns.unitType
     val nothingType = context.irBuiltIns.nothingType
 
-    override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
-        declaration.transform(object : IrElementTransformer<IrDeclarationParent> {
+    override fun lower(irBody: IrBody, container: IrDeclaration) {
+        irBody.transform(object : IrElementTransformer<IrDeclarationParent> {
 
             override fun visitDeclaration(declaration: IrDeclaration, data: IrDeclarationParent): IrStatement {
                 val parent = (declaration as? IrDeclarationParent) ?: data
@@ -142,8 +140,6 @@ class MultipleCatchesLowering(val context: JsIrBackendContext) : DeclarationTran
                 }
             }
 
-        }, declaration.parent)
-
-        return null
+        }, container as? IrDeclarationParent ?: container.parent)
     }
 }
