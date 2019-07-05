@@ -313,7 +313,7 @@ private val blockDecomposerLoweringPhase = makeJsModulePhase(
 )
 
 private val classReferenceLoweringPhase = makeJsModulePhase(
-    { context -> ClassReferenceLowering(context) },
+    { context -> ClassReferenceLowering(context).toDeclarationTransformer() },
     name = "ClassReferenceLowering",
     description = "Handle class references"
 )
@@ -389,7 +389,7 @@ val perFilePhaseList = listOf(
     secondaryConstructorLoweringPhase to true,
     secondaryFactoryInjectorLoweringPhase to true, // OK
 
-    classReferenceLoweringPhase to true,
+    classReferenceLoweringPhase to true, // OK
 
     inlineClassDeclarationsLoweringPhase to true,
     inlineClassUsageLoweringPhase to true,
