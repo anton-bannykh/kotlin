@@ -325,7 +325,7 @@ private val primitiveCompanionLoweringPhase = makeJsModulePhase(
 )
 
 private val constLoweringPhase = makeJsModulePhase(
-    { context -> ConstLowering(context) },
+    { context -> ConstLowering(context).toDeclarationTransformer() },
     name = "ConstLowering",
     description = "Wrap Long and Char constants into constructor invocation"
 )
@@ -397,7 +397,7 @@ val perFilePhaseList = listOf(
     autoboxingTransformerPhase to true,
     blockDecomposerLoweringPhase to true,
     primitiveCompanionLoweringPhase to true,
-    constLoweringPhase to true,
+    constLoweringPhase to true, // OK
     callsLoweringPhase to true, // OK
     staticMembersLoweringPhase to false // OK
 )
