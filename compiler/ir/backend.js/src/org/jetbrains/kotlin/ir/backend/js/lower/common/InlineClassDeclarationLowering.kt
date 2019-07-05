@@ -5,9 +5,8 @@
 
 package org.jetbrains.kotlin.ir.backend.js.lower.common
 
+import org.jetbrains.kotlin.backend.common.BodyLoweringPass
 import org.jetbrains.kotlin.backend.common.ClassLoweringPass
-import org.jetbrains.kotlin.backend.common.DeclarationTransformer
-import org.jetbrains.kotlin.backend.common.FileLoweringPass
 import org.jetbrains.kotlin.backend.common.descriptors.WrappedSimpleFunctionDescriptor
 import org.jetbrains.kotlin.backend.common.ir.copyTo
 import org.jetbrains.kotlin.backend.common.ir.copyTypeParametersFrom
@@ -180,10 +179,9 @@ class InlineClassLowering(val context: JsIrBackendContext) {
         }
     }
 
-    val inlineClassUsageLowering = object : DeclarationTransformer {
-
-        override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
-            declaration.transformChildrenVoid(object : IrElementTransformerVoid() {
+    val inlineClassUsageLowering = object : BodyLoweringPass {
+        override fun lower(irBody: IrBody, container: IrDeclaration) {
+            irBody.transformChildrenVoid(object : IrElementTransformerVoid() {
 
                 override fun visitCall(call: IrCall): IrExpression {
                     call.transformChildrenVoid(this)
@@ -215,8 +213,6 @@ class InlineClassLowering(val context: JsIrBackendContext) {
                     }
                 }
             })
-
-            return null
         }
     }
 

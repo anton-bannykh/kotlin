@@ -292,7 +292,7 @@ private val inlineClassDeclarationsLoweringPhase = makeJsModulePhase(
 
 private val inlineClassUsageLoweringPhase = makeJsModulePhase(
     { context ->
-        InlineClassLowering(context).inlineClassUsageLowering
+        InlineClassLowering(context).inlineClassUsageLowering.toDeclarationTransformer()
     },
     name = "InlineClassUsageLowering",
     description = "Handle inline classes usages"
@@ -392,7 +392,7 @@ val perFilePhaseList = listOf(
     classReferenceLoweringPhase to true, // OK
 
     inlineClassDeclarationsLoweringPhase to true,
-    inlineClassUsageLoweringPhase to true,
+    inlineClassUsageLoweringPhase to true, // OK
 
     autoboxingTransformerPhase to true,
     blockDecomposerLoweringPhase to true,
