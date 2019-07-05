@@ -229,7 +229,7 @@ private val jsDefaultCallbackGeneratorPhase = makeJsModulePhase(
 )
 
 private val varargLoweringPhase = makeJsModulePhase(
-    { context -> VarargLowering(context) },
+    { context -> VarargLowering(context).toDeclarationTransformer() },
     name = "VarargLowering",
     description = "Lower vararg arguments",
     prerequisite = setOf(callableReferenceLoweringPhase)
@@ -381,7 +381,7 @@ val perFilePhaseList = listOf(
     jsDefaultCallbackGeneratorPhase to true, // OK
 
     throwableSuccessorsLoweringPhase to true,
-    varargLoweringPhase to true,
+    varargLoweringPhase to true, // OK
     multipleCatchesLoweringPhase to true,
     bridgesConstructionPhase to true,
     typeOperatorLoweringPhase to true,
