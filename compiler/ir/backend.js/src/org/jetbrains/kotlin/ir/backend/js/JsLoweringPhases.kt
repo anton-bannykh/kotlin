@@ -153,7 +153,7 @@ private val returnableBlockLoweringPhase = makeJsModulePhase(
 )
 
 private val localDelegatedPropertiesLoweringPhase = makeJsModulePhase(
-    { context -> LocalDelegatedPropertiesLowering() },
+    { context -> LocalDelegatedPropertiesLowering().toDeclarationTransformer() },
     name = "LocalDelegatedPropertiesLowering",
     description = "Transform Local Delegated properties"
 )
