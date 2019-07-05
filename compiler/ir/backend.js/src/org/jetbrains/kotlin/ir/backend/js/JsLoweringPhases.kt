@@ -319,7 +319,7 @@ private val classReferenceLoweringPhase = makeJsModulePhase(
 )
 
 private val primitiveCompanionLoweringPhase = makeJsModulePhase(
-    { context -> PrimitiveCompanionLowering(context) },
+    { context -> PrimitiveCompanionLowering(context).toDeclarationTransformer() },
     name = "PrimitiveCompanionLowering",
     description = "Replace common companion object access with platform one"
 )
@@ -396,7 +396,7 @@ val perFilePhaseList = listOf(
 
     autoboxingTransformerPhase to true,
     blockDecomposerLoweringPhase to true,
-    primitiveCompanionLoweringPhase to true,
+    primitiveCompanionLoweringPhase to true, // OK
     constLoweringPhase to true, // OK
     callsLoweringPhase to true, // OK
     staticMembersLoweringPhase to false // OK
