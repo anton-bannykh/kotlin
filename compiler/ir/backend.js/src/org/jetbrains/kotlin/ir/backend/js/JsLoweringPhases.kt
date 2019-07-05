@@ -133,7 +133,7 @@ private val enumClassLoweringPhase = makeJsModulePhase(
 )
 
 private val enumUsageLoweringPhase = makeJsModulePhase(
-    { context -> EnumUsageLowering(context) },
+    { context -> EnumUsageLowering(context).toDeclarationTransformer() },
     name = "EnumUsageLowering",
     description = "Replace enum access with invocation of corresponding function",
     prerequisite = setOf(enumClassLoweringPhase)
@@ -368,7 +368,7 @@ val perFilePhaseList = listOf(
     initializersLoweringPhase to true,
     // Common prefix ends
     enumClassLoweringPhase to true,
-    enumUsageLoweringPhase to true,
+    enumUsageLoweringPhase to true, // OK
 
     returnableBlockLoweringPhase to true,
     unitMaterializationLoweringPhase to true, // OK
