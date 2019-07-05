@@ -113,7 +113,7 @@ private val tailrecLoweringPhase = makeJsModulePhase(
 )
 
 private val unitMaterializationLoweringPhase = makeJsModulePhase(
-    { context -> UnitMaterializationLowering(context) },
+    { context -> UnitMaterializationLowering(context).toDeclarationTransformer() },
     name = "UnitMaterializationLowering",
     description = "Insert Unit object where it is supposed to be",
     prerequisite = setOf(tailrecLoweringPhase)
@@ -371,7 +371,7 @@ val perFilePhaseList = listOf(
     enumUsageLoweringPhase to true,
 
     returnableBlockLoweringPhase to true,
-    unitMaterializationLoweringPhase to true,
+    unitMaterializationLoweringPhase to true, // OK
     suspendFunctionsLoweringPhase to true,
     privateMembersLoweringPhase to true,
     callableReferenceLoweringPhase to true,

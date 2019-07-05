@@ -6,11 +6,13 @@
 package org.jetbrains.kotlin.ir.backend.js.lower.common
 
 import org.jetbrains.kotlin.backend.common.BackendContext
+import org.jetbrains.kotlin.backend.common.BodyLoweringPass
 import org.jetbrains.kotlin.backend.common.DeclarationTransformer
 import org.jetbrains.kotlin.backend.common.FileLoweringPass
 import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrFile
+import org.jetbrains.kotlin.ir.expressions.IrBody
 import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.impl.IrCompositeImpl
@@ -23,7 +25,7 @@ import org.jetbrains.kotlin.ir.visitors.transformChildrenVoid
 
 // Does not create new declarations
 // Loads Unit value
-class UnitMaterializationLowering(context: BackendContext) : DeclarationTransformer {
+class UnitMaterializationLowering(context: BackendContext) : BodyLoweringPass {
 
     private val unitType = context.irBuiltIns.unitType
     private val unitValue
@@ -34,8 +36,8 @@ class UnitMaterializationLowering(context: BackendContext) : DeclarationTransfor
             unitType.classifierOrFail as IrClassSymbol
         )
 
-    override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
-        declaration.transformChildrenVoid(object : IrElementTransformerVoid() {
+    override fun lower(irBody: IrBody, container: IrDeclaration) {
+        irBody.transformChildrenVoid(object : IrElementTransformerVoid() {
             override fun visitCall(expression: IrCall): IrExpression {
                 expression.transformChildrenVoid(this)
                 return if (expression.type.isUnit()) expression.let {
@@ -44,7 +46,5 @@ class UnitMaterializationLowering(context: BackendContext) : DeclarationTransfor
                 else expression
             }
         })
-
-        return null
     }
 }
