@@ -5,8 +5,7 @@
 
 package org.jetbrains.kotlin.ir.backend.js.lower
 
-import org.jetbrains.kotlin.backend.common.DeclarationTransformer
-import org.jetbrains.kotlin.backend.common.FileLoweringPass
+import org.jetbrains.kotlin.backend.common.BodyLoweringPass
 import org.jetbrains.kotlin.backend.common.lower.AbstractValueUsageTransformer
 import org.jetbrains.kotlin.ir.backend.js.JsIrBackendContext
 import org.jetbrains.kotlin.ir.backend.js.ir.JsIrBuilder
@@ -15,18 +14,17 @@ import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.types.*
 import org.jetbrains.kotlin.ir.util.*
-import org.jetbrains.kotlin.ir.visitors.acceptVoid
 
 
 // Copied and adapted from Kotlin/Native
 
-class AutoboxingTransformer(val context: JsIrBackendContext) : AbstractValueUsageTransformer(context.irBuiltIns), DeclarationTransformer {
-    override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
-        val replacement = declaration.transform(this, null) as IrDeclaration
+class AutoboxingTransformer(val context: JsIrBackendContext) : AbstractValueUsageTransformer(context.irBuiltIns), BodyLoweringPass {
+    override fun lower(irBody: IrBody, container: IrDeclaration) {
+        val replacement = container.transform(this, null) as IrDeclaration
         // TODO: Track & insert parents for temporary variables
         replacement.patchDeclarationParents(replacement.parent)
 
-        return if (declaration !== replacement) listOf(replacement) else null
+        if (container !== replacement) error("Declaratioin has changed!")
     }
 
     override fun IrExpression.useAs(type: IrType): IrExpression {

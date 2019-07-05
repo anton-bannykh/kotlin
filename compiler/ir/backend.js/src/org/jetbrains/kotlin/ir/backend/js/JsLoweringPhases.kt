@@ -300,7 +300,7 @@ private val inlineClassUsageLoweringPhase = makeJsModulePhase(
 
 
 private val autoboxingTransformerPhase = makeJsModulePhase(
-    { context -> AutoboxingTransformer(context) },
+    { context -> AutoboxingTransformer(context).toDeclarationTransformer() },
     name = "AutoboxingTransformer",
     description = "Insert box/unbox intrinsics"
 )
@@ -394,7 +394,7 @@ val perFilePhaseList = listOf(
     inlineClassDeclarationsLoweringPhase to true,
     inlineClassUsageLoweringPhase to true, // OK
 
-    autoboxingTransformerPhase to true,
+    autoboxingTransformerPhase to true, // OK
     blockDecomposerLoweringPhase to true,
     primitiveCompanionLoweringPhase to true, // OK
     constLoweringPhase to true, // OK
