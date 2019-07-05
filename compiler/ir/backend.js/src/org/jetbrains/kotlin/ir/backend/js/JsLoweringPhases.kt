@@ -357,7 +357,7 @@ val perFilePhaseList = listOf(
     lateinitLoweringPhase to true, // OK
     tailrecLoweringPhase to true, // OK
     enumClassConstructorLoweringPhase to true,
-    sharedVariablesLoweringPhase to true,
+    sharedVariablesLoweringPhase to true, // OK
     localDelegatedPropertiesLoweringPhase to true, // OK
     localDeclarationsLoweringPhase to true,
 

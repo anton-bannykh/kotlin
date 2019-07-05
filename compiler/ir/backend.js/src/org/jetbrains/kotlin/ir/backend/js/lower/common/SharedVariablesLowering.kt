@@ -17,8 +17,7 @@
 package org.jetbrains.kotlin.ir.backend.js.lower.common
 
 import org.jetbrains.kotlin.backend.common.BackendContext
-import org.jetbrains.kotlin.backend.common.DeclarationTransformer
-import org.jetbrains.kotlin.backend.common.FunctionLoweringPass
+import org.jetbrains.kotlin.backend.common.BodyLoweringPass
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
@@ -34,9 +33,11 @@ import java.util.*
 
 object CoroutineIntrinsicLambdaOrigin : IrStatementOriginImpl("Coroutine intrinsic lambda")
 
-class SharedVariablesLowering(val context: BackendContext) : FunctionLoweringPass {
-    override fun lower(irFunction: IrFunction) {
-        SharedVariablesTransformer(irFunction).lowerSharedVariables()
+class SharedVariablesLowering(val context: BackendContext) : BodyLoweringPass {
+    override fun lower(irBody: IrBody, container: IrDeclaration) {
+        if (container is IrFunction) {
+            SharedVariablesTransformer(container).lowerSharedVariables()
+        }
     }
 
     private inner class SharedVariablesTransformer(val irFunction: IrFunction) {
