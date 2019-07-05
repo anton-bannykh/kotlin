@@ -48,6 +48,10 @@ class PropertiesLowering(
         declaration.transformDeclarationsFlat { lowerProperty(it, declaration.kind) }
     }
 
+    override fun visitBody(body: IrBody) {
+        // Stop
+    }
+
     private fun lowerProperty(declaration: IrDeclaration, kind: ClassKind): List<IrDeclaration>? =
         if (declaration is IrProperty)
             if (skipExternalProperties && declaration.isEffectivelyExternal()) listOf(declaration) else {

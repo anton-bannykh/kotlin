@@ -364,7 +364,7 @@ val perFilePhaseList = listOf(
     innerClassesLoweringPhase to true,
     innerClassConstructorCallsLoweringPhase to true, // OK
 
-    propertiesLoweringPhase to true,
+    propertiesLoweringPhase to false, // OK
     initializersLoweringPhase to true,
     // Common prefix ends
     enumClassLoweringPhase to true,
