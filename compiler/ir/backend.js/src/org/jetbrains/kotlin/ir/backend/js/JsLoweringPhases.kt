@@ -209,7 +209,7 @@ private val defaultArgumentStubGeneratorPhase = makeJsModulePhase(
 )
 
 private val defaultParameterInjectorPhase = makeJsModulePhase(
-    { context -> DefaultParameterInjector(context, skipExternalMethods = true) },
+    { context -> DefaultParameterInjector(context, skipExternalMethods = true).toDeclarationTransformer() },
     name = "DefaultParameterInjector",
     description = "Replace callsite with default parameters with corresponding stub function",
     prerequisite = setOf(callableReferenceLoweringPhase, innerClassesLoweringPhase)
@@ -377,7 +377,7 @@ val perFilePhaseList = listOf(
     callableReferenceLoweringPhase to true,
 
     defaultArgumentStubGeneratorPhase to true,
-    defaultParameterInjectorPhase to true,
+    defaultParameterInjectorPhase to true, // OK
     jsDefaultCallbackGeneratorPhase to true, // OK
 
     throwableSuccessorsLoweringPhase to true,

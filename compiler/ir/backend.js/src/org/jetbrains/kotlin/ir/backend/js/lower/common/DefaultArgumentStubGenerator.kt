@@ -205,11 +205,9 @@ open class DefaultParameterInjector(
     val context: CommonBackendContext,
     private val skipInline: Boolean = true,
     private val skipExternalMethods: Boolean = false
-) : DeclarationTransformer {
-
-    override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
-        declaration.transformChildrenVoid(transformer)
-        return null
+) : BodyLoweringPass {
+    override fun lower(irBody: IrBody, container: IrDeclaration) {
+        irBody.transformChildrenVoid(transformer)
     }
 
     val transformer = object : IrElementTransformerVoid() {
