@@ -262,7 +262,7 @@ private val bridgesConstructionPhase = makeJsModulePhase(
 )
 
 private val typeOperatorLoweringPhase = makeJsModulePhase(
-    { context -> TypeOperatorLowering(context) },
+    { context -> TypeOperatorLowering(context).toDeclarationTransformer() },
     name = "TypeOperatorLowering",
     description = "Lower IrTypeOperator with corresponding logic",
     prerequisite = setOf(bridgesConstructionPhase, removeInlineFunctionsLoweringPhase)
@@ -384,7 +384,7 @@ val perFilePhaseList = listOf(
     varargLoweringPhase to true, // OK
     multipleCatchesLoweringPhase to true, // OK
     bridgesConstructionPhase to true,
-    typeOperatorLoweringPhase to true,
+    typeOperatorLoweringPhase to true, // OK
 
     secondaryConstructorLoweringPhase to true,
     secondaryFactoryInjectorLoweringPhase to true, // OK
