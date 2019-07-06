@@ -351,7 +351,7 @@ private val staticMembersLoweringPhase = makeJsModulePhase(
 // Second value means if body access is allowed
 val perFilePhaseList = listOf(
     expectDeclarationsRemovingPhase to false, // OK
-    moveBodilessDeclarationsToSeparatePlacePhase to true, // Needs to detect @JsModule and @JsQualifier. TODO: read those on use only
+    moveBodilessDeclarationsToSeparatePlacePhase to true, // Needs to detect @JsModule and @JsQualifier. TODO: should become obsolete
     functionInliningPhase to true, // OK
     removeInlineFunctionsLoweringPhase to false, // OK
     lateinitLoweringPhase to true, // OK
