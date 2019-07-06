@@ -18,7 +18,6 @@ import org.jetbrains.kotlin.ir.backend.js.lower.inline.ReturnableBlockLowering
 import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.declarations.impl.IrDeclarationBase
 import org.jetbrains.kotlin.ir.declarations.impl.IrFileImpl
-import org.jetbrains.kotlin.ir.declarations.name
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.util.*
 import java.util.*
@@ -165,10 +164,17 @@ private val localDeclarationsLoweringPhase = makeJsModulePhase(
     prerequisite = setOf(sharedVariablesLoweringPhase, localDelegatedPropertiesLoweringPhase)
 )
 
-private val innerClassesLoweringPhase = makeJsModulePhase(
-    { context -> InnerClassesLowering(context).toDeclarationTransformer() },
-    name = "InnerClassesLowering",
+private val innerClassesDeclarationLoweringPhase = makeJsModulePhase(
+    { context -> InnerClassesDeclarationLowering(context).toDeclarationTransformer() },
+    name = "InnerClassesDeclarationLowering",
     description = "Capture outer this reference to inner class"
+)
+
+private val innerClassesConstructorBodyLoweringPhase = makeJsModulePhase(
+    { context -> InnerClassesMemberBodyLowering(context).toDeclarationTransformer() },
+    name = "innerClassesConstructorBodyLoweringPhase",
+    description = "Capture outer this reference to inner class",
+    prerequisite = setOf(innerClassesDeclarationLoweringPhase)
 )
 
 private val innerClassConstructorCallsLoweringPhase = makeJsModulePhase(
@@ -212,7 +218,7 @@ private val defaultParameterInjectorPhase = makeJsModulePhase(
     { context -> DefaultParameterInjector(context, skipExternalMethods = true).toDeclarationTransformer() },
     name = "DefaultParameterInjector",
     description = "Replace callsite with default parameters with corresponding stub function",
-    prerequisite = setOf(callableReferenceLoweringPhase, innerClassesLoweringPhase)
+    prerequisite = setOf(callableReferenceLoweringPhase, innerClassesDeclarationLoweringPhase)
 )
 
 // TODO use?
@@ -272,14 +278,14 @@ private val secondaryConstructorLoweringPhase = makeJsModulePhase(
     { context -> SecondaryConstructorLowering(context).toDeclarationTransformer() },
     name = "SecondaryConstructorLoweringPhase",
     description = "Generate static functions for each secondary constructor",
-    prerequisite = setOf(innerClassesLoweringPhase)
+    prerequisite = setOf(innerClassesDeclarationLoweringPhase)
 )
 
 private val secondaryFactoryInjectorLoweringPhase = makeJsModulePhase(
     { context -> SecondaryFactoryInjectorLowering(context).toDeclarationTransformer() },
     name = "SecondaryFactoryInjectorLoweringPhase",
     description = "Replace usage of secondary constructor with corresponding static function",
-    prerequisite = setOf(innerClassesLoweringPhase)
+    prerequisite = setOf(innerClassesDeclarationLoweringPhase)
 )
 
 private val inlineClassDeclarationsLoweringPhase = makeJsModulePhase(
@@ -361,7 +367,8 @@ val perFilePhaseList = listOf(
     localDelegatedPropertiesLoweringPhase to true, // OK
     localDeclarationsLoweringPhase to true,
 
-    innerClassesLoweringPhase to true,
+    innerClassesDeclarationLoweringPhase to false, // OK
+    innerClassesConstructorBodyLoweringPhase to true, // OK
     innerClassConstructorCallsLoweringPhase to true, // OK
 
     propertiesLoweringPhase to false, // OK

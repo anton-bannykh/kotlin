@@ -12,7 +12,10 @@ interface DeclarationFactory {
     object FIELD_FOR_OUTER_THIS : IrDeclarationOriginImpl("FIELD_FOR_OUTER_THIS", isSynthetic = true)
 
     fun getFieldForEnumEntry(enumEntry: IrEnumEntry, entryType: IrType): IrField
+
     fun getOuterThisField(innerClass: IrClass): IrField
     fun getInnerClassConstructorWithOuterThisParameter(innerClassConstructor: IrConstructor): IrConstructor
+    fun getInnerClassConstructorWithInnerThisParameter(innerClassConstructor: IrConstructor): IrConstructor = TODO()
+
     fun getFieldForObjectInstance(singleton: IrClass): IrField
 }

@@ -159,6 +159,10 @@ fun ClassLoweringPass.toDeclarationTransformer(): DeclarationTransformer {
                     element.acceptChildrenVoid(this)
                 }
 
+                override fun visitBody(body: IrBody) {
+                    // Stop
+                }
+
                 override fun visitClass(declaration: IrClass) {
                     declaration.acceptChildrenVoid(this)
                     this@toDeclarationTransformer.lower(declaration)
