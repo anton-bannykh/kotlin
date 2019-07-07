@@ -5,11 +5,15 @@
 
 package org.jetbrains.kotlin.ir.backend.js.lower
 
-import org.jetbrains.kotlin.backend.common.DeclarationContainerLoweringPass
+import org.jetbrains.kotlin.backend.common.BodyLoweringPass
 import org.jetbrains.kotlin.backend.common.DeclarationTransformer
+import org.jetbrains.kotlin.backend.common.NullableBodyLoweringPass
+import org.jetbrains.kotlin.backend.common.ir.DeclarationBiMap
+import org.jetbrains.kotlin.backend.common.ir.DeclarationBiMapKey
 import org.jetbrains.kotlin.backend.common.ir.isElseBranch
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.IrStatement
+import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
 import org.jetbrains.kotlin.ir.backend.js.JsIrBackendContext
 import org.jetbrains.kotlin.ir.backend.js.ir.JsIrBuilder
 import org.jetbrains.kotlin.ir.declarations.*
@@ -22,23 +26,88 @@ import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
 import org.jetbrains.kotlin.ir.visitors.transformChildrenVoid
 import org.jetbrains.kotlin.utils.addIfNotNull
 
-class BlockDecomposerLowering(context: JsIrBackendContext) : DeclarationTransformer {
+private object FieldInitializerMappingKey : DeclarationBiMapKey<IrField, IrFunction>
+
+class CreateIrFieldInitializerFunction(val context: JsIrBackendContext) : DeclarationTransformer {
+
+    val fieldToFunction = context.declarationFactory.getMapping(FieldInitializerMappingKey)
+
+    override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
+        return if (declaration is IrField) {
+            val initFunction = JsIrBuilder.buildFunction(
+                declaration.name.asString() + "\$init\$",
+                context.irBuiltIns.nothingType, // Should be changed later
+                declaration.parent,
+                declaration.visibility // TODO  Shouldn't it be private?
+            )
+
+            // TODO Is this even remotely correct?
+            initFunction.dispatchReceiverParameter = declaration.correspondingPropertySymbol?.owner?.getter?.dispatchReceiverParameter
+            initFunction.extensionReceiverParameter = declaration.correspondingPropertySymbol?.owner?.getter?.extensionReceiverParameter
+
+            fieldToFunction.link(declaration, initFunction)
+
+            listOf(initFunction, declaration)
+        } else {
+            listOf(declaration)
+        }.also { result ->
+            // TODO WTF? This masks erronous behaviour by some other lowering.
+            result.forEach { it.patchDeclarationParents(it.parent, true) }
+        }
+    }
+
+}
+
+class BlockDecomposerLowering(context: JsIrBackendContext) : NullableBodyLoweringPass {
+
+    val fieldToFunction = context.declarationFactory.getMapping(FieldInitializerMappingKey)
 
     private val decomposerTransformer = BlockDecomposerTransformer(context)
     private val nothingType = context.irBuiltIns.nothingType
 
-    override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
-        return when (declaration) {
-            is IrFunction -> {
-                lower(declaration)
-                listOf(declaration)
+    override fun lower(irBody: IrBody?, container: IrDeclaration) {
+        if (container is IrFunction) {
+            fieldToFunction.oldByNew(container)?.let { oldField ->
+                convertInitializerToInitFunctionCall(oldField, container)
             }
-            is IrField -> lower(declaration)
-            else -> listOf(declaration)
-        }.also { result ->
-            result.forEach { it.patchDeclarationParents(it.parent) }
+
+            lower(container)
+        }
+        container.patchDeclarationParents(container.parent)
+    }
+
+    private fun convertInitializerToInitFunctionCall(irField: IrField, initFunction: IrFunction) {
+        // Don't invoke twice
+        // TODO is there even a risk of invoking it twice?
+        if (initFunction.body != null) return
+
+        irField.initializer?.apply {
+            initFunction.returnType = expression.type
+
+            val newBody = toBlockBody(initFunction)
+            newBody.patchDeclarationParents(initFunction)
+            initFunction.body = newBody
+
+            lower(initFunction)
+
+            expression = JsIrBuilder.buildCall(initFunction.symbol, expression.type)
+        } ?: run {
+            initFunction.body = IrBlockBodyImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET) // TODO just keep it as null
         }
     }
+
+//    override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
+//        return when (declaration) {
+//            is IrFunction -> {
+//                lower(declaration)
+//                listOf(declaration)
+//            }
+//            is IrField -> lower(declaration)
+//            else -> listOf(declaration)
+//        }.also { result ->
+//            result.forEach { it.patchDeclarationParents(it.parent) }
+//        }
+//    }
 
     fun lower(irFunction: IrFunction) {
         (irFunction.body as? IrExpressionBody)?.apply {
@@ -55,30 +124,30 @@ class BlockDecomposerLowering(context: JsIrBackendContext) : DeclarationTransfor
         }
     }
 
-    fun lower(irField: IrField): List<IrDeclaration> {
-        irField.initializer?.apply {
-            val initFunction = JsIrBuilder.buildFunction(
-                irField.name.asString() + "\$init\$",
-                expression.type,
-                irField.parent,
-                irField.visibility
-            )
-
-            val newBody = toBlockBody(initFunction)
-            newBody.patchDeclarationParents(initFunction)
-            initFunction.body = newBody
-
-            lower(initFunction)
-
-            val lastStatement = newBody.statements.last()
-            if (newBody.statements.size > 1 || lastStatement !is IrReturn || lastStatement.value != expression) {
-                expression = JsIrBuilder.buildCall(initFunction.symbol, expression.type)
-                return listOf(initFunction, irField)
-            }
-        }
-
-        return listOf(irField)
-    }
+//    fun lower(irField: IrField): List<IrDeclaration> {
+//        irField.initializer?.apply {
+//            val initFunction = JsIrBuilder.buildFunction(
+//                irField.name.asString() + "\$init\$",
+//                expression.type,
+//                irField.parent,
+//                irField.visibility
+//            )
+//
+//            val newBody = toBlockBody(initFunction)
+//            newBody.patchDeclarationParents(initFunction)
+//            initFunction.body = newBody
+//
+//            lower(initFunction)
+//
+//            val lastStatement = newBody.statements.last()
+//            if (newBody.statements.size > 1 || lastStatement !is IrReturn || lastStatement.value != expression) {
+//                expression = JsIrBuilder.buildCall(initFunction.symbol, expression.type)
+//                return listOf(initFunction, irField)
+//            }
+//        }
+//
+//        return listOf(irField)
+//    }
 }
 
 class BlockDecomposerTransformer(private val context: JsIrBackendContext) : IrElementTransformerVoid() {

@@ -18,4 +18,16 @@ interface DeclarationFactory {
     fun getInnerClassConstructorWithInnerThisParameter(innerClassConstructor: IrConstructor): IrConstructor = TODO()
 
     fun getFieldForObjectInstance(singleton: IrClass): IrField
+
+    fun <O : IrDeclaration, N : IrDeclaration> getMapping(key: DeclarationBiMapKey<O, N>): DeclarationBiMap<O, N> = TODO()
+}
+
+interface DeclarationBiMapKey<O : IrDeclaration, N : IrDeclaration>
+
+interface DeclarationBiMap<O : IrDeclaration, N : IrDeclaration> {
+    fun oldByNew(declaration: N): O?
+
+    fun newByOld(declaration: O): N?
+
+    fun link(old: O, new: N)
 }

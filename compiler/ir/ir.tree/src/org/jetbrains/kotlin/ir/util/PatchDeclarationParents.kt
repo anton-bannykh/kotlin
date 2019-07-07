@@ -10,20 +10,21 @@ import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
 import org.jetbrains.kotlin.ir.declarations.IrPackageFragment
 import org.jetbrains.kotlin.ir.declarations.IrProperty
+import org.jetbrains.kotlin.ir.expressions.IrBody
 import org.jetbrains.kotlin.ir.visitors.IrElementVisitorVoid
 import org.jetbrains.kotlin.ir.visitors.acceptChildrenVoid
 import org.jetbrains.kotlin.ir.visitors.acceptVoid
 import java.util.*
 
-fun <T : IrElement> T.patchDeclarationParents(initialParent: IrDeclarationParent? = null) =
+fun <T : IrElement> T.patchDeclarationParents(initialParent: IrDeclarationParent? = null, noBodies: Boolean = false) =
     apply {
-        val visitor = initialParent?.let { PatchDeclarationParentsVisitor(it) } ?: PatchDeclarationParentsVisitor()
+        val visitor = initialParent?.let { PatchDeclarationParentsVisitor(it, noBodies) } ?: PatchDeclarationParentsVisitor(noBodies)
         acceptVoid(visitor)
     }
 
-class PatchDeclarationParentsVisitor() : IrElementVisitorVoid {
+class PatchDeclarationParentsVisitor(val noBodies: Boolean = false) : IrElementVisitorVoid {
 
-    constructor(containingDeclaration: IrDeclarationParent) : this() {
+    constructor(containingDeclaration: IrDeclarationParent, noBodies: Boolean = false) : this(noBodies) {
         declarationParentsStack.push(containingDeclaration)
     }
 
@@ -31,6 +32,12 @@ class PatchDeclarationParentsVisitor() : IrElementVisitorVoid {
 
     override fun visitElement(element: IrElement) {
         element.acceptChildrenVoid(this)
+    }
+
+    override fun visitBody(body: IrBody) {
+        if (!noBodies) {
+            super.visitBody(body)
+        }
     }
 
     override fun visitPackageFragment(declaration: IrPackageFragment) {

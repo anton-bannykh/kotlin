@@ -7,9 +7,7 @@ package org.jetbrains.kotlin.backend.js
 
 import org.jetbrains.kotlin.backend.common.descriptors.WrappedClassConstructorDescriptor
 import org.jetbrains.kotlin.backend.common.descriptors.WrappedFieldDescriptor
-import org.jetbrains.kotlin.backend.common.ir.DeclarationFactory
-import org.jetbrains.kotlin.backend.common.ir.copyTo
-import org.jetbrains.kotlin.backend.common.ir.copyTypeParametersFrom
+import org.jetbrains.kotlin.backend.common.ir.*
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.descriptors.Visibility
@@ -138,5 +136,35 @@ class JsDeclarationFactory : DeclarationFactory {
         val name = Name.identifier("INSTANCE")
 
         return createPropertyWithBackingField(name, Visibilities.PUBLIC, singleton, singleton.defaultType, origin)
+    }
+
+
+    private val declarationsBiMappingMap: MutableMap<DeclarationBiMapKey<*, *>, BiMappingImpl<*, *>> = mutableMapOf()
+
+    private class BiMappingImpl<O: IrDeclaration, N: IrDeclaration>: DeclarationBiMap<O, N> {
+        private val oldToNew = mutableMapOf<O, N>()
+        private val newToOld = mutableMapOf<N, O>()
+
+        override fun oldByNew(declaration: N): O? {
+            return newToOld[declaration]
+        }
+
+        override fun newByOld(declaration: O): N? {
+            return oldToNew[declaration]
+        }
+
+        override fun link(old: O, new: N) {
+            assert(old !in oldToNew)
+            assert(new !in newToOld)
+
+            oldToNew[old] = new
+            newToOld[new] = old
+        }
+    }
+
+    override fun <O : IrDeclaration, N : IrDeclaration> getMapping(key: DeclarationBiMapKey<O, N>): DeclarationBiMap<O, N> {
+        return declarationsBiMappingMap.getOrPut(key) {
+            BiMappingImpl<O, N>()
+        } as DeclarationBiMap<O, N>
     }
 }
