@@ -8,6 +8,7 @@ package org.jetbrains.kotlin.ir.backend.js.lower.common
 import org.jetbrains.kotlin.backend.common.BackendContext
 import org.jetbrains.kotlin.backend.common.BodyLoweringPass
 import org.jetbrains.kotlin.backend.common.ClassLoweringPass
+import org.jetbrains.kotlin.backend.common.NullableBodyLoweringPass
 import org.jetbrains.kotlin.backend.common.lower.VariableRemapper
 import org.jetbrains.kotlin.backend.common.lower.createIrBuilder
 import org.jetbrains.kotlin.ir.IrStatement
@@ -37,14 +38,13 @@ class InnerClassesDeclarationLowering(val context: BackendContext) : ClassLoweri
         irClass.transformDeclarationsFlat { irMember ->
             (irMember as? IrConstructor)?.let {
                 val newConstructor = context.declarationFactory.getInnerClassConstructorWithOuterThisParameter(it)
-                newConstructor.body = it.body // TODO don't copy it here
                 listOf(newConstructor)
             }
         }
     }
 }
 
-class InnerClassesMemberBodyLowering(val context: BackendContext) : BodyLoweringPass {
+class InnerClassesMemberBodyLowering(val context: BackendContext) : NullableBodyLoweringPass {
 
     private val IrValueSymbol.classForImplicitThis: IrClass?
         // TODO: is this the correct way to get the class?
@@ -54,7 +54,7 @@ class InnerClassesMemberBodyLowering(val context: BackendContext) : BodyLowering
         else
             null
 
-    override fun lower(irBody: IrBody, container: IrDeclaration) {
+    override fun lower(irBody: IrBody?, container: IrDeclaration) {
         val irClass = container.parent as? IrClass ?: return
 
         if (!irClass.isInner) return
@@ -74,6 +74,7 @@ class InnerClassesMemberBodyLowering(val context: BackendContext) : BodyLowering
         }
 
         if (container is IrConstructor) {
+            // TODO ensure body is null?
             val loweredConstructor = container
             val originalConstructor = context.declarationFactory.getInnerClassConstructorWithInnerThisParameter(loweredConstructor)
             val outerThisParameter = loweredConstructor.valueParameters[0]
@@ -95,14 +96,21 @@ class InnerClassesMemberBodyLowering(val context: BackendContext) : BodyLowering
             blockBody.transformChildrenVoid(VariableRemapper(oldConstructorParameterToNew))
 
             loweredConstructor.body = blockBody
-        } else if (container is IrField) {
-            // TODO Property initializer references primary constructor value parameters. Doesn't feel right to be honest
-            val oldConstructorParameterToNew = primaryConstructorParameterMap(irClass.declarations.find { it is IrConstructor && it.isPrimary } as IrConstructor)
-            irBody.transformChildrenVoid(VariableRemapper(oldConstructorParameterToNew))
-        }
+            blockBody.fixThisReference(container, irClass)
+        } else if (irBody != null) {
+            if (container is IrField) {
+                // TODO Property initializer references primary constructor value parameters. Doesn't feel right to be honest
+                val oldConstructorParameterToNew = primaryConstructorParameterMap(irClass.declarations.find { it is IrConstructor && it.isPrimary } as IrConstructor)
+                irBody.transformChildrenVoid(VariableRemapper(oldConstructorParameterToNew))
+            }
 
-        container.transform(object : IrElementTransformerVoid() {
-            private var enclosingConstructor: IrConstructor? = null
+            irBody.fixThisReference(container, irClass)
+        }
+    }
+
+    private fun IrBody.fixThisReference(container: IrDeclaration, irClass: IrClass) {
+        transform(object : IrElementTransformerVoid() {
+            private var enclosingConstructor: IrConstructor? = container as? IrConstructor
 
             // TODO: maybe add another transformer that skips specified elements
             override fun visitClass(declaration: IrClass): IrStatement =

@@ -52,6 +52,10 @@ interface BodyLoweringPass : FileLoweringPass {
     override fun lower(irFile: IrFile) = runOnFilePostfix(irFile)
 }
 
+interface NullableBodyLoweringPass {
+    fun lower(irBody: IrBody?, container: IrDeclaration)
+}
+
 fun FileLoweringPass.lower(moduleFragment: IrModuleFragment) = moduleFragment.files.forEach { lower(it) }
 
 fun ClassLoweringPass.runOnFilePostfix(irFile: IrFile) {
@@ -191,6 +195,7 @@ fun FunctionLoweringPass.toDeclarationTransformer(): DeclarationTransformer {
     }
 }
 
+// TODO should it really be run recursively?
 fun BodyLoweringPass.toDeclarationTransformer(): DeclarationTransformer {
     return object : DeclarationTransformer {
         override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
@@ -208,6 +213,60 @@ fun BodyLoweringPass.toDeclarationTransformer(): DeclarationTransformer {
                     lower(body, data)
                 }
             }, declaration)
+            return null
+        }
+    }
+}
+
+// TODO should it really be run recursively?
+fun NullableBodyLoweringPass.toDeclarationTransformer(): DeclarationTransformer {
+    return object : DeclarationTransformer {
+        override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
+            declaration.accept(object : IrElementVisitorVoid {
+                override fun visitElement(element: IrElement) {
+                    element.acceptChildrenVoid(this)
+                }
+
+                private fun lowerAnnotations(declaration: IrDeclaration) {
+                    declaration.annotations.forEach {
+                        lower(it, declaration)
+                    }
+                }
+
+                override fun visitDeclaration(declaration: IrDeclaration) {
+                    lowerAnnotations(declaration)
+                    declaration.acceptChildrenVoid(this)
+                }
+
+                override fun visitAnonymousInitializer(declaration: IrAnonymousInitializer) {
+                    lowerAnnotations(declaration)
+                    lower(declaration.body, declaration)
+                }
+
+                override fun visitEnumEntry(declaration: IrEnumEntry) {
+                    lowerAnnotations(declaration)
+                    lower(declaration.initializerExpression, declaration)
+                }
+
+                override fun visitField(declaration: IrField) {
+                    lowerAnnotations(declaration)
+                    lower(declaration.initializer, declaration)
+                }
+
+                override fun visitFunction(declaration: IrFunction) {
+                    lowerAnnotations(declaration)
+                    lower(declaration.body, declaration)
+                }
+
+                override fun visitValueParameter(declaration: IrValueParameter) {
+                    lowerAnnotations(declaration)
+                    lower(declaration.defaultValue, declaration)
+                }
+
+                override fun visitBody(body: IrBody) {
+                    error("Missed a body")
+                }
+            }, null)
             return null
         }
     }
