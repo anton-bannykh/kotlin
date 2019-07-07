@@ -221,12 +221,11 @@ private val defaultParameterInjectorPhase = makeJsModulePhase(
     prerequisite = setOf(callableReferenceLoweringPhase, innerClassesDeclarationLoweringPhase)
 )
 
-// TODO use?
-//private val defaultParameterCleanerPhase = makeJsModulePhase(
-//    ::DefaultParameterCleaner,
-//    name = "DefaultParameterCleaner",
-//    description = "Clean default parameters up"
-//)
+private val defaultParameterCleanerPhase = makeJsModulePhase(
+    { context -> DefaultParameterCleaner(context).runPostfix() },
+    name = "DefaultParameterCleaner",
+    description = "Clean default parameters up"
+)
 
 private val jsDefaultCallbackGeneratorPhase = makeJsModulePhase(
     { context -> JsDefaultCallbackGenerator(context).toDeclarationTransformer() },
@@ -280,6 +279,14 @@ private val secondaryConstructorLoweringPhase = makeJsModulePhase(
     description = "Generate static functions for each secondary constructor",
     prerequisite = setOf(innerClassesDeclarationLoweringPhase)
 )
+
+private val secondaryConstructorBodyLoweringPhase = makeJsModulePhase(
+    { context -> SecondaryConstructorBodyLowering(context).toDeclarationTransformer() },
+    name = "SecondaryConstructorLoweringPhase",
+    description = "Generate static functions for each secondary constructor",
+    prerequisite = setOf(innerClassesDeclarationLoweringPhase, secondaryConstructorLoweringPhase)
+)
+
 
 private val secondaryFactoryInjectorLoweringPhase = makeJsModulePhase(
     { context -> SecondaryFactoryInjectorLowering(context).toDeclarationTransformer() },
@@ -394,6 +401,7 @@ val perFilePhaseList = listOf(
     defaultArgumentStubGeneratorPhase to true,
     defaultParameterInjectorPhase to true, // OK
     jsDefaultCallbackGeneratorPhase to true, // OK
+    defaultParameterCleanerPhase to false, // OK
 
     throwableSuccessorsLoweringPhase to true,
     varargLoweringPhase to true, // OK
@@ -401,7 +409,8 @@ val perFilePhaseList = listOf(
     bridgesConstructionPhase to true,
     typeOperatorLoweringPhase to true, // OK
 
-    secondaryConstructorLoweringPhase to true,
+    secondaryConstructorLoweringPhase to false, // OK
+    secondaryConstructorBodyLoweringPhase to true, // OK
     secondaryFactoryInjectorLoweringPhase to true, // OK
 
     classReferenceLoweringPhase to true, // OK

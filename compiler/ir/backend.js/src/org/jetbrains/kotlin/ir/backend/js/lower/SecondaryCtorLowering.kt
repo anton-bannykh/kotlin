@@ -7,6 +7,8 @@ package org.jetbrains.kotlin.ir.backend.js.lower
 
 import org.jetbrains.kotlin.backend.common.BodyLoweringPass
 import org.jetbrains.kotlin.backend.common.ClassLoweringPass
+import org.jetbrains.kotlin.backend.common.NullableBodyLoweringPass
+import org.jetbrains.kotlin.backend.common.ir.DeclarationBiMapKey
 import org.jetbrains.kotlin.backend.common.ir.copyTo
 import org.jetbrains.kotlin.backend.common.ir.copyTypeParametersFrom
 import org.jetbrains.kotlin.descriptors.Modality
@@ -31,9 +33,16 @@ import org.jetbrains.kotlin.ir.visitors.transformChildrenVoid
 
 data class ConstructorPair(val delegate: IrSimpleFunction, val stub: IrSimpleFunction)
 
-class SecondaryConstructorLowering(val context: JsIrBackendContext) : ClassLoweringPass {
+private object ConstructorToDelegateKey : DeclarationBiMapKey<IrConstructor, IrSimpleFunction>
 
+private object ConstructorToStubKey : DeclarationBiMapKey<IrConstructor, IrSimpleFunction>
+
+
+class SecondaryConstructorLowering(val context: JsIrBackendContext) : ClassLoweringPass {
     private val oldCtorToNewMap = context.secondaryConstructorToFactoryCache
+
+    private val constructorToDelegateMapping = context.declarationFactory.getMapping(ConstructorToDelegateKey)
+    private val constructorToStubMapping = context.declarationFactory.getMapping(ConstructorToStubKey)
 
     override fun lower(irClass: IrClass) {
         if (irClass.isInline) return
@@ -50,9 +59,31 @@ class SecondaryConstructorLowering(val context: JsIrBackendContext) : ClassLower
             buildConstructorStubDeclarations(constructor, irClass)
         }
 
-        generateStubsBody(constructor, irClass, stubs)
+        // TODO old constructor is removed. Still needed though.
+
+        constructorToDelegateMapping.link(constructor, stubs.delegate)
+        constructorToStubMapping.link(constructor, stubs.stub)
 
         return listOf(stubs.delegate, stubs.stub)
+    }
+}
+
+class SecondaryConstructorBodyLowering(val context: JsIrBackendContext) : NullableBodyLoweringPass {
+
+    private val oldCtorToNewMap = context.secondaryConstructorToFactoryCache
+
+    private val constructorToDelegateMapping = context.declarationFactory.getMapping(ConstructorToDelegateKey)
+    private val constructorToStubMapping = context.declarationFactory.getMapping(ConstructorToStubKey)
+
+    override fun lower(irBody: IrBody?, container: IrDeclaration) {
+        if (irBody == null && container is IrSimpleFunction) {
+            constructorToDelegateMapping.oldByNew(container)?.let { constructor ->
+                generateInitBody(constructor, container.parentAsClass, container)
+            }
+            constructorToStubMapping.oldByNew(container)?.let { constructor ->
+                generateFactoryBody(constructor, container.parentAsClass, container, oldCtorToNewMap[constructor]!!.delegate)
+            }
+        }
     }
 
     private fun generateStubsBody(constructor: IrConstructor, irClass: IrClass, stubs: ConstructorPair) {

@@ -378,9 +378,10 @@ open class DefaultParameterInjector(
     private fun log(msg: () -> String) = context.log { "DEFAULT-INJECTOR: ${msg()}" }
 }
 
-class DefaultParameterCleaner constructor(val context: CommonBackendContext) : FunctionLoweringPass {
-    override fun lower(irFunction: IrFunction) {
-        irFunction.valueParameters.forEach { it.defaultValue = null }
+class DefaultParameterCleaner constructor(val context: CommonBackendContext) : DeclarationTransformer {
+    override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
+        (declaration as? IrFunction)?.valueParameters?.forEach { it.defaultValue = null }
+        return null
     }
 }
 
