@@ -209,8 +209,14 @@ private val callableReferenceLoweringPhase = makeJsModulePhase(
 )
 
 private val defaultArgumentStubGeneratorPhase = makeJsModulePhase(
-    { context -> JsDefaultArgumentStubGenerator(context).runPostfix() },
+    { context -> DefaultArgumentStubGenerator(context).runPostfix() },
     name = "DefaultArgumentStubGenerator",
+    description = "Generate synthetic stubs for functions with default parameter values"
+)
+
+private val defaultArgumentStubBodyGeneratorPhase = makeJsModulePhase(
+    { context -> JsDefaultArgumentStubGenerator(context).toDeclarationTransformer() },
+    name = "DefaultArgumentStubBodyGenerator",
     description = "Generate synthetic stubs for functions with default parameter values"
 )
 
@@ -413,7 +419,8 @@ val perFilePhaseList = listOf(
     privateMembersLoweringPhase to true,
     callableReferenceLoweringPhase to true,
 
-    defaultArgumentStubGeneratorPhase to true,
+    defaultArgumentStubGeneratorPhase to false, // OK
+    defaultArgumentStubBodyGeneratorPhase to true, // OK
     defaultParameterInjectorPhase to true, // OK
     jsDefaultCallbackGeneratorPhase to true, // OK
     defaultParameterCleanerPhase to false, // OK
