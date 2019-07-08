@@ -266,6 +266,13 @@ private val bridgesConstructionPhase = makeJsModulePhase(
     prerequisite = setOf(suspendFunctionsLoweringPhase)
 )
 
+private val bridgesBodyConstructionPhase = makeJsModulePhase(
+    { context -> BridgesBodyConstruction(context).toDeclarationTransformer() },
+    name = "BridgesBodyConstruction",
+    description = "Generate bridges body",
+    prerequisite = setOf(suspendFunctionsLoweringPhase)
+)
+
 private val typeOperatorLoweringPhase = makeJsModulePhase(
     { context -> TypeOperatorLowering(context).toDeclarationTransformer() },
     name = "TypeOperatorLowering",
@@ -414,7 +421,8 @@ val perFilePhaseList = listOf(
     throwableSuccessorsLoweringPhase to true,
     varargLoweringPhase to true, // OK
     multipleCatchesLoweringPhase to true, // OK
-    bridgesConstructionPhase to true,
+    bridgesConstructionPhase to true, // TODO Reads @JsName
+    bridgesBodyConstructionPhase to true, // OK
     typeOperatorLoweringPhase to true, // OK
 
     secondaryConstructorLoweringPhase to false, // OK

@@ -6,6 +6,7 @@
 package org.jetbrains.kotlin.ir.backend.js.lower
 
 import org.jetbrains.kotlin.backend.common.ClassLoweringPass
+import org.jetbrains.kotlin.backend.common.NullableBodyLoweringPass
 import org.jetbrains.kotlin.backend.common.bridges.FunctionHandle
 import org.jetbrains.kotlin.backend.common.bridges.findInterfaceImplementation
 import org.jetbrains.kotlin.backend.common.bridges.generateBridges
@@ -24,6 +25,7 @@ import org.jetbrains.kotlin.ir.backend.js.utils.getJsName
 import org.jetbrains.kotlin.ir.builders.*
 import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.declarations.impl.IrValueParameterImpl
+import org.jetbrains.kotlin.ir.expressions.IrBody
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.classifierOrNull
@@ -89,8 +91,6 @@ class BridgesConstruction(val context: JsIrBackendContext) : ClassLoweringPass {
         }
     }
 
-    private val unitValue = JsIrBuilder.buildGetObjectValue(context.irBuiltIns.unitType, context.irBuiltIns.unitClass)
-
     // Ported from from jvm.lower.BridgeLowering
     private fun createBridge(
         function: IrSimpleFunction,
@@ -129,42 +129,56 @@ class BridgesConstruction(val context: JsIrBackendContext) : ClassLoweringPass {
             overriddenSymbols.addAll(delegateTo.overriddenSymbols)
         }
 
-        context.createIrBuilder(irFunction.symbol).irBlockBody(irFunction) {
-            val call = irCall(delegateTo.symbol)
-            call.dispatchReceiver = irGet(irFunction.dispatchReceiverParameter!!)
-            irFunction.extensionReceiverParameter?.let {
-                call.extensionReceiver = irCastIfNeeded(irGet(it), delegateTo.extensionReceiverParameter!!.type)
-            }
-
-            val toTake = irFunction.valueParameters.size - if (call.isSuspend xor irFunction.isSuspend) 1 else 0
-
-            irFunction.valueParameters.mapIndexed { i, valueParameter ->
-                if (i >= toTake) return@mapIndexed
-                call.putValueArgument(i, irCastIfNeeded(irGet(valueParameter), delegateTo.valueParameters[i].type))
-            }
-
-            // This is required for Unit materialization
-            // TODO: generalize for boxed types and inline classes
-            // TODO: use return type in signature too
-            val returnValue = if (delegateTo.returnType.isUnit() && !function.returnType.isUnit()) {
-                irComposite(resultType = irFunction.returnType) {
-                    +call
-                    +unitValue
-                }
-            } else {
-                call
-            }
-            +irReturn(returnValue)
-        }.apply {
-            irFunction.body = this
-        }
+        context.bridgeToBridgeInfoMapping[irFunction] = JsIrBackendContext.BridgeInfo(function, bridge, delegateTo)
 
         return irFunction
     }
+}
+
+class BridgesBodyConstruction(val context: JsIrBackendContext) : NullableBodyLoweringPass {
+
+    private val unitValue = JsIrBuilder.buildGetObjectValue(context.irBuiltIns.unitType, context.irBuiltIns.unitClass)
 
     // TODO: get rid of Unit check
     private fun IrBlockBodyBuilder.irCastIfNeeded(argument: IrExpression, type: IrType): IrExpression =
         if (argument.type.classifierOrNull == type.classifierOrNull) argument else irAs(argument, type)
+
+
+    override fun lower(irBody: IrBody?, container: IrDeclaration) {
+        if (container !is IrSimpleFunction) return
+
+        val irFunction = container
+
+        context.bridgeToBridgeInfoMapping[container]?.let { (function, bridge, delegateTo) ->
+            container.body = context.createIrBuilder(irFunction.symbol).irBlockBody(irFunction) {
+                val call = irCall(delegateTo.symbol)
+                call.dispatchReceiver = irGet(irFunction.dispatchReceiverParameter!!)
+                irFunction.extensionReceiverParameter?.let {
+                    call.extensionReceiver = irCastIfNeeded(irGet(it), delegateTo.extensionReceiverParameter!!.type)
+                }
+
+                val toTake = irFunction.valueParameters.size - if (call.isSuspend xor irFunction.isSuspend) 1 else 0
+
+                irFunction.valueParameters.mapIndexed { i, valueParameter ->
+                    if (i >= toTake) return@mapIndexed
+                    call.putValueArgument(i, irCastIfNeeded(irGet(valueParameter), delegateTo.valueParameters[i].type))
+                }
+
+                // This is required for Unit materialization
+                // TODO: generalize for boxed types and inline classes
+                // TODO: use return type in signature too
+                val returnValue = if (delegateTo.returnType.isUnit() && !function.returnType.isUnit()) {
+                    irComposite(resultType = irFunction.returnType) {
+                        +call
+                        +unitValue
+                    }
+                } else {
+                    call
+                }
+                +irReturn(returnValue)
+            }
+        }
+    }
 }
 
 // Handle for common.bridges

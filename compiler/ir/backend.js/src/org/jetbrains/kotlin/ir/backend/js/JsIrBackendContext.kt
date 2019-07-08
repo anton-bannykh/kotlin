@@ -165,6 +165,12 @@ class JsIrBackendContext(
     val secondaryConstructorToFactoryCache = mutableMapOf<IrConstructor, ConstructorPair>()
     val inlineClassTransformedFunctionsCache = mutableMapOf<IrFunctionSymbol, IrSimpleFunctionSymbol>()
 
+    data class BridgeInfo(val function: IrSimpleFunction,
+                          val bridge: IrSimpleFunction,
+                          val delegateTo: IrSimpleFunction)
+
+    val bridgeToBridgeInfoMapping = mutableMapOf<IrSimpleFunction, BridgeInfo>()
+
     val intrinsics = JsIntrinsics(irBuiltIns, this)
 
     override val internalPackageFqn = JS_PACKAGE_FQNAME
