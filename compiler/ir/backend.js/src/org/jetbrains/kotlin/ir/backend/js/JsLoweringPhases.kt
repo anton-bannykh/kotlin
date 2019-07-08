@@ -259,10 +259,17 @@ private val propertiesLoweringPhase = makeJsModulePhase(
 )
 
 private val initializersLoweringPhase = makeJsModulePhase(
-    { context -> InitializersLowering(context, JsLoweredDeclarationOrigin.CLASS_STATIC_INITIALIZER, false).toDeclarationTransformer() },
+    { context -> InitializersBodyLowering(context, JsLoweredDeclarationOrigin.CLASS_STATIC_INITIALIZER, false).toDeclarationTransformer() },
     name = "InitializersLowering",
     description = "Merge init block and field initializers into [primary] constructor",
     prerequisite = setOf(enumClassConstructorLoweringPhase)
+)
+
+private val removeAnonymousInitializers = makeJsModulePhase(
+    { context -> RemoveAnonymousInitializers(context).toDeclarationTransformer() },
+    name = "InitializersLowering",
+    description = "Merge init block and field initializers into [primary] constructor",
+    prerequisite = setOf(initializersLoweringPhase)
 )
 
 private val multipleCatchesLoweringPhase = makeJsModulePhase(
@@ -414,7 +421,8 @@ val perFilePhaseList = listOf(
     innerClassConstructorCallsLoweringPhase to true, // OK
 
     propertiesLoweringPhase to false, // OK
-    initializersLoweringPhase to true,
+    initializersLoweringPhase to true, // OK
+    removeAnonymousInitializers to false, // OK
     // Common prefix ends
     enumClassLoweringPhase to true,
     enumUsageLoweringPhase to true, // OK
