@@ -255,6 +255,7 @@ fun NullableBodyLoweringPass.toDeclarationTransformer(): DeclarationTransformer 
 
                 override fun visitFunction(declaration: IrFunction) {
                     lowerAnnotations(declaration)
+                    declaration.valueParameters.forEach { visitValueParameter(it) }
                     lower(declaration.body, declaration)
                 }
 

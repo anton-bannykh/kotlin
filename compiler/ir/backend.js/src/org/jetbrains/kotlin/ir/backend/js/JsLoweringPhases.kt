@@ -196,6 +196,12 @@ private val privateMembersLoweringPhase = makeJsModulePhase(
     description = "Extract private members from classes"
 )
 
+private val privateMembersBodyLoweringPhase = makeJsModulePhase(
+    { context -> PrivateMemberBodiesLowering(context).toDeclarationTransformer() },
+    name = "PrivateMembersBodyLowering",
+    description = "Fill extracted private members bodies"
+)
+
 private val callableReferenceLoweringPhase = makeJsModulePhase(
     { context -> CallableReferenceLowering(context) },
     name = "CallableReferenceLowering",
@@ -416,7 +422,8 @@ val perFilePhaseList = listOf(
     returnableBlockLoweringPhase to true, // OK
     unitMaterializationLoweringPhase to true, // OK
     suspendFunctionsLoweringPhase to true,
-    privateMembersLoweringPhase to true,
+    privateMembersLoweringPhase to false, // OK
+    privateMembersBodyLoweringPhase to true, // OK
     callableReferenceLoweringPhase to true,
 
     defaultArgumentStubGeneratorPhase to false, // OK
