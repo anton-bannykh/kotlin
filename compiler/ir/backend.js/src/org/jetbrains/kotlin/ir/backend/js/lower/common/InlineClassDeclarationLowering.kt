@@ -7,7 +7,9 @@ package org.jetbrains.kotlin.ir.backend.js.lower.common
 
 import org.jetbrains.kotlin.backend.common.BodyLoweringPass
 import org.jetbrains.kotlin.backend.common.ClassLoweringPass
+import org.jetbrains.kotlin.backend.common.NullableBodyLoweringPass
 import org.jetbrains.kotlin.backend.common.descriptors.WrappedSimpleFunctionDescriptor
+import org.jetbrains.kotlin.backend.common.ir.DeclarationBiMapKey
 import org.jetbrains.kotlin.backend.common.ir.copyTo
 import org.jetbrains.kotlin.backend.common.ir.copyTypeParametersFrom
 import org.jetbrains.kotlin.backend.common.lower.createIrBuilder
@@ -20,6 +22,7 @@ import org.jetbrains.kotlin.ir.builders.*
 import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.declarations.impl.IrFunctionImpl
 import org.jetbrains.kotlin.ir.expressions.*
+import org.jetbrains.kotlin.ir.symbols.IrFunctionSymbol
 import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
 import org.jetbrains.kotlin.ir.symbols.impl.IrSimpleFunctionSymbolImpl
 import org.jetbrains.kotlin.ir.util.*
@@ -29,14 +32,19 @@ import org.jetbrains.kotlin.name.Name
 
 private const val INLINE_CLASS_IMPL_SUFFIX = "-impl"
 
+private object InlineClassLoweringMappingKey : DeclarationBiMapKey<IrFunction, IrSimpleFunction>
+
 // TODO: Support incremental compilation
 class InlineClassLowering(val context: JsIrBackendContext) {
     private val transformedFunction = context.inlineClassTransformedFunctionsCache
+
+    private val originalToTransformed = context.declarationFactory.getMapping(InlineClassLoweringMappingKey)
 
     val inlineClassDeclarationLowering = object : ClassLoweringPass {
         override fun lower(irClass: IrClass) {
             if (!irClass.isInline) return
 
+            // TODO removes declarations, which are used later on
             irClass.transformDeclarationsFlat { declaration ->
                 when (declaration) {
                     is IrConstructor -> transformConstructor(declaration)
@@ -54,15 +62,62 @@ class InlineClassLowering(val context: JsIrBackendContext) {
 
             // Secondary constructors are lowered into static function
             val result = getOrCreateStaticMethod(irConstructor).owner
+
+            originalToTransformed.link(irConstructor, result)
+
+            return listOf()
+        }
+
+        private fun transformMethodFlat(function: IrSimpleFunction): List<IrDeclaration> {
+            // TODO: Support fake-overridden methods without boxing
+            if (function.isStaticMethodOfClass || !function.isReal)
+                return listOf(function)
+
+
+            val staticMethod = getOrCreateStaticMethod(function).owner
+
+            staticMethod.body = function.body
+
+            function.body = null
+
+            originalToTransformed.link(function, staticMethod)
+
+            if (function.overriddenSymbols.isEmpty())  // Function is used only in unboxed context
+                return listOf()
+
+            return listOf(function)
+        }
+    }
+
+    val inlineClassDeclarationBodyLowering = object : NullableBodyLoweringPass {
+        override fun lower(irBody: IrBody?, container: IrDeclaration) {
+            if (container !is IrSimpleFunction) return
+
+            originalToTransformed.oldByNew(container)?.let {
+                if (it is IrConstructor) {
+                    transformConstructorBody(it, container)
+                } else {
+                    transformMethodBodyFlat(it as IrSimpleFunction, container)
+                }
+            }
+
+            originalToTransformed.newByOld(container)?.let { staticMethod ->
+                delegateToStaticMethod(container, staticMethod)
+            }
+        }
+
+        private fun transformConstructorBody(irConstructor: IrConstructor, staticMethod: IrSimpleFunction) {
+            if (irConstructor.isPrimary) return // TODO error() maybe?
+
             val irClass = irConstructor.parentAsClass
 
             // Copied and adapted from Kotlin/Native InlineClassTransformer
-            result.body = context.createIrBuilder(result.symbol).irBlockBody(result) {
+            staticMethod.body = context.createIrBuilder(staticMethod.symbol).irBlockBody(staticMethod) {
 
                 // Secondary ctors of inline class must delegate to some other constructors.
                 // Use these delegating call later to initialize this variable.
                 lateinit var thisVar: IrVariable
-                val parameterMapping = result.valueParameters.associateBy {
+                val parameterMapping = staticMethod.valueParameters.associateBy {
                     irConstructor.valueParameters[it.index].symbol
                 }
 
@@ -75,7 +130,7 @@ class InlineClassLowering(val context: JsIrBackendContext) {
                                     expression,
                                     irType = irClass.defaultType
                                 )
-                                thisVar.parent = result
+                                thisVar.parent = staticMethod
                             }
                         }
 
@@ -92,7 +147,7 @@ class InlineClassLowering(val context: JsIrBackendContext) {
                         override fun visitDeclaration(declaration: IrDeclaration): IrStatement {
                             declaration.transformChildrenVoid(this)
                             if (declaration.parent == irConstructor)
-                                declaration.parent = result
+                                declaration.parent = staticMethod
                             return declaration
                         }
 
@@ -112,20 +167,14 @@ class InlineClassLowering(val context: JsIrBackendContext) {
                 }
                 +irReturn(irGet(thisVar))
             }
-
-            return listOf()
         }
 
-        private fun transformMethodFlat(function: IrSimpleFunction): List<IrDeclaration> {
+        private fun transformMethodBodyFlat(function: IrSimpleFunction, staticMethod: IrSimpleFunction) {
             // TODO: Support fake-overridden methods without boxing
-            if (function.isStaticMethodOfClass || !function.isReal)
-                return listOf(function)
-
-
-            val staticMethod = getOrCreateStaticMethod(function).owner
+            if (function.isStaticMethodOfClass || !function.isReal) return // TODO error()
 
             // Move function body to static method, transforming value parameters and nested declarations
-            function.body!!.transformChildrenVoid(object : IrElementTransformerVoid() {
+            staticMethod.body!!.transformChildrenVoid(object : IrElementTransformerVoid() {
                 override fun visitDeclaration(declaration: IrDeclaration): IrStatement {
                     declaration.transformChildrenVoid(this)
                     if (declaration.parent == function)
@@ -153,12 +202,9 @@ class InlineClassLowering(val context: JsIrBackendContext) {
                     )
                 }
             })
+        }
 
-            staticMethod.body = function.body
-
-            if (function.overriddenSymbols.isEmpty())  // Function is used only in unboxed context
-                return listOf()
-
+        private fun delegateToStaticMethod(function: IrSimpleFunction, staticMethod: IrSimpleFunction) {
             // Delegate original function to static implementation
             function.body = context.createIrBuilder(function.symbol).irBlockBody {
                 +irReturn(
@@ -174,8 +220,6 @@ class InlineClassLowering(val context: JsIrBackendContext) {
                     }
                 )
             }
-
-            return listOf(function)
         }
     }
 
