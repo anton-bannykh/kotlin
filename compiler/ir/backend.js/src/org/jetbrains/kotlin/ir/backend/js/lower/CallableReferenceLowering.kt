@@ -5,8 +5,8 @@
 
 package org.jetbrains.kotlin.ir.backend.js.lower
 
+import org.jetbrains.kotlin.backend.common.BodyLoweringPass
 import org.jetbrains.kotlin.backend.common.DeclarationTransformer
-import org.jetbrains.kotlin.backend.common.FileLoweringPass
 import org.jetbrains.kotlin.backend.common.descriptors.WrappedTypeParameterDescriptor
 import org.jetbrains.kotlin.backend.common.descriptors.WrappedValueParameterDescriptor
 import org.jetbrains.kotlin.descriptors.Visibilities
@@ -43,21 +43,23 @@ data class CallableReferenceKey(
 )
 
 // TODO: generate $metadata$ property and fill it with corresponding KFunction/KProperty interface
-class CallableReferenceLowering(val context: JsIrBackendContext) : DeclarationTransformer {
+class CallableReferenceLowering(val context: JsIrBackendContext) : BodyLoweringPass {
     private val callableNameConst get() = JsIrBuilder.buildString(context.irBuiltIns.stringType, Namer.KCALLABLE_NAME)
     private val getterConst get() = JsIrBuilder.buildString(context.irBuiltIns.stringType, Namer.KPROPERTY_GET)
     private val setterConst get() = JsIrBuilder.buildString(context.irBuiltIns.stringType, Namer.KPROPERTY_SET)
     private val callableToFactoryFunction = mutableMapOf<CallableReferenceKey, IrSimpleFunction>()//context.callableReferencesCache
 
     private val newDeclarations = mutableListOf<IrDeclaration>()
-    private lateinit var implicitDeclarationFile: IrFile// = context.implicitDeclarationFile
+    private lateinit var implicitDeclarationFile: IrFile/* = context.implicitDeclarationFile*/
 
-    override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
+    override fun lower(irBody: IrBody, container: IrDeclaration) {
         newDeclarations.clear()
         callableToFactoryFunction.clear()
-        implicitDeclarationFile = declaration.file // TODO
-        declaration.transformChildrenVoid(CallableReferenceLowerTransformer())
-        return listOf(declaration) + newDeclarations
+        implicitDeclarationFile = container.file // TODO
+        irBody.transformChildrenVoid(CallableReferenceLowerTransformer())
+
+        // TODO Creates new declarations. What is the correct API?
+        implicitDeclarationFile.declarations += newDeclarations
     }
 
     private fun makeCallableKey(declaration: IrFunction, reference: IrCallableReference) =

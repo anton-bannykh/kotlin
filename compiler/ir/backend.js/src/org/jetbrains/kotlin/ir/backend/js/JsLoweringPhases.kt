@@ -203,7 +203,7 @@ private val privateMembersBodyLoweringPhase = makeJsModulePhase(
 )
 
 private val callableReferenceLoweringPhase = makeJsModulePhase(
-    { context -> CallableReferenceLowering(context) },
+    { context -> CallableReferenceLowering(context).toDeclarationTransformer() },
     name = "CallableReferenceLowering",
     description = "Handle callable references",
     prerequisite = setOf(
@@ -432,7 +432,7 @@ val perFilePhaseList = listOf(
     suspendFunctionsLoweringPhase to true,
     privateMembersLoweringPhase to false, // OK
     privateMembersBodyLoweringPhase to true, // OK
-    callableReferenceLoweringPhase to true,
+    callableReferenceLoweringPhase to true, // OK?
 
     defaultArgumentStubGeneratorPhase to false, // OK
     defaultArgumentStubBodyGeneratorPhase to true, // OK
