@@ -105,6 +105,12 @@ private val throwableSuccessorsLoweringPhase = makeJsModulePhase(
     description = "Link kotlin.Throwable and JavaScript Error together to provide proper interop between language and platform exceptions"
 )
 
+private val throwableSuccessorsBodyLoweringPhase = makeJsModulePhase(
+    { context -> ThrowableSuccessorsBodyLowering(context).toDeclarationTransformer() },
+    name = "ThrowableSuccessorsLowering",
+    description = "Link kotlin.Throwable and JavaScript Error together to provide proper interop between language and platform exceptions"
+)
+
 private val tailrecLoweringPhase = makeJsModulePhase(
     { context -> TailrecLowering(context).toDeclarationTransformer() },
     name = "TailrecLowering",
@@ -432,7 +438,7 @@ val perFilePhaseList = listOf(
     suspendFunctionsLoweringPhase to true,
     privateMembersLoweringPhase to false, // OK
     privateMembersBodyLoweringPhase to true, // OK
-    callableReferenceLoweringPhase to true, // OK?
+    callableReferenceLoweringPhase to true, // OK -- creates new declarations from bodies
 
     defaultArgumentStubGeneratorPhase to false, // OK
     defaultArgumentStubBodyGeneratorPhase to true, // OK
@@ -440,7 +446,8 @@ val perFilePhaseList = listOf(
     jsDefaultCallbackGeneratorPhase to true, // OK
     defaultParameterCleanerPhase to false, // OK
 
-    throwableSuccessorsLoweringPhase to true,
+    throwableSuccessorsLoweringPhase to false, // OK
+    throwableSuccessorsBodyLoweringPhase to true, // OK
     varargLoweringPhase to true, // OK
     multipleCatchesLoweringPhase to true, // OK
     bridgesConstructionPhase to true, // TODO Reads @JsName

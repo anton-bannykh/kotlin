@@ -5,9 +5,12 @@
 
 package org.jetbrains.kotlin.ir.backend.js.lower
 
+import org.jetbrains.kotlin.backend.common.BodyLoweringPass
 import org.jetbrains.kotlin.backend.common.DeclarationTransformer
+import org.jetbrains.kotlin.backend.common.NullableBodyLoweringPass
 import org.jetbrains.kotlin.backend.common.atMostOne
 import org.jetbrains.kotlin.backend.common.descriptors.WrappedFieldDescriptor
+import org.jetbrains.kotlin.backend.common.ir.DeclarationBiMapKey
 import org.jetbrains.kotlin.backend.common.ir.copyTo
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.ir.IrElement
@@ -31,7 +34,132 @@ import org.jetbrains.kotlin.ir.util.transformFlat
 import org.jetbrains.kotlin.ir.visitors.*
 import org.jetbrains.kotlin.name.Name
 
+
+data class DirectThrowableSuccessors(val klass: IrClass, val message: IrField, val cause: IrField)
+
+private object MessageAccessorToMessageFieldKey : DeclarationBiMapKey<IrField, IrSimpleFunction>
+
+private object CauseAccessorToCauseFieldKey : DeclarationBiMapKey<IrField, IrSimpleFunction>
+
 class ThrowableSuccessorsLowering(val context: JsIrBackendContext) : DeclarationTransformer {
+    private val nothingType get() = context.irBuiltIns.nothingType
+    private val stringType get() = context.irBuiltIns.stringType
+    private val throwableType get() = context.irBuiltIns.throwableType
+
+    private val throwableClass = context.throwableClass
+
+    private val messagePropertyName = Name.identifier("message")
+    private val causePropertyName = Name.identifier("cause")
+
+    private val messageGetter by lazy {
+        throwableClass.owner.declarations.filterIsInstance<IrFunction>().atMostOne { it.name == Name.special("<get-message>") }?.symbol
+            ?: throwableClass.owner.declarations.filterIsInstance<IrProperty>().atMostOne { it.name == messagePropertyName }?.getter?.symbol!!
+    }
+    private val causeGetter by lazy {
+        throwableClass.owner.declarations.filterIsInstance<IrFunction>().atMostOne { it.name == Name.special("<get-cause>") }?.symbol
+            ?: throwableClass.owner.declarations.filterIsInstance<IrProperty>().atMostOne { it.name == causePropertyName }?.getter?.symbol!!
+    }
+
+    private val pendingSuperUsages = context.pendingThrowableSuperUsages
+
+    private val messageAccessorToFieldMap = context.declarationFactory.getMapping(MessageAccessorToMessageFieldKey)
+    private val causeAccessorToFieldMap = context.declarationFactory.getMapping(CauseAccessorToCauseFieldKey)
+
+    override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
+        declaration.accept(ThrowableAccessorCreationVisitor(), null)
+
+        return null
+    }
+
+    inner class ThrowableAccessorCreationVisitor : IrElementVisitorVoid {
+        override fun visitElement(element: IrElement) = element.acceptChildrenVoid(this)
+
+        override fun visitBody(body: IrBody) {
+            // Stop
+        }
+
+        override fun visitClass(declaration: IrClass) {
+
+            if (isDirectChildOfThrowable(declaration)) {
+                val messageField = createBackingField(declaration, messagePropertyName, stringType)
+                val causeField = createBackingField(declaration, causePropertyName, throwableType)
+
+                val existedMessageAccessor = ownPropertyAccessor(declaration, messageGetter)
+                val newMessageAccessor = if (existedMessageAccessor.origin == IrDeclarationOrigin.FAKE_OVERRIDE) {
+                    createPropertyAccessor(existedMessageAccessor, messageField).also {
+                        messageAccessorToFieldMap.link(messageField, it)
+                    }
+                } else existedMessageAccessor
+
+                val existedCauseAccessor = ownPropertyAccessor(declaration, causeGetter)
+                val newCauseAccessor = if (existedCauseAccessor.origin == IrDeclarationOrigin.FAKE_OVERRIDE) {
+                    createPropertyAccessor(existedCauseAccessor, causeField).also {
+                        causeAccessorToFieldMap.link(causeField, it)
+                    }
+                } else existedCauseAccessor
+
+
+                declaration.declarations.transformFlat {
+                    when (it) {
+                        existedMessageAccessor -> listOf(newMessageAccessor)
+                        existedCauseAccessor -> listOf(newCauseAccessor)
+                        else -> null
+                    }
+                }
+
+                pendingSuperUsages[declaration] = DirectThrowableSuccessors(declaration, messageField, causeField)
+            }
+        }
+
+        private fun createBackingField(declaration: IrClass, name: Name, type: IrType): IrField {
+            val fieldDescriptor = WrappedFieldDescriptor()
+            val fieldSymbol = IrFieldSymbolImpl(fieldDescriptor)
+            val fieldDeclaration = IrFieldImpl(
+                UNDEFINED_OFFSET,
+                UNDEFINED_OFFSET,
+                JsIrBuilder.SYNTHESIZED_DECLARATION,
+                fieldSymbol,
+                name,
+                type,
+                Visibilities.PRIVATE,
+                true,
+                false,
+                false
+            ).apply {
+                parent = declaration
+                fieldDescriptor.bind(this)
+            }
+
+            declaration.declarations += fieldDeclaration
+            return fieldDeclaration
+        }
+
+        private fun createPropertyAccessor(fakeAccessor: IrSimpleFunction, field: IrField): IrSimpleFunction {
+            val name = fakeAccessor.name
+            val function = JsIrBuilder.buildFunction(name, fakeAccessor.returnType, fakeAccessor.parent).apply {
+                overriddenSymbols += fakeAccessor.overriddenSymbols
+                correspondingProperty = fakeAccessor.correspondingProperty
+                dispatchReceiverParameter = fakeAccessor.dispatchReceiverParameter?.copyTo(this)
+            }
+
+//            val thisReceiver = JsIrBuilder.buildGetValue(function.dispatchReceiverParameter!!.symbol)
+//            val returnValue = JsIrBuilder.buildGetField(field.symbol, thisReceiver, type = field.type)
+//            val returnStatement = JsIrBuilder.buildReturn(function.symbol, returnValue, nothingType)
+//            function.body = JsIrBuilder.buildBlockBody(listOf(returnStatement))
+
+            return function
+        }
+    }
+
+    private fun isDirectChildOfThrowable(irClass: IrClass) = irClass.superTypes.any { it.isThrowable() }
+    private fun ownPropertyAccessor(irClass: IrClass, irBase: IrFunctionSymbol) =
+        irClass.declarations.filterIsInstance<IrProperty>().mapNotNull { it.getter }
+            .singleOrNull { it.overriddenSymbols.any { s -> s == irBase } }
+            ?: irClass.declarations.filterIsInstance<IrSimpleFunction>().single { it.overriddenSymbols.any { s -> s == irBase } }
+}
+
+class ThrowableSuccessorsBodyLowering(val context: JsIrBackendContext) : NullableBodyLoweringPass {
+
     private val unitType get() = context.irBuiltIns.unitType
     private val nothingNType get() = context.irBuiltIns.nothingNType
     private val nothingType get() = context.irBuiltIns.nothingType
@@ -68,19 +196,48 @@ class ThrowableSuccessorsLowering(val context: JsIrBackendContext) : Declaration
 
     private val captureStackFunction = context.captureStackSymbol
     private val newThrowableFunction = context.newThrowableSymbol
-    private val pendingSuperUsages = mutableListOf<DirectThrowableSuccessors>()
 
-    private data class DirectThrowableSuccessors(val klass: IrClass, val message: IrField, val cause: IrField)
+    private val pendingSuperUsages = context.pendingThrowableSuperUsages
 
-    override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
-        pendingSuperUsages.clear()
-        declaration.accept(ThrowableAccessorCreationVisitor(), null)
-        pendingSuperUsages.forEach { it.klass.transformChildren(ThrowableDirectSuccessorTransformer(it), it.klass) }
-        declaration.transform(ThrowableNameSetterTransformer(), declaration.parent)
-        declaration.transform(ThrowablePropertiesUsageTransformer(), null)
-        declaration.transform(ThrowableInstanceCreationLowering(), null)
+    private val messageAccessorToFieldMap = context.declarationFactory.getMapping(MessageAccessorToMessageFieldKey)
+    private val causeAccessorToFieldMap = context.declarationFactory.getMapping(CauseAccessorToCauseFieldKey)
 
-        return null
+    override fun lower(irBody: IrBody?, container: IrDeclaration) {
+        var body = irBody
+
+        (container as? IrSimpleFunction)?.let { function ->
+            messageAccessorToFieldMap.oldByNew(container)?.let { field ->
+                val thisReceiver = JsIrBuilder.buildGetValue(function.dispatchReceiverParameter!!.symbol)
+                val returnValue = JsIrBuilder.buildGetField(field.symbol, thisReceiver, type = field.type)
+                val returnStatement = JsIrBuilder.buildReturn(function.symbol, returnValue, nothingType)
+                function.body = JsIrBuilder.buildBlockBody(listOf(returnStatement))
+                body = function.body
+            }
+
+            causeAccessorToFieldMap.oldByNew(container)?.let { field ->
+                val thisReceiver = JsIrBuilder.buildGetValue(function.dispatchReceiverParameter!!.symbol)
+                val returnValue = JsIrBuilder.buildGetField(field.symbol, thisReceiver, type = field.type)
+                val returnStatement = JsIrBuilder.buildReturn(function.symbol, returnValue, nothingType)
+                function.body = JsIrBuilder.buildBlockBody(listOf(returnStatement))
+                body = function.body
+            }
+        }
+
+        if (body != null) {
+            var parent = container.parent
+            while (parent is IrDeclaration) {
+                if (parent is IrClass) {
+                    pendingSuperUsages[parent]?.let {
+                        body?.transformChildren(ThrowableDirectSuccessorTransformer(it), it.klass)
+                    }
+                }
+                parent = parent.parent
+            }
+        }
+
+        body?.transform(ThrowableNameSetterTransformer(), container.parent)
+        body?.transform(ThrowablePropertiesUsageTransformer(), null)
+        body?.transform(ThrowableInstanceCreationLowering(), null)
     }
 
     inner class ThrowableNameSetterTransformer : IrElementTransformer<IrDeclarationParent> {
@@ -137,79 +294,6 @@ class ThrowableSuccessorsLowering(val context: JsIrBackendContext) : Declaration
                     }
                 }
             }
-        }
-    }
-
-    inner class ThrowableAccessorCreationVisitor : IrElementVisitorVoid {
-        override fun visitElement(element: IrElement) = element.acceptChildrenVoid(this)
-
-
-        override fun visitClass(declaration: IrClass) {
-
-            if (isDirectChildOfThrowable(declaration)) {
-                val messageField = createBackingField(declaration, messagePropertyName, stringType)
-                val causeField = createBackingField(declaration, causePropertyName, throwableType)
-
-                val existedMessageAccessor = ownPropertyAccessor(declaration, messageGetter)
-                val newMessageAccessor = if (existedMessageAccessor.origin == IrDeclarationOrigin.FAKE_OVERRIDE) {
-                    createPropertyAccessor(existedMessageAccessor, messageField)
-                } else existedMessageAccessor
-
-                val existedCauseAccessor = ownPropertyAccessor(declaration, causeGetter)
-                val newCauseAccessor = if (existedCauseAccessor.origin == IrDeclarationOrigin.FAKE_OVERRIDE) {
-                    createPropertyAccessor(existedCauseAccessor, causeField)
-                } else existedCauseAccessor
-
-
-                declaration.declarations.transformFlat {
-                    when (it) {
-                        existedMessageAccessor -> listOf(newMessageAccessor)
-                        existedCauseAccessor -> listOf(newCauseAccessor)
-                        else -> null
-                    }
-                }
-
-                pendingSuperUsages += DirectThrowableSuccessors(declaration, messageField, causeField)
-            }
-        }
-
-        private fun createBackingField(declaration: IrClass, name: Name, type: IrType): IrField {
-            val fieldDescriptor = WrappedFieldDescriptor()
-            val fieldSymbol = IrFieldSymbolImpl(fieldDescriptor)
-            val fieldDeclaration = IrFieldImpl(
-                UNDEFINED_OFFSET,
-                UNDEFINED_OFFSET,
-                JsIrBuilder.SYNTHESIZED_DECLARATION,
-                fieldSymbol,
-                name,
-                type,
-                Visibilities.PRIVATE,
-                true,
-                false,
-                false
-            ).apply {
-                parent = declaration
-                fieldDescriptor.bind(this)
-            }
-
-            declaration.declarations += fieldDeclaration
-            return fieldDeclaration
-        }
-
-        private fun createPropertyAccessor(fakeAccessor: IrSimpleFunction, field: IrField): IrSimpleFunction {
-            val name = fakeAccessor.name
-            val function = JsIrBuilder.buildFunction(name, fakeAccessor.returnType, fakeAccessor.parent).apply {
-                overriddenSymbols += fakeAccessor.overriddenSymbols
-                correspondingProperty = fakeAccessor.correspondingProperty
-                dispatchReceiverParameter = fakeAccessor.dispatchReceiverParameter?.copyTo(this)
-            }
-
-            val thisReceiver = JsIrBuilder.buildGetValue(function.dispatchReceiverParameter!!.symbol)
-            val returnValue = JsIrBuilder.buildGetField(field.symbol, thisReceiver, type = field.type)
-            val returnStatement = JsIrBuilder.buildReturn(function.symbol, returnValue, nothingType)
-            function.body = JsIrBuilder.buildBlockBody(listOf(returnStatement))
-
-            return function
         }
     }
 
@@ -326,12 +410,6 @@ class ThrowableSuccessorsLowering(val context: JsIrBackendContext) : Declaration
         val call = JsIrBuilder.buildCall(toString, stringType).apply { dispatchReceiver = value2 }
         return JsIrBuilder.buildIfElse(stringType.makeNullable(), check, JsIrBuilder.buildNull(stringType), call)
     }
-
-    private fun isDirectChildOfThrowable(irClass: IrClass) = irClass.superTypes.any { it.isThrowable() }
-    private fun ownPropertyAccessor(irClass: IrClass, irBase: IrFunctionSymbol) =
-        irClass.declarations.filterIsInstance<IrProperty>().mapNotNull { it.getter }
-            .singleOrNull { it.overriddenSymbols.any { s -> s == irBase } }
-            ?: irClass.declarations.filterIsInstance<IrSimpleFunction>().single { it.overriddenSymbols.any { s -> s == irBase } }
 
     inner class ThrowablePropertiesUsageTransformer : IrElementTransformerVoid() {
         override fun visitCall(expression: IrCall): IrExpression {
