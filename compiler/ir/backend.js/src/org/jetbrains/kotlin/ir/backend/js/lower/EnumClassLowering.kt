@@ -70,13 +70,7 @@ class EnumUsageLowering(val context: JsIrBackendContext) : BodyLoweringPass {
     }
 
     private fun lowerEnumEntry(enumEntry: IrEnumEntry, klass: IrClass) =
-        context.enumEntryToGetInstanceFunction.getOrPut(enumEntry.symbol) {
-            JsIrBuilder.buildFunction(
-                createEntryAccessorName(klass.name.identifier, enumEntry),
-                returnType = enumEntry.getType(klass),
-                parent = klass
-            )
-        }.run { JsIrBuilder.buildCall(symbol) }
+        context.enumEntryToGetInstanceFunction[enumEntry.symbol]!!.run { JsIrBuilder.buildCall(symbol) }
 }
 
 
@@ -368,7 +362,7 @@ class EnumClassTransformer(val context: JsIrBackendContext, private val irClass:
     private val enumEntryToField = context.declarationFactory.getMapping(EnumEntryToFieldMapKey)
     private val initInstanceFunToVar = context.declarationFactory.getMapping(EnumInitInstanceFunToVarKey)
     private val initInstanceFunToEnum = context.declarationFactory.getMapping(EnumInitInstanceFunToClassKey)
-    private val enumEntryToGetInstance= context.declarationFactory.getMapping(EnumEntryToGetInstance)
+    private val enumEntryToGetInstance = context.declarationFactory.getMapping(EnumEntryToGetInstance)
 
     fun transform(): List<IrDeclaration> {
 
@@ -388,10 +382,6 @@ class EnumClassTransformer(val context: JsIrBackendContext, private val irClass:
         // Create entry instance getters. These are used to lower `IrGetEnumValue`.
         val entryGetInstanceFuns = createGetEntryInstanceFuns()
 
-        // TODO removed declarations. EnumEntries are still referenced.
-        // Remove IrEnumEntry nodes from class declarations. Replace them with corresponding class declarations (if they have them).
-        replaceIrEntriesWithCorrespondingClasses()
-
         return listOf(irClass) + entryInstances + listOf(entryInstancesInitializedVar, initEntryInstancesFun) + entryGetInstanceFuns
     }
 
@@ -402,12 +392,6 @@ class EnumClassTransformer(val context: JsIrBackendContext, private val irClass:
             scope.createTmpVariable(irImplicitCast(irNull(), type), name)
         }.also {
             enumEntryToField.link(enumEntry, it)
-        }
-    }
-
-    private fun replaceIrEntriesWithCorrespondingClasses() {
-        irClass.transformDeclarationsFlat {
-            listOfNotNull(if (it is IrEnumEntry) it.correspondingClass else it)
         }
     }
 
@@ -435,21 +419,21 @@ class EnumClassTransformer(val context: JsIrBackendContext, private val irClass:
 }
 
 
-class EnumClassBodyTransformer(val context: JsIrBackendContext): NullableBodyLoweringPass {
+class EnumClassBodyTransformer(val context: JsIrBackendContext) : NullableBodyLoweringPass {
     private val throwISESymbol = context.throwISEymbol
 
     private val entryToClassMap = context.declarationFactory.getMapping(EntryToClassMapKey)
     private val enumEntryToField = context.declarationFactory.getMapping(EnumEntryToFieldMapKey)
     private val initInstanceFunToVar = context.declarationFactory.getMapping(EnumInitInstanceFunToVarKey)
     private val initInstanceFunToEnum = context.declarationFactory.getMapping(EnumInitInstanceFunToClassKey)
-    private val enumEntryToGetInstance= context.declarationFactory.getMapping(EnumEntryToGetInstance)
+    private val enumEntryToGetInstance = context.declarationFactory.getMapping(EnumEntryToGetInstance)
 
 
     override fun lower(irBody: IrBody?, container: IrDeclaration) {
 
         // Create instance variable for each enum entry initialized with `null`
         if (container is IrConstructor) {
-            (container.parent as? IrClass)?.let {irClass ->
+            (container.parent as? IrClass)?.let { irClass ->
                 entryToClassMap.oldByNew(irClass)?.let { enumEntry ->
                     enumEntryToField.newByOld(enumEntry)!!.let { field ->
                         // Initialize entry instance at the beginning of constructor so it can be used inside constructor body
@@ -473,8 +457,8 @@ class EnumClassBodyTransformer(val context: JsIrBackendContext): NullableBodyLow
                     +irIfThen(irGet(entryInstancesInitializedVar), irReturnUnit())
                     +irSetVar(entryInstancesInitializedVar.symbol, irBoolean(true))
 
-                    irClass.declarations.filterIsInstance<IrVariable>().forEach { instanceVar ->
-                        enumEntryToField.oldByNew(instanceVar)?.let { entry ->
+                    irClass.declarations.filterIsInstance<IrEnumEntry>().forEach { entry ->
+                        enumEntryToField.newByOld(entry)?.let { instanceVar ->
                             +irSetVar(instanceVar.symbol, entry.initializerExpression!!.expression)
                         }
                     }
@@ -511,9 +495,7 @@ class EnumClassBodyTransformer(val context: JsIrBackendContext): NullableBodyLow
     }
 
     // TODO cache
-    private fun IrClass.enumEntries() = declarations.filterIsInstance<IrVariable>().mapNotNull { instanceVar ->
-        enumEntryToField.oldByNew(instanceVar)
-    }
+    private fun IrClass.enumEntries() = declarations.filterIsInstance<IrEnumEntry>()
 
     private fun createEnumValueOfBody(valueOfFun: IrFunction, irClass: IrClass): IrBody {
         val nameParameter = valueOfFun.valueParameters[0]
@@ -554,5 +536,22 @@ class EnumClassBodyTransformer(val context: JsIrBackendContext): NullableBodyLow
                 )
             }
         }
+    }
+}
+
+
+// Should be applied recursively
+class EnumClassRemoveEntriesLowering(val context: JsIrBackendContext) : DeclarationTransformer {
+    override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
+        if (declaration is IrClass && declaration.isEnumClass &&
+            !declaration.descriptor.isExpect && !declaration.isEffectivelyExternal()
+        ) {
+            // Remove IrEnumEntry nodes from class declarations. Replace them with corresponding class declarations (if they have them).
+            declaration.transformDeclarationsFlat {
+                listOfNotNull(if (it is IrEnumEntry) it.correspondingClass else it)
+            }
+        }
+
+        return null
     }
 }

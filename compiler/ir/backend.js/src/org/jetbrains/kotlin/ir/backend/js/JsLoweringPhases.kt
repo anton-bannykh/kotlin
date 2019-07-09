@@ -158,6 +158,13 @@ private val enumUsageLoweringPhase = makeJsModulePhase(
     prerequisite = setOf(enumClassLoweringPhase)
 )
 
+private val enumEntryRemovalLoweringPhase = makeJsModulePhase(
+    { context -> EnumClassRemoveEntriesLowering(context).runPostfix() },
+    name = "EnumEntryRemovalLowering",
+    description = "Replace enum entry with corresponding class",
+    prerequisite = setOf(enumUsageLoweringPhase)
+)
+
 private val sharedVariablesLoweringPhase = makeJsModulePhase(
     { context -> SharedVariablesLowering(context).toDeclarationTransformer() },
     name = "SharedVariablesLowering",
@@ -448,6 +455,7 @@ val perFilePhaseList = listOf(
     enumClassLoweringPhase to false, // OK
     enumClassBodyLoweringPhase to true, // OK
     enumUsageLoweringPhase to true, // OK
+    enumEntryRemovalLoweringPhase to false, // OK
 
     returnableBlockLoweringPhase to true, // OK
     unitMaterializationLoweringPhase to true, // OK
@@ -602,7 +610,10 @@ class MutableController : StageController {
 
                         topLevelDeclaration.loweredUpTo = i
                         if (result != null) {
-                            result.forEach { it.loweredUpTo = i }
+                            result.forEach {
+                                it.loweredUpTo = i
+                                it.parent = fileBefore
+                            }
 
                             fileBefore.declarations.remove(topLevelDeclaration)
 
