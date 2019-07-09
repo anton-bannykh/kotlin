@@ -130,6 +130,13 @@ private val enumClassConstructorLoweringPhase = makeJsModulePhase(
     description = "Transform Enum Class into regular Class"
 )
 
+private val enumClassConstructorBodyLoweringPhase = makeJsModulePhase(
+    { context -> EnumClassConstructorBodyTransformer(context).toDeclarationTransformer() },
+    name = "EnumClassConstructorBodyLowering",
+    description = "Transform Enum Class into regular Class"
+)
+
+
 private val enumClassLoweringPhase = makeJsModulePhase(
     { context -> EnumClassLowering(context).runPostfix() },
     name = "EnumClassLowering",
@@ -417,7 +424,8 @@ val perFilePhaseList = listOf(
     removeInlineFunctionsLoweringPhase to false, // OK
     lateinitLoweringPhase to true, // OK
     tailrecLoweringPhase to true, // OK
-    enumClassConstructorLoweringPhase to true,
+    enumClassConstructorLoweringPhase to false, // OK
+    enumClassConstructorBodyLoweringPhase to true, // OK
     sharedVariablesLoweringPhase to true, // OK
     localDelegatedPropertiesLoweringPhase to true, // OK
     localDeclarationsLoweringPhase to true,
