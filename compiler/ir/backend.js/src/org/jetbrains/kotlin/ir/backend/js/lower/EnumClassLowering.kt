@@ -7,6 +7,7 @@ package org.jetbrains.kotlin.ir.backend.js.lower
 
 import org.jetbrains.kotlin.backend.common.BodyLoweringPass
 import org.jetbrains.kotlin.backend.common.DeclarationTransformer
+import org.jetbrains.kotlin.backend.common.NullableBodyLoweringPass
 import org.jetbrains.kotlin.backend.common.descriptors.WrappedClassConstructorDescriptor
 import org.jetbrains.kotlin.backend.common.descriptors.WrappedFieldDescriptor
 import org.jetbrains.kotlin.backend.common.ir.DeclarationBiMapKey
@@ -163,7 +164,7 @@ class EnumClassConstructorTransformer(val context: JsIrBackendContext, private v
             parent = enumClass
             valueParameters += JsIrBuilder.buildValueParameter("name", 0, context.irBuiltIns.stringType).also { it.parent = this }
             valueParameters += JsIrBuilder.buildValueParameter("ordinal", 1, context.irBuiltIns.intType).also { it.parent = this }
-            copyParameterDeclarationsFrom(enumConstructor)
+            copyParameterDeclarationsFrom(enumConstructor, false)
             body = enumConstructor.body
 
             constructorMap.link(enumConstructor, this)
@@ -186,11 +187,22 @@ class EnumClassConstructorBodyTransformer(val context: JsIrBackendContext) : Bod
 
     override fun lower(irBody: IrBody, container: IrDeclaration) {
 
+        if (container is IrValueParameter) {
+            ((container.parent as? IrFunction)?.parent as? IrClass)?.let { irClass ->
+                if (valueParameterMap.oldByNew(container) != null) {
+                    container.defaultValue?.let { value ->
+                        value.patchDeclarationParents(container.parent)
+                        fixReferencesToConstructorParameters(irClass, value)
+                    }
+                }
+            }
+        }
+
         (container.parent as? IrClass)?.let { irClass ->
 
             // TODO Don't apply to everything
             // The first step creates a new `IrConstructor` with new `IrValueParameter`s so references to old `IrValueParameter`s must be replaced with new ones.
-            fixReferencesToConstructorParameters(irClass, irBody)
+            irBody?.let { fixReferencesToConstructorParameters(irClass, it) }
 
             if (container is IrConstructor) {
 

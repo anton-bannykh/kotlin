@@ -169,7 +169,7 @@ fun IrTypeParameter.copyToWithoutSuperTypes(
     }
 }
 
-fun IrFunction.copyParameterDeclarationsFrom(from: IrFunction) {
+fun IrFunction.copyParameterDeclarationsFrom(from: IrFunction, copyDefaults: Boolean = true) {
     assert(typeParameters.isEmpty())
     copyTypeParametersFrom(from)
 
@@ -182,7 +182,7 @@ fun IrFunction.copyParameterDeclarationsFrom(from: IrFunction) {
     extensionReceiverParameter = from.extensionReceiverParameter?.copyTo(this)
 
     val shift = valueParameters.size
-    valueParameters += from.valueParameters.map { it.copyTo(this, index = it.index + shift) }
+    valueParameters += from.valueParameters.map { it.copyTo(this, index = it.index + shift, defaultValue = if (copyDefaults) it.defaultValue else null).also { new -> new.defaultValue = it.defaultValue } }
 }
 
 fun IrTypeParametersContainer.copyTypeParametersFrom(
