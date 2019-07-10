@@ -6,6 +6,7 @@
 package org.jetbrains.kotlin.ir.backend.js
 
 import org.jetbrains.kotlin.backend.common.*
+import org.jetbrains.kotlin.backend.common.lower.LocalClassPopupLowering
 import org.jetbrains.kotlin.backend.common.phaser.*
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.backend.js.lower.*
@@ -191,12 +192,12 @@ private val localDeclarationsLoweringPhase = makeJsModulePhase(
     prerequisite = setOf(sharedVariablesLoweringPhase, localDelegatedPropertiesLoweringPhase)
 )
 
-private val localClassExtractionPhase = makeJsModulePhase(
-    ::LocalClassPopupLowering,
-    name = "LocalClassExtractionPhase",
-    description = "Move local declarations into nearest declaration container",
-    prerequisite = setOf(localDeclarationsLoweringPhase)
-)
+//private val localClassExtractionPhase = makeJsModulePhase(
+//    ::LocalClassPopupLowering,
+//    name = "LocalClassExtractionPhase",
+//    description = "Move local declarations into nearest declaration container",
+//    prerequisite = setOf(localDeclarationsLoweringPhase)
+//)
 
 private val innerClassesDeclarationLoweringPhase = makeJsModulePhase(
     { context -> InnerClassesDeclarationLowering(context).toDeclarationTransformer() },
@@ -451,7 +452,7 @@ val perFilePhaseList = listOf(
     localDelegatedPropertiesLoweringPhase to true, // OK
     localDeclarationsLoweringPhase to true,
 
-    localClassExtractionPhase to true,
+//    localClassExtractionPhase to true,
 
     innerClassesDeclarationLoweringPhase to false, // OK
     innerClassesConstructorBodyLoweringPhase to true, // OK
