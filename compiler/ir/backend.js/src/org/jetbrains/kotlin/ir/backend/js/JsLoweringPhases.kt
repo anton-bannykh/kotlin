@@ -218,11 +218,19 @@ private val innerClassConstructorCallsLoweringPhase = makeJsModulePhase(
 )
 
 private val suspendFunctionsLoweringPhase = makeJsModulePhase(
-    { context -> JsSuspendFunctionsLowering(context) },
+    { context -> JsSuspendFunctionsLowering(context).toDeclarationTransformer() },
     name = "SuspendFunctionsLowering",
     description = "Transform suspend functions into CoroutineImpl instance and build state machine",
     prerequisite = setOf(unitMaterializationLoweringPhase)
 )
+
+private val suspendLambdasRemovingPhase = makeJsModulePhase(
+    { context -> RemoveSuspendLambdas().runPostfix() },
+    name = "SuspendLambdasRemovalLowering",
+    description = "Remove suspend lambdas as they are unused",
+    prerequisite = setOf(suspendFunctionsLoweringPhase)
+)
+
 
 private val privateMembersLoweringPhase = makeJsModulePhase(
     { context -> PrivateMembersLowering(context).toDeclarationTransformer() },
@@ -450,7 +458,7 @@ val perFilePhaseList = listOf(
 
     sharedVariablesLoweringPhase to true, // OK
     localDelegatedPropertiesLoweringPhase to true, // OK
-    localDeclarationsLoweringPhase to true,
+    localDeclarationsLoweringPhase to true, // OK
 
     localClassExtractionPhase to true,
 
@@ -469,7 +477,8 @@ val perFilePhaseList = listOf(
 
     returnableBlockLoweringPhase to true, // OK
     unitMaterializationLoweringPhase to true, // OK
-    suspendFunctionsLoweringPhase to true,
+    suspendFunctionsLoweringPhase to true, // OK
+    suspendLambdasRemovingPhase to false, // OK
     privateMembersLoweringPhase to false, // OK
     privateMembersBodyLoweringPhase to true, // OK
     callableReferenceLoweringPhase to true, // OK -- creates new declarations from bodies
