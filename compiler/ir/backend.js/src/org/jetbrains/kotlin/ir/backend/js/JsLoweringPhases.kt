@@ -6,7 +6,6 @@
 package org.jetbrains.kotlin.ir.backend.js
 
 import org.jetbrains.kotlin.backend.common.*
-import org.jetbrains.kotlin.backend.common.lower.LocalClassPopupLowering
 import org.jetbrains.kotlin.backend.common.phaser.*
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.backend.js.lower.*
@@ -186,18 +185,18 @@ private val localDelegatedPropertiesLoweringPhase = makeJsModulePhase(
 )
 
 private val localDeclarationsLoweringPhase = makeJsModulePhase(
-    { context -> LocalDeclarationsLowering(context).runPostfix() },
+    { context -> LocalDeclarationsLowering(context).toDeclarationTransformer() },
     name = "LocalDeclarationsLowering",
     description = "Move local declarations into nearest declaration container",
     prerequisite = setOf(sharedVariablesLoweringPhase, localDelegatedPropertiesLoweringPhase)
 )
 
-//private val localClassExtractionPhase = makeJsModulePhase(
-//    ::LocalClassPopupLowering,
-//    name = "LocalClassExtractionPhase",
-//    description = "Move local declarations into nearest declaration container",
-//    prerequisite = setOf(localDeclarationsLoweringPhase)
-//)
+private val localClassExtractionPhase = makeJsModulePhase(
+    { context -> LocalClassPopupLowering(context).toDeclarationTransformer() },
+    name = "LocalClassExtractionPhase",
+    description = "Move local declarations into nearest declaration container",
+    prerequisite = setOf(localDeclarationsLoweringPhase)
+)
 
 private val innerClassesDeclarationLoweringPhase = makeJsModulePhase(
     { context -> InnerClassesDeclarationLowering(context).toDeclarationTransformer() },
@@ -448,11 +447,12 @@ val perFilePhaseList = listOf(
     tailrecLoweringPhase to true, // OK
     enumClassConstructorLoweringPhase to false, // OK
     enumClassConstructorBodyLoweringPhase to true, // OK
+
     sharedVariablesLoweringPhase to true, // OK
     localDelegatedPropertiesLoweringPhase to true, // OK
     localDeclarationsLoweringPhase to true,
 
-//    localClassExtractionPhase to true,
+    localClassExtractionPhase to true,
 
     innerClassesDeclarationLoweringPhase to false, // OK
     innerClassesConstructorBodyLoweringPhase to true, // OK
