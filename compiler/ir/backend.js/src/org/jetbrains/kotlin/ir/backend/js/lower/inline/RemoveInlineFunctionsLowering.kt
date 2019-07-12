@@ -5,39 +5,28 @@
 
 package org.jetbrains.kotlin.ir.backend.js.lower.inline
 
+import org.jetbrains.kotlin.backend.common.BodyLoweringPass
 import org.jetbrains.kotlin.backend.common.DeclarationTransformer
+import org.jetbrains.kotlin.backend.common.deepCopyWithVariables
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.backend.js.JsIrBackendContext
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrFunction
+import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.IrBody
+import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
 
 
-class RemoveInlineFunctionsLowering(val context: JsIrBackendContext) : DeclarationTransformer {
+class RemoveInlineFunctionsLowering(val context: JsIrBackendContext) : BodyLoweringPass {
+    override fun lower(irBody: IrBody, container: IrDeclaration) {
+        if (container is IrFunction && container.isInline) {
+            container.body = container.body?.deepCopyWithSymbols(container)
+        }
 
-    override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
-
-        if (declaration is IrFunction && declaration.isInline) return emptyList()
-
-        declaration.transform(object : IrElementTransformerVoid() {
-
-            override fun visitBody(body: IrBody): IrBody {
-                return body
-            }
-
-            override fun visitClass(declaration: IrClass): IrStatement {
-                declaration.transformChildrenVoid()
-
-                declaration.declarations.transformFlat {
-                    if (it is IrFunction && it.isInline) emptyList() else null
-                }
-
-                return declaration
-            }
-        }, null)
-
-        return null
+        if (container is IrValueParameter && container.parent.let { it is IrFunction && it.isInline }) {
+            container.defaultValue = container.defaultValue?.deepCopyWithSymbols(container.parent)
+        }
     }
 }

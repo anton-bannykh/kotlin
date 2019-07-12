@@ -93,7 +93,7 @@ private val functionInliningPhase = makeJsModulePhase(
 )
 
 private val removeInlineFunctionsLoweringPhase = makeJsModulePhase(
-    { context -> RemoveInlineFunctionsLowering(context) },
+    { context -> RemoveInlineFunctionsLowering(context).toDeclarationTransformer() },
     name = "RemoveInlineFunctionsLowering",
     description = "Remove Inline functions with reified parameters from context",
     prerequisite = setOf(functionInliningPhase)
@@ -450,7 +450,7 @@ val perFilePhaseList = listOf(
     expectDeclarationsRemovingPhase to false, // OK
     moveBodilessDeclarationsToSeparatePlacePhase to true, // Needs to detect @JsModule and @JsQualifier. TODO: should become obsolete
     functionInliningPhase to true, // OK
-    removeInlineFunctionsLoweringPhase to false, // OK
+    removeInlineFunctionsLoweringPhase to true, // OK -- shouldn't it be split into 2? Or how do we disable bodies?
     lateinitLoweringPhase to true, // OK
     tailrecLoweringPhase to true, // OK
     enumClassConstructorLoweringPhase to false, // OK
