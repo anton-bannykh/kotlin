@@ -6,10 +6,13 @@
 package org.jetbrains.kotlin.ir.backend.js.lower.common
 
 import org.jetbrains.kotlin.backend.common.BackendContext
+import org.jetbrains.kotlin.backend.common.BodyLoweringPass
 import org.jetbrains.kotlin.backend.common.DeclarationTransformer
+import org.jetbrains.kotlin.backend.common.ir.DeclarationBiMapKey
 import org.jetbrains.kotlin.descriptors.MemberDescriptor
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.declarations.*
+import org.jetbrains.kotlin.ir.expressions.IrBody
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.IrGetValue
 import org.jetbrains.kotlin.ir.expressions.impl.IrGetValueImpl
@@ -24,10 +27,14 @@ import org.jetbrains.kotlin.resolve.checkers.ExpectedActualDeclarationChecker
 import org.jetbrains.kotlin.resolve.descriptorUtil.module
 import org.jetbrains.kotlin.resolve.multiplatform.ExpectedActualResolver
 
+private object ValueParameterRemapKey : DeclarationBiMapKey<IrValueParameter, IrValueParameter>
+
 /**
  * This pass removes all declarations with `isExpect == true`.
  */
 class ExpectDeclarationsRemoving(val context: BackendContext) : DeclarationTransformer {
+
+    private val valueParameterRemap = context.declarationFactory.getMapping(ValueParameterRemapKey)
 
     override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
         // All declarations with `isExpect == true` are nested into a top-level declaration with `isExpect == true`.
@@ -44,6 +51,10 @@ class ExpectDeclarationsRemoving(val context: BackendContext) : DeclarationTrans
         declaration.acceptVoid(object : IrElementVisitorVoid {
             override fun visitElement(element: IrElement) {
                 element.acceptChildrenVoid(this)
+            }
+
+            override fun visitBody(body: IrBody) {
+                // Stop
             }
 
             override fun visitValueParameter(declaration: IrValueParameter) {
@@ -70,11 +81,40 @@ class ExpectDeclarationsRemoving(val context: BackendContext) : DeclarationTrans
                 if (actualParameter.defaultValue != null)
                     return
 
-                actualParameter.defaultValue = defaultValue.also {
-                    it.expression = it.expression.remapExpectValueSymbols()
-                }
+                valueParameterRemap.link(actualParameter, declaration)
+
+                actualParameter.defaultValue = defaultValue
             }
         })
+    }
+
+    private fun IrFunction.findActualForExpected(): IrFunction =
+        context.ir.symbols.externalSymbolTable.referenceFunction(descriptor.findActualForExpect()).owner
+
+    private fun IrClass.findActualForExpected(): IrClass =
+        context.ir.symbols.externalSymbolTable.referenceClass(descriptor.findActualForExpect()).owner
+
+    private inline fun <reified T : MemberDescriptor> T.findActualForExpect() = with(ExpectedActualResolver) {
+        val descriptor = this@findActualForExpect
+
+        if (!descriptor.isExpect) error(this)
+
+        findCompatibleActualForExpected(descriptor.module).singleOrNull() ?: error(descriptor)
+    } as T
+}
+
+
+
+class ExpectDeclarationDefaultValueRemapping(val context: BackendContext) : BodyLoweringPass {
+
+    private val valueParameterRemap = context.declarationFactory.getMapping(ValueParameterRemapKey)
+
+    override fun lower(irBody: IrBody, container: IrDeclaration) {
+        if (container is IrValueParameter && valueParameterRemap.oldByNew(container) != null) {
+            container.defaultValue?.let {
+                it.expression = it.expression.remapExpectValueSymbols()
+            }
+        }
     }
 
     private fun IrFunction.findActualForExpected(): IrFunction =
