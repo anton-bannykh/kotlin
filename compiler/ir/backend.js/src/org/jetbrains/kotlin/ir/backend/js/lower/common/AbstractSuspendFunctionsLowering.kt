@@ -101,7 +101,12 @@ abstract class AbstractSuspendFunctionsLowering<C : CommonBackendContext>(val co
                     builtCoroutines[expression.symbol.owner]?.coroutineConstructor
                         ?: throw Error("Non-local callable reference to suspend lambda: $expression")
                 } else {
-                    suspendFunToConstructor.newByOld(expression.symbol.owner)!!
+                    suspendFunToConstructor.newByOld(expression.symbol.owner) ?: run {
+
+                        tryTransformSuspendFunction(expression.symbol.owner, expression)
+
+                        builtCoroutines[expression.symbol.owner]!!.coroutineConstructor
+                    }
                 }
 
                 val constructorParameters = coroutineConstructor.valueParameters
@@ -128,7 +133,7 @@ abstract class AbstractSuspendFunctionsLowering<C : CommonBackendContext>(val co
     }
 
     private fun transformSuspendFunction(irFunction: IrSimpleFunction, functionReference: IrFunctionReference?) =
-        when (val suspendFunctionKind = getSuspendFunctionKind(irFunction)) {
+        when (val suspendFunctionKind = getSuspendFunctionKind(irFunction, functionReference)) {
             is SuspendFunctionKind.NO_SUSPEND_CALLS -> {
                 null                                                            // No suspend function calls - just an ordinary function.
             }
@@ -147,8 +152,8 @@ abstract class AbstractSuspendFunctionsLowering<C : CommonBackendContext>(val co
             }
         }
 
-    private fun getSuspendFunctionKind(irFunction: IrSimpleFunction): SuspendFunctionKind {
-        if (irFunction.isLambda)
+    private fun getSuspendFunctionKind(irFunction: IrSimpleFunction, functionReference: IrFunctionReference?): SuspendFunctionKind {
+        if (irFunction.isLambda || functionReference != null)
             return SuspendFunctionKind.NEEDS_STATE_MACHINE            // Suspend lambdas always need coroutine implementation.
 
         val body = irFunction.body ?: return SuspendFunctionKind.NO_SUSPEND_CALLS
@@ -223,7 +228,7 @@ abstract class AbstractSuspendFunctionsLowering<C : CommonBackendContext>(val co
         builtCoroutines[irFunction] = coroutine
         suspendFunToConstructor.link(irFunction, coroutine.coroutineConstructor)
 
-        if (!irFunction.isLambda) {
+        if (!irFunction.isLambda && functionReference == null) {
             // It is not a lambda - replace original function with a call to constructor of the built coroutine.
             val irBuilder = context.createIrBuilder(irFunction.symbol, irFunction.startOffset, irFunction.endOffset)
             irFunction.body = irBuilder.irBlockBody(irFunction) {
