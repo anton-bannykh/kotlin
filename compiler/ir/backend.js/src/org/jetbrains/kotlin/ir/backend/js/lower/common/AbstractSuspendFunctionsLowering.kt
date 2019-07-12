@@ -28,7 +28,10 @@ import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.visitors.*
 import org.jetbrains.kotlin.name.Name
 
-abstract class AbstractSuspendFunctionsLowering<C: CommonBackendContext>(val context: C, val symbolTable: SymbolTable) : BodyLoweringPass {
+
+private object SuspendFunToCoroutineConstructorKey : DeclarationBiMapKey<IrFunction, IrConstructor>
+
+abstract class AbstractSuspendFunctionsLowering<C : CommonBackendContext>(val context: C, val symbolTable: SymbolTable) : BodyLoweringPass {
 
     protected object STATEMENT_ORIGIN_COROUTINE_IMPL : IrStatementOriginImpl("COROUTINE_IMPL")
     protected object DECLARATION_ORIGIN_COROUTINE_IMPL : IrDeclarationOriginImpl("COROUTINE_IMPL")
@@ -49,10 +52,13 @@ abstract class AbstractSuspendFunctionsLowering<C: CommonBackendContext>(val con
 
     private val builtCoroutines = mutableMapOf<IrFunction, BuiltCoroutine>()
 
+    private val suspendFunToConstructor = context.declarationFactory.getMapping(SuspendFunToCoroutineConstructorKey)
+
     override fun lower(irBody: IrBody, container: IrDeclaration) {
-        if (container.isLambda) return
 
         transformCallableReferencesToSuspendLambdas(irBody)
+
+        if (container.isLambda) return
 
         tryTransformSuspendFunction(container, null)
     }
@@ -64,11 +70,14 @@ abstract class AbstractSuspendFunctionsLowering<C: CommonBackendContext>(val con
 
     private fun tryTransformSuspendFunction(element: IrElement, functionReference: IrFunctionReference?) {
         if (element is IrSimpleFunction && element.isSuspend && element.modality != Modality.ABSTRACT) {
+            transformCallableReferencesToSuspendLambdas(element)
+
             transformSuspendFunction(element, functionReference)?.let { result ->
                 result.forEach { declaration ->
                     if (declaration !== element) {
                         // TODO Use proper means to emerge declarations
                         element.file.declarations += declaration
+                        declaration.parent = element.file
                     }
                 }
             }
@@ -86,18 +95,23 @@ abstract class AbstractSuspendFunctionsLowering<C: CommonBackendContext>(val con
 
                 if (expression.symbol.owner in builtCoroutines) error("Lambda revisiting?")
 
-                tryTransformSuspendFunction(expression.symbol.owner, expression)
+                val coroutineConstructor = if (expression.symbol.owner.isLambda) {
+                    tryTransformSuspendFunction(expression.symbol.owner, expression)
 
-                val coroutine = builtCoroutines[expression.symbol.owner] ?: throw Error("Non-local callable reference to suspend lambda: $expression")
+                    builtCoroutines[expression.symbol.owner]?.coroutineConstructor
+                        ?: throw Error("Non-local callable reference to suspend lambda: $expression")
+                } else {
+                    suspendFunToConstructor.newByOld(expression.symbol.owner)!!
+                }
 
-                val constructorParameters = coroutine.coroutineConstructor.valueParameters
+                val constructorParameters = coroutineConstructor.valueParameters
                 val expressionArguments = expression.getArguments().map { it.second }
                 assert(constructorParameters.size == expressionArguments.size) {
                     "Inconsistency between callable reference to suspend lambda and the corresponding coroutine"
                 }
                 val irBuilder = context.createIrBuilder(expression.symbol, expression.startOffset, expression.endOffset)
                 irBuilder.run {
-                    return irCall(coroutine.coroutineConstructor.symbol).apply {
+                    return irCall(coroutineConstructor.symbol).apply {
                         expressionArguments.forEachIndexed { index, argument ->
                             putValueArgument(index, argument)
                         }
@@ -207,6 +221,7 @@ abstract class AbstractSuspendFunctionsLowering<C: CommonBackendContext>(val con
     private fun buildCoroutine(irFunction: IrSimpleFunction, functionReference: IrFunctionReference?): IrClass {
         val coroutine = CoroutineBuilder(irFunction, functionReference).build()
         builtCoroutines[irFunction] = coroutine
+        suspendFunToConstructor.link(irFunction, coroutine.coroutineConstructor)
 
         if (!irFunction.isLambda) {
             // It is not a lambda - replace original function with a call to constructor of the built coroutine.
@@ -662,7 +677,7 @@ private val IrDeclaration.isLambda
     get() = origin == IrDeclarationOrigin.LOCAL_FUNCTION_FOR_LAMBDA
 
 // Apply recursively
-class RemoveSuspendLambdas(): DeclarationTransformer {
+class RemoveSuspendLambdas() : DeclarationTransformer {
 
     override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
         return if (declaration.isLambda && declaration is IrFunction && declaration.isSuspend) emptyList() else null
