@@ -12,6 +12,7 @@ import org.jetbrains.kotlin.ir.backend.js.lower.*
 import org.jetbrains.kotlin.ir.backend.js.lower.calls.CallsLowering
 import org.jetbrains.kotlin.ir.backend.js.lower.common.*
 import org.jetbrains.kotlin.ir.backend.js.lower.coroutines.JsSuspendFunctionsLowering
+import org.jetbrains.kotlin.ir.backend.js.lower.inline.CopyInlineFunctionBody
 import org.jetbrains.kotlin.ir.backend.js.lower.inline.FunctionInlining
 import org.jetbrains.kotlin.ir.backend.js.lower.inline.RemoveInlineFunctionsLowering
 import org.jetbrains.kotlin.ir.backend.js.lower.inline.ReturnableBlockLowering
@@ -93,10 +94,17 @@ private val functionInliningPhase = makeJsModulePhase(
 )
 
 private val removeInlineFunctionsLoweringPhase = makeJsModulePhase(
-    { context -> RemoveInlineFunctionsLowering(context).toDeclarationTransformer() },
+    { context -> RemoveInlineFunctionsLowering(context).runPostfix() },
     name = "RemoveInlineFunctionsLowering",
     description = "Remove Inline functions with reified parameters from context",
     prerequisite = setOf(functionInliningPhase)
+)
+
+private val copyInlineFunctionBody = makeJsModulePhase(
+    { context -> CopyInlineFunctionBody(context).toDeclarationTransformer() },
+    name = "CopyInlineFunctionBody",
+    description = "Copy inline function body, so that the original version is saved in the history",
+    prerequisite = setOf(removeInlineFunctionsLoweringPhase)
 )
 
 private val throwableSuccessorsLoweringPhase = makeJsModulePhase(
@@ -450,7 +458,8 @@ val perFilePhaseList = listOf(
     expectDeclarationsRemovingPhase to false, // OK
     moveBodilessDeclarationsToSeparatePlacePhase to true, // Needs to detect @JsModule and @JsQualifier. TODO: should become obsolete
     functionInliningPhase to true, // OK
-    removeInlineFunctionsLoweringPhase to true, // OK -- shouldn't it be split into 2? Or how do we disable bodies?
+    removeInlineFunctionsLoweringPhase to false, // OK
+    copyInlineFunctionBody to true, // OK
     lateinitLoweringPhase to true, // OK
     tailrecLoweringPhase to true, // OK
     enumClassConstructorLoweringPhase to false, // OK

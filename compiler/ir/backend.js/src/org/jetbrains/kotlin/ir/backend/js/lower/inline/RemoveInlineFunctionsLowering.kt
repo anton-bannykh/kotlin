@@ -18,8 +18,19 @@ import org.jetbrains.kotlin.ir.expressions.IrBody
 import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
 
+class RemoveInlineFunctionsLowering(val context: JsIrBackendContext) : DeclarationTransformer {
 
-class RemoveInlineFunctionsLowering(val context: JsIrBackendContext) : BodyLoweringPass {
+    override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
+
+        if (declaration is IrFunction && declaration.isInline &&
+            declaration.typeParameters.any { it.isReified }) return emptyList()
+
+        return null
+    }
+}
+
+// TODO change the `expression` and `statements` instead of replacing the `body`? Should it be versioned then?
+class CopyInlineFunctionBody(val context: JsIrBackendContext) : BodyLoweringPass {
     override fun lower(irBody: IrBody, container: IrDeclaration) {
         if (container is IrFunction && container.isInline) {
             container.body = container.body?.deepCopyWithSymbols(container)
