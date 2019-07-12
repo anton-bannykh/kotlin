@@ -235,7 +235,9 @@ class ThrowableSuccessorsBodyLowering(val context: JsIrBackendContext) : Nullabl
             }
         }
 
-        body?.transform(ThrowableNameSetterTransformer(), container.parent)
+        if (container is IrConstructor && container.isPrimary && body != null) {
+            container.transform(ThrowableNameSetterTransformer(), container.parent)
+        }
         body?.transform(ThrowablePropertiesUsageTransformer(), null)
         body?.transform(ThrowableInstanceCreationLowering(), null)
     }
