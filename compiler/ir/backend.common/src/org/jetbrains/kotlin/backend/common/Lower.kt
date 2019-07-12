@@ -209,7 +209,7 @@ fun BodyLoweringPass.toDeclarationTransformer(): DeclarationTransformer {
                 }
 
                 override fun visitBody(body: IrBody, data: IrDeclaration) {
-                    body.acceptChildren(this, data)
+//                    body.acceptChildren(this, data)
                     lower(body, data)
                 }
             }, declaration)
