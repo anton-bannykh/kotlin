@@ -246,6 +246,7 @@ fun NullableBodyLoweringPass.toDeclarationTransformer(): DeclarationTransformer 
                 override fun visitEnumEntry(declaration: IrEnumEntry) {
                     lowerAnnotations(declaration)
                     lower(declaration.initializerExpression, declaration)
+                    declaration.correspondingClass?.accept(this, null)
                 }
 
                 override fun visitField(declaration: IrField) {
