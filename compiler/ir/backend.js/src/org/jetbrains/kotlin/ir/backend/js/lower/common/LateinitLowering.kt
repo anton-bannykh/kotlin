@@ -28,6 +28,8 @@ import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.expressions.impl.IrBlockBodyImpl
 import org.jetbrains.kotlin.ir.expressions.impl.IrConstImpl
 import org.jetbrains.kotlin.ir.types.isPrimitiveType
+import org.jetbrains.kotlin.ir.util.file
+import org.jetbrains.kotlin.ir.util.fileOrNull
 import org.jetbrains.kotlin.ir.util.resolveFakeOverride
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
 import org.jetbrains.kotlin.ir.visitors.transformChildrenVoid
@@ -45,8 +47,11 @@ class LateinitLowering(val context: CommonBackendContext) : BodyLoweringPass {
 
 
     val transformer = object : IrElementTransformerVoid() {
-        override fun visitDeclaration(declaration: IrDeclaration): IrStatement {
-            // Stop
+        override fun visitProperty(declaration: IrProperty): IrStatement {
+            declaration.transformChildrenVoid(this)
+            if (declaration.isLateinit && declaration.origin != IrDeclarationOrigin.FAKE_OVERRIDE) {
+                transformGetter(declaration.backingField!!, declaration.getter!!)
+            }
             return declaration
         }
 
