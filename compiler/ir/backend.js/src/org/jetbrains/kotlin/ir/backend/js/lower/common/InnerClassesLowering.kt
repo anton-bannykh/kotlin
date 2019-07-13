@@ -107,8 +107,11 @@ class InnerClassesMemberBodyLowering(val context: BackendContext) : NullableBody
         } else if (irBody != null) {
             if (container is IrField) {
                 // TODO Property initializer references primary constructor value parameters. Doesn't feel right to be honest
-                val oldConstructorParameterToNew = primaryConstructorParameterMap(irClass.declarations.find { it is IrConstructor && it.isPrimary } as IrConstructor)
-                irBody.transformChildrenVoid(VariableRemapper(oldConstructorParameterToNew))
+                val primaryConstructor = irClass.declarations.find { it is IrConstructor && it.isPrimary } as? IrConstructor
+                if (primaryConstructor != null) {
+                    val oldConstructorParameterToNew = primaryConstructorParameterMap(primaryConstructor)
+                    irBody.transformChildrenVoid(VariableRemapper(oldConstructorParameterToNew))
+                }
             }
 
             irBody.fixThisReference(container, irClass)
