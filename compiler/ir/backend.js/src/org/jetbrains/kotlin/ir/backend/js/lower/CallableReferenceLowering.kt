@@ -26,9 +26,7 @@ import org.jetbrains.kotlin.ir.expressions.impl.IrVarargImpl
 import org.jetbrains.kotlin.ir.symbols.IrValueSymbol
 import org.jetbrains.kotlin.ir.symbols.impl.IrTypeParameterSymbolImpl
 import org.jetbrains.kotlin.ir.symbols.impl.IrValueParameterSymbolImpl
-import org.jetbrains.kotlin.ir.types.IrSimpleType
-import org.jetbrains.kotlin.ir.types.IrType
-import org.jetbrains.kotlin.ir.types.IrTypeProjection
+import org.jetbrains.kotlin.ir.types.*
 import org.jetbrains.kotlin.ir.types.impl.IrSimpleTypeImpl
 import org.jetbrains.kotlin.ir.util.file
 import org.jetbrains.kotlin.ir.util.isInlined
@@ -551,7 +549,9 @@ class CallableReferenceLowering(val context: JsIrBackendContext) : BodyLoweringP
             val value = JsIrBuilder.buildGetValue(unboundParamSymbols[i])
             val parameter = callTarget.valueParameters[j]
             val argument =
-                if (parameter.varargElementType == closureParam.type) {
+                if (parameter.varargElementType == closureParam.type ||
+                    parameter.varargElementType?.getClass()?.symbol?.let { closureParam.type.isSubtypeOfClass(it) } == true // TODO revisit
+                ) {
                     // fun foo(x: X, vararg y: Y): Z
                     // val r: (X, Y) -> Z = ::foo
                     val tailValues = unboundParamSymbols.drop(i)
