@@ -78,6 +78,9 @@ abstract class AbstractSuspendFunctionsLowering<C : CommonBackendContext>(val co
                         // TODO Use proper means to emerge declarations
                         element.file.declarations += declaration
                         declaration.parent = element.file
+
+                        // TODO investigate IrJsCodegenBoxTestGenerated$Coroutines$ControlFlow.testBreakFinally_1_3
+                        declaration.patchDeclarationParents(declaration.parent)
                     }
                 }
             }
