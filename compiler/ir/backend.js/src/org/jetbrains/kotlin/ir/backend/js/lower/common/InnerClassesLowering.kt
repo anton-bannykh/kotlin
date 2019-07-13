@@ -105,7 +105,7 @@ class InnerClassesMemberBodyLowering(val context: BackendContext) : NullableBody
             loweredConstructor.body = blockBody
             blockBody.fixThisReference(container, irClass)
         } else if (irBody != null) {
-            if (container is IrField) {
+            if (container is IrField || container is IrAnonymousInitializer) {
                 // TODO Property initializer references primary constructor value parameters. Doesn't feel right to be honest
                 val primaryConstructor = irClass.declarations.find { it is IrConstructor && it.isPrimary } as? IrConstructor
                 if (primaryConstructor != null) {
