@@ -96,9 +96,11 @@ abstract class AbstractSuspendFunctionsLowering<C : CommonBackendContext>(val co
                 if (!expression.isSuspend)
                     return expression
 
-                if (expression.symbol.owner in builtCoroutines) error("Lambda revisiting?")
-
                 val coroutineConstructor = if (expression.symbol.owner.isLambda) {
+                    if (expression.symbol.owner in builtCoroutines) {
+                        error("Lambda revisiting?")
+                    }
+
                     tryTransformSuspendFunction(expression.symbol.owner, expression)
 
                     builtCoroutines[expression.symbol.owner]?.coroutineConstructor
