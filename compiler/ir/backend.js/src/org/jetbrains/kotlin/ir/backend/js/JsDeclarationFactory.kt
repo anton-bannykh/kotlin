@@ -113,7 +113,7 @@ class JsDeclarationFactory : DeclarationFactory {
         val newValueParameters = mutableListOf(outerThisValueParameter)
 
         for (p in oldConstructor.valueParameters) {
-            newValueParameters += p.copyTo(newConstructor, index = p.index + 1)
+            newValueParameters += p.copyTo(newConstructor, index = p.index + 1, defaultValue = null)
         }
 
         newConstructor.valueParameters += newValueParameters

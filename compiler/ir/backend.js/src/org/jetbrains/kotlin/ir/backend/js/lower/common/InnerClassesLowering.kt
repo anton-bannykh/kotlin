@@ -93,6 +93,13 @@ class InnerClassesMemberBodyLowering(val context: BackendContext) : NullableBody
             blockBody.patchDeclarationParents(loweredConstructor)
 
             val oldConstructorParameterToNew = primaryConstructorParameterMap(container)
+
+            for ((oldParam, newParam) in oldConstructorParameterToNew.entries) {
+                newParam.defaultValue = oldParam.defaultValue
+                newParam.defaultValue?.patchDeclarationParents(container)
+                newParam.defaultValue?.transformChildrenVoid(VariableRemapper(oldConstructorParameterToNew))
+            }
+
             blockBody.transformChildrenVoid(VariableRemapper(oldConstructorParameterToNew))
 
             loweredConstructor.body = blockBody
