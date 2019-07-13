@@ -81,7 +81,7 @@ class ExpectDeclarationsRemoving(val context: BackendContext) : DeclarationTrans
                 if (actualParameter.defaultValue != null)
                     return
 
-                valueParameterRemap.link(actualParameter, declaration)
+                valueParameterRemap.link(declaration, actualParameter)
 
                 actualParameter.defaultValue = defaultValue
             }
