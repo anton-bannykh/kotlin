@@ -78,7 +78,7 @@ class JsIrBackendContext(
         FqName.ROOT
     )
 
-    val bodilessBuiltInsPackageFragment: IrPackageFragment  = IrExternalPackageFragmentImpl(
+    val bodilessBuiltInsPackageFragment: IrPackageFragment = IrExternalPackageFragmentImpl(
         DescriptorlessExternalPackageFragmentSymbol(),
         FqName("kotlin")
     )
@@ -167,9 +167,12 @@ class JsIrBackendContext(
     val inlineClassTransformedFunctionsCache = mutableMapOf<IrFunctionSymbol, IrSimpleFunctionSymbol>()
     val pendingThrowableSuperUsages = mutableMapOf<IrClass, DirectThrowableSuccessors>()
 
-    data class BridgeInfo(val function: IrSimpleFunction,
-                          val bridge: IrSimpleFunction,
-                          val delegateTo: IrSimpleFunction)
+
+    data class BridgeInfo(
+        val function: IrSimpleFunction,
+        val bridge: IrSimpleFunction,
+        val delegateTo: IrSimpleFunction
+    )
 
     val bridgeToBridgeInfoMapping = mutableMapOf<IrSimpleFunction, BridgeInfo>()
 
@@ -190,6 +193,9 @@ class JsIrBackendContext(
     val dynamicType: IrDynamicType = IrDynamicTypeImpl(null, emptyList(), Variance.INVARIANT)
 
     fun getOperatorByName(name: Name, type: IrSimpleType) = operatorMap[name]?.get(type.classifier)
+
+    var coroutinesLoaded: Boolean = false
+        private set
 
     override val ir = object : Ir<JsIrBackendContext>(this, irModuleFragment) {
         override val symbols = object : Symbols<JsIrBackendContext>(this@JsIrBackendContext, symbolTable.lazyWrapper) {
@@ -212,17 +218,20 @@ class JsIrBackendContext(
                 get() = TODO("not implemented")
             override val copyRangeTo: Map<ClassDescriptor, IrSimpleFunctionSymbol>
                 get() = TODO("not implemented")
-            override val coroutineImpl =
+            override val coroutineImpl by lazy {
+                coroutinesLoaded = true
                 symbolTable.referenceClass(findClass(coroutinePackage.memberScope, COROUTINE_IMPL_NAME))
-            override val coroutineSuspendedGetter =
+            }
+            override val coroutineSuspendedGetter by lazy {
                 symbolTable.referenceSimpleFunction(
                     coroutineIntrinsicsPackage.memberScope.getContributedVariables(
                         COROUTINE_SUSPENDED_NAME,
                         NoLookupLocation.FROM_BACKEND
                     ).filterNot { it.isExpect }.single().getter!!
                 )
+            }
 
-            override val getContinuation = symbolTable.referenceSimpleFunction(getJsInternalFunction("getContinuation"))
+            override val getContinuation by lazy { symbolTable.referenceSimpleFunction(getJsInternalFunction("getContinuation")) }
         }
 
         override fun shouldGenerateHandlerParameterForDefaultBodyFun() = true
@@ -230,25 +239,29 @@ class JsIrBackendContext(
 
     // classes forced to be loaded
 
-    val primitiveClassesObject = getIrClass(FqName("kotlin.reflect.js.internal.PrimitiveClasses"))
+    val primitiveClassesObject by lazy { getIrClass(FqName("kotlin.reflect.js.internal.PrimitiveClasses")) }
 
-    val throwableClass = getIrClass(JsIrBackendContext.KOTLIN_PACKAGE_FQN.child(Name.identifier("Throwable")))
+    val throwableClass by lazy { getIrClass(JsIrBackendContext.KOTLIN_PACKAGE_FQN.child(Name.identifier("Throwable"))) }
 
-    val primitiveCompanionObjects = primitivesWithImplicitCompanionObject().associateWith {
-        getIrClass(JS_INTERNAL_PACKAGE_FQNAME.child(Name.identifier("${it.identifier}CompanionObject")))
+    val primitiveCompanionObjects by lazy {
+        primitivesWithImplicitCompanionObject().associateWith {
+            getIrClass(JS_INTERNAL_PACKAGE_FQNAME.child(Name.identifier("${it.identifier}CompanionObject")))
+        }
     }
 
-    val continuationClass = symbolTable.referenceClass(
-        coroutinePackage.memberScope.getContributedClassifier(
-            CONTINUATION_NAME,
-            NoLookupLocation.FROM_BACKEND
-        ) as ClassDescriptor
-    )
+    val continuationClass by lazy {
+        symbolTable.referenceClass(
+            coroutinePackage.memberScope.getContributedClassifier(
+                CONTINUATION_NAME,
+                NoLookupLocation.FROM_BACKEND
+            ) as ClassDescriptor
+        )
+    }
 
 
     // Top-level functions forced to be loaded
 
-    val coroutineSuspendOrReturn = symbolTable.referenceSimpleFunction(getJsInternalFunction(COROUTINE_SUSPEND_OR_RETURN_JS_NAME))
+    val coroutineSuspendOrReturn by lazy { symbolTable.referenceSimpleFunction(getJsInternalFunction(COROUTINE_SUSPEND_OR_RETURN_JS_NAME)) }
     val coroutineGetContext: IrSimpleFunctionSymbol
         get() {
             val contextGetter =
@@ -257,7 +270,7 @@ class JsIrBackendContext(
             return contextGetter.symbol
         }
 
-    val coroutineGetContextJs = symbolTable.referenceSimpleFunction(getJsInternalFunction(GET_COROUTINE_CONTEXT_NAME))
+    val coroutineGetContextJs by lazy { symbolTable.referenceSimpleFunction(getJsInternalFunction(GET_COROUTINE_CONTEXT_NAME)) }
 
     val coroutineContextProperty: PropertyDescriptor
         get() {

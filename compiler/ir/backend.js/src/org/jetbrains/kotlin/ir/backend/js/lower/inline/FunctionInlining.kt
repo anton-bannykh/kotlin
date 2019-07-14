@@ -48,7 +48,7 @@ class FunctionInlining(val context: JsIrBackendContext) : IrElementTransformerVo
                 error("Continuation.intercepted is not available with release coroutines")
             callSite.symbol.descriptor.isBuiltInSuspendCoroutineUninterceptedOrReturn(languageVersionSettings) ->
                 return irCall(callSite, context.coroutineSuspendOrReturn)
-            callSite.symbol == context.intrinsics.jsCoroutineContext ->
+            callSite.symbol.descriptor == context.coroutineContextProperty.getter!! ->
                 return irCall(callSite, context.coroutineGetContextJs)
         }
 

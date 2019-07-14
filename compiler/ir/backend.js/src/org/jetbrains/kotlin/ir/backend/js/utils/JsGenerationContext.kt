@@ -27,7 +27,7 @@ class JsGenerationContext(
     }
 
     val continuation
-        get() = if (isCoroutineDoResume()) {
+        get() = if (staticContext.isCoroutineDoResume(currentFunction)) {
             JsThisRef()
         } else {
             if (currentFunction!!.descriptor.isSuspend) {
@@ -36,9 +36,4 @@ class JsGenerationContext(
                 getNameForValueDeclaration(currentFunction.valueParameters.last()).makeRef()
             }
         }
-
-    private fun isCoroutineDoResume(): Boolean {
-        val overriddenSymbols = (currentFunction as? IrSimpleFunction)?.overriddenSymbols ?: return false
-        return staticContext.doResumeFunctionSymbol in overriddenSymbols
-    }
 }

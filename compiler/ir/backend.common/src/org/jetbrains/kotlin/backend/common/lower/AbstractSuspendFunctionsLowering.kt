@@ -204,8 +204,8 @@ abstract class AbstractSuspendFunctionsLowering<C: CommonBackendContext>(val con
     }
 
     private val symbols = context.ir.symbols
-    private val getContinuationSymbol = symbols.getContinuation
-    private val continuationClassSymbol = getContinuationSymbol.owner.returnType.classifierOrFail as IrClassSymbol
+    private val getContinuationSymbol by lazy { symbols.getContinuation }
+    private val continuationClassSymbol by lazy { getContinuationSymbol.owner.returnType.classifierOrFail as IrClassSymbol }
 
     private fun removeReturnIfSuspendedCallAndSimplifyDelegatingCall(irFunction: IrFunction, delegatingCall: IrCall) {
         val returnValue =

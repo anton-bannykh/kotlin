@@ -27,14 +27,22 @@ import org.jetbrains.kotlin.utils.DFS
 
 class JsSuspendFunctionsLowering(ctx: JsIrBackendContext) : AbstractSuspendFunctionsLowering<JsIrBackendContext>(ctx, ctx.symbolTable) {
 
-    private val coroutineImplExceptionPropertyGetter = ctx.coroutineImplExceptionPropertyGetter
-    private val coroutineImplExceptionPropertySetter = ctx.coroutineImplExceptionPropertySetter
-    private val coroutineImplExceptionStatePropertyGetter = ctx.coroutineImplExceptionStatePropertyGetter
-    private val coroutineImplExceptionStatePropertySetter = ctx.coroutineImplExceptionStatePropertySetter
-    private val coroutineImplLabelPropertySetter = ctx.coroutineImplLabelPropertySetter
-    private val coroutineImplLabelPropertyGetter = ctx.coroutineImplLabelPropertyGetter
-    private val coroutineImplResultSymbolGetter = ctx.coroutineImplResultSymbolGetter
-    private val coroutineImplResultSymbolSetter = ctx.coroutineImplResultSymbolSetter
+    private val coroutineImplExceptionPropertyGetter
+        get() = context.coroutineImplExceptionPropertyGetter
+    private val coroutineImplExceptionPropertySetter
+        get() = context.coroutineImplExceptionPropertySetter
+    private val coroutineImplExceptionStatePropertyGetter
+        get() = context.coroutineImplExceptionStatePropertyGetter
+    private val coroutineImplExceptionStatePropertySetter
+        get() = context.coroutineImplExceptionStatePropertySetter
+    private val coroutineImplLabelPropertySetter
+        get() = context.coroutineImplLabelPropertySetter
+    private val coroutineImplLabelPropertyGetter
+        get() = context.coroutineImplLabelPropertyGetter
+    private val coroutineImplResultSymbolGetter
+        get() = context.coroutineImplResultSymbolGetter
+    private val coroutineImplResultSymbolSetter
+        get() = context.coroutineImplResultSymbolSetter
 
     private var exceptionTrapId = -1
 

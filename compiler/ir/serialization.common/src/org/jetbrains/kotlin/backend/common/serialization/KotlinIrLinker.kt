@@ -232,7 +232,8 @@ abstract class KotlinIrLinker(
                         reachableTopLevels.add(uniqIdKey)
                     }
                 }
-                else -> error("Unixpected deserialization strategy")
+                DeserializationStrategy.ONLY_REFERENCED -> Unit
+                else -> error("Unexpected deserialization strategy")
             }
 
             return file
@@ -430,7 +431,7 @@ abstract class KotlinIrLinker(
                 if (exportedDependencies.contains(moduleDescriptor)) {
                     DeserializationStrategy.ALL
                 } else {
-                    DeserializationStrategy.EXPLICITLY_EXPORTED
+                    DeserializationStrategy.ONLY_REFERENCED
                 }
             deserializeIrModuleHeader(moduleDescriptor, header, deserializationStrategy)
         }
