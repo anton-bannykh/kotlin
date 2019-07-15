@@ -124,8 +124,7 @@ class JsClassGenerator(private val irClass: IrClass, val context: JsGenerationCo
     }
 
     private fun generateMemberFunction(declaration: IrSimpleFunction): JsStatement? {
-
-        val translatedFunction = declaration.run { if (isReal) accept(IrFunctionToJsTransformer(), context) else null }
+        val translatedFunction = declaration.run { if (isReal && declaration.body != null) accept(IrFunctionToJsTransformer(), context) else null }
         if (declaration.isStaticMethodOfClass) {
             return translatedFunction?.makeStmt()
         }
