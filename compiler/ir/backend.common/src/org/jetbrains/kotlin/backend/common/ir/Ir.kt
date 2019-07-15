@@ -98,16 +98,18 @@ abstract class Symbols<out T : CommonBackendContext>(val context: T, private val
     val integerClasses = listOf(byte, short, int, long)
     val integerClassesTypes = integerClasses.map { it.descriptor.defaultType }
 
-    val arrayOf = symbolTable.referenceSimpleFunction(
-        builtInsPackage("kotlin").getContributedFunctions(
-            Name.identifier("arrayOf"), NoLookupLocation.FROM_BACKEND
-        ).first {
-            it.extensionReceiverParameter == null && it.dispatchReceiverParameter == null && it.valueParameters.size == 1 &&
-                    it.valueParameters[0].isVararg
-        }
-    )
+    val arrayOf by lazy {
+        symbolTable.referenceSimpleFunction(
+            builtInsPackage("kotlin").getContributedFunctions(
+                Name.identifier("arrayOf"), NoLookupLocation.FROM_BACKEND
+            ).first {
+                it.extensionReceiverParameter == null && it.dispatchReceiverParameter == null && it.valueParameters.size == 1 &&
+                        it.valueParameters[0].isVararg
+            }
+        )
+    }
 
-    val array = symbolTable.referenceClass(builtIns.array)
+    val array by lazy { symbolTable.referenceClass(builtIns.array) }
 
     private fun primitiveArrayClass(type: PrimitiveType) =
         symbolTable.referenceClass(builtIns.getPrimitiveArrayClassDescriptor(type))
@@ -116,23 +118,25 @@ abstract class Symbols<out T : CommonBackendContext>(val context: T, private val
         builtIns.builtInsModule.findClassAcrossModuleDependencies(unsignedType.arrayClassId)
             ?.let { symbolTable.referenceClass(it) }
 
-    val byteArray = primitiveArrayClass(PrimitiveType.BYTE)
-    val charArray = primitiveArrayClass(PrimitiveType.CHAR)
-    val shortArray = primitiveArrayClass(PrimitiveType.SHORT)
-    val intArray = primitiveArrayClass(PrimitiveType.INT)
-    val longArray = primitiveArrayClass(PrimitiveType.LONG)
-    val floatArray = primitiveArrayClass(PrimitiveType.FLOAT)
-    val doubleArray = primitiveArrayClass(PrimitiveType.DOUBLE)
-    val booleanArray = primitiveArrayClass(PrimitiveType.BOOLEAN)
+    val byteArray by lazy { primitiveArrayClass(PrimitiveType.BYTE) }
+    val charArray by lazy { primitiveArrayClass(PrimitiveType.CHAR) }
+    val shortArray by lazy { primitiveArrayClass(PrimitiveType.SHORT) }
+    val intArray by lazy { primitiveArrayClass(PrimitiveType.INT) }
+    val longArray by lazy { primitiveArrayClass(PrimitiveType.LONG) }
+    val floatArray by lazy { primitiveArrayClass(PrimitiveType.FLOAT) }
+    val doubleArray by lazy { primitiveArrayClass(PrimitiveType.DOUBLE) }
+    val booleanArray by lazy { primitiveArrayClass(PrimitiveType.BOOLEAN) }
 
-    val unsignedArrays = UnsignedType.values().mapNotNull { unsignedType ->
-        unsignedArrayClass(unsignedType)?.let { unsignedType to it }
-    }.toMap()
+    val unsignedArrays by lazy {
+        UnsignedType.values().mapNotNull { unsignedType ->
+            unsignedArrayClass(unsignedType)?.let { unsignedType to it }
+        }.toMap()
+    }
 
 
-    val primitiveArrays = PrimitiveType.values().associate { it to primitiveArrayClass(it) }
+    val primitiveArrays by lazy { PrimitiveType.values().associate { it to primitiveArrayClass(it) } }
 
-    val arrays = primitiveArrays.values + unsignedArrays.values + array
+    val arrays by lazy { primitiveArrays.values + unsignedArrays.values + array }
 
     protected fun arrayExtensionFun(type: KotlinType, name: String): IrSimpleFunctionSymbol {
         val descriptor = builtInsPackage("kotlin")
