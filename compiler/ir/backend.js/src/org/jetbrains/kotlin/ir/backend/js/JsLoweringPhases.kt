@@ -459,77 +459,82 @@ private val staticMembersLoweringPhase = makeJsModulePhase(
     description = "Move static member declarations to top-level"
 )
 
-// Second value means if body access is allowed
-val perFilePhaseList = listOf(
-    expectDeclarationsRemovingPhase to false, // OK
-    expectDeclarationsBodyRemappingPhase to true, // OK
-    moveBodilessDeclarationsToSeparatePlacePhase to true, // Needs to detect @JsModule and @JsQualifier. TODO: should become obsolete
-    functionInliningPhase to true, // OK
-    removeInlineFunctionsLoweringPhase to false, // OK
-    copyInlineFunctionBody to true, // OK
-    lateinitLoweringPhase to true, // OK
-    tailrecLoweringPhase to true, // OK
-    enumClassConstructorLoweringPhase to false, // OK
-    enumClassConstructorBodyLoweringPhase to true, // OK
+private enum class LoweringType(val bodiesEnabled: Boolean, val canModifyDeclarations: Boolean) {
+    DeclarationLowering(bodiesEnabled = false, canModifyDeclarations = true),
+    BodyLowering(bodiesEnabled = true, canModifyDeclarations = false),
+    FIX_ME(bodiesEnabled = true, canModifyDeclarations = true)
+}
 
-    sharedVariablesLoweringPhase to true, // OK
-    localDelegatedPropertiesLoweringPhase to true, // OK
-    localDeclarationsLoweringPhase to true, // OK
+private val perFilePhaseList = listOf<Pair<(JsIrBackendContext) -> DeclarationTransformer, LoweringType>>(
+    expectDeclarationsRemovingPhase to LoweringType.DeclarationLowering, // OK
+    expectDeclarationsBodyRemappingPhase to LoweringType.BodyLowering, // OK
+    moveBodilessDeclarationsToSeparatePlacePhase to LoweringType.FIX_ME, // Needs to detect @JsModule and @JsQualifier. TODO: should become obsolete
+    functionInliningPhase to LoweringType.BodyLowering, // OK
+    removeInlineFunctionsLoweringPhase to LoweringType.DeclarationLowering, // OK
+    copyInlineFunctionBody to LoweringType.BodyLowering, // OK
+    lateinitLoweringPhase to LoweringType.BodyLowering, // OK
+    tailrecLoweringPhase to LoweringType.BodyLowering, // OK
+    enumClassConstructorLoweringPhase to LoweringType.DeclarationLowering, // OK
+    enumClassConstructorBodyLoweringPhase to LoweringType.BodyLowering, // OK
 
-    localClassExtractionPhase to true,
+    sharedVariablesLoweringPhase to LoweringType.BodyLowering, // OK
+    localDelegatedPropertiesLoweringPhase to LoweringType.BodyLowering, // OK
+    localDeclarationsLoweringPhase to LoweringType.BodyLowering, // OK
 
-    innerClassesDeclarationLoweringPhase to false, // OK
-    innerClassesConstructorBodyLoweringPhase to true, // OK
-    innerClassConstructorCallsLoweringPhase to true, // OK
+    localClassExtractionPhase to LoweringType.BodyLowering,
 
-    propertiesLoweringPhase to false, // OK
-    initializersLoweringPhase to true, // OK
-    removeAnonymousInitializers to false, // OK
+    innerClassesDeclarationLoweringPhase to LoweringType.DeclarationLowering, // OK
+    innerClassesConstructorBodyLoweringPhase to LoweringType.BodyLowering, // OK
+    innerClassConstructorCallsLoweringPhase to LoweringType.BodyLowering, // OK
+
+    propertiesLoweringPhase to LoweringType.DeclarationLowering, // OK
+    initializersLoweringPhase to LoweringType.BodyLowering, // OK
+    removeAnonymousInitializers to LoweringType.DeclarationLowering, // OK
     // Common prefix ends
-    enumClassLoweringPhase to false, // OK
-    enumClassBodyLoweringPhase to true, // OK
-    enumUsageLoweringPhase to true, // OK
-    enumEntryRemovalLoweringPhase to false, // OK
+    enumClassLoweringPhase to LoweringType.DeclarationLowering, // OK
+    enumClassBodyLoweringPhase to LoweringType.BodyLowering, // OK
+    enumUsageLoweringPhase to LoweringType.BodyLowering, // OK
+    enumEntryRemovalLoweringPhase to LoweringType.DeclarationLowering, // OK
 
-    returnableBlockLoweringPhase to true, // OK
-    unitMaterializationLoweringPhase to true, // OK
-    suspendFunctionsLoweringPhase to true, // OK
-    suspendLambdasRemovingPhase to false, // OK
-    privateMembersLoweringPhase to false, // OK
-    privateMembersBodyLoweringPhase to true, // OK
-    callableReferenceLoweringPhase to true, // OK -- creates new declarations from bodies
+    returnableBlockLoweringPhase to LoweringType.BodyLowering, // OK
+    unitMaterializationLoweringPhase to LoweringType.BodyLowering, // OK
+    suspendFunctionsLoweringPhase to LoweringType.BodyLowering, // OK
+    suspendLambdasRemovingPhase to LoweringType.DeclarationLowering, // OK
+    privateMembersLoweringPhase to LoweringType.DeclarationLowering, // OK
+    privateMembersBodyLoweringPhase to LoweringType.BodyLowering, // OK
+    callableReferenceLoweringPhase to LoweringType.BodyLowering, // OK -- creates new declarations from bodies
 
-    defaultArgumentStubGeneratorPhase to false, // OK
-    defaultArgumentStubBodyGeneratorPhase to true, // OK
-    defaultParameterInjectorPhase to true, // OK
-    jsDefaultCallbackGeneratorPhase to true, // OK
-    defaultParameterCleanerPhase to false, // OK
+    defaultArgumentStubGeneratorPhase to LoweringType.DeclarationLowering, // OK
+    defaultArgumentStubBodyGeneratorPhase to LoweringType.BodyLowering, // OK
+    defaultParameterInjectorPhase to LoweringType.BodyLowering, // OK
+    jsDefaultCallbackGeneratorPhase to LoweringType.BodyLowering, // OK
+    defaultParameterCleanerPhase to LoweringType.DeclarationLowering, // OK
 
-    throwableSuccessorsLoweringPhase to false, // OK
-    throwableSuccessorsBodyLoweringPhase to true, // OK
-    varargLoweringPhase to true, // OK
-    multipleCatchesLoweringPhase to true, // OK
-    bridgesConstructionPhase to true, // TODO Reads @JsName
-    bridgesBodyConstructionPhase to true, // OK
-    typeOperatorLoweringPhase to true, // OK
+    throwableSuccessorsLoweringPhase to LoweringType.DeclarationLowering, // OK
+    throwableSuccessorsBodyLoweringPhase to LoweringType.BodyLowering, // OK
+    varargLoweringPhase to LoweringType.BodyLowering, // OK
+    multipleCatchesLoweringPhase to LoweringType.BodyLowering, // OK
+    bridgesConstructionPhase to LoweringType.FIX_ME, // TODO Reads @JsName
+    bridgesBodyConstructionPhase to LoweringType.BodyLowering, // OK
+    typeOperatorLoweringPhase to LoweringType.BodyLowering, // OK
 
-    secondaryConstructorLoweringPhase to false, // OK
-    secondaryConstructorBodyLoweringPhase to true, // OK
-    secondaryFactoryInjectorLoweringPhase to true, // OK
+    secondaryConstructorLoweringPhase to LoweringType.DeclarationLowering, // OK
+    secondaryConstructorBodyLoweringPhase to LoweringType.BodyLowering, // OK
+    secondaryFactoryInjectorLoweringPhase to LoweringType.BodyLowering, // OK
 
-    classReferenceLoweringPhase to true, // OK
+    classReferenceLoweringPhase to LoweringType.BodyLowering, // OK
 
-    inlineClassDeclarationsLoweringPhase to false, // OK
-    inlineClassDeclarationBodyLoweringPhase to true, // OK
-    inlineClassUsageLoweringPhase to true, // OK
+    inlineClassDeclarationsLoweringPhase to LoweringType.DeclarationLowering, // OK
+    inlineClassDeclarationBodyLoweringPhase to LoweringType.BodyLowering, // OK
+    inlineClassUsageLoweringPhase to LoweringType.BodyLowering, // OK
 
-    autoboxingTransformerPhase to true, // OK
-    fieldInitializerCreationPhase to false, // OK
-    blockDecomposerLoweringPhase to true, // OK
-    primitiveCompanionLoweringPhase to true, // OK
-    constLoweringPhase to true, // OK
-    callsLoweringPhase to true, // OK
-    staticMembersLoweringPhase to false // OK
+    autoboxingTransformerPhase to LoweringType.BodyLowering, // OK
+    fieldInitializerCreationPhase to LoweringType.DeclarationLowering, // OK
+    blockDecomposerLoweringPhase to LoweringType.BodyLowering, // OK
+    primitiveCompanionLoweringPhase to LoweringType.BodyLowering, // OK
+    constLoweringPhase to LoweringType.BodyLowering, // OK
+    callsLoweringPhase to LoweringType.BodyLowering, // OK
+    staticMembersLoweringPhase to LoweringType.DeclarationLowering // OK
 )
 
 fun compositePhase(): CompilerPhase<JsIrBackendContext, IrFile, IrFile> {
@@ -636,9 +641,9 @@ class MutableController : StageController {
                         if (frozen) {
                             error("frozen! ${topLevelDeclaration.name.asString()} in ${fileBefore.fileEntry.name}")
                         }
-                        val (lowering, bodiesEnabled) = perFilePhaseList[i - 1]
+                        val (lowering, loweringType) = perFilePhaseList[i - 1]
 
-                        val result = if (bodiesEnabled)
+                        val result = if (loweringType.bodiesEnabled)
                             withBodies { lowering(context).transformFlat(topLevelDeclaration) }
                         else
                             lowering(context).transformFlat(topLevelDeclaration)
