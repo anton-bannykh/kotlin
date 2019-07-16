@@ -674,9 +674,15 @@ class MutableController : StageController {
         }
 
     // TODO Special API to check only top level declarations are added?
-    fun withInitialIr(block: () -> Unit) {
-        withStage(0) {
-            block()
+    override fun <T> withInitialIr(block: () -> T): T {
+        val generator = dependencyGenerator
+        try {
+            dependencyGenerator = null
+            return withStage(0) {
+                block()
+            }
+        } finally {
+            dependencyGenerator = generator
         }
     }
 
@@ -687,30 +693,31 @@ class MutableController : StageController {
 
         currentStage = perFilePhaseList.size + 1
 
-        ArrayList(context.symbolTable.unboundClasses).forEach {
-            tryLoad(it)
-        }
-        ArrayList(context.symbolTable.unboundConstructors).forEach {
-            tryLoad(it)
-        }
-        ArrayList(context.symbolTable.unboundEnumEntries).forEach {
-            tryLoad(it)
-        }
-        ArrayList(context.symbolTable.unboundFields).forEach {
-            tryLoad(it)
-        }
-        ArrayList(context.symbolTable.unboundSimpleFunctions).forEach {
-            tryLoad(it)
-        }
-        ArrayList(context.symbolTable.unboundProperties).forEach {
-            tryLoad(it)
-        }
-        ArrayList(context.symbolTable.unboundTypeParameters).forEach {
-            tryLoad(it)
-        }
-
         while (true) {
             var changed = false
+
+            ArrayList(context.symbolTable.unboundClasses).forEach {
+                tryLoad(it)
+            }
+            ArrayList(context.symbolTable.unboundConstructors).forEach {
+                tryLoad(it)
+            }
+            ArrayList(context.symbolTable.unboundEnumEntries).forEach {
+                tryLoad(it)
+            }
+            ArrayList(context.symbolTable.unboundFields).forEach {
+                tryLoad(it)
+            }
+            ArrayList(context.symbolTable.unboundSimpleFunctions).forEach {
+                tryLoad(it)
+            }
+            ArrayList(context.symbolTable.unboundProperties).forEach {
+                tryLoad(it)
+            }
+            ArrayList(context.symbolTable.unboundTypeParameters).forEach {
+                tryLoad(it)
+            }
+
             for (file in moduleFragment.files) {
                 for (decl in ArrayList(file.declarations)) {
                     if (decl.loweredUpTo < currentStage - 1) {
@@ -757,8 +764,13 @@ class MutableController : StageController {
     val loaded = ArrayDeque<IrDeclaration>()
 
     override fun tryLoad(symbol: IrSymbol) {
+//        if (frozen) {
+//            error("Cannot load after freeze")
+//        }
+
         dependencyGenerator?.let { generator ->
             withBodies {
+//                generator.loadSymbol(symbol)
                 try {
                     dependencyGenerator = null
                     if (!symbol.isBound) {

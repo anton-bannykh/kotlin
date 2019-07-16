@@ -146,8 +146,6 @@ abstract class KotlinIrLinker(
             val key = proto.uniqId.uniqIdKey(moduleDescriptor)
             val topLevelKey = proto.topLevelUniqId.uniqIdKey(moduleDescriptor)
 
-            if (!deserializedTopLevels.contains(topLevelKey)) reachableTopLevels.add(topLevelKey)
-
             val symbol = deserializedSymbols.getOrPut(key) {
                 val descriptor = if (proto.hasDescriptorReference()) {
                     deserializeDescriptorReference(proto.descriptorReference)
@@ -167,6 +165,11 @@ abstract class KotlinIrLinker(
 
                 referenceDeserializedSymbol(proto, descriptor)
             }
+
+//            if (symbol.descriptor is WrappedDeclarationDescriptor<*>) {
+                if (!deserializedTopLevels.contains(topLevelKey)) reachableTopLevels.add(topLevelKey)
+//            }
+
             if (symbol.descriptor is ClassDescriptor &&
                 symbol.descriptor !is WrappedDeclarationDescriptor<*> &&
                 symbol.descriptor.module.isForwardDeclarationModule

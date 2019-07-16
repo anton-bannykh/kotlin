@@ -24,6 +24,8 @@ interface StageController {
     fun tryLoad(symbol: IrSymbol) {}
 
     abstract val bodiesEnabled: Boolean
+
+    abstract fun <T> withInitialIr(block: () -> T): T
 }
 
 class NoopController : StageController {
@@ -31,6 +33,8 @@ class NoopController : StageController {
 
     override val bodiesEnabled: Boolean
         get() = true
+
+    override fun <T> withInitialIr(block: () -> T): T = block()
 }
 
 class PersistentVar<T : Any>(private val container: IrDeclaration?,
