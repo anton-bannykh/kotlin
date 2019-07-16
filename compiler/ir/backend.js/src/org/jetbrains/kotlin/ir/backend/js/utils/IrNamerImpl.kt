@@ -31,9 +31,6 @@ class IrNamerImpl(
     }
 
     override fun getNameForMemberFunction(function: IrSimpleFunction): JsName {
-        if (function.dispatchReceiverParameter == null) {
-            println("Fail =(")
-        }
         require(function.dispatchReceiverParameter != null)
         return memberNameGenerator.getNameForMemberFunction(function)
     }
