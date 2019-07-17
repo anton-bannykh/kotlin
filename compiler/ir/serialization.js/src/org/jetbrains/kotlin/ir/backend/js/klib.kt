@@ -30,6 +30,7 @@ import org.jetbrains.kotlin.ir.backend.js.lower.serialization.metadata.*
 import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
 import org.jetbrains.kotlin.ir.declarations.NoopController
 import org.jetbrains.kotlin.ir.descriptors.IrBuiltIns
+import org.jetbrains.kotlin.ir.util.CompositeSymbolTable
 import org.jetbrains.kotlin.ir.util.SymbolTable
 import org.jetbrains.kotlin.js.analyze.TopDownAnalyzerFacadeForJS
 import org.jetbrains.kotlin.js.analyzer.JsAnalysisResult
@@ -138,7 +139,7 @@ private fun runAnalysisAndPreparePsi2Ir(depsDescriptors: ModulesStructure): Gene
         analysisResult.moduleDescriptor,
         analysisResult.bindingContext,
         depsDescriptors.compilerConfiguration.languageVersionSettings,
-        SymbolTable(),
+        depsDescriptors.createCompositeSymbolTable(analysisResult.moduleDescriptor),
         GeneratorExtensions()
     )
 }
@@ -217,13 +218,16 @@ private class ModulesStructure(
 
     val builtInsDep = sortedImmediateDependencies.firstOrNull()
 
+    val moduleDescriptors
+        get() = sortedImmediateDependencies.map { getModuleDescriptor(it) }
+
     fun runAnalysis(): JsAnalysisResult {
         val analysisResult =
             TopDownAnalyzerFacadeForJS.analyzeFiles(
                 files,
                 project,
                 compilerConfiguration,
-                sortedImmediateDependencies.map { getModuleDescriptor(it) },
+                moduleDescriptors,
                 friendModuleDescriptors = emptyList(),
                 thisIsBuiltInsModule = builtInModuleDescriptor == null,
                 customBuiltInsModule = builtInModuleDescriptor
@@ -233,6 +237,12 @@ private class ModulesStructure(
         TopDownAnalyzerFacadeForJS.checkForErrors(files, analysisResult.bindingContext)
 
         return analysisResult
+    }
+
+    fun createCompositeSymbolTable(currentModule: ModuleDescriptor): CompositeSymbolTable {
+        val mapping = mutableMapOf<ModuleDescriptor, SymbolTable>(currentModule to SymbolTable())
+        moduleDescriptors.forEach { mapping[it] = SymbolTable() }
+        return CompositeSymbolTable(mapping)
     }
 
     private val lookupTracker: LookupTracker = LookupTracker.DO_NOTHING

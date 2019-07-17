@@ -371,8 +371,9 @@ abstract class KotlinIrLinker(
         val topLevelDesecriptor = findDeserializedDeclarationForDescriptor(propertyDescriptor)
         if (topLevelDesecriptor == null) return null
 
-        return symbolTable.propertyTable[propertyDescriptor]
-            ?: error("findDeserializedDeclaration: property descriptor $propertyDescriptor} is not present in propertyTable after deserialization}")
+        return symbolTable.referenceProperty(propertyDescriptor) {
+            error("findDeserializedDeclaration: property descriptor $propertyDescriptor} is not present in propertyTable after deserialization}")
+        }
     }
 
     // TODO: This is Native specific. Eliminate me.
