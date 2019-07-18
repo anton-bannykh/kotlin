@@ -20,6 +20,7 @@ import org.jetbrains.kotlin.backend.common.BackendContext
 import org.jetbrains.kotlin.backend.common.BodyLoweringPass
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.IrStatement
+import org.jetbrains.kotlin.ir.backend.js.JsIrBackendContext
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
 import org.jetbrains.kotlin.ir.declarations.IrFunction
@@ -33,7 +34,7 @@ import java.util.*
 
 object CoroutineIntrinsicLambdaOrigin : IrStatementOriginImpl("Coroutine intrinsic lambda")
 
-class SharedVariablesLowering(val context: BackendContext) : BodyLoweringPass {
+class SharedVariablesLowering(val context: JsIrBackendContext) : BodyLoweringPass {
     override fun lower(irBody: IrBody, container: IrDeclaration) {
         if (container is IrFunction) {
             SharedVariablesTransformer(container).lowerSharedVariables()
@@ -42,6 +43,8 @@ class SharedVariablesLowering(val context: BackendContext) : BodyLoweringPass {
 
     private inner class SharedVariablesTransformer(val irFunction: IrFunction) {
         private val sharedVariables = HashSet<IrVariable>()
+
+        private val contextData = context.contextData(irFunction)
 
         fun lowerSharedVariables() {
             collectSharedVariables()
@@ -100,11 +103,11 @@ class SharedVariablesLowering(val context: BackendContext) : BodyLoweringPass {
 
                     if (declaration !in sharedVariables) return declaration
 
-                    val newDeclaration = context.sharedVariablesManager.declareSharedVariable(declaration)
+                    val newDeclaration = contextData.sharedVariablesManager.declareSharedVariable(declaration)
                     newDeclaration.parent = irFunction
                     transformedSymbols[declaration.symbol] = newDeclaration.symbol
 
-                    return context.sharedVariablesManager.defineSharedValue(declaration, newDeclaration)
+                    return contextData.sharedVariablesManager.defineSharedValue(declaration, newDeclaration)
                 }
             })
 
@@ -114,7 +117,7 @@ class SharedVariablesLowering(val context: BackendContext) : BodyLoweringPass {
 
                     val newDeclaration = getTransformedSymbol(expression.symbol) ?: return expression
 
-                    return context.sharedVariablesManager.getSharedValue(newDeclaration, expression)
+                    return contextData.sharedVariablesManager.getSharedValue(newDeclaration, expression)
                 }
 
                 override fun visitSetVariable(expression: IrSetVariable): IrExpression {
@@ -122,7 +125,7 @@ class SharedVariablesLowering(val context: BackendContext) : BodyLoweringPass {
 
                     val newDeclaration = getTransformedSymbol(expression.symbol) ?: return expression
 
-                    return context.sharedVariablesManager.setSharedValue(newDeclaration, expression)
+                    return contextData.sharedVariablesManager.setSharedValue(newDeclaration, expression)
                 }
 
                 private fun getTransformedSymbol(oldSymbol: IrValueSymbol): IrVariableSymbol? =

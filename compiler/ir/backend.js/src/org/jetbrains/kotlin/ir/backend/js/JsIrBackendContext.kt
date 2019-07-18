@@ -78,7 +78,8 @@ class JsIrBackendContext(
 
     val testContainers get() = listOf(data.testContainer)
 
-    override val sharedVariablesManager get() = data.sharedVariablesManager
+    override val sharedVariablesManager
+        get() = TODO()
 
     override val declarationFactory get() = data.declarationFactory
 
