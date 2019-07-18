@@ -31,7 +31,7 @@ abstract class Ir<out T : CommonBackendContext>(val context: T, val irModule: Ir
 
     abstract val symbols: Symbols<T>
 
-    val defaultParameterDeclarationsCache = mutableMapOf<IrFunction, IrFunction>()
+    open val defaultParameterDeclarationsCache = mutableMapOf<IrFunction, IrFunction>()
 
     open fun shouldGenerateHandlerParameterForDefaultBodyFun() = false
 }

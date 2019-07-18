@@ -17,6 +17,7 @@ import org.jetbrains.kotlin.backend.common.ir.isSuspend
 import org.jetbrains.kotlin.backend.common.lower.createIrBuilder
 import org.jetbrains.kotlin.backend.common.lower.irBlockBody
 import org.jetbrains.kotlin.descriptors.Modality
+import org.jetbrains.kotlin.ir.backend.js.ContextData
 import org.jetbrains.kotlin.ir.backend.js.JsIrBackendContext
 import org.jetbrains.kotlin.ir.backend.js.JsLoweredDeclarationOrigin
 import org.jetbrains.kotlin.ir.backend.js.ir.JsIrBuilder
@@ -129,7 +130,7 @@ class BridgesConstruction(val context: JsIrBackendContext) : ClassLoweringPass {
             overriddenSymbols.addAll(delegateTo.overriddenSymbols)
         }
 
-        context.bridgeToBridgeInfoMapping[irFunction] = JsIrBackendContext.BridgeInfo(function, bridge, delegateTo)
+        context.bridgeToBridgeInfoMapping[irFunction] = ContextData.BridgeInfo(function, bridge, delegateTo)
 
         return irFunction
     }

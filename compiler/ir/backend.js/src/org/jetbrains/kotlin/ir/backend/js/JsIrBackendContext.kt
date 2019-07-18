@@ -59,74 +59,25 @@ class JsIrBackendContext(
 
     override var inVerbosePhase: Boolean = false
 
-    private class DescriptorlessExternalPackageFragmentSymbol : IrExternalPackageFragmentSymbol {
-        override val descriptor: PackageFragmentDescriptor
-            get() = error("Operation is unsupported")
+    val data = ContextData(irModuleFragment)
 
-        private var _owner: IrExternalPackageFragment? = null
-        override val owner get() = _owner!!
+    val externalPackageFragment: IrPackageFragment get() = data.externalPackageFragment
 
-        override val isBound get() = _owner != null
+    val bodilessBuiltInsPackageFragment: IrPackageFragment get() = data.bodilessBuiltInsPackageFragment
 
-        override fun bind(owner: IrExternalPackageFragment) {
-            _owner = owner
-        }
-    }
+    val externalNestedClasses get() = data.externalNestedClasses
+    val packageLevelJsModules get() = data.packageLevelJsModules
+    val declarationLevelJsModules get() = data.declarationLevelJsModules
 
-    val externalPackageFragment: IrPackageFragment = IrExternalPackageFragmentImpl(
-        DescriptorlessExternalPackageFragmentSymbol(),
-        FqName.ROOT
-    )
+    val implicitDeclarationFile get() = data.implicitDeclarationFile
 
-    val bodilessBuiltInsPackageFragment: IrPackageFragment = IrExternalPackageFragmentImpl(
-        DescriptorlessExternalPackageFragmentSymbol(),
-        FqName("kotlin")
-    )
+    val hasTests get() = data.hasTests
 
-    val externalNestedClasses = mutableListOf<IrClass>()
-    val packageLevelJsModules = mutableMapOf<IrFile, IrFile>()
-    val declarationLevelJsModules = mutableListOf<IrDeclarationWithName>()
+    val testContainer: IrSimpleFunction get() = data.testContainer
 
-    val internalPackageFragmentDescriptor = EmptyPackageFragmentDescriptor(builtIns.builtInsModule, FqName("kotlin.js.internal"))
-    val implicitDeclarationFile by lazy {
-        IrFileImpl(
-            object : SourceManager.FileEntry {
-                override val name = "<implicitDeclarations>"
-                override val maxOffset = UNDEFINED_OFFSET
+    override val sharedVariablesManager get() = data.sharedVariablesManager
 
-                override fun getSourceRangeInfo(beginOffset: Int, endOffset: Int) =
-                    SourceRangeInfo(
-                        "",
-                        UNDEFINED_OFFSET,
-                        UNDEFINED_OFFSET,
-                        UNDEFINED_OFFSET,
-                        UNDEFINED_OFFSET,
-                        UNDEFINED_OFFSET,
-                        UNDEFINED_OFFSET
-                    )
-
-                override fun getLineNumber(offset: Int) = UNDEFINED_OFFSET
-                override fun getColumnNumber(offset: Int) = UNDEFINED_OFFSET
-            },
-            internalPackageFragmentDescriptor
-        ).also {
-            irModuleFragment.files += it
-        }
-    }
-
-    private var testContainerField: IrSimpleFunction? = null
-
-    val hasTests get() = testContainerField != null
-
-    val testContainer: IrSimpleFunction
-        get() = testContainerField ?: JsIrBuilder.buildFunction("test fun", irBuiltIns.unitType, implicitDeclarationFile).apply {
-            body = JsIrBuilder.buildBlockBody(emptyList())
-            testContainerField = this
-            implicitDeclarationFile.declarations += this
-        }
-
-    override val sharedVariablesManager = JsSharedVariablesManager(irBuiltIns, implicitDeclarationFile)
-    override val declarationFactory = JsDeclarationFactory()
+    override val declarationFactory get() = data.declarationFactory
 
     companion object {
         val KOTLIN_PACKAGE_FQN = FqName.fromSegments(listOf("kotlin"))
@@ -160,21 +111,15 @@ class JsIrBackendContext(
     private val coroutinePackage = module.getPackage(COROUTINE_PACKAGE_FQNAME)
     private val coroutineIntrinsicsPackage = module.getPackage(COROUTINE_INTRINSICS_PACKAGE_FQNAME)
 
-    val enumEntryToGetInstanceFunction = mutableMapOf<IrEnumEntrySymbol, IrSimpleFunction>()
-    val enumEntryExternalToInstanceField = mutableMapOf<IrEnumEntrySymbol, IrField>()
-    val callableReferencesCache = mutableMapOf<CallableReferenceKey, IrSimpleFunction>()
-    val secondaryConstructorToFactoryCache = mutableMapOf<IrConstructor, ConstructorPair>()
-    val inlineClassTransformedFunctionsCache = mutableMapOf<IrFunctionSymbol, IrSimpleFunctionSymbol>()
-    val pendingThrowableSuperUsages = mutableMapOf<IrClass, DirectThrowableSuccessors>()
+    val enumEntryToGetInstanceFunction get() = data.enumEntryToGetInstanceFunction
+    val enumEntryExternalToInstanceField get() = data.enumEntryExternalToInstanceField
+    val callableReferencesCache get() = data.callableReferencesCache
+    val secondaryConstructorToFactoryCache get() = data.secondaryConstructorToFactoryCache
+    val inlineClassTransformedFunctionsCache get() = data.inlineClassTransformedFunctionsCache
+    val pendingThrowableSuperUsages get() = data.pendingThrowableSuperUsages
 
 
-    data class BridgeInfo(
-        val function: IrSimpleFunction,
-        val bridge: IrSimpleFunction,
-        val delegateTo: IrSimpleFunction
-    )
-
-    val bridgeToBridgeInfoMapping = mutableMapOf<IrSimpleFunction, BridgeInfo>()
+    val bridgeToBridgeInfoMapping get() = data.bridgeToBridgeInfoMapping
 
     val intrinsics = JsIntrinsics(irBuiltIns, this)
 
@@ -233,6 +178,9 @@ class JsIrBackendContext(
 
             override val getContinuation by lazy { symbolTable.referenceSimpleFunction(getJsInternalFunction("getContinuation")) }
         }
+
+        override val defaultParameterDeclarationsCache: MutableMap<IrFunction, IrFunction>
+            get() = data.defaultParameterDeclarationsCache
 
         override fun shouldGenerateHandlerParameterForDefaultBodyFun() = true
     }
