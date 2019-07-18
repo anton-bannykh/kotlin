@@ -62,7 +62,6 @@ class ContextData(
         FqName("kotlin")
     )
 
-    val externalNestedClasses = mutableListOf<IrClass>()
     val packageLevelJsModules = mutableMapOf<IrFile, IrFile>()
     val declarationLevelJsModules = mutableListOf<IrDeclarationWithName>()
 

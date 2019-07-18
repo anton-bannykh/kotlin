@@ -6,7 +6,6 @@
 package org.jetbrains.kotlin.ir.backend.js.lower
 
 import org.jetbrains.kotlin.backend.common.DeclarationTransformer
-import org.jetbrains.kotlin.backend.common.FileLoweringPass
 import org.jetbrains.kotlin.backend.common.ir.addChild
 import org.jetbrains.kotlin.descriptors.impl.EmptyPackageFragmentDescriptor
 import org.jetbrains.kotlin.ir.backend.js.JsIrBackendContext
@@ -47,23 +46,8 @@ class MoveBodilessDeclarationsToSeparatePlaceLowering(private val context: JsIrB
     fun isBuiltInClass(declaration: IrDeclaration): Boolean =
         declaration is IrClass && declaration.fqNameWhenAvailable in BODILESS_BUILTIN_CLASSES
 
-    fun collectExternalClasses(container: IrDeclarationContainer, includeCurrentLevel: Boolean): List<IrClass> {
-        val externalClasses =
-            container.declarations.filterIsInstance<IrClass>().filter { it.isEffectivelyExternal() }
-
-        val nestedExternalClasses =
-            externalClasses.flatMap { collectExternalClasses(it, true) }
-
-        return if (includeCurrentLevel)
-            externalClasses + nestedExternalClasses
-        else
-            nestedExternalClasses
-    }
-
     override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
         val irFile = declaration.parent as? IrFile ?: error("Only top-level declarations within an IrFile are allowed for this lowering")
-
-        context.externalNestedClasses += collectExternalClasses(irFile, includeCurrentLevel = false)
 
         if (irFile.getJsModule() != null || irFile.getJsQualifier() != null) {
             val newFile = context.packageLevelJsModules.getOrPut(irFile) {
@@ -89,7 +73,7 @@ class MoveBodilessDeclarationsToSeparatePlaceLowering(private val context: JsIrB
                 if (d.getJsModule() != null)
                     context.declarationLevelJsModules.add(d)
 
-                context.externalPackageFragment.addChild(d)
+                context.addExternalPackageFragmentDeclaration(d)
                 return emptyList()
             }
 

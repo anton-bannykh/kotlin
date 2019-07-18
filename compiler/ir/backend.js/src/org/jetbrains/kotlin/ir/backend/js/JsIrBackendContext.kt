@@ -9,24 +9,14 @@ import org.jetbrains.kotlin.backend.common.CommonBackendContext
 import org.jetbrains.kotlin.backend.common.atMostOne
 import org.jetbrains.kotlin.backend.common.ir.Ir
 import org.jetbrains.kotlin.backend.common.ir.Symbols
-import org.jetbrains.kotlin.backend.js.JsDeclarationFactory
+import org.jetbrains.kotlin.backend.common.ir.addChild
 import org.jetbrains.kotlin.builtins.PrimitiveType
 import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.descriptors.*
-import org.jetbrains.kotlin.descriptors.impl.EmptyPackageFragmentDescriptor
 import org.jetbrains.kotlin.incremental.components.NoLookupLocation
 import org.jetbrains.kotlin.ir.IrElement
-import org.jetbrains.kotlin.ir.SourceManager
-import org.jetbrains.kotlin.ir.SourceRangeInfo
-import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
-import org.jetbrains.kotlin.ir.backend.js.ir.JsIrBuilder
-import org.jetbrains.kotlin.ir.backend.js.lower.CallableReferenceKey
-import org.jetbrains.kotlin.ir.backend.js.lower.ConstructorPair
-import org.jetbrains.kotlin.ir.backend.js.lower.DirectThrowableSuccessors
 import org.jetbrains.kotlin.ir.backend.js.utils.OperatorNames
 import org.jetbrains.kotlin.ir.declarations.*
-import org.jetbrains.kotlin.ir.declarations.impl.IrExternalPackageFragmentImpl
-import org.jetbrains.kotlin.ir.declarations.impl.IrFileImpl
 import org.jetbrains.kotlin.ir.descriptors.IrBuiltIns
 import org.jetbrains.kotlin.ir.symbols.*
 import org.jetbrains.kotlin.ir.types.IrDynamicType
@@ -61,11 +51,13 @@ class JsIrBackendContext(
 
     val data = ContextData(irModuleFragment)
 
-    val externalPackageFragment: IrPackageFragment get() = data.externalPackageFragment
+    fun addExternalPackageFragmentDeclaration(d: IrDeclaration) = data.externalPackageFragment.addChild(d)
+
+    val externalPackageFragments
+        get() = listOf(data.externalPackageFragment)
 
     val bodilessBuiltInsPackageFragment: IrPackageFragment get() = data.bodilessBuiltInsPackageFragment
 
-    val externalNestedClasses get() = data.externalNestedClasses
     val packageLevelJsModules get() = data.packageLevelJsModules
     val declarationLevelJsModules get() = data.declarationLevelJsModules
 
