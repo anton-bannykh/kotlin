@@ -23,10 +23,7 @@ import org.jetbrains.kotlin.ir.types.IrDynamicType
 import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.classifierOrFail
 import org.jetbrains.kotlin.ir.types.impl.IrDynamicTypeImpl
-import org.jetbrains.kotlin.ir.util.SymbolTable
-import org.jetbrains.kotlin.ir.util.getPropertyGetter
-import org.jetbrains.kotlin.ir.util.getPropertySetter
-import org.jetbrains.kotlin.ir.util.kotlinPackageFqn
+import org.jetbrains.kotlin.ir.util.*
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.resolve.scopes.MemberScope
@@ -36,7 +33,7 @@ class JsIrBackendContext(
     val module: ModuleDescriptor,
     override val irBuiltIns: IrBuiltIns,
     val symbolTable: SymbolTable,
-    irModuleFragment: IrModuleFragment,
+    val irModuleFragment: IrModuleFragment,
     override val configuration: CompilerConfiguration,
     val stageController: MutableController
 ) : CommonBackendContext {
@@ -49,25 +46,29 @@ class JsIrBackendContext(
 
     override var inVerbosePhase: Boolean = false
 
-    val data = ContextData(irModuleFragment)
+    private val data = ContextData(irModuleFragment)
 
-    fun addExternalPackageFragmentDeclaration(d: IrDeclaration) = data.externalPackageFragment.addChild(d)
+    fun contextData(module: IrModuleFragment): ContextData {
+        return data
+    }
+
+    fun contextData(declaration: IrDeclaration): ContextData {
+        declaration.module
+        return data
+    }
+
+    private val IrDeclaration.contextData
+        get() = this.module.let { data }
 
     val externalPackageFragments
         get() = listOf(data.externalPackageFragment)
 
     val externalPackageFragmentsForIntrinsics get() = listOf(data.externalPackageFragmentForIntrinsics)
 
-    fun addBodilessBuiltInsPackageFragment(d: IrDeclaration) = data.bodilessBuiltInsPackageFragment.addChild(d)
-
     val bodilessBuiltInsPackageFragments: List<IrPackageFragment>
         get() = listOf(data.bodilessBuiltInsPackageFragment)
 
-    fun getOrCreatePackageLevelJsModule(file: IrFile, fn: () -> IrFile) = data.packageLevelJsModules.getOrPut(file, fn)
-
     val packageLevelJsModules get() = ArrayList(data.packageLevelJsModules.values)
-
-    fun addDeclarationLevelJsModule(d: IrDeclarationWithName) = data.declarationLevelJsModules.add(d)
 
     val declarationLevelJsModules get() = data.declarationLevelJsModules as List<IrDeclarationWithName>
 

@@ -26,7 +26,7 @@ import java.util.*
 
 class JsIntrinsics(private val irBuiltIns: IrBuiltIns, val context: JsIrBackendContext) {
 
-    val externalPackageFragment = context.data.externalPackageFragmentForIntrinsics
+    val externalPackageFragment = context.contextData(context.irModuleFragment).externalPackageFragmentForIntrinsics
 
     // TODO: Should we drop operator intrinsics in favor of IrDynamicOperatorExpression?
 

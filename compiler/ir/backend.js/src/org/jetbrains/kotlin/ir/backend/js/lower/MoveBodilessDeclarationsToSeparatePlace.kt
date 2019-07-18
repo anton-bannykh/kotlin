@@ -49,8 +49,10 @@ class MoveBodilessDeclarationsToSeparatePlaceLowering(private val context: JsIrB
     override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
         val irFile = declaration.parent as? IrFile ?: error("Only top-level declarations within an IrFile are allowed for this lowering")
 
+        val contextData = context.contextData(declaration)
+
         if (irFile.getJsModule() != null || irFile.getJsQualifier() != null) {
-            val newFile = context.getOrCreatePackageLevelJsModule(irFile) {
+            val newFile = contextData.packageLevelJsModules.getOrPut(irFile) {
                 val newFragmentDescriptor = EmptyPackageFragmentDescriptor(context.module, irFile.fqName)
                 val newFragmentSymbol = IrFileSymbolImpl(newFragmentDescriptor)
                 val newFragment = IrFileImpl(irFile.fileEntry, newFragmentSymbol)
@@ -67,13 +69,13 @@ class MoveBodilessDeclarationsToSeparatePlaceLowering(private val context: JsIrB
             val d = declaration as? IrDeclarationWithName ?: return null
 
             if (isBuiltInClass(d)) {
-                context.addBodilessBuiltInsPackageFragment(d)
+                contextData.bodilessBuiltInsPackageFragment.addChild(d)
                 return emptyList()
             } else if (d.isEffectivelyExternal()) {
                 if (d.getJsModule() != null)
-                    context.addDeclarationLevelJsModule(d)
+                    contextData.declarationLevelJsModules.add(d)
 
-                context.addExternalPackageFragmentDeclaration(d)
+                contextData.externalPackageFragment.addChild(d)
                 return emptyList()
             }
 
