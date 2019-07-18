@@ -56,10 +56,20 @@ class JsIrBackendContext(
     val externalPackageFragments
         get() = listOf(data.externalPackageFragment)
 
-    val bodilessBuiltInsPackageFragment: IrPackageFragment get() = data.bodilessBuiltInsPackageFragment
+    val externalPackageFragmentsForIntrinsics get() = listOf(data.externalPackageFragmentForIntrinsics)
 
-    val packageLevelJsModules get() = data.packageLevelJsModules
-    val declarationLevelJsModules get() = data.declarationLevelJsModules
+    fun addBodilessBuiltInsPackageFragment(d: IrDeclaration) = data.bodilessBuiltInsPackageFragment.addChild(d)
+
+    val bodilessBuiltInsPackageFragments: List<IrPackageFragment>
+        get() = listOf(data.bodilessBuiltInsPackageFragment)
+
+    fun getOrCreatePackageLevelJsModule(file: IrFile, fn: () -> IrFile) = data.packageLevelJsModules.getOrPut(file, fn)
+
+    val packageLevelJsModules get() = ArrayList(data.packageLevelJsModules.values)
+
+    fun addDeclarationLevelJsModule(d: IrDeclarationWithName) = data.declarationLevelJsModules.add(d)
+
+    val declarationLevelJsModules get() = data.declarationLevelJsModules as List<IrDeclarationWithName>
 
     val implicitDeclarationFile get() = data.implicitDeclarationFile
 

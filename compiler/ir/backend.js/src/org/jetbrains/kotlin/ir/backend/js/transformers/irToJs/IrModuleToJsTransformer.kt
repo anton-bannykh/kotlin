@@ -118,10 +118,7 @@ class IrModuleToJsTransformer(
 
     private fun generateModule(module: IrModuleFragment): JsProgram {
         val additionalPackages = with(backendContext) {
-            externalPackageFragments + listOf(
-                bodilessBuiltInsPackageFragment,
-                intrinsics.externalPackageFragment
-            ) + packageLevelJsModules.values
+            externalPackageFragments + bodilessBuiltInsPackageFragments + externalPackageFragmentsForIntrinsics + packageLevelJsModules
         }
 
         val namer = NameTables(module.files + additionalPackages)
@@ -194,7 +191,7 @@ class IrModuleToJsTransformer(
         val packageLevelJsModules = mutableListOf<JsImportedModule>()
         val importStatements = mutableListOf<JsStatement>()
 
-        for (file in backendContext.packageLevelJsModules.values) {
+        for (file in backendContext.packageLevelJsModules) {
             val jsModule = file.getJsModule()
             val jsQualifier = file.getJsQualifier()
 
