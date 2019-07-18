@@ -52,7 +52,9 @@ class IrModuleToJsTransformer(
         statements += context.staticContext.initializerBlock
 
         if (backendContext.hasTests) {
-            statements += JsInvocation(context.getNameForStaticFunction(backendContext.testContainer).makeRef()).makeStmt()
+            backendContext.testContainers.forEach {
+                statements += JsInvocation(context.getNameForStaticFunction(it).makeRef()).makeStmt()
+            }
         }
 
         return statements

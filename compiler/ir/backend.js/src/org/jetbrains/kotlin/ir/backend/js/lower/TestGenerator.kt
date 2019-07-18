@@ -28,7 +28,7 @@ class TestGenerator(val context: JsIrBackendContext) : FileLoweringPass {
     override fun lower(irFile: IrFile) {
         irFile.declarations.forEach {
             if (it is IrClass) {
-                generateTestCalls(it) { suiteForPackage(irFile.fqName).body }
+                generateTestCalls(it) { suiteForPackage(irFile.fqName, it).body }
             }
 
             // TODO top-level functions
@@ -37,8 +37,8 @@ class TestGenerator(val context: JsIrBackendContext) : FileLoweringPass {
 
     private val packageSuites = mutableMapOf<FqName, FunctionWithBody>()
 
-    private fun suiteForPackage(fqName: FqName) = packageSuites.getOrPut(fqName) {
-        context.suiteFun!!.createInvocation(fqName.asString(), context.testContainer.body as IrBlockBody)
+    private fun suiteForPackage(fqName: FqName, klass: IrClass) = packageSuites.getOrPut(fqName) {
+        context.suiteFun!!.createInvocation(fqName.asString(), context.contextData(klass).testContainer.body as IrBlockBody)
     }
 
     private data class FunctionWithBody(val function: IrSimpleFunction, val body: IrBlockBody)

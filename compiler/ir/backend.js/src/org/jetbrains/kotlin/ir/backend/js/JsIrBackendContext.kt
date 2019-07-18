@@ -76,7 +76,7 @@ class JsIrBackendContext(
 
     val hasTests get() = data.hasTests
 
-    val testContainer: IrSimpleFunction get() = data.testContainer
+    val testContainers get() = listOf(data.testContainer)
 
     override val sharedVariablesManager get() = data.sharedVariablesManager
 
