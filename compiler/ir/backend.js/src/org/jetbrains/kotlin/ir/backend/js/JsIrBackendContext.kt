@@ -66,7 +66,6 @@ class JsIrBackendContext(
 
     val bodilessBuiltInsPackageFragment: IrPackageFragment get() = data.bodilessBuiltInsPackageFragment
 
-    val externalNestedClasses get() = data.externalNestedClasses
     val packageLevelJsModules get() = data.packageLevelJsModules
     val declarationLevelJsModules get() = data.declarationLevelJsModules
 

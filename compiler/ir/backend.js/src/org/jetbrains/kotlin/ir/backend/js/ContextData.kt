@@ -62,11 +62,10 @@ class ContextData(
         FqName("kotlin")
     )
 
-    val externalNestedClasses = mutableListOf<IrClass>()
     val packageLevelJsModules = mutableMapOf<IrFile, IrFile>()
     val declarationLevelJsModules = mutableListOf<IrDeclarationWithName>()
 
-    val internalPackageFragmentDescriptor = EmptyPackageFragmentDescriptor(irModuleFragment.descriptor, FqName(""))
+    private val internalPackageFragmentDescriptor = EmptyPackageFragmentDescriptor(irModuleFragment.descriptor, FqName(""))
     val implicitDeclarationFile by lazy {
         IrFileImpl(
             object : SourceManager.FileEntry {
