@@ -38,6 +38,8 @@ class ContextData(
 
     // From JsIrBackendContext:
 
+    val module = irModuleFragment.descriptor
+
     private class DescriptorlessExternalPackageFragmentSymbol : IrExternalPackageFragmentSymbol {
         override val descriptor: PackageFragmentDescriptor
             get() = error("Operation is unsupported")
@@ -66,7 +68,7 @@ class ContextData(
     val packageLevelJsModules = mutableMapOf<IrFile, IrFile>()
     val declarationLevelJsModules = mutableListOf<IrDeclarationWithName>()
 
-    val internalPackageFragmentDescriptor = EmptyPackageFragmentDescriptor(irModuleFragment.irBuiltins.builtIns.builtInsModule, FqName("kotlin.js.internal"))
+    val internalPackageFragmentDescriptor = EmptyPackageFragmentDescriptor(irModuleFragment.descriptor, FqName(""))
     val implicitDeclarationFile by lazy {
         IrFileImpl(
             object : SourceManager.FileEntry {

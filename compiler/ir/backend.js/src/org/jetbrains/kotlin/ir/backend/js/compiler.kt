@@ -9,11 +9,7 @@ import com.intellij.openapi.project.Project
 import org.jetbrains.kotlin.backend.common.phaser.PhaseConfig
 import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.ir.backend.js.transformers.irToJs.IrModuleToJsTransformer
-import org.jetbrains.kotlin.ir.declarations.NoopController
-import org.jetbrains.kotlin.ir.declarations.impl.IrFileImpl
-import org.jetbrains.kotlin.ir.util.DeclarationStubGenerator
 import org.jetbrains.kotlin.ir.util.ExternalDependenciesGenerator
-import org.jetbrains.kotlin.ir.util.patchDeclarationParents
 import org.jetbrains.kotlin.psi.KtFile
 
 fun compile(
@@ -42,35 +38,19 @@ fun compile(
 
     val context = JsIrBackendContext(moduleDescriptor, irBuiltIns, symbolTable, moduleFragment, configuration, stageController)
 
-    // Load declarations referenced during `context` initialization
-//    dependencyModules.forEach {
-//        ExternalDependenciesGenerator(
-//            it.descriptor,
-//            symbolTable,
-//            irBuiltIns,
-//            deserializer = deserializer
-//        ).generateUnboundSymbolsAsDependencies()
-//    }
-//
-    // TODO: check the order
-    val irFiles = dependencyModules.flatMap { it.files } + moduleFragment.files
-
-    moduleFragment.files.clear()
-    moduleFragment.files += irFiles
-
-    moduleFragment.patchDeclarationParents()
-
     stageController.bodiesEnabled = false
 
-    stageController.invokeTopLevel(phaseConfig, moduleFragment)
+    stageController.invokeTopLevel(phaseConfig, moduleFragment, dependencyModules)
 
     stageController.bodiesEnabled = true
 
-    generateTests(context, moduleFragment, phaseConfig)
+    // TODO traverse all IR
+    generateTests(context, stageController.data, dependencyModules + moduleFragment, phaseConfig)
 
     stageController.freeze()
 
-    val jsProgram = moduleFragment.accept(IrModuleToJsTransformer(context), null)
+    // TODO traverse all IR
+    val jsProgram = IrModuleToJsTransformer(context, stageController.data).generateModule(dependencyModules + moduleFragment)
 
     stageController.deinit()
 

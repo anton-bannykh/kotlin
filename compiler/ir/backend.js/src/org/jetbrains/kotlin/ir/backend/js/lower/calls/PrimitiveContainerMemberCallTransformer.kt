@@ -15,22 +15,22 @@ import org.jetbrains.kotlin.ir.util.getSimpleFunction
 import org.jetbrains.kotlin.ir.util.getPropertyGetter
 
 class PrimitiveContainerMemberCallTransformer(private val context: JsIrBackendContext) : CallsTransformer {
-    private val intrinsics = context.intrinsics
+    private val intrinsics = context.libraryIntrinsics
 
     private val symbolToTransformer: SymbolToTransformer = mutableMapOf()
 
     init {
         symbolToTransformer.run {
             // Arrays
-            add(context.intrinsics.array.sizeProperty, context.intrinsics.jsArrayLength, true)
-            add(context.intrinsics.array.getFunction, context.intrinsics.jsArrayGet, true)
-            add(context.intrinsics.array.setFunction, context.intrinsics.jsArraySet, true)
-            add(context.intrinsics.array.iterator, context.intrinsics.jsArrayIteratorFunction, true)
-            for ((key, elementType) in context.intrinsics.primitiveArrays) {
+            add(context.libraryIntrinsics.array.sizeProperty, context.intrinsics.jsArrayLength, true)
+            add(context.libraryIntrinsics.array.getFunction, context.intrinsics.jsArrayGet, true)
+            add(context.libraryIntrinsics.array.setFunction, context.intrinsics.jsArraySet, true)
+            add(context.libraryIntrinsics.array.iterator, context.libraryIntrinsics.jsArrayIteratorFunction, true)
+            for ((key, elementType) in context.libraryIntrinsics.primitiveArrays) {
                 add(key.sizeProperty, context.intrinsics.jsArrayLength, true)
                 add(key.getFunction, context.intrinsics.jsArrayGet, true)
                 add(key.setFunction, context.intrinsics.jsArraySet, true)
-                add(key.iterator, context.intrinsics.jsPrimitiveArrayIteratorFunctions[elementType]!!, true)
+                add(key.iterator, context.libraryIntrinsics.jsPrimitiveArrayIteratorFunctions[elementType]!!, true)
 
                 // TODO irCall?
                 add(key.sizeConstructor) { call ->
@@ -38,7 +38,7 @@ class PrimitiveContainerMemberCallTransformer(private val context: JsIrBackendCo
                         call.startOffset,
                         call.endOffset,
                         call.type,
-                        context.intrinsics.primitiveToSizeConstructor[elementType]!!
+                        context.libraryIntrinsics.primitiveToSizeConstructor[elementType]!!
                     ).apply {
                         putValueArgument(0, call.getValueArgument(0))
                     }
@@ -51,8 +51,8 @@ class PrimitiveContainerMemberCallTransformer(private val context: JsIrBackendCo
             add(intrinsics.charSequenceLengthPropertyGetterSymbol, intrinsics.jsCharSequenceLength, true)
             add(intrinsics.charSequenceGetFunctionSymbol, intrinsics.jsCharSequenceGet, true)
             add(intrinsics.charSequenceSubSequenceFunctionSymbol, intrinsics.jsCharSequenceSubSequence, true)
-            add(context.irBuiltIns.dataClassArrayMemberHashCodeSymbol, context.intrinsics.jsHashCode)
-            add(context.irBuiltIns.dataClassArrayMemberToStringSymbol, context.intrinsics.jsToString)
+            add(context.irBuiltIns.dataClassArrayMemberHashCodeSymbol, context.libraryIntrinsics.jsHashCode)
+            add(context.irBuiltIns.dataClassArrayMemberToStringSymbol, context.libraryIntrinsics.jsToString)
         }
     }
 

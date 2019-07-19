@@ -40,12 +40,12 @@ private class VarargTransformer(
     private fun List<IrExpression>.toArrayLiteral(type: IrType, varargElementType: IrType): IrExpression {
 
         // TODO: Use symbols when builtins symbol table is fixes
-        val primitiveType = context.intrinsics.primitiveArrays
+        val primitiveType = context.libraryIntrinsics.primitiveArrays
             .mapKeys { it.key.descriptor }[type.classifierOrNull?.descriptor]
 
         val intrinsic =
             if (primitiveType != null)
-                context.intrinsics.primitiveToLiteralConstructor.getValue(primitiveType)
+                context.libraryIntrinsics.primitiveToLiteralConstructor.getValue(primitiveType)
             else
                 context.intrinsics.arrayLiteral
 
@@ -143,14 +143,14 @@ private class VarargTransformer(
 
         val arrayLiteral =
             segments.toArrayLiteral(
-                IrSimpleTypeImpl(context.intrinsics.array, false, emptyList(), emptyList()),
+                IrSimpleTypeImpl(context.libraryIntrinsics.array, false, emptyList(), emptyList()),
                 context.irBuiltIns.anyType
             )
 
-        val concatFun = if (expression.type.classifierOrNull in context.intrinsics.primitiveArrays.keys) {
-            context.intrinsics.primitiveArrayConcat
+        val concatFun = if (expression.type.classifierOrNull in context.libraryIntrinsics.primitiveArrays.keys) {
+            context.libraryIntrinsics.primitiveArrayConcat
         } else {
-            context.intrinsics.arrayConcat
+            context.libraryIntrinsics.arrayConcat
         }
 
         val res = IrCallImpl(

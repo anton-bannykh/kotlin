@@ -27,6 +27,7 @@ class JsIntrinsicTransformers(backendContext: JsIrBackendContext) {
 
     init {
         val intrinsics = backendContext.intrinsics
+        val libraryIntrinsics = backendContext.libraryIntrinsics
 
         transformers = mutableMapOf()
 
@@ -106,7 +107,7 @@ class JsIntrinsicTransformers(backendContext: JsIrBackendContext) {
                 jsAssignment(JsNameRef(fieldNameLiteral, receiver), fieldValue)
             }
 
-            add(intrinsics.jsClass) { call, context ->
+            add(libraryIntrinsics.jsClass) { call, context ->
                 val classifier: IrClassifierSymbol = call.getTypeArgument(0)!!.classifierOrFail
                 val owner = classifier.owner
 
@@ -119,7 +120,7 @@ class JsIntrinsicTransformers(backendContext: JsIrBackendContext) {
                 }
             }
 
-            addIfNotNull(intrinsics.jsCode) { call, context ->
+            addIfNotNull(libraryIntrinsics.jsCode) { call, context ->
                 val jsCode = translateJsCode(call, context.currentScope)
 
                 when (jsCode) {
@@ -150,11 +151,11 @@ class JsIntrinsicTransformers(backendContext: JsIrBackendContext) {
                 JsInvocation(JsNameRef(Namer.KPROPERTY_SET, reference), listOf(receiver, value))
             }
 
-            add(intrinsics.jsGetContinuation) { _, context: JsGenerationContext ->
+            add(libraryIntrinsics.jsGetContinuation) { _, context: JsGenerationContext ->
                 context.continuation
             }
 
-            add(intrinsics.jsCoroutineContext) { _, context: JsGenerationContext ->
+            add(libraryIntrinsics.jsCoroutineContext) { _, context: JsGenerationContext ->
                 val contextGetter = backendContext.coroutineGetContext
                 val getterName = context.getNameForStaticFunction(contextGetter.owner)
                 val continuation = context.continuation
@@ -198,14 +199,14 @@ class JsIntrinsicTransformers(backendContext: JsIrBackendContext) {
                 }
             }
 
-            add(intrinsics.jsBoxIntrinsic) { call: IrCall, context ->
+            add(libraryIntrinsics.jsBoxIntrinsic) { call: IrCall, context ->
                 val arg = translateCallArguments(call, context).single()
                 val inlineClass = call.getTypeArgument(0)!!.getInlinedClass()!!
                 val constructor = inlineClass.declarations.filterIsInstance<IrConstructor>().single { it.isPrimary }
                 JsNew(context.getNameForConstructor(constructor).makeRef(), listOf(arg))
             }
 
-            add(intrinsics.jsUnboxIntrinsic) { call: IrCall, context ->
+            add(libraryIntrinsics.jsUnboxIntrinsic) { call: IrCall, context ->
                 val arg = translateCallArguments(call, context).single()
                 val inlineClass = call.getTypeArgument(1)!!.getInlinedClass()!!
                 val field = getInlineClassBackingField(inlineClass)

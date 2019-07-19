@@ -7,6 +7,7 @@ package org.jetbrains.kotlin.ir.backend.js.transformers.irToJs
 
 import org.jetbrains.kotlin.config.CommonConfigurationKeys
 import org.jetbrains.kotlin.descriptors.Visibilities
+import org.jetbrains.kotlin.ir.backend.js.ContextData
 import org.jetbrains.kotlin.ir.backend.js.JsIrBackendContext
 import org.jetbrains.kotlin.ir.backend.js.utils.*
 import org.jetbrains.kotlin.ir.declarations.*
@@ -18,13 +19,14 @@ import org.jetbrains.kotlin.utils.DFS
 import org.jetbrains.kotlin.utils.addIfNotNull
 
 class IrModuleToJsTransformer(
-    private val backendContext: JsIrBackendContext
-) : BaseIrElementToJsNodeTransformer<JsNode, Nothing?> {
+    private val backendContext: JsIrBackendContext,
+    private val data: ContextData
+) {
 
     val moduleName = backendContext.configuration[CommonConfigurationKeys.MODULE_NAME]!!
     private val moduleKind = backendContext.configuration[JSConfigurationKeys.MODULE_KIND]!!
 
-    private fun generateModuleBody(module: IrModuleFragment, context: JsGenerationContext): List<JsStatement> {
+    private fun generateModuleBody(modules: List<IrModuleFragment>, context: JsGenerationContext): List<JsStatement> {
         val statements = mutableListOf<JsStatement>()
 
         // TODO: fix it up with new name generator
@@ -41,8 +43,10 @@ class IrModuleToJsTransformer(
 
         statements += preDeclarationBlock
 
-        module.files.forEach {
-            statements.add(it.accept(IrFileToJsTransformer(), context))
+        modules.forEach {
+            it.files.forEach {
+                statements.add(it.accept(IrFileToJsTransformer(), context))
+            }
         }
 
         // sort member forwarding code
@@ -51,25 +55,28 @@ class IrModuleToJsTransformer(
         statements += postDeclarationBlock
         statements += context.staticContext.initializerBlock
 
-        if (backendContext.hasTests) {
-            statements += JsInvocation(context.getNameForStaticFunction(backendContext.testContainer).makeRef()).makeStmt()
+        if (data.hasTests) {
+            statements += JsInvocation(context.getNameForStaticFunction(data.testContainer).makeRef()).makeStmt()
         }
+
 
         return statements
     }
 
     private fun generateExportStatements(
-        module: IrModuleFragment,
+        modules: List<IrModuleFragment>,
         context: JsGenerationContext,
         internalModuleName: JsName
     ): List<JsStatement> {
         val exports = mutableListOf<JsExpressionStatement>()
 
-        for (file in module.files) {
-            for (declaration in file.declarations) {
-                exports.addIfNotNull(
-                    generateExportStatement(declaration, context, internalModuleName)
-                )
+        for (module in modules) {
+            for (file in module.files) {
+                for (declaration in file.declarations) {
+                    exports.addIfNotNull(
+                        generateExportStatement(declaration, context, internalModuleName)
+                    )
+                }
             }
         }
 
@@ -83,7 +90,8 @@ class IrModuleToJsTransformer(
     ): JsExpressionStatement? {
         if (declaration !is IrDeclarationWithVisibility ||
             declaration !is IrDeclarationWithName ||
-            declaration.visibility != Visibilities.PUBLIC) {
+            declaration.visibility != Visibilities.PUBLIC
+        ) {
             return null
         }
 
@@ -114,18 +122,15 @@ class IrModuleToJsTransformer(
         return JsExpressionStatement(expression)
     }
 
+    fun generateModule(modules: List<IrModuleFragment>): JsProgram {
 
-
-    private fun generateModule(module: IrModuleFragment): JsProgram {
-        val additionalPackages = with(backendContext) {
+        val namer = NameTables(modules.flatMap { it.files } + data.let {
             listOf(
-                externalPackageFragment,
-                bodilessBuiltInsPackageFragment,
-                intrinsics.externalPackageFragment
-            ) + packageLevelJsModules.values
-        }
-
-        val namer = NameTables(module.files + additionalPackages)
+                it.externalPackageFragment,
+                it.bodilessBuiltInsPackageFragment,
+                it.externalPackageFragmentForIntrinsics
+            ) + it.packageLevelJsModules.values
+        })
 
         val program = JsProgram()
 
@@ -156,8 +161,8 @@ class IrModuleToJsTransformer(
                 declareFreshGlobal = { rootFunction.scope.declareFreshName(sanitizeName(it)) }
             )
 
-        val moduleBody = generateModuleBody(module, rootContext)
-        val exportStatements = generateExportStatements(module, rootContext, internalModuleName)
+        val moduleBody = generateModuleBody(modules, rootContext)
+        val exportStatements = generateExportStatements(modules, rootContext, internalModuleName)
 
         with(rootFunction) {
             parameters += JsParameter(internalModuleName)
@@ -186,7 +191,7 @@ class IrModuleToJsTransformer(
         declareFreshGlobal: (String) -> JsName
     ): Pair<MutableList<JsStatement>, List<JsImportedModule>> {
         val declarationLevelJsModules =
-            backendContext.declarationLevelJsModules.map { externalDeclaration ->
+            data.declarationLevelJsModules.map { externalDeclaration ->
                 val jsModule = externalDeclaration.getJsModule()!!
                 val name = getNameForExternalDeclaration(externalDeclaration)
                 JsImportedModule(jsModule, name, name.makeRef())
@@ -195,7 +200,7 @@ class IrModuleToJsTransformer(
         val packageLevelJsModules = mutableListOf<JsImportedModule>()
         val importStatements = mutableListOf<JsStatement>()
 
-        for (file in backendContext.packageLevelJsModules.values) {
+        for (file in data.packageLevelJsModules.values) {
             val jsModule = file.getJsModule()
             val jsQualifier = file.getJsQualifier()
 
@@ -235,9 +240,6 @@ class IrModuleToJsTransformer(
         val importedJsModules = declarationLevelJsModules + packageLevelJsModules
         return Pair(importStatements, importedJsModules)
     }
-
-    override fun visitModuleFragment(declaration: IrModuleFragment, data: Nothing?): JsNode =
-        generateModule(declaration)
 
     private fun processClassModels(
         classModelMap: Map<JsName, JsClassModel>,

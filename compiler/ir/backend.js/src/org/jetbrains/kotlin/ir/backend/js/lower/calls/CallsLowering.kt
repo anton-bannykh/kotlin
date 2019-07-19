@@ -17,7 +17,7 @@ import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
 
 class CallsLowering(val context: JsIrBackendContext) : BodyLoweringPass {
     override fun lower(irBody: IrBody, container: IrDeclaration) {
-        if (container is IrFunction && container.hasAnnotation(context.intrinsics.doNotIntrinsifyAnnotationSymbol)) return
+        if (container is IrFunction && container.hasAnnotation(context.libraryIntrinsics.doNotIntrinsifyAnnotationSymbol)) return
 
         irBody.accept(object : IrElementTransformerVoid() {
             override fun visitCall(expression: IrCall): IrExpression {

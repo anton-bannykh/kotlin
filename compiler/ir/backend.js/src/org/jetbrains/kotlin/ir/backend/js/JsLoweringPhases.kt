@@ -465,7 +465,7 @@ private enum class LoweringType(val bodiesEnabled: Boolean, val canModifyDeclara
     FIX_ME(bodiesEnabled = true, canModifyDeclarations = true)
 }
 
-private val perFilePhaseList = listOf<Pair<(JsIrBackendContext) -> DeclarationTransformer, LoweringType>>(
+private val perFilePhaseList = listOf(
     expectDeclarationsRemovingPhase to LoweringType.DeclarationLowering, // OK
     expectDeclarationsBodyRemappingPhase to LoweringType.BodyLowering, // OK
     moveBodilessDeclarationsToSeparatePlacePhase to LoweringType.FIX_ME, // Needs to detect @JsModule and @JsQualifier. TODO: should become obsolete
@@ -563,15 +563,17 @@ val jsPhases = namedIrModulePhase(
     lower = jsPerFileStages
 )
 
-fun generateTests(context: JsIrBackendContext, moduleFragment: IrModuleFragment, phaseConfig: PhaseConfig) {
+fun generateTests(context: JsIrBackendContext, data: ContextData, moduleFragments: List<IrModuleFragment>, phaseConfig: PhaseConfig) {
     context.stageController.withInitialIr {
         val generator = TestGenerator(context)
-        moduleFragment.files.forEach {
-            generator.lower(it)
+        moduleFragments.forEach {
+            it.files.forEach {
+                generator.lower(it)
+            }
         }
-        context.implicitDeclarationFile.loweredUpTo = 0
+        data.implicitDeclarationFile.loweredUpTo = 0
     }
-    context.stageController.invokeTopLevel(phaseConfig, moduleFragment)
+    context.stageController.invokeTopLevel(phaseConfig, data.irModuleFragment, moduleFragments - data.irModuleFragment)
 //    stageController.lowerUpTo(context.implicitDeclarationFile, perFilePhaseList.size + 1)
 }
 
@@ -592,6 +594,10 @@ class MutableController : StageController {
     }
 
     lateinit var context: JsIrBackendContext
+
+    lateinit var data: ContextData
+
+//    private val fileToModule = mutableMapOf<IrPackageFragment, ModuleDescriptor>()
 
     // TODO is this needed at all?
     private fun lowerUpTo(file: IrFile, stageNonInclusive: Int) {
@@ -688,7 +694,13 @@ class MutableController : StageController {
 
     private var frozen = false
 
-    fun invokeTopLevel(phaseConfig: PhaseConfig, moduleFragment: IrModuleFragment) {
+    fun invokeTopLevel(phaseConfig: PhaseConfig, moduleFragment: IrModuleFragment, dependencyModules: List<IrModuleFragment>) {
+//        for (module in listOf(moduleFragment) + dependencyModules) {
+//            for (file in module.files) {
+//                fileToModule[file] = module.descriptor
+//            }
+//        }
+
         jsPhases.invokeToplevel(phaseConfig, context, moduleFragment)
 
         currentStage = perFilePhaseList.size + 1
@@ -718,7 +730,7 @@ class MutableController : StageController {
                 tryLoad(it)
             }
 
-            for (file in moduleFragment.files) {
+            for (file in moduleFragment.files + dependencyModules.flatMap { it.files }) {
                 for (decl in ArrayList(file.declarations)) {
                     if (decl.loweredUpTo < currentStage - 1) {
                         lazyLower(decl)

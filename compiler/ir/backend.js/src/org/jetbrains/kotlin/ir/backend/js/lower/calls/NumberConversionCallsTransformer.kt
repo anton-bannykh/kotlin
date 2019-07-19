@@ -12,7 +12,7 @@ import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 
 class NumberConversionCallsTransformer(context: JsIrBackendContext) : CallsTransformer {
-    private val intrinsics = context.intrinsics
+    private val intrinsics = context.libraryIntrinsics
     private val irBuiltIns = context.irBuiltIns
 
     private val memberToTransformer = MemberToTransformer().apply {

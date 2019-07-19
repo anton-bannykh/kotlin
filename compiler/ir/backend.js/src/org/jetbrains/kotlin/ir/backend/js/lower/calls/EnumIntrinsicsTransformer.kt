@@ -43,8 +43,8 @@ class EnumIntrinsicsTransformer(private val context: JsIrBackendContext) : Calls
     }
 
     override fun transformCall(call: IrCall) = when (call.symbol) {
-        context.intrinsics.enumValueOfIntrinsic -> transformEnumValueOfIntrinsic(call)
-        context.intrinsics.enumValuesIntrinsic -> transformEnumValuesIntrinsic(call)
+        context.libraryIntrinsics.enumValueOfIntrinsic -> transformEnumValueOfIntrinsic(call)
+        context.libraryIntrinsics.enumValuesIntrinsic -> transformEnumValuesIntrinsic(call)
         else -> call
     }
 }

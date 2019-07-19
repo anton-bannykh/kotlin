@@ -20,7 +20,7 @@ import org.jetbrains.kotlin.name.Name
 
 
 class MethodsOfAnyCallsTransformer(context: JsIrBackendContext) : CallsTransformer {
-    private val intrinsics = context.intrinsics
+    private val intrinsics = context.libraryIntrinsics
     private val nameToTransformer: Map<Name, (IrCall) -> IrExpression>
 
     init {

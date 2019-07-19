@@ -51,15 +51,16 @@ class JsIrBackendContext(
     val stageController: MutableController
 ) : CommonBackendContext {
 
+    val data = ContextData(irModuleFragment)
+
     init {
         stageController.context = this
+        stageController.data = data
     }
 
     override val builtIns = module.builtIns
 
     override var inVerbosePhase: Boolean = false
-
-    val data = ContextData(irModuleFragment)
 
     val externalPackageFragment: IrPackageFragment get() = data.externalPackageFragment
 
@@ -121,7 +122,8 @@ class JsIrBackendContext(
 
     val bridgeToBridgeInfoMapping get() = data.bridgeToBridgeInfoMapping
 
-    val intrinsics = JsIntrinsics(irBuiltIns, this)
+    val intrinsics = JsIntrinsics(irBuiltIns) // TODO don't recreate!
+    val libraryIntrinsics = JsLibraryIntrinsics(this)
 
     override val internalPackageFqn = JS_PACKAGE_FQNAME
 

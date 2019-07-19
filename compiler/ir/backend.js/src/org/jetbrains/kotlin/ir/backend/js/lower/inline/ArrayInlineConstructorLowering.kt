@@ -19,20 +19,20 @@ class ArrayConstructorTransformer(
 ) {
     // Inline constructor for CharArray is implemented in runtime
     private val primitiveArrayInlineToSizeConstructorMap =
-        context.intrinsics.primitiveArrays.filter { it.value != PrimitiveType.CHAR }.keys.associate {
+        context.libraryIntrinsics.primitiveArrays.filter { it.value != PrimitiveType.CHAR }.keys.associate {
             it.inlineConstructor to it.sizeConstructor
         }
 
     fun transformCall(expression: IrCall): IrCall {
-        if (expression.symbol == context.intrinsics.array.inlineConstructor) {
-            return irCall(expression, context.intrinsics.jsArray)
+        if (expression.symbol == context.libraryIntrinsics.array.inlineConstructor) {
+            return irCall(expression, context.libraryIntrinsics.jsArray)
         } else {
             primitiveArrayInlineToSizeConstructorMap[expression.symbol]?.let { sizeConstructor ->
                 return IrCallImpl(
                     expression.startOffset,
                     expression.endOffset,
                     expression.type,
-                    context.intrinsics.jsFillArray
+                    context.libraryIntrinsics.jsFillArray
                 ).apply {
                     putValueArgument(0, IrCallImpl(
                         expression.startOffset,

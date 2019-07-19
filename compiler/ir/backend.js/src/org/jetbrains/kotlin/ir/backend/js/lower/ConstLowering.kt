@@ -40,10 +40,10 @@ class ConstTransformer(private val context: JsIrBackendContext) : IrElementTrans
     }
 
     private fun createLong(v: Long): IrExpression =
-        lowerConst(context.intrinsics.longClassSymbol, IrConstImpl<*>::int, v.toInt(), (v shr 32).toInt())
+        lowerConst(context.libraryIntrinsics.longClassSymbol, IrConstImpl<*>::int, v.toInt(), (v shr 32).toInt())
 
     override fun <T> visitConst(expression: IrConst<T>): IrExpression {
-        with(context.intrinsics) {
+        with(context.libraryIntrinsics) {
             if (expression.type.isUnsigned()) {
                 return when (expression.type.classifierOrNull) {
                     uByteClassSymbol -> lowerConst(uByteClassSymbol, IrConstImpl<*>::byte, IrConstKind.Byte.valueOf(expression))

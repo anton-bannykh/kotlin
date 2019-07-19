@@ -80,8 +80,8 @@ class AutoboxingTransformer(val context: JsIrBackendContext) : AbstractValueUsag
 
         val function = when {
             actualInlinedClass == null && expectedInlinedClass == null -> return this
-            actualInlinedClass != null && expectedInlinedClass == null -> context.intrinsics.jsBoxIntrinsic
-            actualInlinedClass == null && expectedInlinedClass != null -> context.intrinsics.jsUnboxIntrinsic
+            actualInlinedClass != null && expectedInlinedClass == null -> context.libraryIntrinsics.jsBoxIntrinsic
+            actualInlinedClass == null && expectedInlinedClass != null -> context.libraryIntrinsics.jsUnboxIntrinsic
             else -> return this
         }
 

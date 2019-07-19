@@ -19,6 +19,7 @@ import org.jetbrains.kotlin.name.Name
 
 class NumberOperatorCallsTransformer(context: JsIrBackendContext) : CallsTransformer {
     private val intrinsics = context.intrinsics
+    private val libraryIntrinsics = context.libraryIntrinsics
     private val irBuiltIns = context.irBuiltIns
 
     private fun buildInt(v: Int) = JsIrBuilder.buildInt(irBuiltIns.intType, v)
@@ -87,9 +88,9 @@ class NumberOperatorCallsTransformer(context: JsIrBackendContext) : CallsTransfo
         return with(call.symbol.owner.valueParameters[0].type) {
             when {
                 isByte() || isShort() || isInt() ->
-                    irCall(call, intrinsics.jsNumberRangeToNumber, dispatchReceiverAsFirstArgument = true)
+                    irCall(call, libraryIntrinsics.jsNumberRangeToNumber, dispatchReceiverAsFirstArgument = true)
                 isLong() ->
-                    irCall(call, intrinsics.jsNumberRangeToLong, dispatchReceiverAsFirstArgument = true)
+                    irCall(call, libraryIntrinsics.jsNumberRangeToLong, dispatchReceiverAsFirstArgument = true)
                 else -> call
             }
         }
@@ -128,7 +129,7 @@ class NumberOperatorCallsTransformer(context: JsIrBackendContext) : CallsTransfo
             result.isInt() -> when {
 
                 lhs.isInt() && rhs.isInt() ->
-                    irBinaryOp(call, intrinsics.jsImul)
+                    irBinaryOp(call, libraryIntrinsics.jsImul)
 
                 else ->
                     irBinaryOp(call, intrinsics.jsMult, toInt32 = true)
@@ -166,8 +167,8 @@ class NumberOperatorCallsTransformer(context: JsIrBackendContext) : CallsTransfo
 
     private fun convertResultToPrimitiveType(e: IrExpression, type: IrType) = when {
         type.isInt() -> toInt32(e)
-        type.isByte() -> intrinsics.jsNumberToByte.call(e)
-        type.isShort() -> intrinsics.jsNumberToShort.call(e)
+        type.isByte() -> libraryIntrinsics.jsNumberToByte.call(e)
+        type.isShort() -> libraryIntrinsics.jsNumberToShort.call(e)
         else -> e
     }
 
@@ -184,8 +185,8 @@ class NumberOperatorCallsTransformer(context: JsIrBackendContext) : CallsTransfo
                     call.putValueArgument(0, IrCallImpl(
                         call.startOffset,
                         call.endOffset,
-                        intrinsics.longToDouble.owner.returnType,
-                        intrinsics.longToDouble
+                        libraryIntrinsics.longToDouble.owner.returnType,
+                        libraryIntrinsics.longToDouble
                     ).apply {
                         dispatchReceiver = arg
                     })
@@ -195,8 +196,8 @@ class NumberOperatorCallsTransformer(context: JsIrBackendContext) : CallsTransfo
                     call.putValueArgument(0, IrCallImpl(
                         call.startOffset,
                         call.endOffset,
-                        intrinsics.longToFloat.owner.returnType,
-                        intrinsics.longToFloat
+                        libraryIntrinsics.longToFloat.owner.returnType,
+                        libraryIntrinsics.longToFloat
                     ).apply {
                         dispatchReceiver = arg
                     })
@@ -206,8 +207,8 @@ class NumberOperatorCallsTransformer(context: JsIrBackendContext) : CallsTransfo
                     call.dispatchReceiver = IrCallImpl(
                         call.startOffset,
                         call.endOffset,
-                        intrinsics.jsNumberToLong.owner.returnType,
-                        intrinsics.jsNumberToLong
+                        libraryIntrinsics.jsNumberToLong.owner.returnType,
+                        libraryIntrinsics.jsNumberToLong
                     ).apply {
                         putValueArgument(0, call.dispatchReceiver)
                     }

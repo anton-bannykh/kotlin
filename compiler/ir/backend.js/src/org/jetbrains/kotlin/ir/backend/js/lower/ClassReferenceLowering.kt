@@ -20,7 +20,7 @@ import org.jetbrains.kotlin.ir.visitors.transformChildrenVoid
 import org.jetbrains.kotlin.name.Name
 
 class ClassReferenceLowering(val context: JsIrBackendContext) : BodyLoweringPass {
-    private val intrinsics = context.intrinsics
+    private val intrinsics = context.libraryIntrinsics
 
     private val primitiveClassesObject = context.primitiveClassesObject
 

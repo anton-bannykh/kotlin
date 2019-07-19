@@ -53,7 +53,7 @@ class EnumUsageLowering(val context: JsIrBackendContext) : BodyLoweringPass {
         }
 
     private fun classAsReceiver(irClass: IrClass): IrExpression {
-        val intrinsic = context.intrinsics.jsClass
+        val intrinsic = context.libraryIntrinsics.jsClass
         return JsIrBuilder.buildCall(intrinsic, context.irBuiltIns.anyType, listOf(irClass.defaultType))
     }
 
