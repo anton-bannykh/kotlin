@@ -127,8 +127,7 @@ class IrModuleToJsTransformer(
         val namer = NameTables(modules.flatMap { it.files } + data.let {
             listOf(
                 it.externalPackageFragment,
-                it.bodilessBuiltInsPackageFragment,
-                it.externalPackageFragmentForIntrinsics
+                it.bodilessBuiltInsPackageFragment
             ) + it.packageLevelJsModules.values
         })
 

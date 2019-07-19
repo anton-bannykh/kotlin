@@ -38,8 +38,6 @@ class ContextData(
 
     // From JsIrBackendContext:
 
-    val module = irModuleFragment.descriptor
-
     private class DescriptorlessExternalPackageFragmentSymbol : IrExternalPackageFragmentSymbol {
         override val descriptor: PackageFragmentDescriptor
             get() = error("Operation is unsupported")
@@ -123,10 +121,4 @@ class ContextData(
     )
 
     val bridgeToBridgeInfoMapping = mutableMapOf<IrSimpleFunction, BridgeInfo>()
-
-    // From JsIntrinsics
-    private val externalPackageFragmentSymbol = IrExternalPackageFragmentSymbolImpl(internalPackageFragmentDescriptor)
-    val externalPackageFragmentForIntrinsics = IrExternalPackageFragmentImpl(externalPackageFragmentSymbol)
-
-
 }
