@@ -122,9 +122,6 @@ class ContextData(
     val sharedVariablesManager = JsSharedVariablesManager(irModuleFragment.irBuiltins, implicitDeclarationFile)
     val declarationFactory = JsDeclarationFactory()
 
-    val enumEntryToGetInstanceFunction = mutableMapOf<IrEnumEntrySymbol, IrSimpleFunction>()
-    val enumEntryExternalToInstanceField = mutableMapOf<IrEnumEntrySymbol, IrField>()
-    val callableReferencesCache = mutableMapOf<CallableReferenceKey, IrSimpleFunction>()
     val secondaryConstructorToFactoryCache = mutableMapOf<IrConstructor, ConstructorPair>()
     val inlineClassTransformedFunctionsCache = mutableMapOf<IrFunctionSymbol, IrSimpleFunctionSymbol>()
     val pendingThrowableSuperUsages = mutableMapOf<IrClass, DirectThrowableSuccessors>()

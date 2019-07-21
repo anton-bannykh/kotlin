@@ -112,9 +112,6 @@ class JsIrBackendContext(
     private val coroutinePackage = module.getPackage(COROUTINE_PACKAGE_FQNAME)
     private val coroutineIntrinsicsPackage = module.getPackage(COROUTINE_INTRINSICS_PACKAGE_FQNAME)
 
-    val enumEntryToGetInstanceFunction get() = data.enumEntryToGetInstanceFunction
-    val enumEntryExternalToInstanceField get() = data.enumEntryExternalToInstanceField
-    val callableReferencesCache get() = data.callableReferencesCache
     val secondaryConstructorToFactoryCache get() = data.secondaryConstructorToFactoryCache
     val inlineClassTransformedFunctionsCache get() = data.inlineClassTransformedFunctionsCache
     val pendingThrowableSuperUsages get() = data.pendingThrowableSuperUsages
