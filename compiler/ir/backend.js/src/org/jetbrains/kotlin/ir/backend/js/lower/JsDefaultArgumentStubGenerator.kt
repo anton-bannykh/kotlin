@@ -10,7 +10,7 @@ import org.jetbrains.kotlin.backend.common.ir.isOverridableOrOverrides
 import org.jetbrains.kotlin.ir.backend.js.JsIrBackendContext
 import org.jetbrains.kotlin.ir.backend.js.lower.common.DEFAULT_DISPATCH_CALL
 import org.jetbrains.kotlin.ir.backend.js.lower.common.DefaultArgumentDispatchFunctionBodyLowering
-import org.jetbrains.kotlin.ir.backend.js.lower.common.DefaultArgumentStubGenerator
+import org.jetbrains.kotlin.ir.backend.js.lower.common.originalFunction
 import org.jetbrains.kotlin.ir.builders.IrBlockBodyBuilder
 import org.jetbrains.kotlin.ir.builders.irCall
 import org.jetbrains.kotlin.ir.builders.irGet
@@ -24,7 +24,7 @@ import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
 import org.jetbrains.kotlin.ir.visitors.transformChildrenVoid
 import org.jetbrains.kotlin.name.Name
 
-class JsDefaultArgumentStubGenerator(override val context: JsIrBackendContext) : DefaultArgumentDispatchFunctionBodyLowering(context) {
+class JsDefaultArgumentStubGenerator(context: JsIrBackendContext) : DefaultArgumentDispatchFunctionBodyLowering(context) {
 
     override fun needSpecialDispatch(irFunction: IrSimpleFunction) = irFunction.isOverridableOrOverrides
 
@@ -72,8 +72,7 @@ class JsDefaultCallbackGenerator(val context: JsIrBackendContext): BodyLoweringP
 
     private fun buildBoundSuperCall(irCall: IrCall): IrExpression {
 
-        // TODO Fix me!
-        val originalFunction = context.ir.defaultParameterDeclarationsCache.entries.first { it.value == irCall.symbol.owner }.key
+        val originalFunction = irCall.symbol.owner.originalFunction!!
 
         val reference = irCall.run {
             IrFunctionReferenceImpl(

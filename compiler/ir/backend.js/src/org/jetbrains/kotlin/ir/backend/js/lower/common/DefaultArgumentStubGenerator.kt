@@ -7,7 +7,6 @@ package org.jetbrains.kotlin.ir.backend.js.lower.common
 
 import org.jetbrains.kotlin.backend.common.*
 import org.jetbrains.kotlin.backend.common.descriptors.*
-import org.jetbrains.kotlin.backend.common.ir.DeclarationBiMapKey
 import org.jetbrains.kotlin.backend.common.ir.copyTo
 import org.jetbrains.kotlin.backend.common.ir.copyTypeParametersFrom
 import org.jetbrains.kotlin.backend.common.ir.ir2string
@@ -15,12 +14,14 @@ import org.jetbrains.kotlin.backend.common.lower.createIrBuilder
 import org.jetbrains.kotlin.backend.common.lower.irBlockBody
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.ir.IrElement
-import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
+import org.jetbrains.kotlin.ir.backend.js.JsIrBackendContext
+import org.jetbrains.kotlin.ir.backend.js.mapping
 import org.jetbrains.kotlin.ir.builders.*
 import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.declarations.impl.IrConstructorImpl
 import org.jetbrains.kotlin.ir.declarations.impl.IrFunctionImpl
 import org.jetbrains.kotlin.ir.declarations.impl.IrValueParameterImpl
+import org.jetbrains.kotlin.ir.declarations.impl.MappingKey
 import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.expressions.impl.*
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
@@ -36,16 +37,19 @@ import org.jetbrains.kotlin.name.Name
 
 // TODO: fix expect/actual default parameters
 
-private object DefaultArgumentStubGeneratorMapKey: DeclarationBiMapKey<IrFunction, IrFunction>
+private object DefaultArgumentStubGeneratorKey: MappingKey<IrFunction, IrFunction>
+
+private object DefaultArgumentStubGeneratorReverseKey: MappingKey<IrFunction, IrFunction>
+
+var IrFunction.originalFunction by mapping(DefaultArgumentStubGeneratorKey)
+
+var IrFunction.dispatchFunction by mapping(DefaultArgumentStubGeneratorReverseKey)
 
 open class DefaultArgumentStubGenerator(
-    open val context: CommonBackendContext,
+    val context: JsIrBackendContext,
     private val skipInlineMethods: Boolean = true,
     private val skipExternalMethods: Boolean = false
 ) : DeclarationTransformer {
-
-    private val functionToDispatchMap
-        get() = context.declarationFactory.getMapping(DefaultArgumentStubGeneratorMapKey)
 
     override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
         return if (declaration is IrFunction)
@@ -67,8 +71,6 @@ open class DefaultArgumentStubGenerator(
             // Fake override
             val newIrFunction = irFunction.generateDefaultsFunction(context, IrDeclarationOrigin.FAKE_OVERRIDE, skipInlineMethods, skipExternalMethods)
 
-            functionToDispatchMap.link(irFunction, newIrFunction)
-
             return listOf(irFunction, newIrFunction)
         }
 
@@ -76,9 +78,6 @@ open class DefaultArgumentStubGenerator(
             irFunction.generateDefaultsFunction(context, IrDeclarationOrigin.FUNCTION_FOR_DEFAULT_PARAMETER, skipInlineMethods, skipExternalMethods)
 
         log { "$irFunction -> $newIrFunction" }
-
-
-        functionToDispatchMap.link(irFunction, newIrFunction)
 
         // Remove default argument initializers.
 //        irFunction.valueParameters.forEach {
@@ -94,15 +93,12 @@ open class DefaultArgumentStubGenerator(
 
 open class DefaultArgumentDispatchFunctionBodyLowering(open val context: CommonBackendContext): NullableBodyLoweringPass {
 
-    private val functionToDispatchMap
-        get() = context.declarationFactory.getMapping(DefaultArgumentStubGeneratorMapKey)
-
     private val symbols get() = context.ir.symbols
 
     override fun lower(irBody: IrBody?, newIrFunction: IrDeclaration) {
         if (newIrFunction !is IrFunction) return
 
-        functionToDispatchMap.oldByNew(newIrFunction)?.let { irFunction ->
+        newIrFunction.originalFunction?.let { irFunction ->
 
             irFunction.annotations.mapTo(newIrFunction.annotations) { it.deepCopyWithSymbols() }
 
@@ -339,8 +335,7 @@ open class DefaultParameterInjector(
             val declaration = expression.symbol.owner
 
             val keyFunction = declaration.findSuperMethodWithDefaultArguments()!!
-            val realFunction =
-                keyFunction.generateDefaultsFunction(context, IrDeclarationOrigin.FUNCTION_FOR_DEFAULT_PARAMETER, skipInline, skipExternalMethods)
+            val realFunction = keyFunction.dispatchFunction!!
 
             log { "$declaration -> $realFunction" }
             val maskValues = Array((declaration.valueParameters.size + 31) / 32) { 0 }
@@ -536,8 +531,13 @@ private fun IrFunction.generateDefaultsFunction(
     skipInlineMethods: Boolean,
     skipExternalMethods: Boolean
 ): IrFunction =
-    context.ir.defaultParameterDeclarationsCache.getOrPut(this) {
-        generateDefaultsFunctionImpl(context, origin, skipInlineMethods, skipExternalMethods)
+    this.dispatchFunction ?: run {
+        val result = generateDefaultsFunctionImpl(context, origin, skipInlineMethods, skipExternalMethods)
+
+        this.dispatchFunction = result
+        result.originalFunction = this
+
+        result
     }
 
 private fun IrFunction.valueParameter(index: Int, name: Name, type: IrType): IrValueParameter {

@@ -45,6 +45,7 @@ import org.jetbrains.kotlin.types.Variance
 class JsIrBackendContext(
     val module: ModuleDescriptor,
     override val irBuiltIns: IrBuiltIns,
+    val intrinsics: JsIntrinsics,
     val symbolTable: SymbolTable,
     irModuleFragment: IrModuleFragment,
     override val configuration: CompilerConfiguration,
@@ -121,7 +122,6 @@ class JsIrBackendContext(
 
     val bridgeToBridgeInfoMapping get() = data.bridgeToBridgeInfoMapping
 
-    val intrinsics = JsIntrinsics(irBuiltIns) // TODO don't recreate!
     val libraryIntrinsics = JsLibraryIntrinsics(this)
 
     override val internalPackageFqn = JS_PACKAGE_FQNAME
@@ -181,7 +181,7 @@ class JsIrBackendContext(
         }
 
         override val defaultParameterDeclarationsCache: MutableMap<IrFunction, IrFunction>
-            get() = data.defaultParameterDeclarationsCache
+            get() = error("Don't use!")
 
         override fun shouldGenerateHandlerParameterForDefaultBodyFun() = true
     }

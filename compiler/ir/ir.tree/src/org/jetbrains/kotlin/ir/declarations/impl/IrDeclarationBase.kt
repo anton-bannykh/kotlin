@@ -18,7 +18,6 @@ package org.jetbrains.kotlin.ir.declarations.impl
 
 import org.jetbrains.kotlin.ir.IrElementBase
 import org.jetbrains.kotlin.ir.declarations.*
-import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrExpressionBody
 
 abstract class IrDeclarationBase(
@@ -36,6 +35,10 @@ abstract class IrDeclarationBase(
 
     var loweredUpTo = stageController.currentStage
 
+    val userdata: MutableMap<MappingKey<*, *>, *> = mutableMapOf()
+
     override val metadata: MetadataSource?
         get() = null
 }
+
+interface MappingKey<K : IrDeclaration, V>

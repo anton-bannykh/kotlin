@@ -36,7 +36,7 @@ fun compile(
         deserializer = deserializer
     )
 
-    val context = JsIrBackendContext(moduleDescriptor, irBuiltIns, symbolTable, moduleFragment, configuration, stageController)
+    val context = JsIrBackendContext(moduleDescriptor, irBuiltIns, JsIntrinsics(irBuiltIns), symbolTable, moduleFragment, configuration, stageController)
 
     stageController.bodiesEnabled = false
 

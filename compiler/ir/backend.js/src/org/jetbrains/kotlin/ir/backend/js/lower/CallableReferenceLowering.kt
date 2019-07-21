@@ -15,6 +15,7 @@ import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
 import org.jetbrains.kotlin.ir.backend.js.JsIrBackendContext
 import org.jetbrains.kotlin.ir.backend.js.ir.JsIrBuilder
 import org.jetbrains.kotlin.ir.backend.js.lower.common.BOUND_VALUE_PARAMETER
+import org.jetbrains.kotlin.ir.backend.js.lower.common.dispatchFunction
 import org.jetbrains.kotlin.ir.backend.js.utils.Namer
 import org.jetbrains.kotlin.ir.backend.js.utils.asString
 import org.jetbrains.kotlin.ir.declarations.*
@@ -519,7 +520,7 @@ class CallableReferenceLowering(val context: JsIrBackendContext) : BodyLoweringP
 
         closureFunction.valueParameters += unboundParamDeclarations
 
-        val callTarget = context.ir.defaultParameterDeclarationsCache[declaration] ?: declaration
+        val callTarget = declaration.dispatchFunction ?: declaration
 
         val irCall = JsIrBuilder.buildCall(callTarget.symbol, type = returnType)
 

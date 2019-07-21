@@ -6,8 +6,6 @@
 package org.jetbrains.kotlin.ir.backend.js
 
 import org.jetbrains.kotlin.backend.js.JsDeclarationFactory
-import org.jetbrains.kotlin.builtins.KotlinBuiltIns
-import org.jetbrains.kotlin.descriptors.ModuleDescriptor
 import org.jetbrains.kotlin.descriptors.PackageFragmentDescriptor
 import org.jetbrains.kotlin.descriptors.impl.EmptyPackageFragmentDescriptor
 import org.jetbrains.kotlin.ir.SourceManager
@@ -18,23 +16,41 @@ import org.jetbrains.kotlin.ir.backend.js.lower.CallableReferenceKey
 import org.jetbrains.kotlin.ir.backend.js.lower.ConstructorPair
 import org.jetbrains.kotlin.ir.backend.js.lower.DirectThrowableSuccessors
 import org.jetbrains.kotlin.ir.declarations.*
+import org.jetbrains.kotlin.ir.declarations.impl.IrDeclarationBase
 import org.jetbrains.kotlin.ir.declarations.impl.IrExternalPackageFragmentImpl
 import org.jetbrains.kotlin.ir.declarations.impl.IrFileImpl
-import org.jetbrains.kotlin.ir.descriptors.IrBuiltIns
+import org.jetbrains.kotlin.ir.declarations.impl.MappingKey
 import org.jetbrains.kotlin.ir.symbols.IrEnumEntrySymbol
 import org.jetbrains.kotlin.ir.symbols.IrExternalPackageFragmentSymbol
 import org.jetbrains.kotlin.ir.symbols.IrFunctionSymbol
 import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
-import org.jetbrains.kotlin.ir.symbols.impl.IrExternalPackageFragmentSymbolImpl
 import org.jetbrains.kotlin.name.FqName
+import kotlin.reflect.KProperty
 
+class MappingDelegate<K : IrDeclaration, V>(
+    val key: MappingKey<K, V>
+) {
+    private val K.map: MutableMap<MappingKey<K, V>, V>
+        get() = (this as IrDeclarationBase).userdata as MutableMap<MappingKey<K, V>, V>
+
+    operator fun getValue(thisRef: K, desc: KProperty<*>): V? {
+        return thisRef.map[key] as V?
+    }
+
+    operator fun setValue(thisRef: K, desc: KProperty<*>, value: V?) {
+        if (value == null) {
+            thisRef.map.remove(key)
+        } else {
+            thisRef.map[key] = value
+        }
+    }
+}
+
+fun <K : IrDeclaration, V> mapping(key: MappingKey<K, V>) = MappingDelegate(key)
 
 class ContextData(
     val irModuleFragment: IrModuleFragment
 ) {
-
-    // From Ir.kt
-    val defaultParameterDeclarationsCache = mutableMapOf<IrFunction, IrFunction>()
 
     // From JsIrBackendContext:
 
