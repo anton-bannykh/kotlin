@@ -12,26 +12,22 @@ import org.jetbrains.kotlin.ir.SourceManager
 import org.jetbrains.kotlin.ir.SourceRangeInfo
 import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
 import org.jetbrains.kotlin.ir.backend.js.ir.JsIrBuilder
-import org.jetbrains.kotlin.ir.backend.js.lower.CallableReferenceKey
 import org.jetbrains.kotlin.ir.backend.js.lower.ConstructorPair
 import org.jetbrains.kotlin.ir.backend.js.lower.DirectThrowableSuccessors
 import org.jetbrains.kotlin.ir.declarations.*
-import org.jetbrains.kotlin.ir.declarations.impl.IrDeclarationBase
-import org.jetbrains.kotlin.ir.declarations.impl.IrExternalPackageFragmentImpl
-import org.jetbrains.kotlin.ir.declarations.impl.IrFileImpl
-import org.jetbrains.kotlin.ir.declarations.impl.MappingKey
-import org.jetbrains.kotlin.ir.symbols.IrEnumEntrySymbol
+import org.jetbrains.kotlin.ir.declarations.impl.*
 import org.jetbrains.kotlin.ir.symbols.IrExternalPackageFragmentSymbol
 import org.jetbrains.kotlin.ir.symbols.IrFunctionSymbol
 import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
 import org.jetbrains.kotlin.name.FqName
+import kotlin.reflect.KMutableProperty0
 import kotlin.reflect.KProperty
 
 class MappingDelegate<K : IrDeclaration, V>(
     val key: MappingKey<K, V>
 ) {
     private val K.map: MutableMap<MappingKey<K, V>, V>
-        get() = (this as IrDeclarationBase).userdata as MutableMap<MappingKey<K, V>, V>
+        get() = (this as HasUserdata).userdata as MutableMap<MappingKey<K, V>, V>
 
     operator fun getValue(thisRef: K, desc: KProperty<*>): V? {
         return thisRef.map[key] as V?
@@ -44,6 +40,10 @@ class MappingDelegate<K : IrDeclaration, V>(
             thisRef.map[key] = value
         }
     }
+}
+
+fun <V : Any> KMutableProperty0<V?>.getOrPut(fn: () -> V) = this.get() ?: fn().also {
+    this.set(it)
 }
 
 fun <K : IrDeclaration, V> mapping(key: MappingKey<K, V>) = MappingDelegate(key)

@@ -25,7 +25,7 @@ abstract class IrDeclarationBase(
     endOffset: Int,
     origin: IrDeclarationOrigin
 ) : IrElementBase(startOffset, endOffset),
-    IrDeclaration{
+    IrDeclaration, HasUserdata {
 
     override var origin: IrDeclarationOrigin by PersistentVar(origin)
 
@@ -35,10 +35,14 @@ abstract class IrDeclarationBase(
 
     var loweredUpTo = stageController.currentStage
 
-    val userdata: MutableMap<MappingKey<*, *>, *> = mutableMapOf()
+    override val userdata: MutableMap<MappingKey<*, *>, *> = mutableMapOf()
 
     override val metadata: MetadataSource?
         get() = null
+}
+
+interface HasUserdata {
+    val userdata: MutableMap<MappingKey<*, *>, *>
 }
 
 interface MappingKey<K : IrDeclaration, V>

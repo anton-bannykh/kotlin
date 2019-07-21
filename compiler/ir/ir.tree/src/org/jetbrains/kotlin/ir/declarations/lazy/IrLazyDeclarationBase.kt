@@ -9,7 +9,9 @@ import org.jetbrains.kotlin.descriptors.*
 import org.jetbrains.kotlin.ir.IrElementBase
 import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
 import org.jetbrains.kotlin.ir.declarations.*
+import org.jetbrains.kotlin.ir.declarations.impl.HasUserdata
 import org.jetbrains.kotlin.ir.declarations.impl.IrValueParameterImpl
+import org.jetbrains.kotlin.ir.declarations.impl.MappingKey
 import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrExpressionBody
 import org.jetbrains.kotlin.ir.expressions.impl.IrExpressionBodyImpl
@@ -24,7 +26,7 @@ abstract class IrLazyDeclarationBase(
     override var origin: IrDeclarationOrigin,
     private val stubGenerator: DeclarationStubGenerator,
     protected val typeTranslator: TypeTranslator
-) : IrElementBase(startOffset, endOffset), IrDeclaration {
+) : IrElementBase(startOffset, endOffset), IrDeclaration, HasUserdata {
 
     protected fun KotlinType.toIrType() = typeTranslator.translateType(this)
 
@@ -75,4 +77,6 @@ abstract class IrLazyDeclarationBase(
             else -> throw AssertionError("Package or class expected: $containingDeclaration; for $currentDescriptor")
         }
     }
+
+    override val userdata: MutableMap<MappingKey<*, *>, *> = mutableMapOf()
 }

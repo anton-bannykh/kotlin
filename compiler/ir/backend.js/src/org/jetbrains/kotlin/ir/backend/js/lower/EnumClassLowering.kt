@@ -18,6 +18,7 @@ import org.jetbrains.kotlin.backend.common.lower.irIfThen
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
 import org.jetbrains.kotlin.ir.backend.js.JsIrBackendContext
+import org.jetbrains.kotlin.ir.backend.js.getOrPut
 import org.jetbrains.kotlin.ir.backend.js.ir.JsIrBuilder
 import org.jetbrains.kotlin.ir.backend.js.mapping
 import org.jetbrains.kotlin.ir.builders.*
@@ -54,7 +55,7 @@ class EnumUsageLowering(val context: JsIrBackendContext) : BodyLoweringPass {
     }
 
     private fun lowerExternalEnumEntry(enumEntry: IrEnumEntry, klass: IrClass) =
-        (enumEntry.instanceField ?: createFieldForEntry(enumEntry, klass).also { enumEntry.instanceField = it}).let {
+        enumEntry::instanceField.getOrPut { createFieldForEntry(enumEntry, klass) }.let {
             JsIrBuilder.buildGetField(it.symbol, classAsReceiver(klass), null, klass.defaultType)
         }
 
@@ -402,8 +403,7 @@ class EnumClassTransformer(val context: JsIrBackendContext, private val irClass:
     }
 
     private fun createGetEntryInstanceFuns() = enumEntries.mapIndexed { index, enumEntry ->
-        enumEntry.getInstanceFun ?: buildFunction(createEntryAccessorName(enumName, enumEntry), enumEntry.getType(irClass)).also {
-            enumEntry.getInstanceFun = it
+        enumEntry::getInstanceFun.getOrPut { buildFunction(createEntryAccessorName(enumName, enumEntry), enumEntry.getType(irClass)) }.also {
             enumEntryToGetInstance.link(enumEntry, it)
         }
     }
