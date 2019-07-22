@@ -18,9 +18,12 @@ import org.jetbrains.kotlin.backend.common.lower.irBlockBody
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.backend.js.JsIrBackendContext
+import org.jetbrains.kotlin.ir.backend.js.getOrPut
+import org.jetbrains.kotlin.ir.backend.js.mapping
 import org.jetbrains.kotlin.ir.builders.*
 import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.declarations.impl.IrFunctionImpl
+import org.jetbrains.kotlin.ir.declarations.impl.MappingKey
 import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.symbols.IrFunctionSymbol
 import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
@@ -34,10 +37,10 @@ private const val INLINE_CLASS_IMPL_SUFFIX = "-impl"
 
 private object InlineClassLoweringMappingKey : DeclarationBiMapKey<IrFunction, IrSimpleFunction>
 
+private var IrFunction.transformedFunction by mapping(object : MappingKey<IrFunction, IrSimpleFunction>{})
+
 // TODO: Support incremental compilation
 class InlineClassLowering(val context: JsIrBackendContext) {
-    private val transformedFunction = context.inlineClassTransformedFunctionsCache
-
     private val originalToTransformed = context.declarationFactory.getMapping(InlineClassLoweringMappingKey)
 
     val inlineClassDeclarationLowering = object : ClassLoweringPass {
@@ -261,11 +264,11 @@ class InlineClassLowering(val context: JsIrBackendContext) {
     }
 
     private fun getOrCreateStaticMethod(function: IrFunction): IrSimpleFunctionSymbol =
-        transformedFunction.getOrPut(function.symbol) {
+        function::transformedFunction.getOrPut {
             createStaticBodilessMethod(function).also {
                 function.parentAsClass.declarations.add(it)
-            }.symbol
-        }
+            }
+        }.symbol
 
     private fun Name.toInlineClassImplementationName() = when {
         isSpecial -> Name.special(asString() + INLINE_CLASS_IMPL_SUFFIX)
