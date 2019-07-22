@@ -122,15 +122,9 @@ class ContextData(
     val sharedVariablesManager = JsSharedVariablesManager(irModuleFragment.irBuiltins, implicitDeclarationFile)
     val declarationFactory = JsDeclarationFactory()
 
-    val secondaryConstructorToFactoryCache = mutableMapOf<IrConstructor, ConstructorPair>()
-    val inlineClassTransformedFunctionsCache = mutableMapOf<IrFunctionSymbol, IrSimpleFunctionSymbol>()
-    val pendingThrowableSuperUsages = mutableMapOf<IrClass, DirectThrowableSuccessors>()
-
     data class BridgeInfo(
         val function: IrSimpleFunction,
         val bridge: IrSimpleFunction,
         val delegateTo: IrSimpleFunction
     )
-
-    val bridgeToBridgeInfoMapping = mutableMapOf<IrSimpleFunction, BridgeInfo>()
 }
