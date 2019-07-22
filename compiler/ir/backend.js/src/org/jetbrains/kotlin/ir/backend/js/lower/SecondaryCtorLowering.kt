@@ -15,8 +15,11 @@ import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.backend.js.JsIrBackendContext
+import org.jetbrains.kotlin.ir.backend.js.getOrPut
 import org.jetbrains.kotlin.ir.backend.js.ir.JsIrBuilder
+import org.jetbrains.kotlin.ir.backend.js.mapping
 import org.jetbrains.kotlin.ir.declarations.*
+import org.jetbrains.kotlin.ir.declarations.impl.MappingKey
 import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.expressions.impl.IrCallImpl
 import org.jetbrains.kotlin.ir.expressions.impl.IrGetValueImpl
@@ -37,10 +40,9 @@ private object ConstructorToDelegateKey : DeclarationBiMapKey<IrConstructor, IrS
 
 private object ConstructorToStubKey : DeclarationBiMapKey<IrConstructor, IrSimpleFunction>
 
+var IrConstructor.constructorPair by mapping(object : MappingKey<IrConstructor, ConstructorPair> {})
 
 class SecondaryConstructorLowering(val context: JsIrBackendContext) : ClassLoweringPass {
-    private val oldCtorToNewMap = context.secondaryConstructorToFactoryCache
-
     private val constructorToDelegateMapping = context.declarationFactory.getMapping(ConstructorToDelegateKey)
     private val constructorToStubMapping = context.declarationFactory.getMapping(ConstructorToStubKey)
 
@@ -55,7 +57,7 @@ class SecondaryConstructorLowering(val context: JsIrBackendContext) : ClassLower
     }
 
     private fun transformConstructor(constructor: IrConstructor, irClass: IrClass): List<IrSimpleFunction> {
-        val stubs = oldCtorToNewMap.getOrPut(constructor) {
+        val stubs = constructor::constructorPair.getOrPut {
             buildConstructorStubDeclarations(constructor, irClass)
         }
 
@@ -70,8 +72,6 @@ class SecondaryConstructorLowering(val context: JsIrBackendContext) : ClassLower
 
 class SecondaryConstructorBodyLowering(val context: JsIrBackendContext) : NullableBodyLoweringPass {
 
-    private val oldCtorToNewMap = context.secondaryConstructorToFactoryCache
-
     private val constructorToDelegateMapping = context.declarationFactory.getMapping(ConstructorToDelegateKey)
     private val constructorToStubMapping = context.declarationFactory.getMapping(ConstructorToStubKey)
 
@@ -81,7 +81,7 @@ class SecondaryConstructorBodyLowering(val context: JsIrBackendContext) : Nullab
                 generateInitBody(constructor, container.parentAsClass, container)
             }
             constructorToStubMapping.oldByNew(container)?.let { constructor ->
-                generateFactoryBody(constructor, container.parentAsClass, container, oldCtorToNewMap[constructor]!!.delegate)
+                generateFactoryBody(constructor, container.parentAsClass, container, constructor.constructorPair!!.delegate)
             }
         }
     }
@@ -232,7 +232,6 @@ class SecondaryFactoryInjectorLowering(val context: JsIrBackendContext) : BodyLo
 
 private class CallsiteRedirectionTransformer(context: JsIrBackendContext) : IrElementTransformer<IrFunction?> {
 
-    private val oldCtorToNewMap = context.secondaryConstructorToFactoryCache
     private val defaultThrowableConstructor = context.defaultThrowableCtor
 
     private val IrFunction.isSecondaryConstructorCall
@@ -247,7 +246,7 @@ private class CallsiteRedirectionTransformer(context: JsIrBackendContext) : IrEl
         val target = expression.symbol.owner
         return if (target.isSecondaryConstructorCall) {
             val constructor = target as IrConstructor
-            val ctor = oldCtorToNewMap.getOrPut(constructor) {
+            val ctor = constructor::constructorPair.getOrPut {
                 buildConstructorStubDeclarations(constructor, constructor.parentAsClass)
             }
             replaceSecondaryConstructorWithFactoryFunction(expression, ctor.stub.symbol)
@@ -261,7 +260,7 @@ private class CallsiteRedirectionTransformer(context: JsIrBackendContext) : IrEl
 
         return if (target.isSecondaryConstructorCall) {
             val klass = target.parentAsClass
-            val ctor = oldCtorToNewMap.getOrPut(target) { buildConstructorStubDeclarations(target, klass) }
+            val ctor = target::constructorPair.getOrPut { buildConstructorStubDeclarations(target, klass) }
             val newCall = replaceSecondaryConstructorWithFactoryFunction(expression, ctor.delegate.symbol)
 
             val readThis = expression.run {
