@@ -112,8 +112,6 @@ class JsIrBackendContext(
     private val coroutinePackage = module.getPackage(COROUTINE_PACKAGE_FQNAME)
     private val coroutineIntrinsicsPackage = module.getPackage(COROUTINE_INTRINSICS_PACKAGE_FQNAME)
 
-    val pendingThrowableSuperUsages get() = data.pendingThrowableSuperUsages
-
 
     val bridgeToBridgeInfoMapping get() = data.bridgeToBridgeInfoMapping
 

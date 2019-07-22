@@ -18,8 +18,10 @@ import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
 import org.jetbrains.kotlin.ir.backend.js.JsIrBackendContext
 import org.jetbrains.kotlin.ir.backend.js.ir.JsIrBuilder
+import org.jetbrains.kotlin.ir.backend.js.mapping
 import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.declarations.impl.IrFieldImpl
+import org.jetbrains.kotlin.ir.declarations.impl.MappingKey
 import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.expressions.impl.*
 import org.jetbrains.kotlin.ir.symbols.IrFunctionSymbol
@@ -41,6 +43,8 @@ private object MessageAccessorToMessageFieldKey : DeclarationBiMapKey<IrField, I
 
 private object CauseAccessorToCauseFieldKey : DeclarationBiMapKey<IrField, IrSimpleFunction>
 
+private var IrClass.pendingSuperUsages by mapping(object : MappingKey<IrClass, DirectThrowableSuccessors> {})
+
 class ThrowableSuccessorsLowering(val context: JsIrBackendContext) : DeclarationTransformer {
     private val nothingType get() = context.irBuiltIns.nothingType
     private val stringType get() = context.irBuiltIns.stringType
@@ -59,8 +63,6 @@ class ThrowableSuccessorsLowering(val context: JsIrBackendContext) : Declaration
         throwableClass.owner.declarations.filterIsInstance<IrFunction>().atMostOne { it.name == Name.special("<get-cause>") }?.symbol
             ?: throwableClass.owner.declarations.filterIsInstance<IrProperty>().atMostOne { it.name == causePropertyName }?.getter?.symbol!!
     }
-
-    private val pendingSuperUsages = context.pendingThrowableSuperUsages
 
     private val messageAccessorToFieldMap = context.declarationFactory.getMapping(MessageAccessorToMessageFieldKey)
     private val causeAccessorToFieldMap = context.declarationFactory.getMapping(CauseAccessorToCauseFieldKey)
@@ -107,7 +109,7 @@ class ThrowableSuccessorsLowering(val context: JsIrBackendContext) : Declaration
                     }
                 }
 
-                pendingSuperUsages[declaration] = DirectThrowableSuccessors(declaration, messageField, causeField)
+                declaration.pendingSuperUsages = DirectThrowableSuccessors(declaration, messageField, causeField)
             }
         }
 
@@ -197,8 +199,6 @@ class ThrowableSuccessorsBodyLowering(val context: JsIrBackendContext) : Nullabl
     private val captureStackFunction = context.captureStackSymbol
     private val newThrowableFunction = context.newThrowableSymbol
 
-    private val pendingSuperUsages = context.pendingThrowableSuperUsages
-
     private val messageAccessorToFieldMap = context.declarationFactory.getMapping(MessageAccessorToMessageFieldKey)
     private val causeAccessorToFieldMap = context.declarationFactory.getMapping(CauseAccessorToCauseFieldKey)
 
@@ -227,7 +227,7 @@ class ThrowableSuccessorsBodyLowering(val context: JsIrBackendContext) : Nullabl
             var parent = container.parent
             while (parent is IrDeclaration) {
                 if (parent is IrClass) {
-                    pendingSuperUsages[parent]?.let {
+                    parent.pendingSuperUsages?.let {
                         body?.transformChildren(ThrowableDirectSuccessorTransformer(it), it.klass)
                     }
                 }
