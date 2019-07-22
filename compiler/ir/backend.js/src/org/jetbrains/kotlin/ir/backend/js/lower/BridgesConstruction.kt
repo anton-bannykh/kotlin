@@ -21,11 +21,13 @@ import org.jetbrains.kotlin.ir.backend.js.ContextData
 import org.jetbrains.kotlin.ir.backend.js.JsIrBackendContext
 import org.jetbrains.kotlin.ir.backend.js.JsLoweredDeclarationOrigin
 import org.jetbrains.kotlin.ir.backend.js.ir.JsIrBuilder
+import org.jetbrains.kotlin.ir.backend.js.mapping
 import org.jetbrains.kotlin.ir.backend.js.utils.asString
 import org.jetbrains.kotlin.ir.backend.js.utils.getJsName
 import org.jetbrains.kotlin.ir.builders.*
 import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.declarations.impl.IrValueParameterImpl
+import org.jetbrains.kotlin.ir.declarations.impl.MappingKey
 import org.jetbrains.kotlin.ir.expressions.IrBody
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.types.IrType
@@ -130,11 +132,13 @@ class BridgesConstruction(val context: JsIrBackendContext) : ClassLoweringPass {
             overriddenSymbols.addAll(delegateTo.overriddenSymbols)
         }
 
-        context.bridgeToBridgeInfoMapping[irFunction] = ContextData.BridgeInfo(function, bridge, delegateTo)
+        irFunction.bridgeInfo = ContextData.BridgeInfo(function, bridge, delegateTo)
 
         return irFunction
     }
 }
+
+private var IrSimpleFunction.bridgeInfo by mapping(object : MappingKey<IrSimpleFunction, ContextData.BridgeInfo>{})
 
 class BridgesBodyConstruction(val context: JsIrBackendContext) : NullableBodyLoweringPass {
 
@@ -150,7 +154,7 @@ class BridgesBodyConstruction(val context: JsIrBackendContext) : NullableBodyLow
 
         val irFunction = container
 
-        context.bridgeToBridgeInfoMapping[container]?.let { (function, bridge, delegateTo) ->
+        container.bridgeInfo?.let { (function, bridge, delegateTo) ->
             container.body = context.createIrBuilder(irFunction.symbol).irBlockBody(irFunction) {
                 val call = irCall(delegateTo.symbol)
                 call.dispatchReceiver = irGet(irFunction.dispatchReceiverParameter!!)

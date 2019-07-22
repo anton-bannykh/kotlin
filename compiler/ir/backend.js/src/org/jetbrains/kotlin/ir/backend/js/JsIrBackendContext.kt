@@ -112,9 +112,6 @@ class JsIrBackendContext(
     private val coroutinePackage = module.getPackage(COROUTINE_PACKAGE_FQNAME)
     private val coroutineIntrinsicsPackage = module.getPackage(COROUTINE_INTRINSICS_PACKAGE_FQNAME)
 
-
-    val bridgeToBridgeInfoMapping get() = data.bridgeToBridgeInfoMapping
-
     val libraryIntrinsics = JsLibraryIntrinsics(this)
 
     override val internalPackageFqn = JS_PACKAGE_FQNAME
