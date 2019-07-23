@@ -6,6 +6,7 @@
 package org.jetbrains.kotlin.ir.backend.js.transformers.irToJs
 
 import org.jetbrains.kotlin.config.CommonConfigurationKeys
+import org.jetbrains.kotlin.descriptors.ModuleDescriptor
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.ir.backend.js.ContextData
 import org.jetbrains.kotlin.ir.backend.js.JsIrBackendContext
@@ -20,7 +21,7 @@ import org.jetbrains.kotlin.utils.addIfNotNull
 
 class IrModuleToJsTransformer(
     private val backendContext: JsIrBackendContext,
-    private val data: ContextData
+    private val dataMap: Map<ModuleDescriptor, ContextData>
 ) {
 
     val moduleName = backendContext.configuration[CommonConfigurationKeys.MODULE_NAME]!!
@@ -55,8 +56,10 @@ class IrModuleToJsTransformer(
         statements += postDeclarationBlock
         statements += context.staticContext.initializerBlock
 
-        if (data.hasTests) {
-            statements += JsInvocation(context.getNameForStaticFunction(data.testContainer).makeRef()).makeStmt()
+        dataMap.values.forEach {data ->
+            if (data.hasTests) {
+                statements += JsInvocation(context.getNameForStaticFunction(data.testContainer).makeRef()).makeStmt()
+            }
         }
 
 
@@ -124,7 +127,7 @@ class IrModuleToJsTransformer(
 
     fun generateModule(modules: List<IrModuleFragment>): JsProgram {
 
-        val namer = NameTables(modules.flatMap { it.files } + data.let {
+        val namer = NameTables(modules.flatMap { it.files } + dataMap.values.flatMap {
             listOf(
                 it.externalPackageFragment,
                 it.bodilessBuiltInsPackageFragment
@@ -190,16 +193,18 @@ class IrModuleToJsTransformer(
         declareFreshGlobal: (String) -> JsName
     ): Pair<MutableList<JsStatement>, List<JsImportedModule>> {
         val declarationLevelJsModules =
-            data.declarationLevelJsModules.map { externalDeclaration ->
-                val jsModule = externalDeclaration.getJsModule()!!
-                val name = getNameForExternalDeclaration(externalDeclaration)
-                JsImportedModule(jsModule, name, name.makeRef())
+            dataMap.values.flatMap {
+                it.declarationLevelJsModules.map { externalDeclaration ->
+                    val jsModule = externalDeclaration.getJsModule()!!
+                    val name = getNameForExternalDeclaration(externalDeclaration)
+                    JsImportedModule(jsModule, name, name.makeRef())
+                }
             }
 
         val packageLevelJsModules = mutableListOf<JsImportedModule>()
         val importStatements = mutableListOf<JsStatement>()
 
-        for (file in data.packageLevelJsModules.values) {
+        for (file in dataMap.values.flatMap { it.packageLevelJsModules.values }) {
             val jsModule = file.getJsModule()
             val jsQualifier = file.getJsQualifier()
 

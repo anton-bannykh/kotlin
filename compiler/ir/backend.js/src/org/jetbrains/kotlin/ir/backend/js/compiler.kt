@@ -8,6 +8,7 @@ package org.jetbrains.kotlin.ir.backend.js
 import com.intellij.openapi.project.Project
 import org.jetbrains.kotlin.backend.common.phaser.PhaseConfig
 import org.jetbrains.kotlin.config.CompilerConfiguration
+import org.jetbrains.kotlin.descriptors.ModuleDescriptor
 import org.jetbrains.kotlin.ir.backend.js.transformers.irToJs.IrModuleToJsTransformer
 import org.jetbrains.kotlin.ir.util.ExternalDependenciesGenerator
 import org.jetbrains.kotlin.psi.KtFile
@@ -29,6 +30,13 @@ fun compile(
 
     val moduleDescriptor = moduleFragment.descriptor
 
+    val dataMap = mutableMapOf(moduleDescriptor to ContextData(moduleFragment))
+    dependencyModules.forEach {
+        dataMap[it.descriptor] = ContextData(it)
+    }
+
+    stageController.dataMap = dataMap
+
     stageController.dependencyGenerator = ExternalDependenciesGenerator(
         moduleDescriptor,
         symbolTable,
@@ -45,12 +53,12 @@ fun compile(
     stageController.bodiesEnabled = true
 
     // TODO traverse all IR
-    generateTests(context, stageController.data, dependencyModules + moduleFragment, phaseConfig)
+    generateTests(context, dataMap[moduleDescriptor]!!, dependencyModules + moduleFragment, phaseConfig)
 
     stageController.freeze()
 
     // TODO traverse all IR
-    val jsProgram = IrModuleToJsTransformer(context, stageController.data).generateModule(dependencyModules + moduleFragment)
+    val jsProgram = IrModuleToJsTransformer(context, dataMap).generateModule(dependencyModules + moduleFragment)
 
     stageController.deinit()
 

@@ -52,11 +52,8 @@ class JsIrBackendContext(
     val stageController: MutableController
 ) : CommonBackendContext {
 
-    val data = ContextData(irModuleFragment)
-
     init {
         stageController.context = this
-        stageController.data = data
     }
 
     override val builtIns = module.builtIns

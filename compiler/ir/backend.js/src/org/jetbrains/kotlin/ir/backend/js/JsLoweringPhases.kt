@@ -5,9 +5,9 @@
 
 package org.jetbrains.kotlin.ir.backend.js
 
-import com.google.gwt.dev.js.rhino.Context
 import org.jetbrains.kotlin.backend.common.*
 import org.jetbrains.kotlin.backend.common.phaser.*
+import org.jetbrains.kotlin.descriptors.ModuleDescriptor
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.backend.js.lower.*
 import org.jetbrains.kotlin.ir.backend.js.lower.calls.CallsLowering
@@ -596,7 +596,7 @@ class MutableController : StageController {
 
     lateinit var context: JsIrBackendContext
 
-    lateinit var data: ContextData
+    lateinit var dataMap: Map<ModuleDescriptor, ContextData>
 
 //    private val fileToModule = mutableMapOf<IrPackageFragment, ModuleDescriptor>()
 
@@ -648,6 +648,10 @@ class MutableController : StageController {
                         if (frozen) {
                             error("frozen! ${topLevelDeclaration.name.asString()} in ${fileBefore.fileEntry.name}")
                         }
+
+                        val module = fileBefore.symbol.descriptor.containingDeclaration
+                        val data = dataMap[module]!!
+
                         val (lowering, loweringType) = perFilePhaseList[i - 1]
 
                         val result = if (loweringType.bodiesEnabled)
