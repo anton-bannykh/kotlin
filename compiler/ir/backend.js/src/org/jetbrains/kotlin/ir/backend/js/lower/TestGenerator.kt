@@ -9,6 +9,7 @@ import org.jetbrains.kotlin.backend.common.FileLoweringPass
 import org.jetbrains.kotlin.backend.common.ir.isExpect
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Modality
+import org.jetbrains.kotlin.ir.backend.js.ContextData
 import org.jetbrains.kotlin.ir.backend.js.JsIrBackendContext
 import org.jetbrains.kotlin.ir.backend.js.ir.JsIrBuilder
 import org.jetbrains.kotlin.ir.declarations.*
@@ -23,7 +24,7 @@ import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.isEffectivelyExternal
 import org.jetbrains.kotlin.name.FqName
 
-class TestGenerator(val context: JsIrBackendContext) : FileLoweringPass {
+class TestGenerator(val context: JsIrBackendContext, val data: ContextData) : FileLoweringPass {
 
     override fun lower(irFile: IrFile) {
         irFile.declarations.forEach {
@@ -38,7 +39,7 @@ class TestGenerator(val context: JsIrBackendContext) : FileLoweringPass {
     private val packageSuites = mutableMapOf<FqName, FunctionWithBody>()
 
     private fun suiteForPackage(fqName: FqName) = packageSuites.getOrPut(fqName) {
-        context.suiteFun!!.createInvocation(fqName.asString(), context.testContainer.body as IrBlockBody)
+        context.suiteFun!!.createInvocation(fqName.asString(), data.testContainer.body as IrBlockBody)
     }
 
     private data class FunctionWithBody(val function: IrSimpleFunction, val body: IrBlockBody)
@@ -53,10 +54,10 @@ class TestGenerator(val context: JsIrBackendContext) : FileLoweringPass {
         val function = JsIrBuilder.buildFunction(
             "$name test fun",
             context.irBuiltIns.unitType,
-            context.implicitDeclarationFile
+            data.implicitDeclarationFile
         ).also {
             it.body = body
-            context.implicitDeclarationFile.declarations += it
+            data.implicitDeclarationFile.declarations += it
         }
 
         parentBody.statements += JsIrBuilder.buildCall(this).apply {

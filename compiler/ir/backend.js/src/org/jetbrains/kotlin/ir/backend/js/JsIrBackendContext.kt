@@ -63,22 +63,22 @@ class JsIrBackendContext(
 
     override var inVerbosePhase: Boolean = false
 
-    val externalPackageFragment: IrPackageFragment get() = data.externalPackageFragment
+    // Move bodiless
+//    val externalPackageFragment: IrPackageFragment get() = data.externalPackageFragment
+//    val bodilessBuiltInsPackageFragment: IrPackageFragment get() = data.bodilessBuiltInsPackageFragment
+//    val packageLevelJsModules get() = data.packageLevelJsModules
+//    val declarationLevelJsModules get() = data.declarationLevelJsModules
 
-    val bodilessBuiltInsPackageFragment: IrPackageFragment get() = data.bodilessBuiltInsPackageFragment
+    // Tests
+//    val implicitDeclarationFile get() = data.implicitDeclarationFile
+//    val hasTests get() = data.hasTests
+//    val testContainer: IrSimpleFunction get() = data.testContainer
 
-    val packageLevelJsModules get() = data.packageLevelJsModules
-    val declarationLevelJsModules get() = data.declarationLevelJsModules
+    // Shared variables
+    override val sharedVariablesManager get() = error("")
 
-    val implicitDeclarationFile get() = data.implicitDeclarationFile
-
-    val hasTests get() = data.hasTests
-
-    val testContainer: IrSimpleFunction get() = data.testContainer
-
-    override val sharedVariablesManager get() = data.sharedVariablesManager
-
-    override val declarationFactory get() = data.declarationFactory
+    // Inner classes
+    override val declarationFactory get() = error("")
 
     companion object {
         val KOTLIN_PACKAGE_FQN = FqName.fromSegments(listOf("kotlin"))

@@ -5,6 +5,7 @@
 
 package org.jetbrains.kotlin.ir.backend.js.lower
 
+import com.google.gwt.dev.js.rhino.Context
 import org.jetbrains.kotlin.backend.common.DeclarationTransformer
 import org.jetbrains.kotlin.backend.common.FileLoweringPass
 import org.jetbrains.kotlin.backend.common.ir.addChild
@@ -43,7 +44,7 @@ private val BODILESS_BUILTIN_CLASSES = listOf(
 ).map { FqName(it) }.toSet()
 
 
-class MoveBodilessDeclarationsToSeparatePlaceLowering(private val context: JsIrBackendContext) : DeclarationTransformer {
+class MoveBodilessDeclarationsToSeparatePlaceLowering(private val context: JsIrBackendContext, private val data: ContextData) : DeclarationTransformer {
 
     fun isBuiltInClass(declaration: IrDeclaration): Boolean =
         declaration is IrClass && declaration.fqNameWhenAvailable in BODILESS_BUILTIN_CLASSES
@@ -52,7 +53,7 @@ class MoveBodilessDeclarationsToSeparatePlaceLowering(private val context: JsIrB
         val irFile = declaration.parent as? IrFile ?: error("Only top-level declarations within an IrFile are allowed for this lowering")
 
         if (irFile.getJsModule() != null || irFile.getJsQualifier() != null) {
-            val newFile = context.packageLevelJsModules.getOrPut(irFile) {
+            val newFile = data.packageLevelJsModules.getOrPut(irFile) {
                 val newFragmentDescriptor = EmptyPackageFragmentDescriptor(context.module, irFile.fqName)
                 val newFragmentSymbol = IrFileSymbolImpl(newFragmentDescriptor)
                 val newFragment = IrFileImpl(irFile.fileEntry, newFragmentSymbol)
@@ -69,13 +70,13 @@ class MoveBodilessDeclarationsToSeparatePlaceLowering(private val context: JsIrB
             val d = declaration as? IrDeclarationWithName ?: return null
 
             if (isBuiltInClass(d)) {
-                context.bodilessBuiltInsPackageFragment.addChild(d)
+                data.bodilessBuiltInsPackageFragment.addChild(d)
                 return emptyList()
             } else if (d.isEffectivelyExternal()) {
                 if (d.getJsModule() != null)
-                    context.declarationLevelJsModules.add(d)
+                    data.declarationLevelJsModules.add(d)
 
-                context.externalPackageFragment.addChild(d)
+                data.externalPackageFragment.addChild(d)
                 return emptyList()
             }
 
