@@ -39,9 +39,9 @@ import org.jetbrains.kotlin.name.Name
 
 data class DirectThrowableSuccessors(val klass: IrClass, val message: IrField, val cause: IrField)
 
-private object MessageAccessorToMessageFieldKey : DeclarationBiMapKey<IrField, IrSimpleFunction>
+private var IrSimpleFunction.causeField by mapping(object : MappingKey<IrSimpleFunction, IrField>{})
 
-private object CauseAccessorToCauseFieldKey : DeclarationBiMapKey<IrField, IrSimpleFunction>
+private var IrSimpleFunction.messageField by mapping(object : MappingKey<IrSimpleFunction, IrField>{})
 
 private var IrClass.pendingSuperUsages by mapping(object : MappingKey<IrClass, DirectThrowableSuccessors> {})
 
@@ -63,9 +63,6 @@ class ThrowableSuccessorsLowering(val context: JsIrBackendContext) : Declaration
         throwableClass.owner.declarations.filterIsInstance<IrFunction>().atMostOne { it.name == Name.special("<get-cause>") }?.symbol
             ?: throwableClass.owner.declarations.filterIsInstance<IrProperty>().atMostOne { it.name == causePropertyName }?.getter?.symbol!!
     }
-
-    private val messageAccessorToFieldMap = context.declarationFactory.getMapping(MessageAccessorToMessageFieldKey)
-    private val causeAccessorToFieldMap = context.declarationFactory.getMapping(CauseAccessorToCauseFieldKey)
 
     override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
         declaration.accept(ThrowableAccessorCreationVisitor(), null)
@@ -89,14 +86,14 @@ class ThrowableSuccessorsLowering(val context: JsIrBackendContext) : Declaration
                 val existedMessageAccessor = ownPropertyAccessor(declaration, messageGetter)
                 val newMessageAccessor = if (existedMessageAccessor.origin == IrDeclarationOrigin.FAKE_OVERRIDE) {
                     createPropertyAccessor(existedMessageAccessor, messageField).also {
-                        messageAccessorToFieldMap.link(messageField, it)
+                        it.messageField = messageField
                     }
                 } else existedMessageAccessor
 
                 val existedCauseAccessor = ownPropertyAccessor(declaration, causeGetter)
                 val newCauseAccessor = if (existedCauseAccessor.origin == IrDeclarationOrigin.FAKE_OVERRIDE) {
                     createPropertyAccessor(existedCauseAccessor, causeField).also {
-                        causeAccessorToFieldMap.link(causeField, it)
+                        it.causeField = causeField
                     }
                 } else existedCauseAccessor
 
@@ -199,14 +196,11 @@ class ThrowableSuccessorsBodyLowering(val context: JsIrBackendContext) : Nullabl
     private val captureStackFunction = context.captureStackSymbol
     private val newThrowableFunction = context.newThrowableSymbol
 
-    private val messageAccessorToFieldMap = context.declarationFactory.getMapping(MessageAccessorToMessageFieldKey)
-    private val causeAccessorToFieldMap = context.declarationFactory.getMapping(CauseAccessorToCauseFieldKey)
-
     override fun lower(irBody: IrBody?, container: IrDeclaration) {
         var body = irBody
 
         (container as? IrSimpleFunction)?.let { function ->
-            messageAccessorToFieldMap.oldByNew(container)?.let { field ->
+            container.messageField?.let { field ->
                 val thisReceiver = JsIrBuilder.buildGetValue(function.dispatchReceiverParameter!!.symbol)
                 val returnValue = JsIrBuilder.buildGetField(field.symbol, thisReceiver, type = field.type)
                 val returnStatement = JsIrBuilder.buildReturn(function.symbol, returnValue, nothingType)
@@ -214,7 +208,7 @@ class ThrowableSuccessorsBodyLowering(val context: JsIrBackendContext) : Nullabl
                 body = function.body
             }
 
-            causeAccessorToFieldMap.oldByNew(container)?.let { field ->
+            container.causeField?.let { field ->
                 val thisReceiver = JsIrBuilder.buildGetValue(function.dispatchReceiverParameter!!.symbol)
                 val returnValue = JsIrBuilder.buildGetField(field.symbol, thisReceiver, type = field.type)
                 val returnStatement = JsIrBuilder.buildReturn(function.symbol, returnValue, nothingType)
