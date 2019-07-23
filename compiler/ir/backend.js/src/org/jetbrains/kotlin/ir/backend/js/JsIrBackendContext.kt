@@ -60,17 +60,6 @@ class JsIrBackendContext(
 
     override var inVerbosePhase: Boolean = false
 
-    // Move bodiless
-//    val externalPackageFragment: IrPackageFragment get() = data.externalPackageFragment
-//    val bodilessBuiltInsPackageFragment: IrPackageFragment get() = data.bodilessBuiltInsPackageFragment
-//    val packageLevelJsModules get() = data.packageLevelJsModules
-//    val declarationLevelJsModules get() = data.declarationLevelJsModules
-
-    // Tests
-//    val implicitDeclarationFile get() = data.implicitDeclarationFile
-//    val hasTests get() = data.hasTests
-//    val testContainer: IrSimpleFunction get() = data.testContainer
-
     // Shared variables
     override val sharedVariablesManager get() = error("")
 
