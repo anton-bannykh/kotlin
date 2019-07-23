@@ -137,34 +137,4 @@ class JsDeclarationFactory : DeclarationFactory {
 
         return createPropertyWithBackingField(name, Visibilities.PUBLIC, singleton, singleton.defaultType, origin)
     }
-
-
-    private val declarationsBiMappingMap: MutableMap<DeclarationBiMapKey<*, *>, BiMappingImpl<*, *>> = mutableMapOf()
-
-    private class BiMappingImpl<O: IrDeclaration, N: IrDeclaration>: DeclarationBiMap<O, N> {
-        private val oldToNew = mutableMapOf<O, N>()
-        private val newToOld = mutableMapOf<N, O>()
-
-        override fun oldByNew(declaration: N): O? {
-            return newToOld[declaration]
-        }
-
-        override fun newByOld(declaration: O): N? {
-            return oldToNew[declaration]
-        }
-
-        override fun link(old: O, new: N) {
-            assert(old !in oldToNew)
-            assert(new !in newToOld)
-
-            oldToNew[old] = new
-            newToOld[new] = old
-        }
-    }
-
-    override fun <O : IrDeclaration, N : IrDeclaration> getMapping(key: DeclarationBiMapKey<O, N>): DeclarationBiMap<O, N> {
-        return declarationsBiMappingMap.getOrPut(key) {
-            BiMappingImpl<O, N>()
-        } as DeclarationBiMap<O, N>
-    }
 }
