@@ -14,9 +14,11 @@ import org.jetbrains.kotlin.backend.common.ir.copyTo
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
 import org.jetbrains.kotlin.ir.backend.js.JsIrBackendContext
+import org.jetbrains.kotlin.ir.backend.js.mapping
 import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.declarations.impl.IrFunctionImpl
 import org.jetbrains.kotlin.ir.declarations.impl.IrValueParameterImpl
+import org.jetbrains.kotlin.ir.declarations.impl.MappingKey
 import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.expressions.impl.IrCallImpl
 import org.jetbrains.kotlin.ir.expressions.impl.IrFunctionReferenceImpl
@@ -34,9 +36,10 @@ val STATIC_THIS_PARAMETER = object : IrDeclarationOriginImpl("STATIC_THIS_PARAME
 
 private object MemberToStaticKey : DeclarationBiMapKey<IrFunction, IrSimpleFunction>
 
-class PrivateMembersLowering(val context: JsIrBackendContext) : ClassLoweringPass {
+private var IrFunction.correspondingStatic by mapping(object : MappingKey<IrFunction, IrSimpleFunction> {})
+private var IrSimpleFunction.correspondingMember by mapping(object : MappingKey<IrSimpleFunction, IrFunction>{})
 
-    private val memberToStatic = context.declarationFactory.getMapping(MemberToStaticKey)
+class PrivateMembersLowering(val context: JsIrBackendContext) : ClassLoweringPass {
 
     override fun lower(irClass: IrClass) {
 
@@ -99,7 +102,8 @@ class PrivateMembersLowering(val context: JsIrBackendContext) : ClassLoweringPas
             it.parent = staticFunction
         }
 
-        memberToStatic.link(function, staticFunction)
+        function.correspondingStatic = staticFunction
+        staticFunction.correspondingMember = function
 
         staticFunction.valueParameters += function.valueParameters.map {
             // TODO better way to avoid copying default value
@@ -112,14 +116,12 @@ class PrivateMembersLowering(val context: JsIrBackendContext) : ClassLoweringPas
 
 class PrivateMemberBodiesLowering(val context: JsIrBackendContext): NullableBodyLoweringPass {
 
-    private val memberToStatic = context.declarationFactory.getMapping(MemberToStaticKey)
-
     override fun lower(irBody: IrBody?, staticFunction: IrDeclaration) {
 
         var body = irBody
 
         if (staticFunction is IrSimpleFunction) {
-            memberToStatic.oldByNew(staticFunction)?.let { function ->
+            staticFunction.correspondingMember?.let { function ->
 
                 staticFunction.valueParameters.forEach {
                     it.defaultValue?.patchDeclarationParents(staticFunction)
@@ -148,12 +150,12 @@ class PrivateMemberBodiesLowering(val context: JsIrBackendContext): NullableBody
             override fun visitCall(expression: IrCall): IrExpression {
                 super.visitCall(expression)
 
-                return memberToStatic.newByOld(expression.symbol.owner)?.let {
+                return expression.symbol.owner.correspondingStatic?.let {
                     transformPrivateToStaticCall(expression, it)
                 } ?: expression
             }
 
-            override fun visitFunctionReference(expression: IrFunctionReference) = memberToStatic.newByOld(expression.symbol.owner)?.let {
+            override fun visitFunctionReference(expression: IrFunctionReference) = expression.symbol.owner.correspondingStatic?.let {
                 transformPrivateToStaticReference(expression) {
                     IrFunctionReferenceImpl(
                         expression.startOffset, expression.endOffset,
@@ -166,7 +168,7 @@ class PrivateMemberBodiesLowering(val context: JsIrBackendContext): NullableBody
             } ?: expression
 
             override fun visitPropertyReference(expression: IrPropertyReference): IrExpression {
-                return if (expression.getter?.owner?.let { memberToStatic.newByOld(it) } != null || expression.setter?.owner?.let { memberToStatic.newByOld(it) } != null) {
+                return if (expression.getter?.owner?.correspondingStatic != null || expression.setter?.owner?.correspondingStatic != null) {
                     transformPrivateToStaticReference(expression) {
                         IrPropertyReferenceImpl(
                             expression.startOffset, expression.endOffset,
@@ -174,8 +176,8 @@ class PrivateMemberBodiesLowering(val context: JsIrBackendContext): NullableBody
                             expression.symbol, // TODO remap property symbol based on remapped getter/setter?
                             expression.typeArgumentsCount,
                             expression.field,
-                            expression.getter?.owner?.let { memberToStatic.newByOld(it) }?.symbol ?: expression.getter,
-                            expression.setter?.owner?.let { memberToStatic.newByOld(it) }?.symbol ?: expression.setter,
+                            expression.getter?.owner?.correspondingStatic?.symbol ?: expression.getter,
+                            expression.setter?.owner?.correspondingStatic?.symbol ?: expression.setter,
                             expression.origin
                         )
                     }
