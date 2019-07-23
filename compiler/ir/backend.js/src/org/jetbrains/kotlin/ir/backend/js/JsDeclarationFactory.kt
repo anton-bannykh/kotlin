@@ -12,11 +12,14 @@ import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.descriptors.Visibility
 import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
+import org.jetbrains.kotlin.ir.backend.js.getOrPut
 import org.jetbrains.kotlin.ir.backend.js.ir.JsIrBuilder
+import org.jetbrains.kotlin.ir.backend.js.mapping
 import org.jetbrains.kotlin.ir.backend.js.utils.Namer
 import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.declarations.impl.IrConstructorImpl
 import org.jetbrains.kotlin.ir.declarations.impl.IrFieldImpl
+import org.jetbrains.kotlin.ir.declarations.impl.MappingKey
 import org.jetbrains.kotlin.ir.symbols.impl.IrConstructorSymbolImpl
 import org.jetbrains.kotlin.ir.symbols.impl.IrFieldSymbolImpl
 import org.jetbrains.kotlin.ir.types.IrType
@@ -25,18 +28,18 @@ import org.jetbrains.kotlin.ir.util.dump
 import org.jetbrains.kotlin.name.Name
 import java.util.*
 
-class JsDeclarationFactory : DeclarationFactory {
-    private val singletonFieldDescriptors = HashMap<IrClass, IrField>()
-    private val outerThisFieldSymbols = HashMap<IrClass, IrField>()
-    private val innerClassConstructors = HashMap<IrConstructor, IrConstructor>()
-    private val innerClassConstructorsReversed = HashMap<IrConstructor, IrConstructor>()
+private var IrClass.singletonField by mapping(object : MappingKey<IrClass, IrField>{})
+private var IrClass.outerThisField by mapping(object : MappingKey<IrClass, IrField>{})
+private var IrConstructor.withOuterThis by mapping(object : MappingKey<IrConstructor, IrConstructor>{})
+private var IrConstructor.withInnerThis by mapping(object : MappingKey<IrConstructor, IrConstructor>{})
 
+class JsDeclarationFactory : DeclarationFactory {
     override fun getFieldForEnumEntry(enumEntry: IrEnumEntry, entryType: IrType): IrField = TODO()
 
     override fun getOuterThisField(innerClass: IrClass): IrField =
         if (!innerClass.isInner) throw AssertionError("Class is not inner: ${innerClass.dump()}")
         else {
-            outerThisFieldSymbols.getOrPut(innerClass) {
+            innerClass::outerThisField.getOrPut {
                 val outerClass = innerClass.parent as? IrClass
                     ?: throw AssertionError("No containing class for inner class ${innerClass.dump()}")
 
@@ -75,10 +78,10 @@ class JsDeclarationFactory : DeclarationFactory {
         val innerClass = innerClassConstructor.parent as IrClass
         assert(innerClass.isInner) { "Class is not inner: $innerClass" }
 
-        return innerClassConstructors.getOrPut(innerClassConstructor) {
-            createInnerClassConstructorWithOuterThisParameter(innerClassConstructor)
-        }.also {
-            innerClassConstructorsReversed[it] = innerClassConstructor
+        return innerClassConstructor::withOuterThis.getOrPut {
+            createInnerClassConstructorWithOuterThisParameter(innerClassConstructor).also {
+                it.withInnerThis = innerClassConstructor
+            }
         }
     }
 
@@ -122,11 +125,11 @@ class JsDeclarationFactory : DeclarationFactory {
     }
 
     override fun getInnerClassConstructorWithInnerThisParameter(innerClassConstructor: IrConstructor): IrConstructor {
-        return innerClassConstructorsReversed[innerClassConstructor]!!
+        return innerClassConstructor.withInnerThis!!
     }
 
     override fun getFieldForObjectInstance(singleton: IrClass): IrField =
-        singletonFieldDescriptors.getOrPut(singleton) {
+        singleton::singletonField.getOrPut {
             createObjectInstanceFieldDescriptor(singleton, JsIrBuilder.SYNTHESIZED_DECLARATION)
         }
 
