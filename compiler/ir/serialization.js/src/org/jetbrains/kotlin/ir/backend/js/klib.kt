@@ -28,9 +28,7 @@ import org.jetbrains.kotlin.ir.backend.js.lower.serialization.metadata.JsKlibMet
 import org.jetbrains.kotlin.ir.backend.js.lower.serialization.metadata.createJsKlibMetadataPackageFragmentProvider
 import org.jetbrains.kotlin.ir.backend.js.lower.serialization.metadata.*
 import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
-import org.jetbrains.kotlin.ir.declarations.NoopController
 import org.jetbrains.kotlin.ir.descriptors.IrBuiltIns
-import org.jetbrains.kotlin.ir.util.CompositeSymbolTable
 import org.jetbrains.kotlin.ir.util.SymbolTable
 import org.jetbrains.kotlin.js.analyze.TopDownAnalyzerFacadeForJS
 import org.jetbrains.kotlin.js.analyzer.JsAnalysisResult

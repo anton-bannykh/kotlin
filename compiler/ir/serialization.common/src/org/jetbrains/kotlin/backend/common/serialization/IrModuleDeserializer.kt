@@ -46,6 +46,8 @@ abstract class IrModuleDeserializer(
     val symbolTable: SymbolTable
 ) {
 
+    protected abstract val moduleDescriptor: ModuleDescriptor
+
     abstract fun deserializeIrSymbol(proto: KotlinIr.IrSymbol): IrSymbol
     abstract fun deserializeIrType(proto: KotlinIr.IrTypeIndex): IrType
     abstract fun deserializeDescriptorReference(proto: KotlinIr.DescriptorReference): DeclarationDescriptor
@@ -420,7 +422,7 @@ abstract class IrModuleDeserializer(
             deserializeDescriptorReference(proto.descriptorReference) as PropertyDescriptor
         else
             field?.descriptor as? WrappedPropertyDescriptor // If field's descriptor coincides with property's.
-                ?: getterToPropertyDescriptorMap.getOrPut(getter!!) { WrappedPropertyDescriptor() }
+                ?: getterToPropertyDescriptorMap.getOrPut(getter!!) { WrappedPropertyDescriptor().also { it.containingModule = moduleDescriptor } }
 
         val callable = IrPropertyReferenceImpl(
             start, end, type,
@@ -1113,7 +1115,7 @@ abstract class IrModuleDeserializer(
                 deserializeDescriptorReference(proto.descriptorReference) as PropertyDescriptor
             else
                 backingField?.descriptor as? WrappedPropertyDescriptor // If field's descriptor coincides with property's.
-                    ?: getterToPropertyDescriptorMap.getOrPut(getter!!.symbol) { WrappedPropertyDescriptor() }
+                    ?: getterToPropertyDescriptorMap.getOrPut(getter!!.symbol) { WrappedPropertyDescriptor().also { it.containingModule = moduleDescriptor } }
 
         val property = IrPropertyImpl(
             start, end, origin,
@@ -1147,7 +1149,7 @@ abstract class IrModuleDeserializer(
         end: Int,
         origin: IrDeclarationOrigin
     ): IrDeclaration {
-        return IrErrorDeclarationImpl(start, end, WrappedClassDescriptor())
+        return IrErrorDeclarationImpl(start, end, WrappedClassDescriptor().also { it.containingModule = moduleDescriptor })
     }
 
     private val allKnownOrigins =

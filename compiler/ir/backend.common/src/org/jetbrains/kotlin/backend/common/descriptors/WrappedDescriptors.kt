@@ -35,7 +35,7 @@ import org.jetbrains.kotlin.types.*
 import java.lang.UnsupportedOperationException
 
 
-abstract class WrappedDeclarationDescriptor<T : IrDeclaration>(annotations: Annotations) :
+abstract class WrappedDeclarationDescriptor<T : IrDeclaration>(annotations: Annotations, var containingModule: ModuleDescriptor? = null) :
     DeclarationDescriptor, IrBasedDeclarationDescriptor {
 
     private val annotations_ = annotations

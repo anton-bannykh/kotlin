@@ -57,7 +57,7 @@ abstract class KotlinIrLinker(
     val fileAnnotations = mutableMapOf<IrFile, KotlinIr.Annotations>()
 
     inner class IrDeserializerForModule(
-        private val moduleDescriptor: ModuleDescriptor,
+        override val moduleDescriptor: ModuleDescriptor,
         private val moduleProto: KotlinIr.IrModule,
         private val deserializationStrategy: DeserializationStrategy
     ) : IrModuleDeserializer(logger, builtIns, symbolTable) {
@@ -74,54 +74,54 @@ abstract class KotlinIrLinker(
             KotlinIr.IrSymbolKind.ANONYMOUS_INIT_SYMBOL ->
                 IrAnonymousInitializerSymbolImpl(
                     descriptor as ClassDescriptor?
-                        ?: WrappedClassDescriptor()
+                        ?: WrappedClassDescriptor().also { it.containingModule = moduleDescriptor }
                 )
             KotlinIr.IrSymbolKind.CLASS_SYMBOL ->
                 symbolTable.referenceClass(
                     descriptor as ClassDescriptor?
-                        ?: WrappedClassDescriptor()
+                        ?: WrappedClassDescriptor().also { it.containingModule = moduleDescriptor }
                 )
             KotlinIr.IrSymbolKind.CONSTRUCTOR_SYMBOL ->
                 symbolTable.referenceConstructor(
                     descriptor as ClassConstructorDescriptor?
-                        ?: WrappedClassConstructorDescriptor()
+                        ?: WrappedClassConstructorDescriptor().also { it.containingModule = moduleDescriptor }
                 )
             KotlinIr.IrSymbolKind.TYPE_PARAMETER_SYMBOL ->
                 symbolTable.referenceTypeParameter(
                     descriptor as TypeParameterDescriptor?
-                        ?: WrappedTypeParameterDescriptor()
+                        ?: WrappedTypeParameterDescriptor().also { it.containingModule = moduleDescriptor }
                 )
             KotlinIr.IrSymbolKind.ENUM_ENTRY_SYMBOL ->
                 symbolTable.referenceEnumEntry(
                     descriptor as ClassDescriptor?
-                        ?: WrappedEnumEntryDescriptor()
+                        ?: WrappedEnumEntryDescriptor().also { it.containingModule = moduleDescriptor }
                 )
             KotlinIr.IrSymbolKind.STANDALONE_FIELD_SYMBOL ->
-                symbolTable.referenceField(WrappedFieldDescriptor())
+                symbolTable.referenceField(WrappedFieldDescriptor().also { it.containingModule = moduleDescriptor })
 
             KotlinIr.IrSymbolKind.FIELD_SYMBOL ->
                 symbolTable.referenceField(
                     descriptor as PropertyDescriptor?
-                        ?: WrappedPropertyDescriptor()
+                        ?: WrappedPropertyDescriptor().also { it.containingModule = moduleDescriptor }
                 )
             KotlinIr.IrSymbolKind.FUNCTION_SYMBOL ->
                 symbolTable.referenceSimpleFunction(
                     descriptor as FunctionDescriptor?
-                        ?: WrappedSimpleFunctionDescriptor()
+                        ?: WrappedSimpleFunctionDescriptor().also { it.containingModule = moduleDescriptor }
                 )
             KotlinIr.IrSymbolKind.VARIABLE_SYMBOL ->
                 IrVariableSymbolImpl(
                     descriptor as VariableDescriptor?
-                        ?: WrappedVariableDescriptor()
+                        ?: WrappedVariableDescriptor().also { it.containingModule = moduleDescriptor }
                 )
             KotlinIr.IrSymbolKind.VALUE_PARAMETER_SYMBOL ->
                 IrValueParameterSymbolImpl(
                     descriptor as ParameterDescriptor?
-                        ?: WrappedValueParameterDescriptor()
+                        ?: WrappedValueParameterDescriptor().also { it.containingModule = moduleDescriptor }
                 )
             KotlinIr.IrSymbolKind.RECEIVER_PARAMETER_SYMBOL ->
                 IrValueParameterSymbolImpl(
-                    descriptor as ParameterDescriptor? ?: WrappedReceiverParameterDescriptor()
+                    descriptor as ParameterDescriptor? ?: WrappedReceiverParameterDescriptor().also { it.containingModule = moduleDescriptor }
                 )
             else -> TODO("Unexpected classifier symbol kind: ${proto.kind}")
         }

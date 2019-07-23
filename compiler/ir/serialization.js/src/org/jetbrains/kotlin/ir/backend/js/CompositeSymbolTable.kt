@@ -3,29 +3,22 @@
  * that can be found in the license/LICENSE.txt file.
  */
 
-package org.jetbrains.kotlin.ir.util
+package org.jetbrains.kotlin.ir.backend.js
 
+import org.jetbrains.kotlin.backend.common.descriptors.WrappedDeclarationDescriptor
 import org.jetbrains.kotlin.descriptors.*
 import org.jetbrains.kotlin.ir.declarations.*
-import org.jetbrains.kotlin.ir.descriptors.IrBasedDeclarationDescriptor
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.IrExpressionBody
 import org.jetbrains.kotlin.ir.symbols.*
 import org.jetbrains.kotlin.ir.types.IrType
+import org.jetbrains.kotlin.ir.util.SymbolTable
 import org.jetbrains.kotlin.resolve.descriptorUtil.module
 
 class CompositeSymbolTable(private val moduleMap: Map<ModuleDescriptor, SymbolTable>) : SymbolTable() {
 
-    private val wrappedDescriptorSymbolTable = SymbolTable()
-
     private val DeclarationDescriptor.symbolTable
-        get() = if (this is IrBasedDeclarationDescriptor) {
-            wrappedDescriptorSymbolTable
-        } else {
-            moduleMap[this.module] ?: run {
-                error("Unexpected module: ${this.module}")
-            }
-        }
+        get() = moduleMap[(this as? WrappedDeclarationDescriptor<*>)?.containingModule ?: this.module] ?: error("Unexpected module: ${this.module}")
 
     private fun <T> all(fn: SymbolTable.() -> Set<T>): Set<T> {
         return moduleMap.values.flatMapTo(mutableSetOf()) { it.fn() }
@@ -33,7 +26,6 @@ class CompositeSymbolTable(private val moduleMap: Map<ModuleDescriptor, SymbolTa
 
     private fun forAll(fn: SymbolTable.() -> Unit)  {
         moduleMap.values.forEach { it.fn() }
-        wrappedDescriptorSymbolTable.fn()
     }
 
 
