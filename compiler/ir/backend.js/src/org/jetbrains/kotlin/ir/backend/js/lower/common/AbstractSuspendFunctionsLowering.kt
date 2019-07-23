@@ -14,6 +14,7 @@ import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.ir.IrElement
+import org.jetbrains.kotlin.ir.backend.js.mapping
 import org.jetbrains.kotlin.ir.builders.*
 import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.declarations.impl.*
@@ -29,7 +30,7 @@ import org.jetbrains.kotlin.ir.visitors.*
 import org.jetbrains.kotlin.name.Name
 
 
-private object SuspendFunToCoroutineConstructorKey : DeclarationBiMapKey<IrFunction, IrConstructor>
+private var IrFunction.coroutineConstructor by mapping(object : MappingKey<IrFunction, IrConstructor>{})
 
 abstract class AbstractSuspendFunctionsLowering<C : CommonBackendContext>(val context: C, val symbolTable: SymbolTable) : BodyLoweringPass {
 
@@ -51,8 +52,6 @@ abstract class AbstractSuspendFunctionsLowering<C : CommonBackendContext>(val co
     protected abstract fun initializeStateMachine(coroutineConstructors: List<IrConstructor>, coroutineClassThis: IrValueDeclaration)
 
     private val builtCoroutines = mutableMapOf<IrFunction, BuiltCoroutine>()
-
-    private val suspendFunToConstructor = context.declarationFactory.getMapping(SuspendFunToCoroutineConstructorKey)
 
     override fun lower(irBody: IrBody, container: IrDeclaration) {
 
@@ -106,7 +105,7 @@ abstract class AbstractSuspendFunctionsLowering<C : CommonBackendContext>(val co
                     builtCoroutines[expression.symbol.owner]?.coroutineConstructor
                         ?: throw Error("Non-local callable reference to suspend lambda: $expression")
                 } else {
-                    suspendFunToConstructor.newByOld(expression.symbol.owner) ?: run {
+                    expression.symbol.owner.coroutineConstructor ?: run {
 
                         tryTransformSuspendFunction(expression.symbol.owner, expression)
 
@@ -231,7 +230,7 @@ abstract class AbstractSuspendFunctionsLowering<C : CommonBackendContext>(val co
     private fun buildCoroutine(irFunction: IrSimpleFunction, functionReference: IrFunctionReference?): IrClass {
         val coroutine = CoroutineBuilder(irFunction, functionReference).build()
         builtCoroutines[irFunction] = coroutine
-        suspendFunToConstructor.link(irFunction, coroutine.coroutineConstructor)
+        irFunction.coroutineConstructor = coroutine.coroutineConstructor
 
         if (!irFunction.isLambda && functionReference == null) {
             // It is not a lambda - replace original function with a call to constructor of the built coroutine.
