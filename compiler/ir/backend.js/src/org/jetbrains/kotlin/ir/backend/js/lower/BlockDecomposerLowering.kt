@@ -16,7 +16,9 @@ import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
 import org.jetbrains.kotlin.ir.backend.js.JsIrBackendContext
 import org.jetbrains.kotlin.ir.backend.js.ir.JsIrBuilder
+import org.jetbrains.kotlin.ir.backend.js.mapping
 import org.jetbrains.kotlin.ir.declarations.*
+import org.jetbrains.kotlin.ir.declarations.impl.MappingKey
 import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.expressions.impl.*
 import org.jetbrains.kotlin.ir.types.IrType
@@ -26,11 +28,9 @@ import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
 import org.jetbrains.kotlin.ir.visitors.transformChildrenVoid
 import org.jetbrains.kotlin.utils.addIfNotNull
 
-private object FieldInitializerMappingKey : DeclarationBiMapKey<IrField, IrFunction>
+private var IrFunction.originalField by mapping(object : MappingKey<IrFunction, IrField>{})
 
 class CreateIrFieldInitializerFunction(val context: JsIrBackendContext) : DeclarationTransformer {
-
-    val fieldToFunction = context.declarationFactory.getMapping(FieldInitializerMappingKey)
 
     override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
         return if (declaration is IrField) {
@@ -45,7 +45,7 @@ class CreateIrFieldInitializerFunction(val context: JsIrBackendContext) : Declar
             initFunction.dispatchReceiverParameter = declaration.correspondingPropertySymbol?.owner?.getter?.dispatchReceiverParameter
             initFunction.extensionReceiverParameter = declaration.correspondingPropertySymbol?.owner?.getter?.extensionReceiverParameter
 
-            fieldToFunction.link(declaration, initFunction)
+            initFunction.originalField = declaration
 
             listOf(initFunction, declaration)
         } else {
@@ -60,14 +60,12 @@ class CreateIrFieldInitializerFunction(val context: JsIrBackendContext) : Declar
 
 class BlockDecomposerLowering(context: JsIrBackendContext) : NullableBodyLoweringPass {
 
-    val fieldToFunction = context.declarationFactory.getMapping(FieldInitializerMappingKey)
-
     private val decomposerTransformer = BlockDecomposerTransformer(context)
     private val nothingType = context.irBuiltIns.nothingType
 
     override fun lower(irBody: IrBody?, container: IrDeclaration) {
         if (container is IrFunction) {
-            fieldToFunction.oldByNew(container)?.let { oldField ->
+            container.originalField?.let { oldField ->
                 convertInitializerToInitFunctionCall(oldField, container)
             }
 
