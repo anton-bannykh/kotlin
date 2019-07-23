@@ -35,14 +35,14 @@ import org.jetbrains.kotlin.name.Name
 
 private const val INLINE_CLASS_IMPL_SUFFIX = "-impl"
 
-private object InlineClassLoweringMappingKey : DeclarationBiMapKey<IrFunction, IrSimpleFunction>
+private var IrFunction.newFunction by mapping(object : MappingKey<IrFunction, IrSimpleFunction>{})
+
+private var IrSimpleFunction.originalFunction by mapping(object : MappingKey<IrSimpleFunction, IrFunction>{})
 
 private var IrFunction.transformedFunction by mapping(object : MappingKey<IrFunction, IrSimpleFunction>{})
 
 // TODO: Support incremental compilation
 class InlineClassLowering(val context: JsIrBackendContext) {
-    private val originalToTransformed = context.declarationFactory.getMapping(InlineClassLoweringMappingKey)
-
     val inlineClassDeclarationLowering = object : ClassLoweringPass {
         override fun lower(irClass: IrClass) {
             if (!irClass.isInline) return
@@ -66,7 +66,8 @@ class InlineClassLowering(val context: JsIrBackendContext) {
             // Secondary constructors are lowered into static function
             val result = getOrCreateStaticMethod(irConstructor).owner
 
-            originalToTransformed.link(irConstructor, result)
+            irConstructor.newFunction = result
+            result.originalFunction = irConstructor
 
             return listOf()
         }
@@ -83,7 +84,8 @@ class InlineClassLowering(val context: JsIrBackendContext) {
 
             function.body = null
 
-            originalToTransformed.link(function, staticMethod)
+            function.newFunction = staticMethod
+            staticMethod.originalFunction = function
 
             if (function.overriddenSymbols.isEmpty())  // Function is used only in unboxed context
                 return listOf()
@@ -96,7 +98,7 @@ class InlineClassLowering(val context: JsIrBackendContext) {
         override fun lower(irBody: IrBody?, container: IrDeclaration) {
             if (container !is IrSimpleFunction) return
 
-            originalToTransformed.oldByNew(container)?.let {
+            container.originalFunction?.let {
                 if (it is IrConstructor) {
                     transformConstructorBody(it, container)
                 } else {
@@ -104,7 +106,7 @@ class InlineClassLowering(val context: JsIrBackendContext) {
                 }
             }
 
-            originalToTransformed.newByOld(container)?.let { staticMethod ->
+            container.newFunction?.let { staticMethod ->
                 delegateToStaticMethod(container, staticMethod)
             }
         }
