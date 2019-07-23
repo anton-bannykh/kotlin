@@ -36,15 +36,12 @@ import org.jetbrains.kotlin.ir.visitors.transformChildrenVoid
 
 data class ConstructorPair(val delegate: IrSimpleFunction, val stub: IrSimpleFunction)
 
-private object ConstructorToDelegateKey : DeclarationBiMapKey<IrConstructor, IrSimpleFunction>
-
-private object ConstructorToStubKey : DeclarationBiMapKey<IrConstructor, IrSimpleFunction>
+private var IrSimpleFunction.delegateToConstructor by mapping(object : MappingKey<IrSimpleFunction, IrConstructor>{})
+private var IrSimpleFunction.stubToConstructor by mapping(object : MappingKey<IrSimpleFunction, IrConstructor>{})
 
 var IrConstructor.constructorPair by mapping(object : MappingKey<IrConstructor, ConstructorPair> {})
 
 class SecondaryConstructorLowering(val context: JsIrBackendContext) : ClassLoweringPass {
-    private val constructorToDelegateMapping = context.declarationFactory.getMapping(ConstructorToDelegateKey)
-    private val constructorToStubMapping = context.declarationFactory.getMapping(ConstructorToStubKey)
 
     override fun lower(irClass: IrClass) {
         if (irClass.isInline) return
@@ -63,8 +60,8 @@ class SecondaryConstructorLowering(val context: JsIrBackendContext) : ClassLower
 
         // TODO old constructor is removed. Still needed though.
 
-        constructorToDelegateMapping.link(constructor, stubs.delegate)
-        constructorToStubMapping.link(constructor, stubs.stub)
+        stubs.delegate.delegateToConstructor = constructor
+        stubs.stub.stubToConstructor = constructor
 
         return listOf(stubs.delegate, stubs.stub)
     }
@@ -72,15 +69,12 @@ class SecondaryConstructorLowering(val context: JsIrBackendContext) : ClassLower
 
 class SecondaryConstructorBodyLowering(val context: JsIrBackendContext) : NullableBodyLoweringPass {
 
-    private val constructorToDelegateMapping = context.declarationFactory.getMapping(ConstructorToDelegateKey)
-    private val constructorToStubMapping = context.declarationFactory.getMapping(ConstructorToStubKey)
-
     override fun lower(irBody: IrBody?, container: IrDeclaration) {
         if (irBody == null && container is IrSimpleFunction) {
-            constructorToDelegateMapping.oldByNew(container)?.let { constructor ->
+            container.delegateToConstructor?.let { constructor ->
                 generateInitBody(constructor, container.parentAsClass, container)
             }
-            constructorToStubMapping.oldByNew(container)?.let { constructor ->
+            container.stubToConstructor?.let { constructor ->
                 generateFactoryBody(constructor, container.parentAsClass, container, constructor.constructorPair!!.delegate)
             }
         }
