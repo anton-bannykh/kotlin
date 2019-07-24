@@ -15,10 +15,11 @@ import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.util.SymbolTable
 import org.jetbrains.kotlin.resolve.descriptorUtil.module
 
-class CompositeSymbolTable(private val moduleMap: Map<ModuleDescriptor, SymbolTable>) : SymbolTable() {
+class CompositeSymbolTable(val moduleMap: Map<ModuleDescriptor, SymbolTable>) : SymbolTable() {
 
     private val DeclarationDescriptor.symbolTable
-        get() = moduleMap[(this as? WrappedDeclarationDescriptor<*>)?.containingModule ?: this.module] ?: error("Unexpected module: ${this.module}")
+        get() = moduleMap[(this as? WrappedDeclarationDescriptor<*>)?.containingModule ?: this.module] ?:
+            error("Unexpected module: ${this.module}")
 
     private fun <T> all(fn: SymbolTable.() -> Set<T>): Set<T> {
         return moduleMap.values.flatMapTo(mutableSetOf()) { it.fn() }

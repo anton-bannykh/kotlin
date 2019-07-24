@@ -22,8 +22,9 @@ class JsIrLinker(
     currentModule: ModuleDescriptor,
     logger: LoggingContext,
     builtIns: IrBuiltIns,
-    symbolTable: SymbolTable
-) : KotlinIrLinker(logger, builtIns, symbolTable, emptyList<ModuleDescriptor>(), null, 0x1_0000_0000L),
+    symbolTable: SymbolTable,
+    cache: Map<ModuleDescriptor, SerializationCache>
+) : KotlinIrLinker(logger, builtIns, symbolTable, emptyList<ModuleDescriptor>(), null, 0x1_0000_0000L, cache),
     DescriptorUniqIdAware by JsDescriptorUniqIdAware {
 
     private val FUNCTION_INDEX_START: Long = indexAfterKnownBuiltins

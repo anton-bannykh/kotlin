@@ -17,6 +17,7 @@ import org.jetbrains.kotlin.descriptors.impl.CompositePackageFragmentProvider
 import org.jetbrains.kotlin.descriptors.impl.ModuleDescriptorImpl
 import org.jetbrains.kotlin.incremental.components.LookupTracker
 import org.jetbrains.kotlin.backend.common.serialization.DescriptorTable
+import org.jetbrains.kotlin.backend.common.serialization.SerializationCache
 import org.jetbrains.kotlin.descriptors.ModuleDescriptor
 import org.jetbrains.kotlin.ir.backend.js.lower.serialization.ir.JsDeclarationTable
 import org.jetbrains.kotlin.ir.backend.js.lower.serialization.ir.JsIrLinker
@@ -103,25 +104,51 @@ data class IrModuleInfo(
     val deserializer: JsIrLinker
 )
 
+data class CacheInfo(val moduleDescriptor: ModuleDescriptorImpl,
+                     val symbolTable: SymbolTable,
+                     val serializationCache: SerializationCache)
+
 fun loadIr(
     project: Project,
     files: List<KtFile>,
     configuration: CompilerConfiguration,
     immediateDependencies: List<KlibModuleRef>,
-    allDependencies: List<KlibModuleRef>
+    allDependencies: List<KlibModuleRef>,
+    cache: MutableMap<KlibModuleRef, CacheInfo>,
+    irBuiltIns: IrBuiltIns?
 ): IrModuleInfo {
-    val depsDescriptors = ModulesStructure(project, files, configuration, immediateDependencies, allDependencies)
+    val depsDescriptors = ModulesStructure(project, files, configuration, immediateDependencies, allDependencies, cache)
 
-    val psi2IrContext = runAnalysisAndPreparePsi2Ir(depsDescriptors)
+    val psi2IrContext = runAnalysisAndPreparePsi2Ir(depsDescriptors, irBuiltIns)
 
     val irBuiltIns = psi2IrContext.irBuiltIns
     val symbolTable = psi2IrContext.symbolTable
     val moduleDescriptor = psi2IrContext.moduleDescriptor
 
-    val deserializer = JsIrLinker(moduleDescriptor, emptyLoggingContext, irBuiltIns, symbolTable)
+    val serCache = mutableMapOf<ModuleDescriptor, SerializationCache>()
+    for ((_, v) in cache) {
+        serCache[v.moduleDescriptor] = v.serializationCache
+    }
+
+    val deserializer = JsIrLinker(moduleDescriptor, emptyLoggingContext, irBuiltIns, symbolTable, serCache)
 
     val deserializedModuleFragments = depsDescriptors.sortedImmediateDependencies.map {
         deserializer.deserializeIrModuleHeader(depsDescriptors.getModuleDescriptor(it))!!
+    }
+
+    depsDescriptors.sortedImmediateDependencies.forEach { klib ->
+        if (klib.moduleName == "JS_IR_RUNTIME") {
+            if (klib !in cache) {
+                val descriptor = depsDescriptors.getModuleDescriptor(klib)
+                val symbolTable = (symbolTable as CompositeSymbolTable).moduleMap[descriptor]!!
+                val moduleDeserializer = deserializer.deserializersForModules[descriptor]!!
+
+                cache[klib] = CacheInfo(descriptor, symbolTable, SerializationCache(moduleDeserializer.module,
+                                                                                    moduleDeserializer.localReversedFileIndex,
+                                                                                    mutableMapOf(),
+                                                                                    mutableSetOf()))
+            }
+        }
     }
 
     val moduleFragment = psi2IrContext.generateModuleFragment(files, null, true)
@@ -129,7 +156,7 @@ fun loadIr(
     return IrModuleInfo(moduleFragment, deserializedModuleFragments, irBuiltIns, symbolTable, deserializer)
 }
 
-private fun runAnalysisAndPreparePsi2Ir(depsDescriptors: ModulesStructure): GeneratorContext {
+private fun runAnalysisAndPreparePsi2Ir(depsDescriptors: ModulesStructure, irBuiltIns: IrBuiltIns? = null): GeneratorContext {
     val analysisResult = depsDescriptors.runAnalysis()
 
     return GeneratorContext(
@@ -138,7 +165,8 @@ private fun runAnalysisAndPreparePsi2Ir(depsDescriptors: ModulesStructure): Gene
         analysisResult.bindingContext,
         depsDescriptors.compilerConfiguration.languageVersionSettings,
         depsDescriptors.createCompositeSymbolTable(analysisResult.moduleDescriptor),
-        GeneratorExtensions()
+        GeneratorExtensions(),
+        irBuiltIns
     )
 }
 
@@ -197,7 +225,8 @@ private class ModulesStructure(
     private val files: List<KtFile>,
     val compilerConfiguration: CompilerConfiguration,
     immediateDependencies: List<KlibModuleRef>,
-    private val allDependencies: List<KlibModuleRef>
+    private val allDependencies: List<KlibModuleRef>,
+    private val cache: Map<KlibModuleRef, CacheInfo> = emptyMap()
 ) {
     private val deserializedModuleParts: Map<KlibModuleRef, JsKlibMetadataParts> =
         allDependencies.associateWith { loadKlibMetadataParts(it) }
@@ -239,7 +268,15 @@ private class ModulesStructure(
 
     fun createCompositeSymbolTable(currentModule: ModuleDescriptor): CompositeSymbolTable {
         val mapping = mutableMapOf<ModuleDescriptor, SymbolTable>(currentModule to SymbolTable())
-        moduleDescriptors.forEach { mapping[it] = SymbolTable() }
+
+        sortedImmediateDependencies.forEach { klib ->
+            val module = getModuleDescriptor(klib)
+
+            mapping[module] = (cache[klib]?.symbolTable ?: SymbolTable())
+        }
+
+
+//        moduleDescriptors.forEach { mapping[it] = SymbolTable() }
         return CompositeSymbolTable(mapping)
     }
 
@@ -248,9 +285,13 @@ private class ModulesStructure(
     private val languageVersionSettings: LanguageVersionSettings = compilerConfiguration.languageVersionSettings
 
     private val storageManager: LockBasedStorageManager = LockBasedStorageManager("ModulesStructure")
-    private var runtimeModule: ModuleDescriptorImpl? = null
+//    private var runtimeModule: ModuleDescriptorImpl? = null
 
-    private val descriptors = mutableMapOf<KlibModuleRef, ModuleDescriptorImpl>()
+    private val descriptors = mutableMapOf<KlibModuleRef, ModuleDescriptorImpl>().also {
+        for ((klib, info) in cache) {
+            it[klib] = info.moduleDescriptor
+        }
+    }
 
     fun getModuleDescriptor(current: KlibModuleRef): ModuleDescriptorImpl = descriptors.getOrPut(current) {
         val parts = loadKlibMetadataParts(current)
@@ -263,11 +304,9 @@ private class ModulesStructure(
             storageManager,
             metadataVersion,
             languageVersionSettings,
-            runtimeModule,
+            builtInModuleDescriptor,
             moduleDependencies.getValue(current).map { getModuleDescriptor(it) }
-        ).also {
-            if (isBuiltIns) runtimeModule = it
-        }
+        )
     }
 
     val builtInModuleDescriptor =

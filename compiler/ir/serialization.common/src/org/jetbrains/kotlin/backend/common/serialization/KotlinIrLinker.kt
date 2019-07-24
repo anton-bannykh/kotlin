@@ -15,7 +15,6 @@ import org.jetbrains.kotlin.ir.declarations.impl.IrClassImpl
 import org.jetbrains.kotlin.ir.declarations.impl.IrFileImpl
 import org.jetbrains.kotlin.ir.declarations.impl.IrModuleFragmentImpl
 import org.jetbrains.kotlin.ir.descriptors.IrBuiltIns
-import org.jetbrains.kotlin.ir.expressions.impl.IrExpressionBodyImpl
 import org.jetbrains.kotlin.ir.expressions.impl.IrLoopBase
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.symbols.IrClassifierSymbol
@@ -36,13 +35,21 @@ import org.jetbrains.kotlin.resolve.descriptorUtil.module
 import org.jetbrains.kotlin.serialization.deserialization.descriptors.DeserializedCallableMemberDescriptor
 import org.jetbrains.kotlin.serialization.deserialization.descriptors.DeserializedClassDescriptor
 
+data class SerializationCache(
+    val module: IrModuleFragment,
+    val fileIndex: Map<UniqIdKey, IrFile>,
+    val deserializedSymbols: MutableMap<UniqIdKey, IrSymbol>,
+    val deserializedTopLevels: MutableSet<UniqIdKey>
+)
+
 abstract class KotlinIrLinker(
     val logger: LoggingContext,
     val builtIns: IrBuiltIns,
     val symbolTable: SymbolTable,
     val exportedDependencies: List<ModuleDescriptor>,
     private val forwardModuleDescriptor: ModuleDescriptor?,
-    private val firstKnownBuiltinsIndex: Long
+    private val firstKnownBuiltinsIndex: Long,
+    private val cache: Map<ModuleDescriptor, SerializationCache> = emptyMap()
 ) : DescriptorUniqIdAware, IrDeserializer {
 
     protected val deserializedSymbols = mutableMapOf<UniqIdKey, IrSymbol>()
@@ -53,7 +60,7 @@ abstract class KotlinIrLinker(
     private val forwardDeclarations = mutableSetOf<IrSymbol>()
     val resolvedForwardDeclarations = mutableMapOf<UniqIdKey, UniqIdKey>()
 
-    protected val deserializersForModules = mutableMapOf<ModuleDescriptor, IrDeserializerForModule>()
+    val deserializersForModules = mutableMapOf<ModuleDescriptor, IrDeserializerForModule>()
     val fileAnnotations = mutableMapOf<IrFile, KotlinIr.Annotations>()
 
     inner class IrDeserializerForModule(
@@ -64,8 +71,29 @@ abstract class KotlinIrLinker(
 
         private var moduleLoops = mutableMapOf<Int, IrLoopBase>()
 
+        val localReversedFileIndex = mutableMapOf<UniqIdKey, IrFile>()
+        val localDeserializedSymbols = mutableMapOf<UniqIdKey, IrSymbol>()
+        val localDeserializedTopLevels = mutableSetOf<UniqIdKey>()
+
         // This is a heavy initializer
-        val module = deserializeIrModuleHeader(moduleProto)
+        val module = if (moduleDescriptor in cache) {
+            val result = cache[moduleDescriptor]!!
+
+            for ((k, v) in result.fileIndex) {
+                reversedFileIndex[k] = v
+            }
+
+            for ((k, s) in result.deserializedSymbols) {
+                deserializedSymbols[k] = s
+            }
+
+            for (k in result.deserializedTopLevels) {
+                deserializedTopLevels += k
+            }
+
+            result.module
+        } else deserializeIrModuleHeader(moduleProto)
+
 
         private fun referenceDeserializedSymbol(
             proto: KotlinIr.IrSymbolData,
@@ -121,7 +149,9 @@ abstract class KotlinIrLinker(
                 )
             KotlinIr.IrSymbolKind.RECEIVER_PARAMETER_SYMBOL ->
                 IrValueParameterSymbolImpl(
-                    descriptor as ParameterDescriptor? ?: WrappedReceiverParameterDescriptor().also { it.containingModule = moduleDescriptor }
+                    descriptor as ParameterDescriptor? ?: WrappedReceiverParameterDescriptor().also {
+                        it.containingModule = moduleDescriptor
+                    }
                 )
             else -> TODO("Unexpected classifier symbol kind: ${proto.kind}")
         }
@@ -163,11 +193,17 @@ abstract class KotlinIrLinker(
                     }
                 }
 
-                referenceDeserializedSymbol(proto, descriptor)
+                referenceDeserializedSymbol(proto, descriptor).also { s ->
+                    val module = descriptor?.module ?: moduleDescriptor
+                    deserializersForModules[module]!!.localDeserializedSymbols[key] = s
+//                    if (s.isBound) {
+//                        error("Symbol already bound!")
+//                    }
+                }
             }
 
 //            if (symbol.descriptor is WrappedDeclarationDescriptor<*>) {
-                if (!deserializedTopLevels.contains(topLevelKey)) reachableTopLevels.add(topLevelKey)
+            if (!deserializedTopLevels.contains(topLevelKey)) reachableTopLevels.add(topLevelKey)
 //            }
 
             if (symbol.descriptor is ClassDescriptor &&
@@ -194,6 +230,7 @@ abstract class KotlinIrLinker(
                 isSetter = proto.isSetter,
                 isTypeParameter = proto.isTypeParameter
             )
+
         // TODO: this is JS specific. Eliminate me.
         override fun getPrimitiveTypeOrNull(symbol: IrClassifierSymbol, hasQuestionMark: Boolean) =
             this@KotlinIrLinker.getPrimitiveTypeOrNull(symbol, hasQuestionMark)
@@ -220,6 +257,7 @@ abstract class KotlinIrLinker(
             fileProto.declarationIdList.forEach {
                 val uniqIdKey = it.uniqIdKey(moduleDescriptor)
                 reversedFileIndex.put(uniqIdKey, file)
+                localReversedFileIndex[uniqIdKey] = file
             }
 
             when (deserializationStrategy) {
@@ -286,8 +324,10 @@ abstract class KotlinIrLinker(
 
     private fun deserializeTopLevelDeclaration(uniqIdKey: UniqIdKey): IrDeclaration {
         val proto = loadTopLevelDeclarationProto(uniqIdKey)
-        return deserializersForModules[uniqIdKey.moduleOfOrigin]!!
-            .deserializeDeclaration(proto, reversedFileIndex[uniqIdKey]!!)
+        val deserializerForModule = deserializersForModules[uniqIdKey.moduleOfOrigin]!!
+        return deserializerForModule.deserializeDeclaration(proto, reversedFileIndex[uniqIdKey]!!).also {
+            deserializerForModule.localDeserializedTopLevels += uniqIdKey
+        }
     }
 
     protected abstract fun reader(moduleDescriptor: ModuleDescriptor, uniqId: UniqId): ByteArray
@@ -426,7 +466,9 @@ abstract class KotlinIrLinker(
 
     abstract val ModuleDescriptor.irHeader: ByteArray?
 
-    fun deserializeIrModuleHeader(moduleDescriptor: ModuleDescriptor): IrModuleFragment? =
+    fun deserializeIrModuleHeader(
+        moduleDescriptor: ModuleDescriptor
+    ): IrModuleFragment? =
         // TODO: do we really allow libraries without any IR?
         moduleDescriptor.irHeader?.let { header ->
             // TODO: consider skip deserializing explicitly exported declarations for libraries.

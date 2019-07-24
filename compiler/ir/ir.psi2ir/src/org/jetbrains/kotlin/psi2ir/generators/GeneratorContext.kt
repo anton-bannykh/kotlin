@@ -37,7 +37,8 @@ class GeneratorContext(
     val bindingContext: BindingContext,
     val languageVersionSettings: LanguageVersionSettings,
     val symbolTable: SymbolTable,
-    val extensions: GeneratorExtensions
+    val extensions: GeneratorExtensions,
+    irBuiltIns: IrBuiltIns? = null
 ) : IrGeneratorContext() {
 
     val constantValueGenerator: ConstantValueGenerator = ConstantValueGenerator(moduleDescriptor, symbolTable)
@@ -48,7 +49,7 @@ class GeneratorContext(
         constantValueGenerator.typeTranslator = typeTranslator
     }
 
-    override val irBuiltIns: IrBuiltIns = IrBuiltIns(moduleDescriptor.builtIns, typeTranslator, symbolTable)
+    override val irBuiltIns: IrBuiltIns = irBuiltIns ?: IrBuiltIns(moduleDescriptor.builtIns, typeTranslator, symbolTable)
 
     val sourceManager = PsiSourceManager()
 

@@ -8,9 +8,17 @@ package org.jetbrains.kotlin.ir.backend.js
 import com.intellij.openapi.project.Project
 import org.jetbrains.kotlin.backend.common.phaser.PhaseConfig
 import org.jetbrains.kotlin.config.CompilerConfiguration
+import org.jetbrains.kotlin.descriptors.ModuleDescriptor
 import org.jetbrains.kotlin.ir.backend.js.transformers.irToJs.IrModuleToJsTransformer
+import org.jetbrains.kotlin.ir.descriptors.IrBuiltIns
 import org.jetbrains.kotlin.ir.util.ExternalDependenciesGenerator
 import org.jetbrains.kotlin.psi.KtFile
+
+val compilationCache = mutableMapOf<KlibModuleRef, CacheInfo>()
+
+val dataCache = mutableMapOf<ModuleDescriptor, ContextData>()
+
+var cachedIrBuiltIns: IrBuiltIns? = null
 
 fun compile(
     project: Project,
@@ -25,13 +33,17 @@ fun compile(
     stageController.bodiesEnabled = true
 
     val (moduleFragment, dependencyModules, irBuiltIns, symbolTable, deserializer) =
-        loadIr(project, files, configuration, immediateDependencies, allDependencies)
+        loadIr(project, files, configuration, immediateDependencies, allDependencies, compilationCache, null)
+
+    cachedIrBuiltIns = irBuiltIns
 
     val moduleDescriptor = moduleFragment.descriptor
 
     val dataMap = mutableMapOf(moduleDescriptor to ContextData(moduleFragment))
     dependencyModules.forEach {
-        dataMap[it.descriptor] = ContextData(it)
+        dataMap[it.descriptor] = if (it.name.asString() == "<JS_IR_RUNTIME>") {
+            dataCache.getOrPut(it.descriptor) { ContextData(it) }
+        } else ContextData((it))
     }
 
     stageController.dataMap = dataMap
@@ -60,6 +72,22 @@ fun compile(
     val jsProgram = IrModuleToJsTransformer(context, dataMap).generateModule(dependencyModules + moduleFragment)
 
     stageController.deinit()
+
+    dependencyModules.forEach {
+        if (it.name.asString() == "<JS_IR_RUNTIME>") {
+            val klib = allDependencies.filter { it.moduleName == "JS_IR_RUNTIME" }.single()
+            compilationCache[klib]!!.let { (descriptor, _, sc) ->
+                val symbols = sc.deserializedSymbols
+                val moduleDeserializer = deserializer.deserializersForModules[descriptor]!!
+
+                for ((k, s) in moduleDeserializer.localDeserializedSymbols) {
+                    symbols[k] = s
+                }
+
+                sc.deserializedTopLevels += moduleDeserializer.localDeserializedTopLevels
+            }
+        }
+    }
 
     return jsProgram.toString()
 }
