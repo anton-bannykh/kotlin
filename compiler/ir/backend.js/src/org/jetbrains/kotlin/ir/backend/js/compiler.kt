@@ -18,7 +18,7 @@ val compilationCache = mutableMapOf<KlibModuleRef, CacheInfo>()
 
 val dataCache = mutableMapOf<ModuleDescriptor, ContextData>()
 
-var cachedIrBuiltIns: IrBuiltIns? = null
+val intrinsicsCache = mutableMapOf<KlibModuleRef, JsIntrinsics>()
 
 fun compile(
     project: Project,
@@ -33,9 +33,7 @@ fun compile(
     stageController.bodiesEnabled = true
 
     val (moduleFragment, dependencyModules, irBuiltIns, symbolTable, deserializer) =
-        loadIr(project, files, configuration, immediateDependencies, allDependencies, compilationCache, null)
-
-    cachedIrBuiltIns = irBuiltIns
+        loadIr(project, files, configuration, immediateDependencies, allDependencies, compilationCache)
 
     val moduleDescriptor = moduleFragment.descriptor
 
@@ -44,6 +42,12 @@ fun compile(
         dataMap[it.descriptor] = if (it.name.asString() == "<JS_IR_RUNTIME>") {
             dataCache.getOrPut(it.descriptor) { ContextData(it) }
         } else ContextData((it))
+    }
+
+    val jsIntrinsics = allDependencies.filter { it.moduleName == "JS_IR_RUNTIME" }.single().let { stdlib ->
+        intrinsicsCache.getOrPut(stdlib) {
+            JsIntrinsics(compilationCache[stdlib]!!.bultins)
+        }
     }
 
     stageController.dataMap = dataMap
@@ -55,7 +59,7 @@ fun compile(
         deserializer = deserializer
     )
 
-    val context = JsIrBackendContext(moduleDescriptor, irBuiltIns, JsIntrinsics(irBuiltIns), symbolTable, moduleFragment, configuration, stageController)
+    val context = JsIrBackendContext(moduleDescriptor, irBuiltIns, jsIntrinsics, symbolTable, moduleFragment, configuration, stageController)
 
     stageController.bodiesEnabled = false
 

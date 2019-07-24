@@ -143,8 +143,8 @@ class NameTables(packages: List<IrPackageFragment>) {
             parent = parent.parent
         }
 
-        return declaration.name.asString() + "_error"
-//        error("Can't find name for declaration $declaration")
+//        return declaration.name.asString() + "_error"
+        error("Can't find name for declaration $declaration")
     }
 
 

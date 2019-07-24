@@ -30,7 +30,9 @@ import org.jetbrains.kotlin.ir.backend.js.lower.serialization.metadata.createJsK
 import org.jetbrains.kotlin.ir.backend.js.lower.serialization.metadata.*
 import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
 import org.jetbrains.kotlin.ir.descriptors.IrBuiltIns
+import org.jetbrains.kotlin.ir.util.ConstantValueGenerator
 import org.jetbrains.kotlin.ir.util.SymbolTable
+import org.jetbrains.kotlin.ir.util.TypeTranslator
 import org.jetbrains.kotlin.js.analyze.TopDownAnalyzerFacadeForJS
 import org.jetbrains.kotlin.js.analyzer.JsAnalysisResult
 import org.jetbrains.kotlin.name.Name
@@ -104,9 +106,12 @@ data class IrModuleInfo(
     val deserializer: JsIrLinker
 )
 
-data class CacheInfo(val moduleDescriptor: ModuleDescriptorImpl,
-                     val symbolTable: SymbolTable,
-                     val serializationCache: SerializationCache)
+data class CacheInfo(
+    val moduleDescriptor: ModuleDescriptorImpl,
+    val symbolTable: SymbolTable,
+    val serializationCache: SerializationCache,
+    val bultins: IrBuiltIns
+)
 
 fun loadIr(
     project: Project,
@@ -114,12 +119,11 @@ fun loadIr(
     configuration: CompilerConfiguration,
     immediateDependencies: List<KlibModuleRef>,
     allDependencies: List<KlibModuleRef>,
-    cache: MutableMap<KlibModuleRef, CacheInfo>,
-    irBuiltIns: IrBuiltIns?
+    cache: MutableMap<KlibModuleRef, CacheInfo>
 ): IrModuleInfo {
     val depsDescriptors = ModulesStructure(project, files, configuration, immediateDependencies, allDependencies, cache)
 
-    val psi2IrContext = runAnalysisAndPreparePsi2Ir(depsDescriptors, irBuiltIns)
+    val psi2IrContext = runAnalysisAndPreparePsi2Ir(depsDescriptors)
 
     val irBuiltIns = psi2IrContext.irBuiltIns
     val symbolTable = psi2IrContext.symbolTable
@@ -137,17 +141,20 @@ fun loadIr(
     }
 
     depsDescriptors.sortedImmediateDependencies.forEach { klib ->
-        if (klib.moduleName == "JS_IR_RUNTIME") {
-            if (klib !in cache) {
-                val descriptor = depsDescriptors.getModuleDescriptor(klib)
-                val symbolTable = (symbolTable as CompositeSymbolTable).moduleMap[descriptor]!!
-                val moduleDeserializer = deserializer.deserializersForModules[descriptor]!!
+        if (klib.moduleName == "JS_IR_RUNTIME" && klib !in cache) {
+            val descriptor = depsDescriptors.getModuleDescriptor(klib)
+            val symbolTable = (symbolTable as CompositeSymbolTable).moduleMap[descriptor]!!
+            val moduleDeserializer = deserializer.deserializersForModules[descriptor]!!
 
-                cache[klib] = CacheInfo(descriptor, symbolTable, SerializationCache(moduleDeserializer.module,
-                                                                                    moduleDeserializer.localReversedFileIndex,
-                                                                                    mutableMapOf(),
-                                                                                    mutableSetOf()))
-            }
+            cache[klib] = CacheInfo(
+                descriptor, symbolTable, SerializationCache(
+                    moduleDeserializer.module,
+                    moduleDeserializer.localReversedFileIndex,
+                    mutableMapOf(),
+                    mutableSetOf()
+                ),
+                irBuiltIns
+            )
         }
     }
 
@@ -159,14 +166,16 @@ fun loadIr(
 private fun runAnalysisAndPreparePsi2Ir(depsDescriptors: ModulesStructure, irBuiltIns: IrBuiltIns? = null): GeneratorContext {
     val analysisResult = depsDescriptors.runAnalysis()
 
+    val symbolTable = depsDescriptors.createCompositeSymbolTable(analysisResult.moduleDescriptor)
+
     return GeneratorContext(
         Psi2IrConfiguration(),
         analysisResult.moduleDescriptor,
         analysisResult.bindingContext,
         depsDescriptors.compilerConfiguration.languageVersionSettings,
-        depsDescriptors.createCompositeSymbolTable(analysisResult.moduleDescriptor),
+        symbolTable,
         GeneratorExtensions(),
-        irBuiltIns
+        depsDescriptors.getIrBuiltIns(symbolTable)
     )
 }
 
@@ -278,6 +287,27 @@ private class ModulesStructure(
 
 //        moduleDescriptors.forEach { mapping[it] = SymbolTable() }
         return CompositeSymbolTable(mapping)
+    }
+
+    fun getIrBuiltIns(symbolTable: CompositeSymbolTable): IrBuiltIns? {
+        builtInsDep?.let { bd ->
+            cache[bd]?.bultins?.let {
+                return it
+            }
+        }
+
+        if (builtInModuleDescriptor == null) return null
+
+        val moduleDescriptor = builtInModuleDescriptor!!
+        val symbolTable = symbolTable.moduleMap[moduleDescriptor]!!
+
+        val constantValueGenerator: ConstantValueGenerator = ConstantValueGenerator(moduleDescriptor, symbolTable)
+        val typeTranslator: TypeTranslator = TypeTranslator(symbolTable, languageVersionSettings, builtIns = moduleDescriptor.builtIns)
+
+        typeTranslator.constantValueGenerator = constantValueGenerator
+        constantValueGenerator.typeTranslator = typeTranslator
+
+        return IrBuiltIns(moduleDescriptor.builtIns, typeTranslator, symbolTable)
     }
 
     private val lookupTracker: LookupTracker = LookupTracker.DO_NOTHING
