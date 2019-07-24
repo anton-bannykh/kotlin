@@ -206,16 +206,16 @@ class JsIntrinsics(private val irBuiltIns: IrBuiltIns) {
         }
 
     private fun unOp(name: String, returnType: KotlinType = irBuiltIns.anyN) =
-        irBuiltIns.run { defineOperator(name, returnType, listOf(anyN)) }
+        irBuiltIns.run { defineOperator(name, returnType, listOf(anyN), false) }
 
     private fun unOpBool(name: String) = unOp(name, irBuiltIns.bool)
     private fun unOpInt(name: String) = unOp(name, irBuiltIns.int)
 
     private fun binOp(name: String, returnType: KotlinType = irBuiltIns.anyN) =
-        irBuiltIns.run { defineOperator(name, returnType, listOf(anyN, anyN)) }
+        irBuiltIns.run { defineOperator(name, returnType, listOf(anyN, anyN), false) }
 
     private fun tripleOp(name: String, returnType: KotlinType = irBuiltIns.anyN) =
-        irBuiltIns.run { defineOperator(name, returnType, listOf(anyN, anyN, anyN)) }
+        irBuiltIns.run { defineOperator(name, returnType, listOf(anyN, anyN, anyN), false) }
 
     private fun binOpBool(name: String) = binOp(name, irBuiltIns.bool)
     private fun binOpInt(name: String) = binOp(name, irBuiltIns.int)

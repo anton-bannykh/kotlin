@@ -45,19 +45,19 @@ class IrBuiltIns(
     private fun ClassDescriptor.toIrSymbol() = symbolTable.referenceClass(this)
     private fun KotlinType.toIrType() = typeTranslator.translateType(this)
 
-    fun defineOperator(name: String, returnType: KotlinType, valueParameterTypes: List<KotlinType>): IrSimpleFunctionSymbol {
+    fun defineOperator(name: String, returnType: KotlinType, valueParameterTypes: List<KotlinType>, knownBuiltin: Boolean = true): IrSimpleFunctionSymbol {
         val operatorDescriptor = IrSimpleBuiltinOperatorDescriptorImpl(packageFragment, Name.identifier(name), returnType)
         for ((i, valueParameterType) in valueParameterTypes.withIndex()) {
             operatorDescriptor.addValueParameter(
                 IrBuiltinValueParameterDescriptorImpl(operatorDescriptor, Name.identifier("arg$i"), i, valueParameterType)
             )
         }
-        return operatorDescriptor.addStub()
+        return operatorDescriptor.addStub(knownBuiltin)
     }
 
-    private fun <T : SimpleFunctionDescriptor> T.addStub(): IrSimpleFunctionSymbol =
+    private fun <T : SimpleFunctionDescriptor> T.addStub(knownBuiltin: Boolean): IrSimpleFunctionSymbol =
         symbolTable.referenceSimpleFunction(this).also {
-            irBuiltInsSymbols += it
+            if (knownBuiltin) irBuiltInsSymbols += it
         }
 
     private fun defineComparisonOperator(name: String, operandType: KotlinType) =
@@ -234,7 +234,7 @@ class IrBuiltIns(
             val returnType = KotlinTypeFactory.simpleType(Annotations.EMPTY, typeParameterT.typeConstructor, listOf(), false)
 
             initialize(null, null, listOf(typeParameterT), listOf(valueParameterName), returnType, Modality.FINAL, Visibilities.PUBLIC)
-        }.addStub()
+        }.addStub(true)
 
     val dataClassArrayMemberHashCodeSymbol = defineOperator("dataClassArrayMemberHashCode", int, listOf(any))
     val dataClassArrayMemberHashCode = dataClassArrayMemberHashCodeSymbol.descriptor
