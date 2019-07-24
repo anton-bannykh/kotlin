@@ -32,7 +32,7 @@ class JsStaticContext(
 
     fun isCoroutineDoResume(function: IrFunction?): Boolean {
         val overriddenSymbols = (function as? IrSimpleFunction)?.overriddenSymbols ?: return false
-        return backendContext.coroutinesLoaded && doResumeFunctionSymbol in overriddenSymbols
+        return /*backendContext.coroutinesLoaded && */doResumeFunctionSymbol in overriddenSymbols
     }
 
     val initializerBlock = JsGlobalBlock()
