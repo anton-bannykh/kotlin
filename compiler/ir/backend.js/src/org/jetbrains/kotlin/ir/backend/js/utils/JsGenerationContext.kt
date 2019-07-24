@@ -33,7 +33,12 @@ class JsGenerationContext(
             if (currentFunction!!.descriptor.isSuspend) {
                 JsNameRef(currentScope.declareName(Namer.CONTINUATION))
             } else {
-                getNameForValueDeclaration(currentFunction.valueParameters.last()).makeRef()
+                if (currentFunction.valueParameters.isEmpty()) {
+                    println("Oops!!")
+                    JsNameRef("continuation_error_")
+                } else {
+                    getNameForValueDeclaration(currentFunction.valueParameters.last()).makeRef()
+                }
             }
         }
 }
