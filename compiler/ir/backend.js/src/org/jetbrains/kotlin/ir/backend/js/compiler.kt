@@ -9,11 +9,17 @@ import com.intellij.openapi.project.Project
 import org.jetbrains.kotlin.backend.common.phaser.PhaseConfig
 import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.descriptors.ModuleDescriptor
+import org.jetbrains.kotlin.descriptors.PropertyDescriptor
 import org.jetbrains.kotlin.ir.backend.js.transformers.irToJs.IrModuleToJsTransformer
+import org.jetbrains.kotlin.ir.declarations.IrDeclaration
+import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.NoopController
 import org.jetbrains.kotlin.ir.declarations.stageController
 import org.jetbrains.kotlin.ir.descriptors.IrBuiltIns
+import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.util.ExternalDependenciesGenerator
+import org.jetbrains.kotlin.ir.util.IrDeserializer
+import org.jetbrains.kotlin.ir.util.SymbolTable
 import org.jetbrains.kotlin.psi.KtFile
 
 val compilationCache = mutableMapOf<KlibModuleRef, CacheInfo>()
@@ -55,11 +61,13 @@ fun compile(
 
         stageController.dataMap = dataMap
 
+        stageController.deserializer = deserializer
+
         stageController.dependencyGenerator = ExternalDependenciesGenerator(
             moduleDescriptor,
             symbolTable,
             irBuiltIns,
-            deserializer = deserializer
+            deserializer = DeserializerProxy
         )
 
         val context =
@@ -97,8 +105,32 @@ fun compile(
             }
         }
 
+        // Prevent memory leaks through LazyIr -> StubGenerator -> SymbolTable
+        ((symbolTable as CompositeSymbolTable).moduleMap as MutableMap<ModuleDescriptor, SymbolTable>).let { map ->
+            map.entries.retainAll { (k, _) -> k.name.asString() == "<JS_IR_RUNTIME>" }
+        }
+
         return jsProgram.toString()
     } finally {
         stageController = NoopController()
+    }
+}
+
+// Prevent memory leaks through LazyIr -> StubGenerator -> IrDeserializer
+object DeserializerProxy: IrDeserializer {
+    val deserializer: IrDeserializer?
+        get() = (stageController as? MutableController)?.deserializer
+
+
+    override fun findDeserializedDeclaration(symbol: IrSymbol): IrDeclaration? {
+        return deserializer?.findDeserializedDeclaration(symbol)
+    }
+
+    override fun findDeserializedDeclaration(propertyDescriptor: PropertyDescriptor): IrProperty? {
+        return deserializer?.findDeserializedDeclaration(propertyDescriptor)
+    }
+
+    override fun declareForwardDeclarations() {
+        deserializer?.declareForwardDeclarations()
     }
 }

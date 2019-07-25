@@ -776,6 +776,8 @@ class MutableController : StageController {
         lowerUpTo(file, currentStage)
     }
 
+    var deserializer: IrDeserializer? = null
+
     var dependencyGenerator: ExternalDependenciesGenerator? = null
 
     val loaded = ArrayDeque<IrDeclaration>()
