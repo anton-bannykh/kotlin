@@ -37,110 +37,102 @@ class NoopController : StageController {
     override fun <T> withInitialIr(block: () -> T): T = block()
 }
 
-private object Null
-
-private fun <T> Array<Any?>.lowerEntry(index: Int): T {
-    if (this[index] == Null) {
-        this[index] = lowerEntry(index - 1)
-    }
-    return this[index] as T
-}
-
 class PersistentVar<T : Any>(private val container: IrDeclaration?,
                              initValue: T) {
     var loweredUpTo: Int = 0
+
+    var lastValue: T = initValue
 
     private fun ensureLowered() {
         if (stageController.currentStage <= loweredUpTo) return
         container?.let { stageController.lazyLower(it) }
     }
 
-    val values = Array<Any?>(60) { Null }.also {
-        it[0] = initValue
-    }
+    val changes = TreeMap(mapOf(0 to initValue))
 
     operator fun getValue(thisRef: Any, property: KProperty<*>): T {
         ensureLowered()
 
-        return values.lowerEntry(stageController.currentStage)
+        if (stageController.currentStage == loweredUpTo) return lastValue
+
+        return changes.lowerEntry(stageController.currentStage + 1)!!.value
     }
 
     operator fun setValue(thisRef: Any, property: KProperty<*>, value: T) {
         ensureLowered()
 
-        var index = stageController.currentStage
-
-        if (index >= loweredUpTo) {
-            loweredUpTo = index
+        if (stageController.currentStage >= loweredUpTo) {
+            loweredUpTo = stageController.currentStage
+            lastValue = value
         }
 
-        do {
-            values[index--] = value
-        } while (index > 0 && values[index] == Null)
+        changes[stageController.currentStage] = value
     }
 }
 
+
 class NullablePersistentVar<T>(private val container: IrDeclaration?) {
     var loweredUpTo: Int = 0
+
+    var lastValue: T? = null
 
     private fun ensureLowered() {
         if (stageController.currentStage <= loweredUpTo) return
         container?.let { stageController.lazyLower(it) }
     }
 
-    val values = Array<Any?>(60) { Null }.also {
-        it[0] = null
-    }
+    private val changes = TreeMap<Int, T?>()
 
     operator fun getValue(thisRef: Any, property: KProperty<*>): T? {
         ensureLowered()
 
-        return values.lowerEntry(stageController.currentStage)
+        if (stageController.currentStage == loweredUpTo) return lastValue
+
+        return changes.lowerEntry(stageController.currentStage + 1)?.value
     }
 
     operator fun setValue(thisRef: Any, property: KProperty<*>, value: T?) {
         ensureLowered()
 
-        var index = stageController.currentStage
-
-        if (index >= loweredUpTo) {
-            loweredUpTo = index
+        if (stageController.currentStage >= loweredUpTo) {
+            loweredUpTo = stageController.currentStage
+            lastValue = value
         }
 
-        do {
-            values[index--] = value
-        } while (index > 0 && values[index] == Null)
+        changes[stageController.currentStage] = value
     }
 }
 
 class LateInitPersistentVar<T : Any>(private val container: IrDeclaration?) {
     var loweredUpTo: Int = 0
 
+    var lastValue: T? = null
+
+
     private fun ensureLowered() {
         if (stageController.currentStage <= loweredUpTo) return
         container?.let { stageController.lazyLower(it) }
     }
 
-    val values = Array<Any?>(60) { Null }
+    val changes = TreeMap<Int, T>()
 
     operator fun getValue(thisRef: Any, property: KProperty<*>): T {
         ensureLowered()
 
-        return values.lowerEntry(stageController.currentStage)
+        if (stageController.currentStage == loweredUpTo) return lastValue!!
+
+        return changes.lowerEntry(stageController.currentStage + 1)!!.value
     }
 
     operator fun setValue(thisRef: Any, property: KProperty<*>, value: T) {
         ensureLowered()
 
-        var index = stageController.currentStage
-
-        if (index >= loweredUpTo) {
-            loweredUpTo = index
+        if (stageController.currentStage >= loweredUpTo) {
+            loweredUpTo = stageController.currentStage
+            lastValue = value
         }
 
-        do {
-            values[index--] = value
-        } while (index > 0 && values[index] == Null)
+        changes[stageController.currentStage] = value
     }
 }
 
