@@ -28,6 +28,10 @@ val dataCache = mutableMapOf<ModuleDescriptor, ContextData>()
 
 val intrinsicsCache = mutableMapOf<KlibModuleRef, JsIntrinsics>()
 
+val lazyLoad = false
+
+val icOn = false
+
 fun compile(
     project: Project,
     files: List<KtFile>,
@@ -37,6 +41,13 @@ fun compile(
     allDependencies: List<KlibModuleRef>
 ): String {
     try {
+
+        if (!icOn) {
+            compilationCache.clear()
+            dataCache.clear()
+            intrinsicsCache.clear()
+        }
+
         val stageController = MutableController()
 
         stageController.bodiesEnabled = true
@@ -63,19 +74,32 @@ fun compile(
 
         stageController.deserializer = deserializer
 
-        stageController.dependencyGenerator = ExternalDependenciesGenerator(
+        val dependencyGenerator = ExternalDependenciesGenerator(
             moduleDescriptor,
             symbolTable,
             irBuiltIns,
             deserializer = DeserializerProxy
         )
 
+        stageController.dependencyGenerator = dependencyGenerator
+
         val context =
             JsIrBackendContext(moduleDescriptor, irBuiltIns, jsIntrinsics, symbolTable, moduleFragment, configuration, stageController)
 
+        if (!lazyLoad) {
+            dependencyGenerator.generateUnboundSymbolsAsDependencies()
+        }
+
         stageController.bodiesEnabled = false
 
+        var start = System.currentTimeMillis()
+
         stageController.invokeTopLevel(phaseConfig, moduleFragment, dependencyModules)
+
+        totalTime += System.currentTimeMillis() - start
+        ++testCnt
+
+        println("Avg: ${totalTime / testCnt}ms")
 
         stageController.bodiesEnabled = true
 
@@ -117,7 +141,7 @@ fun compile(
 }
 
 // Prevent memory leaks through LazyIr -> StubGenerator -> IrDeserializer
-object DeserializerProxy: IrDeserializer {
+object DeserializerProxy : IrDeserializer {
     val deserializer: IrDeserializer?
         get() = (stageController as? MutableController)?.deserializer
 
@@ -134,3 +158,6 @@ object DeserializerProxy: IrDeserializer {
         deserializer?.declareForwardDeclarations()
     }
 }
+
+var testCnt = 0
+var totalTime = 0L
