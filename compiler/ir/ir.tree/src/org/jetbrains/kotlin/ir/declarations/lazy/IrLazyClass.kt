@@ -87,13 +87,13 @@ class IrLazyClass(
         })
     }
 
-    override val typeParameters: SimpleList<IrTypeParameter> by lazy {
+    override val typeParameters: SimpleList<IrTypeParameter> by lazyVal {
         SimpleMutableList(descriptor.declaredTypeParameters.mapTo(arrayListOf()) {
             stubGenerator.generateOrGetTypeParameterStub(it)
         })
     }
 
-    override val superTypes: SimpleList<IrType> by lazy {
+    override val superTypes: SimpleList<IrType> by lazyVal {
         SimpleMutableList(typeTranslator.buildWithScope(this) {
             // TODO get rid of code duplication, see ClassGenerator#generateClass
             descriptor.typeConstructor.supertypes.mapNotNullTo(arrayListOf()) {

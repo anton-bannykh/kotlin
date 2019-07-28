@@ -54,7 +54,7 @@ class IrLazyTypeParameter(
         symbol.bind(this)
     }
 
-    override val superTypes: SimpleList<IrType> by lazy {
+    override val superTypes: SimpleList<IrType> by lazyVal {
         SimpleMutableList(typeTranslator.buildWithScope(this.parent as IrTypeParametersContainer) {
             val descriptor = symbol.descriptor
             descriptor.upperBounds.mapTo(arrayListOf()) { it.toIrType() }

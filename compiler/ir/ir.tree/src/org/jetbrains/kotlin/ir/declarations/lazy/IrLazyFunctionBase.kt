@@ -41,7 +41,7 @@ abstract class IrLazyFunctionBase(
         }
     }
 
-    override val valueParameters: SimpleList<IrValueParameter> by lazy {
+    override val valueParameters: SimpleList<IrValueParameter> by lazyVal {
         SimpleMutableList(typeTranslator.buildWithScope(this) {
             descriptor.valueParameters.mapTo(arrayListOf()) {
                 stubGenerator.generateValueParameterStub(it).apply { parent = this@IrLazyFunctionBase }

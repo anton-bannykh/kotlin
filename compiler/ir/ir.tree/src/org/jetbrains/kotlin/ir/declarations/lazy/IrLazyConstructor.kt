@@ -54,7 +54,7 @@ class IrLazyConstructor(
         TypeTranslator
     )
 
-    override val typeParameters: SimpleList<IrTypeParameter> by lazy {
+    override val typeParameters: SimpleList<IrTypeParameter> by lazyVal {
         SimpleMutableList(typeTranslator.buildWithScope(this) {
             stubGenerator.symbolTable.withScope(descriptor) {
                 val classTypeParametersCount = descriptor.constructedClass.original.declaredTypeParameters.size
