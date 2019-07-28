@@ -39,7 +39,7 @@ class IrTypeParameterImpl(
     override val isReified: Boolean,
     override val variance: Variance
 ) :
-    IrDeclarationBase(startOffset, endOffset, origin),
+    IrDeclarationBase<TypeParameterCarrier>(startOffset, endOffset, origin, TypeParameterCarrier()),
     IrTypeParameter {
 
     constructor(
@@ -96,5 +96,13 @@ class IrTypeParameterImpl(
 
     override fun <D> transformChildren(transformer: IrElementTransformer<D>, data: D) {
         // no children
+    }
+}
+
+class TypeParameterCarrier: CarrierBase<TypeParameterCarrier>() {
+    override fun clone(): TypeParameterCarrier {
+        return TypeParameterCarrier().also {
+            fillCopy(it)
+        }
     }
 }

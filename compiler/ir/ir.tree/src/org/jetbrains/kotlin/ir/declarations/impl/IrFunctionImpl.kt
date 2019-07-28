@@ -30,7 +30,7 @@ class IrFunctionImpl(
     override val isTailrec: Boolean,
     override val isSuspend: Boolean
 ) :
-    IrFunctionBase(startOffset, endOffset, origin, name, visibility, isInline, isExternal, returnType),
+    IrFunctionBase<FunctionCarrier>(startOffset, endOffset, origin, name, visibility, isInline, isExternal, FunctionCarrier(returnType)),
     IrSimpleFunction {
 
     constructor(
@@ -65,7 +65,11 @@ class IrFunctionImpl(
             correspondingPropertySymbol = value?.symbol
         }
 
-    override var correspondingPropertySymbol: IrPropertySymbol? by NullablePersistentVar()
+    override var correspondingPropertySymbol: IrPropertySymbol? //by NullablePersistentVar()
+        get() = getCarrier().correspondingPropertySymbol
+        set(v) {
+            setCarrier().correspondingPropertySymbol = v
+        }
 
     // Used by kotlin-native in InteropLowering.kt and IrUtils2.kt
     constructor(
@@ -85,4 +89,19 @@ class IrFunctionImpl(
 
     override fun <R, D> accept(visitor: IrElementVisitor<R, D>, data: D): R =
         visitor.visitSimpleFunction(this, data)
+}
+
+class FunctionCarrier(returnType: IrType) : FunctionBaseCarrier<FunctionCarrier>(returnType) {
+    var correspondingPropertySymbol: IrPropertySymbol? = null
+
+    override fun clone(): FunctionCarrier {
+        return FunctionCarrier(returnTypeField).also {
+            fillCopy(it)
+        }
+    }
+
+    override fun fillCopy(t: FunctionCarrier) {
+        super.fillCopy(t)
+        t.correspondingPropertySymbol = correspondingPropertySymbol
+    }
 }

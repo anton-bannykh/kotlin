@@ -25,7 +25,7 @@ import org.jetbrains.kotlin.ir.visitors.IrElementTransformer
 import org.jetbrains.kotlin.ir.visitors.IrElementVisitor
 import org.jetbrains.kotlin.name.Name
 
-abstract class IrFunctionBase(
+abstract class IrFunctionBase<T : FunctionBaseCarrier<out T>>(
     startOffset: Int,
     endOffset: Int,
     origin: IrDeclarationOrigin,
@@ -33,12 +33,17 @@ abstract class IrFunctionBase(
     override val visibility: Visibility,
     override val isInline: Boolean,
     override val isExternal: Boolean,
-    returnType: IrType
+    initValue: T
 ) :
-    IrDeclarationBase(startOffset, endOffset, origin),
+    IrDeclarationBase<T>(startOffset, endOffset, origin, initValue),
     IrFunction {
 
-    private var returnTypeField: IrType by PersistentVar(returnType)
+    private var returnTypeField: IrType
+        // by PersistentVar(returnType)
+        get() = getCarrier().returnTypeField
+        set(v) {
+            setCarrier().returnTypeField = v
+        }
 
     final override var returnType: IrType
         get() = returnTypeField.let {
@@ -51,14 +56,32 @@ abstract class IrFunctionBase(
     override val typeParameters: SimpleList<IrTypeParameter> =
         DumbPersistentList()
 
-    override var dispatchReceiverParameter: IrValueParameter? by NullablePersistentVar()
-    override var extensionReceiverParameter: IrValueParameter? by NullablePersistentVar()
+    override var dispatchReceiverParameter: IrValueParameter? //by NullablePersistentVar()
+        get() = getCarrier().dispatchReceiverParameter
+        set(v) {
+            setCarrier().dispatchReceiverParameter = v
+        }
+
+    override var extensionReceiverParameter: IrValueParameter? //by NullablePersistentVar()
+        get() = getCarrier().extensionReceiverParameter
+        set(v) {
+            setCarrier().extensionReceiverParameter = v
+        }
+
     override val valueParameters: SimpleList<IrValueParameter> =
         DumbPersistentList()
 
-    final override var body: IrBody? by NullablePersistentVar()
+    final override var body: IrBody? //by NullablePersistentVar()
+        get() = getCarrier().body
+        set(v) {
+            setCarrier().body = v
+        }
 
-    override var metadata: MetadataSource? by NullablePersistentVar()
+    override var metadata: MetadataSource? //by NullablePersistentVar()
+        get() = getCarrier().metadata
+        set(v) {
+            setCarrier().metadata = v
+        }
 
     override fun <D> acceptChildren(visitor: IrElementVisitor<Unit, D>, data: D) {
         typeParameters.forEach { it.accept(visitor, data) }
@@ -78,5 +101,27 @@ abstract class IrFunctionBase(
         valueParameters.transform { it.transform(transformer, data) }
 
         body = body?.transform(transformer, data)
+    }
+}
+
+abstract class FunctionBaseCarrier<T : FunctionBaseCarrier<T>>(
+    var returnTypeField: IrType
+) : CarrierBase<T>() {
+
+    var dispatchReceiverParameter: IrValueParameter? = null
+
+    var extensionReceiverParameter: IrValueParameter? = null
+
+    var body: IrBody? = null
+
+    var metadata: MetadataSource? = null
+
+    override fun fillCopy(t: T) {
+        super.fillCopy(t)
+        t.returnTypeField = returnTypeField
+        t.dispatchReceiverParameter = dispatchReceiverParameter
+        t.extensionReceiverParameter = extensionReceiverParameter
+        t.body = body
+        t.metadata = metadata
     }
 }

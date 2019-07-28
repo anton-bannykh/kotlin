@@ -25,6 +25,7 @@ import org.jetbrains.kotlin.ir.visitors.IrElementTransformer
 import org.jetbrains.kotlin.ir.visitors.IrElementVisitor
 import org.jetbrains.kotlin.name.Name
 
+// TODO make not persistent
 class IrLocalDelegatedPropertyImpl(
     startOffset: Int,
     endOffset: Int,
@@ -34,7 +35,7 @@ class IrLocalDelegatedPropertyImpl(
     override val type: IrType,
     override val isVar: Boolean
 ) :
-    IrDeclarationBase(startOffset, endOffset, origin),
+    IrDeclarationBase<LocalDelegatedPropertyCarrier>(startOffset, endOffset, origin, LocalDelegatedPropertyCarrier()),
     IrLocalDelegatedProperty {
 
     init {
@@ -101,11 +102,23 @@ class IrLocalDelegatedPropertyImpl(
     override val descriptor: VariableDescriptorWithAccessors
         get() = symbol.descriptor
 
-    override var delegate: IrVariable by LateInitPersistentVar()
+    override var delegate: IrVariable //by LateInitPersistentVar()
+        get() = getCarrier().delegate!!
+        set(v) {
+            setCarrier().delegate = v
+        }
 
-    override var getter: IrFunction by LateInitPersistentVar()
+    override var getter: IrFunction //by LateInitPersistentVar()
+        get() = getCarrier().getter!!
+        set(v) {
+            setCarrier().getter = v
+        }
 
-    override var setter: IrFunction? by NullablePersistentVar()
+    override var setter: IrFunction? //by NullablePersistentVar()
+        get() = getCarrier().setter
+        set(v) {
+            setCarrier().setter = v
+        }
 
     override fun <R, D> accept(visitor: IrElementVisitor<R, D>, data: D): R =
         visitor.visitLocalDelegatedProperty(this, data)
@@ -120,5 +133,24 @@ class IrLocalDelegatedPropertyImpl(
         delegate = delegate.transform(transformer, data) as IrVariable
         getter = getter.transform(transformer, data) as IrFunction
         setter = setter?.transform(transformer, data) as? IrFunction
+    }
+}
+
+class LocalDelegatedPropertyCarrier : CarrierBase<LocalDelegatedPropertyCarrier>() {
+    var delegate: IrVariable? = null
+    var getter: IrFunction? = null
+    var setter: IrFunction? = null
+
+    override fun clone(): LocalDelegatedPropertyCarrier {
+        return LocalDelegatedPropertyCarrier().also {
+            fillCopy(it)
+        }
+    }
+
+    override fun fillCopy(t: LocalDelegatedPropertyCarrier) {
+        super.fillCopy(t)
+        t.delegate = delegate
+        t.getter = getter
+        t.setter = setter
     }
 }

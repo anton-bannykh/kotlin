@@ -26,7 +26,7 @@ class IrErrorDeclarationImpl(
     startOffset: Int,
     endOffset: Int,
     override val descriptor: DeclarationDescriptor
-) : IrDeclarationBase(startOffset, endOffset, IrDeclarationOrigin.DEFINED), IrErrorDeclaration {
+) : IrDeclarationBase<ErrorCarrier>(startOffset, endOffset, IrDeclarationOrigin.DEFINED, ErrorCarrier()), IrErrorDeclaration {
 
     override fun <R, D> accept(visitor: IrElementVisitor<R, D>, data: D): R {
         return visitor.visitErrorDeclaration(this, data)
@@ -38,5 +38,13 @@ class IrErrorDeclarationImpl(
 
     override fun <D> transformChildren(transformer: IrElementTransformer<D>, data: D) {
         // no children
+    }
+}
+
+class ErrorCarrier : CarrierBase<ErrorCarrier>() {
+    override fun clone(): ErrorCarrier {
+        return ErrorCarrier().also {
+            fillCopy(it)
+        }
     }
 }

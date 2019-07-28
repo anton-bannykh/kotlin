@@ -28,6 +28,7 @@ import org.jetbrains.kotlin.ir.visitors.IrElementTransformer
 import org.jetbrains.kotlin.ir.visitors.IrElementVisitor
 import org.jetbrains.kotlin.name.Name
 
+// TODO remove persistency
 class IrVariableImpl(
     startOffset: Int,
     endOffset: Int,
@@ -39,7 +40,7 @@ class IrVariableImpl(
     override val isConst: Boolean,
     override val isLateinit: Boolean
 ) :
-    IrDeclarationBase(startOffset, endOffset, origin),
+    IrDeclarationBase<VariableCarrier>(startOffset, endOffset, origin, VariableCarrier()),
     IrVariable {
 
     constructor(
@@ -81,7 +82,11 @@ class IrVariableImpl(
 
     override val descriptor: VariableDescriptor get() = symbol.descriptor
 
-    override var initializer: IrExpression? by NullablePersistentVar()
+    override var initializer: IrExpression? //by NullablePersistentVar()
+        get() = getCarrier().initializer
+        set(v) {
+            setCarrier().initializer = v
+        }
 
     override fun <R, D> accept(visitor: IrElementVisitor<R, D>, data: D): R =
         visitor.visitVariable(this, data)
@@ -92,5 +97,21 @@ class IrVariableImpl(
 
     override fun <D> transformChildren(transformer: IrElementTransformer<D>, data: D) {
         initializer = initializer?.transform(transformer, data)
+    }
+}
+
+class VariableCarrier : CarrierBase<VariableCarrier>() {
+
+    var initializer: IrExpression? = null
+
+    override fun clone(): VariableCarrier {
+        return VariableCarrier().also {
+            fillCopy(it)
+        }
+    }
+
+    override fun fillCopy(t: VariableCarrier) {
+        super.fillCopy(t)
+        t.initializer = initializer
     }
 }

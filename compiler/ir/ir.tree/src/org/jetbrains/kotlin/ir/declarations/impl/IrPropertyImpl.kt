@@ -41,7 +41,7 @@ class IrPropertyImpl(
     override val isLateinit: Boolean = symbol.descriptor.isLateInit,
     override val isDelegated: Boolean = symbol.descriptor.isDelegated,
     override val isExternal: Boolean = symbol.descriptor.isEffectivelyExternal()
-) : IrDeclarationBase(startOffset, endOffset, origin),
+) : IrDeclarationBase<PropertyCarrier>(startOffset, endOffset, origin, PropertyCarrier()),
     IrProperty {
 
     @Deprecated(message = "Don't use descriptor-based API for IrProperty", level = DeprecationLevel.WARNING)
@@ -127,9 +127,24 @@ class IrPropertyImpl(
 
     override val descriptor: PropertyDescriptor = symbol.descriptor
 
-    override var backingField: IrField? by NullablePersistentVar()
-    override var getter: IrSimpleFunction? by NullablePersistentVar()
-    override var setter: IrSimpleFunction? by NullablePersistentVar()
+    override var backingField: IrField? //by NullablePersistentVar()
+        get() = getCarrier().backingField
+        set(v) {
+            setCarrier().backingField = v
+        }
+
+    override var getter: IrSimpleFunction? //by NullablePersistentVar()
+        get() = getCarrier().getter
+        set(v) {
+            setCarrier().getter = v
+        }
+
+    override var setter: IrSimpleFunction? //by NullablePersistentVar()
+        get() = getCarrier().setter
+        set(v) {
+            setCarrier().setter = v
+        }
+
 
     override fun <R, D> accept(visitor: IrElementVisitor<R, D>, data: D): R {
         return visitor.visitProperty(this, data)
@@ -141,11 +156,36 @@ class IrPropertyImpl(
         setter?.accept(visitor, data)
     }
 
-    override var metadata: MetadataSource? by NullablePersistentVar()
+    override var metadata: MetadataSource? //by NullablePersistentVar()
+        get() = getCarrier().metadata
+        set(v) {
+            setCarrier().metadata = v
+        }
 
     override fun <D> transformChildren(transformer: IrElementTransformer<D>, data: D) {
         backingField = backingField?.transform(transformer, data) as? IrField
         getter = getter?.run { transform(transformer, data) as IrSimpleFunction }
         setter = setter?.run { transform(transformer, data) as IrSimpleFunction }
+    }
+}
+
+class PropertyCarrier : CarrierBase<PropertyCarrier>() {
+    var backingField: IrField? = null
+    var getter: IrSimpleFunction? = null
+    var setter: IrSimpleFunction? = null
+    var metadata: MetadataSource? = null
+
+    override fun clone(): PropertyCarrier {
+        return PropertyCarrier().also {
+            fillCopy(it)
+        }
+    }
+
+    override fun fillCopy(t: PropertyCarrier) {
+        super.fillCopy(t)
+        t.backingField = backingField
+        t.getter = getter
+        t.setter = setter
+        t.metadata = metadata
     }
 }

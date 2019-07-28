@@ -43,7 +43,7 @@ class IrClassImpl(
     override val isExternal: Boolean,
     override val isInline: Boolean
 ) :
-    IrDeclarationBase(startOffset, endOffset, origin),
+    IrDeclarationBase<ClassCarrier>(startOffset, endOffset, origin, ClassCarrier()),
     IrClass {
 
     constructor(
@@ -71,7 +71,11 @@ class IrClassImpl(
 
     override val descriptor: ClassDescriptor get() = symbol.descriptor
 
-    override var thisReceiver: IrValueParameter? by NullablePersistentVar()
+    override var thisReceiver: IrValueParameter? //by NullablePersistentVar()
+        get() = getCarrier().thisReceiver
+        set(v) {
+            setCarrier().thisReceiver = v
+        }
 
     override val declarations: SimpleList<IrDeclaration> =
         DumbPersistentList()
@@ -82,7 +86,11 @@ class IrClassImpl(
     override val superTypes: SimpleList<IrType> =
         DumbPersistentList()
 
-    override var metadata: MetadataSource? by NullablePersistentVar()
+    override var metadata: MetadataSource? //by NullablePersistentVar()
+        get() = getCarrier().metadata
+        set(v) {
+            setCarrier().metadata = v
+        }
 
     override fun <R, D> accept(visitor: IrElementVisitor<R, D>, data: D): R =
         visitor.visitClass(this, data)
@@ -97,5 +105,20 @@ class IrClassImpl(
         thisReceiver = thisReceiver?.transform(transformer, data)
         typeParameters.transform { it.transform(transformer, data) }
         declarations.transform { it.transform(transformer, data) as IrDeclaration }
+    }
+}
+
+class ClassCarrier: CarrierBase<ClassCarrier>() {
+    var thisReceiver: IrValueParameter? = null
+    var metadata: MetadataSource? = null
+
+    override fun clone(): ClassCarrier {
+        return ClassCarrier().also { fillCopy(it) }
+    }
+
+    override fun fillCopy(t: ClassCarrier) {
+        super.fillCopy(t)
+        t.thisReceiver = thisReceiver
+        t.metadata = metadata
     }
 }

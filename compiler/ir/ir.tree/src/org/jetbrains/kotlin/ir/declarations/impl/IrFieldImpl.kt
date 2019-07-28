@@ -41,7 +41,7 @@ class IrFieldImpl(
     override val isFinal: Boolean,
     override val isExternal: Boolean,
     override val isStatic: Boolean
-) : IrDeclarationBase(startOffset, endOffset, origin),
+) : IrDeclarationBase<FieldCarrier>(startOffset, endOffset, origin, FieldCarrier()),
     IrField {
 
     constructor(
@@ -74,7 +74,11 @@ class IrFieldImpl(
 
     override val descriptor: PropertyDescriptor = symbol.descriptor
 
-    override var initializer: IrExpressionBody? by NullablePersistentVar()
+    override var initializer: IrExpressionBody? //by NullablePersistentVar()
+        get() = getCarrier().initializer
+        set(v) {
+            setCarrier().initializer = v
+        }
 
     @Suppress("OverridingDeprecatedMember")
     override var correspondingProperty: IrProperty?
@@ -83,12 +87,20 @@ class IrFieldImpl(
             correspondingPropertySymbol = value?.symbol
         }
 
-    override var correspondingPropertySymbol: IrPropertySymbol? by NullablePersistentVar()
+    override var correspondingPropertySymbol: IrPropertySymbol? //by NullablePersistentVar()
+        get() = getCarrier().correspondingPropertySymbol
+        set(v) {
+            setCarrier().correspondingPropertySymbol = v
+        }
 
     override val overriddenSymbols: SimpleList<IrFieldSymbol> =
         DumbPersistentList()
 
-    override var metadata: MetadataSource.Property? by NullablePersistentVar()
+    override var metadata: MetadataSource.Property? //by NullablePersistentVar()
+        get() = getCarrier().metadata
+        set(v) {
+            setCarrier().metadata = v
+        }
 
     override fun <R, D> accept(visitor: IrElementVisitor<R, D>, data: D): R {
         return visitor.visitField(this, data)
@@ -100,5 +112,25 @@ class IrFieldImpl(
 
     override fun <D> transformChildren(transformer: IrElementTransformer<D>, data: D) {
         initializer = initializer?.transform(transformer, data)
+    }
+}
+
+class FieldCarrier: CarrierBase<FieldCarrier>() {
+
+    var initializer: IrExpressionBody? = null
+    var correspondingPropertySymbol: IrPropertySymbol? = null
+    var metadata: MetadataSource.Property? = null
+
+    override fun clone(): FieldCarrier {
+        return FieldCarrier().also {
+            fillCopy(it)
+        }
+    }
+
+    override fun fillCopy(t: FieldCarrier) {
+        super.fillCopy(t)
+        t.initializer = initializer
+        t.correspondingPropertySymbol = correspondingPropertySymbol
+        t.metadata = metadata
     }
 }

@@ -39,9 +39,9 @@ class IrConstructorImpl(
     isExternal: Boolean,
     override val isPrimary: Boolean
 ) :
-    IrFunctionBase(
+    IrFunctionBase<ConstructorCarrier>(
         startOffset, endOffset, origin, name,
-        visibility, isInline, isExternal, returnType
+        visibility, isInline, isExternal, ConstructorCarrier(returnType)
     ),
     IrConstructor {
 
@@ -72,4 +72,13 @@ class IrConstructorImpl(
 
     override fun <R, D> accept(visitor: IrElementVisitor<R, D>, data: D): R =
         visitor.visitConstructor(this, data)
+}
+
+class ConstructorCarrier(returnType: IrType): FunctionBaseCarrier<ConstructorCarrier>(returnType) {
+
+    override fun clone(): ConstructorCarrier {
+        return ConstructorCarrier(returnTypeField).also {
+            fillCopy(it)
+        }
+    }
 }

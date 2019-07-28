@@ -31,7 +31,7 @@ class IrAnonymousInitializerImpl(
     origin: IrDeclarationOrigin,
     override val symbol: IrAnonymousInitializerSymbol,
     override val isStatic: Boolean = false
-) : IrDeclarationBase(startOffset, endOffset, origin),
+) : IrDeclarationBase<AnonymousInitializerCarrier>(startOffset, endOffset, origin, AnonymousInitializerCarrier()),
     IrAnonymousInitializer {
 
     init {
@@ -40,7 +40,11 @@ class IrAnonymousInitializerImpl(
 
     override val descriptor: ClassDescriptor get() = symbol.descriptor
 
-    override var body: IrBlockBody by LateInitPersistentVar()
+    override var body: IrBlockBody //by LateInitPersistentVar()
+        get() = getCarrier().body!!
+        set(v) {
+            setCarrier().body = v
+        }
 
     override fun <R, D> accept(visitor: IrElementVisitor<R, D>, data: D): R {
         return visitor.visitAnonymousInitializer(this, data)
@@ -52,5 +56,21 @@ class IrAnonymousInitializerImpl(
 
     override fun <D> transformChildren(transformer: IrElementTransformer<D>, data: D) {
         body = body.transform(transformer, data) as IrBlockBody
+    }
+}
+
+class AnonymousInitializerCarrier: CarrierBase<AnonymousInitializerCarrier>() {
+
+    var body: IrBlockBody? = null
+
+    override fun clone(): AnonymousInitializerCarrier {
+        return AnonymousInitializerCarrier().also {
+            fillCopy(it)
+        }
+    }
+
+    override fun fillCopy(t: AnonymousInitializerCarrier) {
+        super.fillCopy(t)
+        t.body = body
     }
 }

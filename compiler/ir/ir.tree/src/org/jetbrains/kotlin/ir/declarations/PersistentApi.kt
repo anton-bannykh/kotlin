@@ -5,6 +5,7 @@
 
 package org.jetbrains.kotlin.ir.declarations
 
+import org.jetbrains.kotlin.ir.declarations.impl.IrDeclarationBase
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.util.transformFlat
 import java.util.*
@@ -37,8 +38,10 @@ class NoopController : StageController {
     override fun <T> withInitialIr(block: () -> T): T = block()
 }
 
-class PersistentVar<T : Any>(private val container: IrDeclaration?,
-                             initValue: T) {
+class PersistentVar<T : Any>(
+    private val container: IrDeclaration?,
+    initValue: T
+) {
     var loweredUpTo: Int = 0
 
     var lastValue: T = initValue

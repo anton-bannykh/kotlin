@@ -42,7 +42,7 @@ class IrValueParameterImpl(
     override val isCrossinline: Boolean,
     override val isNoinline: Boolean
 ) :
-    IrDeclarationBase(startOffset, endOffset, origin),
+    IrDeclarationBase<ValueParameterCarrier>(startOffset, endOffset, origin, ValueParameterCarrier()),
     IrValueParameter {
 
     constructor(
@@ -80,7 +80,11 @@ class IrValueParameterImpl(
         symbol.bind(this)
     }
 
-    override var defaultValue: IrExpressionBody? by NullablePersistentVar()
+    override var defaultValue: IrExpressionBody? //by NullablePersistentVar()
+        get() = getCarrier().defaultValue
+        set(v) {
+            setCarrier().defaultValue = v
+        }
 
     override fun <R, D> accept(visitor: IrElementVisitor<R, D>, data: D): R =
         visitor.visitValueParameter(this, data)
@@ -94,5 +98,20 @@ class IrValueParameterImpl(
 
     override fun <D> transformChildren(transformer: IrElementTransformer<D>, data: D) {
         defaultValue = defaultValue?.transform(transformer, data)
+    }
+}
+
+class ValueParameterCarrier : CarrierBase<ValueParameterCarrier>() {
+    var defaultValue: IrExpressionBody? = null
+
+    override fun clone(): ValueParameterCarrier {
+        return ValueParameterCarrier().also {
+            fillCopy(it)
+        }
+    }
+
+    override fun fillCopy(t: ValueParameterCarrier) {
+        super.fillCopy(t)
+        t.defaultValue = defaultValue
     }
 }
