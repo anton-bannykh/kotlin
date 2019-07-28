@@ -23,11 +23,9 @@ import org.jetbrains.kotlin.ir.expressions.IrExpressionBody
 abstract class IrDeclarationBase(
     startOffset: Int,
     endOffset: Int,
-    origin: IrDeclarationOrigin
+    override val origin: IrDeclarationOrigin
 ) : IrElementBase(startOffset, endOffset),
     IrDeclaration, HasUserdata {
-
-    override var origin: IrDeclarationOrigin by PersistentVar(origin)
 
     override var parent: IrDeclarationParent by LateInitPersistentVar()
 

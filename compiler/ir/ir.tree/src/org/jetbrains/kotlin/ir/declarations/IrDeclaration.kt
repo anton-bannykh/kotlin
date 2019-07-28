@@ -34,7 +34,7 @@ interface IrMetadataSourceOwner : IrElement {
 
 interface IrDeclaration : IrStatement, IrAnnotationContainer, IrMetadataSourceOwner {
     val descriptor: DeclarationDescriptor
-    var origin: IrDeclarationOrigin
+    val origin: IrDeclarationOrigin
 
     var parent: IrDeclarationParent
 
