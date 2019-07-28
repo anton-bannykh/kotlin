@@ -140,11 +140,11 @@ class JsIrBackendContext(
                 get() = TODO("not implemented")
             override val copyRangeTo: Map<ClassDescriptor, IrSimpleFunctionSymbol>
                 get() = TODO("not implemented")
-            override val coroutineImpl by lazy {
+            override val coroutineImpl by lazyVal {
                 coroutinesLoaded = true
                 symbolTable.referenceClass(findClass(coroutinePackage.memberScope, COROUTINE_IMPL_NAME))
             }
-            override val coroutineSuspendedGetter by lazy {
+            override val coroutineSuspendedGetter by lazyVal {
                 symbolTable.referenceSimpleFunction(
                     coroutineIntrinsicsPackage.memberScope.getContributedVariables(
                         COROUTINE_SUSPENDED_NAME,
@@ -153,7 +153,7 @@ class JsIrBackendContext(
                 )
             }
 
-            override val getContinuation by lazy { symbolTable.referenceSimpleFunction(getJsInternalFunction("getContinuation")) }
+            override val getContinuation by lazyVal { symbolTable.referenceSimpleFunction(getJsInternalFunction("getContinuation")) }
         }
 
         override val defaultParameterDeclarationsCache: MutableMap<IrFunction, IrFunction>
@@ -164,17 +164,17 @@ class JsIrBackendContext(
 
     // classes forced to be loaded
 
-    val primitiveClassesObject by lazy { getIrClass(FqName("kotlin.reflect.js.internal.PrimitiveClasses")) }
+    val primitiveClassesObject by lazyVal { getIrClass(FqName("kotlin.reflect.js.internal.PrimitiveClasses")) }
 
-    val throwableClass by lazy { getIrClass(JsIrBackendContext.KOTLIN_PACKAGE_FQN.child(Name.identifier("Throwable"))) }
+    val throwableClass by lazyVal { getIrClass(JsIrBackendContext.KOTLIN_PACKAGE_FQN.child(Name.identifier("Throwable"))) }
 
-    val primitiveCompanionObjects by lazy {
+    val primitiveCompanionObjects by lazyVal {
         primitivesWithImplicitCompanionObject().associateWith {
             getIrClass(JS_INTERNAL_PACKAGE_FQNAME.child(Name.identifier("${it.identifier}CompanionObject")))
         }
     }
 
-    val continuationClass by lazy {
+    val continuationClass by lazyVal {
         symbolTable.referenceClass(
             coroutinePackage.memberScope.getContributedClassifier(
                 CONTINUATION_NAME,
@@ -186,7 +186,7 @@ class JsIrBackendContext(
 
     // Top-level functions forced to be loaded
 
-    val coroutineSuspendOrReturn by lazy { symbolTable.referenceSimpleFunction(getJsInternalFunction(COROUTINE_SUSPEND_OR_RETURN_JS_NAME)) }
+    val coroutineSuspendOrReturn by lazyVal { symbolTable.referenceSimpleFunction(getJsInternalFunction(COROUTINE_SUSPEND_OR_RETURN_JS_NAME)) }
     val coroutineGetContext: IrSimpleFunctionSymbol
         get() {
             val contextGetter =
@@ -195,7 +195,7 @@ class JsIrBackendContext(
             return contextGetter.symbol
         }
 
-    val coroutineGetContextJs by lazy { symbolTable.referenceSimpleFunction(getJsInternalFunction(GET_COROUTINE_CONTEXT_NAME)) }
+    val coroutineGetContextJs by lazyVal { symbolTable.referenceSimpleFunction(getJsInternalFunction(GET_COROUTINE_CONTEXT_NAME)) }
 
     val coroutineContextProperty: PropertyDescriptor
         get() {
@@ -214,27 +214,27 @@ class JsIrBackendContext(
     val suiteFun = getFunctions(FqName("kotlin.test.suite")).singleOrNull()?.let { symbolTable.referenceSimpleFunction(it) }
     val testFun = getFunctions(FqName("kotlin.test.test")).singleOrNull()?.let { symbolTable.referenceSimpleFunction(it) }
 
-    val coroutineImplLabelPropertyGetter by lazy { ir.symbols.coroutineImpl.getPropertyGetter("state")!!.owner }
-    val coroutineImplLabelPropertySetter by lazy { ir.symbols.coroutineImpl.getPropertySetter("state")!!.owner }
-    val coroutineImplResultSymbolGetter by lazy { ir.symbols.coroutineImpl.getPropertyGetter("result")!!.owner }
-    val coroutineImplResultSymbolSetter by lazy { ir.symbols.coroutineImpl.getPropertySetter("result")!!.owner }
-    val coroutineImplExceptionPropertyGetter by lazy { ir.symbols.coroutineImpl.getPropertyGetter("exception")!!.owner }
-    val coroutineImplExceptionPropertySetter by lazy { ir.symbols.coroutineImpl.getPropertySetter("exception")!!.owner }
-    val coroutineImplExceptionStatePropertyGetter by lazy { ir.symbols.coroutineImpl.getPropertyGetter("exceptionState")!!.owner }
-    val coroutineImplExceptionStatePropertySetter by lazy { ir.symbols.coroutineImpl.getPropertySetter("exceptionState")!!.owner }
+    val coroutineImplLabelPropertyGetter by lazyVal { ir.symbols.coroutineImpl.getPropertyGetter("state")!!.owner }
+    val coroutineImplLabelPropertySetter by lazyVal { ir.symbols.coroutineImpl.getPropertySetter("state")!!.owner }
+    val coroutineImplResultSymbolGetter by lazyVal { ir.symbols.coroutineImpl.getPropertyGetter("result")!!.owner }
+    val coroutineImplResultSymbolSetter by lazyVal { ir.symbols.coroutineImpl.getPropertySetter("result")!!.owner }
+    val coroutineImplExceptionPropertyGetter by lazyVal { ir.symbols.coroutineImpl.getPropertyGetter("exception")!!.owner }
+    val coroutineImplExceptionPropertySetter by lazyVal { ir.symbols.coroutineImpl.getPropertySetter("exception")!!.owner }
+    val coroutineImplExceptionStatePropertyGetter by lazyVal { ir.symbols.coroutineImpl.getPropertyGetter("exceptionState")!!.owner }
+    val coroutineImplExceptionStatePropertySetter by lazyVal { ir.symbols.coroutineImpl.getPropertySetter("exceptionState")!!.owner }
 
-    val primitiveClassProperties by lazy {
+    val primitiveClassProperties by lazyVal {
         primitiveClassesObject.owner.declarations.filterIsInstance<IrProperty>()
     }
 
-    val primitiveClassFunctionClass by lazy {
+    val primitiveClassFunctionClass by lazyVal {
         primitiveClassesObject.owner.declarations
             .filterIsInstance<IrSimpleFunction>()
             .find { it.name == Name.identifier("functionClass") }!!
     }
 
-    val throwableConstructors by lazy { throwableClass.owner.declarations.filterIsInstance<IrConstructor>().map { it.symbol } }
-    val defaultThrowableCtor by lazy { throwableConstructors.single { it.owner.valueParameters.size == 0 } }
+    val throwableConstructors by lazyVal { throwableClass.owner.declarations.filterIsInstance<IrConstructor>().map { it.symbol } }
+    val defaultThrowableCtor by lazyVal { throwableConstructors.single { it.owner.valueParameters.size == 0 } }
 
     private fun referenceOperators(): Map<Name, MutableMap<IrClassifierSymbol, IrSimpleFunctionSymbol>> {
         val primitiveIrSymbols = irBuiltIns.primitiveIrTypes.map { it.classifierOrFail as IrClassSymbol }
@@ -279,3 +279,5 @@ class JsIrBackendContext(
         print(message)
     }
 }
+
+internal fun <T> lazyVal(fn: () -> T) = lazy { stageController.withInitialIr(fn) }

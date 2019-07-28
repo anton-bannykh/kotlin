@@ -141,17 +141,34 @@ class LateInitPersistentVar<T : Any>(private val container: IrDeclaration?) {
 
 class BodyEnabledVar<T>(value: T) {
 
+//    private var loweredUpTo = 0
+
     private var storage = value
 
     operator fun getValue(thisRef: Any, property: KProperty<*>): T {
         if (!stageController.bodiesEnabled)
             error("Bodies disabled!")
+//        stageController.currentStage.let { stage ->
+//            if (stage < loweredUpTo) {
+//                error("Cannot read bodies of the past ($stage < $loweredUpTo)")
+//            }
+//            loweredUpTo = Math.max(loweredUpTo, stage)
+//        }
+
         return storage
     }
 
     operator fun setValue(thisRef: Any, property: KProperty<*>, value: T) {
         if (!stageController.bodiesEnabled)
             error("Bodies disabled!")
+
+//        stageController.currentStage.let { stage ->
+//            if (stage < loweredUpTo) {
+//                error("Cannot read bodies of the past ($stage < $loweredUpTo)")
+//            }
+//            loweredUpTo = Math.max(loweredUpTo, stage)
+//        }
+
         storage = value
     }
 }

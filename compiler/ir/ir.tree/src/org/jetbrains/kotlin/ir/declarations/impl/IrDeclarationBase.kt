@@ -38,19 +38,24 @@ abstract class IrDeclarationBase<T : CarrierBase<out T>>(
 
     var loweredUpTo = stageController.currentStage
 
+    val createdOn = loweredUpTo
+
     override val userdata: MutableMap<MappingKey<*, *>, *> = mutableMapOf()
 
     override val metadata: MetadataSource?
         get() = null
 
     val values = Array<Any?>(60) { null }.also {
-        it[0] = initValue // TODO 0 -> currentStage?
+        it[stageController.currentStage] = initValue // TODO 0 -> currentStage?
     }
 
     protected fun getCarrier(): T {
         stageController.currentStage.let { stage ->
             values[stage]?.let {
                 return it as T
+            }
+            if (stage < createdOn) {
+                error("Cannot access declaration before is was created ($stage < $createdOn)")
             }
             if (stage > loweredUpTo) {
                 stageController.lazyLower(this)
@@ -59,7 +64,7 @@ abstract class IrDeclarationBase<T : CarrierBase<out T>>(
             var i = stage - 1
             while (values[i] == null) --i
             val r = values[i]
-            while (i++ != stage) values[i] = r
+            while (++i != stage) values[i] = r
 
             return r as T
         }
@@ -70,6 +75,14 @@ abstract class IrDeclarationBase<T : CarrierBase<out T>>(
             values[stage]?.let {
                 return it as T
             }
+            if (stage < createdOn) {
+                error("Cannot access declaration before is was created ($stage < $createdOn)")
+            }
+
+            if (values[stage + 1] != null) {
+                error("Cannot modify old states ($stage < $loweredUpTo)")
+            }
+
             if (stage > loweredUpTo) {
                 stageController.lazyLower(this)
             }

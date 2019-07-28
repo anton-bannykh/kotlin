@@ -686,15 +686,15 @@ class MutableController : StageController {
 
     // TODO Special API to check only top level declarations are added?
     override fun <T> withInitialIr(block: () -> T): T {
-        val generator = dependencyGenerator
-        try {
-            dependencyGenerator = null
+//        val generator = dependencyGenerator
+//        try {
+//            dependencyGenerator = null
             return withStage(0) {
                 block()
             }
-        } finally {
-            dependencyGenerator = generator
-        }
+//        } finally {
+//            dependencyGenerator = generator
+//        }
     }
 
     private var frozen = false
