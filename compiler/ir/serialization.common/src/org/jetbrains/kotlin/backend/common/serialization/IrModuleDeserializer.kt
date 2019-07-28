@@ -872,7 +872,7 @@ abstract class IrModuleDeserializer(
 
     private fun deserializeIrFunctionBase(
         base: KotlinIr.IrFunctionBase,
-        function: IrFunctionBase,
+        function: IrFunctionBase<*>,
         start: Int,
         end: Int,
         origin: IrDeclarationOrigin
@@ -917,7 +917,7 @@ abstract class IrModuleDeserializer(
                 )
             })
 
-        deserializeIrFunctionBase(proto.base, function as IrFunctionBase, start, end, origin)
+        deserializeIrFunctionBase(proto.base, function as IrFunctionBase<*>, start, end, origin)
         val overridden = proto.overriddenList.map { deserializeIrSymbol(it) as IrSimpleFunctionSymbol }
         function.overriddenSymbols.addAll(overridden)
 
@@ -1026,7 +1026,7 @@ abstract class IrModuleDeserializer(
 
             })
 
-        deserializeIrFunctionBase(proto.base, constructor as IrFunctionBase, start, end, origin)
+        deserializeIrFunctionBase(proto.base, constructor as IrFunctionBase<*>, start, end, origin)
         return constructor
     }
 

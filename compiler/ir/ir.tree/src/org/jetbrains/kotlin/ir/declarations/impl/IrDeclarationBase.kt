@@ -20,17 +20,19 @@ import org.jetbrains.kotlin.ir.IrElementBase
 import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.expressions.IrExpressionBody
 
-abstract class IrDeclarationBase<T: CarrierBase<out T>>(
+abstract class IrDeclarationBase<T : CarrierBase<out T>>(
     startOffset: Int,
     endOffset: Int,
     override val origin: IrDeclarationOrigin,
     initValue: T
 ) : IrElementBase(startOffset, endOffset),
-    IrDeclaration, HasUserdata{
+    IrDeclaration, HasUserdata {
 
     override var parent: IrDeclarationParent
         get() = getCarrier().parent!!
-        set(p) { setCarrier().parent = p }
+        set(p) {
+            setCarrier().parent = p
+        }
 
     override val annotations: SimpleList<IrExpressionBody> = DumbPersistentList()
 
@@ -42,7 +44,7 @@ abstract class IrDeclarationBase<T: CarrierBase<out T>>(
         get() = null
 
     val values = Array<Any?>(60) { null }.also {
-        it[stageController.currentStage] = initValue
+        it[0] = initValue // TODO 0 -> currentStage?
     }
 
     protected fun getCarrier(): T {
@@ -53,7 +55,13 @@ abstract class IrDeclarationBase<T: CarrierBase<out T>>(
             if (stage > loweredUpTo) {
                 stageController.lazyLower(this)
             }
-            return values.lowerEntry(stage)
+
+            var i = stage - 1
+            while (values[i] == null) --i
+            val r = values[i]
+            while (i++ != stage) values[i] = r
+
+            return r as T
         }
     }
 
@@ -65,9 +73,14 @@ abstract class IrDeclarationBase<T: CarrierBase<out T>>(
             if (stage > loweredUpTo) {
                 stageController.lazyLower(this)
             }
-            val result = (values[stage] as T).clone()
-            values[stage] = result
-            return result
+            var i = stage - 1
+            while (values[i] == null) --i
+            var r = values[i]
+            while (++i != stage) values[i] = r
+            r = (r as T).clone()
+            values[stage] = r
+
+            return r
         }
     }
 }
@@ -78,16 +91,17 @@ interface HasUserdata {
 
 interface MappingKey<K : IrDeclaration, V>
 
-abstract class CarrierBase<T: CarrierBase<T>> {
+abstract class CarrierBase<T : CarrierBase<T>> {
     var parent: IrDeclarationParent? = null
 
-    abstract fun clone() : T
+    abstract fun clone(): T
 
     open fun fillCopy(t: T) {
         t.parent = parent
     }
 }
 
+// TODO investigate what's wrong with this fun (NPE)
 private fun <T> Array<Any?>.lowerEntry(index: Int): T {
     if (this[index] === null) {
         this[index] = lowerEntry(index - 1)

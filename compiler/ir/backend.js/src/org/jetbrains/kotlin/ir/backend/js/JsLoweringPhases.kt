@@ -633,7 +633,7 @@ class MutableController : StageController {
             withStage(i) {
                 val topLevelDeclaration = declaration.topLevel
 
-                if (topLevelDeclaration is IrDeclarationBase && topLevelDeclaration.loweredUpTo < i - 1) {
+                if (topLevelDeclaration is IrDeclarationBase<*> && topLevelDeclaration.loweredUpTo < i - 1) {
                     error("WTF?")
                 }
 
@@ -679,9 +679,9 @@ class MutableController : StageController {
     }
 
     private var IrDeclaration.loweredUpTo: Int
-        get() = (this as? IrDeclarationBase)?.loweredUpTo ?: 0
+        get() = (this as? IrDeclarationBase<*>)?.loweredUpTo ?: 0
         set(v) {
-            (this as? IrDeclarationBase)?.loweredUpTo = v
+            (this as? IrDeclarationBase<*>)?.loweredUpTo = v
         }
 
     // TODO Special API to check only top level declarations are added?
@@ -762,7 +762,7 @@ class MutableController : StageController {
 
     override fun lazyLower(declaration: IrDeclaration) {
         // TODO other declarations
-        if (declaration is IrDeclarationBase && currentStage > declaration.loweredUpTo) {
+        if (declaration is IrDeclarationBase<*> && currentStage > declaration.loweredUpTo) {
             lowerUpTo(declaration, currentStage)
         }
     }
