@@ -8,9 +8,7 @@ package org.jetbrains.kotlin.ir.declarations
 import org.jetbrains.kotlin.ir.declarations.impl.IrDeclarationBase
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.util.transformFlat
-import java.util.*
 import kotlin.NoSuchElementException
-import kotlin.reflect.KProperty
 
 // TODO threadlocal
 var stageController: StageController = NoopController()
@@ -36,141 +34,6 @@ class NoopController : StageController {
         get() = true
 
     override fun <T> withInitialIr(block: () -> T): T = block()
-}
-
-class PersistentVar<T : Any>(
-    private val container: IrDeclaration?,
-    initValue: T
-) {
-    var loweredUpTo: Int = 0
-
-    var lastValue: T = initValue
-
-    private fun ensureLowered() {
-        if (stageController.currentStage <= loweredUpTo) return
-        container?.let { stageController.lazyLower(it) }
-    }
-
-    val changes = TreeMap(mapOf(0 to initValue))
-
-    operator fun getValue(thisRef: Any, property: KProperty<*>): T {
-        ensureLowered()
-
-        if (stageController.currentStage == loweredUpTo) return lastValue
-
-        return changes.lowerEntry(stageController.currentStage + 1)!!.value
-    }
-
-    operator fun setValue(thisRef: Any, property: KProperty<*>, value: T) {
-        ensureLowered()
-
-        if (stageController.currentStage >= loweredUpTo) {
-            loweredUpTo = stageController.currentStage
-            lastValue = value
-        }
-
-        changes[stageController.currentStage] = value
-    }
-}
-
-
-class NullablePersistentVar<T>(private val container: IrDeclaration?) {
-    var loweredUpTo: Int = 0
-
-    var lastValue: T? = null
-
-    private fun ensureLowered() {
-        if (stageController.currentStage <= loweredUpTo) return
-        container?.let { stageController.lazyLower(it) }
-    }
-
-    private val changes = TreeMap<Int, T?>()
-
-    operator fun getValue(thisRef: Any, property: KProperty<*>): T? {
-        ensureLowered()
-
-        if (stageController.currentStage == loweredUpTo) return lastValue
-
-        return changes.lowerEntry(stageController.currentStage + 1)?.value
-    }
-
-    operator fun setValue(thisRef: Any, property: KProperty<*>, value: T?) {
-        ensureLowered()
-
-        if (stageController.currentStage >= loweredUpTo) {
-            loweredUpTo = stageController.currentStage
-            lastValue = value
-        }
-
-        changes[stageController.currentStage] = value
-    }
-}
-
-class LateInitPersistentVar<T : Any>(private val container: IrDeclaration?) {
-    var loweredUpTo: Int = 0
-
-    var lastValue: T? = null
-
-
-    private fun ensureLowered() {
-        if (stageController.currentStage <= loweredUpTo) return
-        container?.let { stageController.lazyLower(it) }
-    }
-
-    val changes = TreeMap<Int, T>()
-
-    operator fun getValue(thisRef: Any, property: KProperty<*>): T {
-        ensureLowered()
-
-        if (stageController.currentStage == loweredUpTo) return lastValue!!
-
-        return changes.lowerEntry(stageController.currentStage + 1)!!.value
-    }
-
-    operator fun setValue(thisRef: Any, property: KProperty<*>, value: T) {
-        ensureLowered()
-
-        if (stageController.currentStage >= loweredUpTo) {
-            loweredUpTo = stageController.currentStage
-            lastValue = value
-        }
-
-        changes[stageController.currentStage] = value
-    }
-}
-
-class BodyEnabledVar<T>(value: T) {
-
-//    private var loweredUpTo = 0
-
-    private var storage = value
-
-    operator fun getValue(thisRef: Any, property: KProperty<*>): T {
-        if (!stageController.bodiesEnabled)
-            error("Bodies disabled!")
-//        stageController.currentStage.let { stage ->
-//            if (stage < loweredUpTo) {
-//                error("Cannot read bodies of the past ($stage < $loweredUpTo)")
-//            }
-//            loweredUpTo = Math.max(loweredUpTo, stage)
-//        }
-
-        return storage
-    }
-
-    operator fun setValue(thisRef: Any, property: KProperty<*>, value: T) {
-        if (!stageController.bodiesEnabled)
-            error("Bodies disabled!")
-
-//        stageController.currentStage.let { stage ->
-//            if (stage < loweredUpTo) {
-//                error("Cannot read bodies of the past ($stage < $loweredUpTo)")
-//            }
-//            loweredUpTo = Math.max(loweredUpTo, stage)
-//        }
-
-        storage = value
-    }
 }
 
 interface SimpleList<T> : List<T> {
@@ -520,15 +383,6 @@ class DumbPersistentList<T>(
         TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
 }
-
-fun <T : Any> IrDeclaration.PersistentVar(initValue: T) =
-    PersistentVar(this, initValue)
-
-fun <T> IrDeclaration.NullablePersistentVar() =
-    NullablePersistentVar<T>(this)
-
-fun <T : Any> IrDeclaration.LateInitPersistentVar() =
-    LateInitPersistentVar<T>(this)
 
 fun <T> IrDeclaration.DumbPersistentList() =
     DumbPersistentList<T>(this, kotlin.collections.emptyList())
