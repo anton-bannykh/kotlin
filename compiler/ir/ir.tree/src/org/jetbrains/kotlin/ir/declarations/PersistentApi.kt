@@ -6,6 +6,7 @@
 package org.jetbrains.kotlin.ir.declarations
 
 import org.jetbrains.kotlin.ir.declarations.impl.IrDeclarationBase
+import org.jetbrains.kotlin.ir.expressions.IrBody
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.util.transformFlat
 import kotlin.NoSuchElementException
@@ -18,7 +19,7 @@ interface StageController {
 
     fun lazyLower(declaration: IrDeclaration) {}
 
-    fun lazyLower(file: IrFile) {}
+    fun lazyLowerBody(container: IrDeclaration) {}
 
     fun tryLoad(symbol: IrSymbol) {}
 

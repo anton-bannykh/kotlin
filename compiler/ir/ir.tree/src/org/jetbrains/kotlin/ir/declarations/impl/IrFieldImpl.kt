@@ -41,7 +41,7 @@ class IrFieldImpl(
     override val isFinal: Boolean,
     override val isExternal: Boolean,
     override val isStatic: Boolean
-) : IrDeclarationBase<FieldCarrier>(startOffset, endOffset, origin, FieldCarrier()),
+) : IrDeclarationWithBodyBase<FieldCarrier, IrExpressionBody>(startOffset, endOffset, origin, FieldCarrier(), null),
     IrField {
 
     constructor(
@@ -75,9 +75,9 @@ class IrFieldImpl(
     override val descriptor: PropertyDescriptor = symbol.descriptor
 
     override var initializer: IrExpressionBody? //by NullablePersistentVar()
-        get() = getCarrier().initializer
+        get() = getBodyImpl()
         set(v) {
-            setCarrier().initializer = v
+            setBodyImpl(v)
         }
 
     @Suppress("OverridingDeprecatedMember")

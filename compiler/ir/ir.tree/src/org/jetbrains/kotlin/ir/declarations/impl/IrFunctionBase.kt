@@ -35,7 +35,7 @@ abstract class IrFunctionBase<T : FunctionBaseCarrier<out T>>(
     override val isExternal: Boolean,
     initValue: T
 ) :
-    IrDeclarationBase<T>(startOffset, endOffset, origin, initValue),
+    IrDeclarationWithBodyBase<T, IrBody>(startOffset, endOffset, origin, initValue, null),
     IrFunction {
 
     private var returnTypeField: IrType
@@ -72,9 +72,9 @@ abstract class IrFunctionBase<T : FunctionBaseCarrier<out T>>(
         DumbPersistentList()
 
     final override var body: IrBody? //by NullablePersistentVar()
-        get() = getCarrier().body
+        get() = getBodyImpl()
         set(v) {
-            setCarrier().body = v
+            setBodyImpl(v)
         }
 
     override var metadata: MetadataSource? //by NullablePersistentVar()
@@ -112,8 +112,6 @@ abstract class FunctionBaseCarrier<T : FunctionBaseCarrier<T>>(
 
     var extensionReceiverParameter: IrValueParameter? = null
 
-    var body: IrBody? = null
-
     var metadata: MetadataSource? = null
 
     override fun fillCopy(t: T) {
@@ -121,7 +119,6 @@ abstract class FunctionBaseCarrier<T : FunctionBaseCarrier<T>>(
         t.returnTypeField = returnTypeField
         t.dispatchReceiverParameter = dispatchReceiverParameter
         t.extensionReceiverParameter = extensionReceiverParameter
-        t.body = body
         t.metadata = metadata
     }
 }

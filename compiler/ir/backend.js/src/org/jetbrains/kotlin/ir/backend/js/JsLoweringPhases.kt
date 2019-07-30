@@ -20,6 +20,8 @@ import org.jetbrains.kotlin.ir.backend.js.lower.inline.ReturnableBlockLowering
 import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.declarations.impl.IrDeclarationBase
 import org.jetbrains.kotlin.ir.declarations.impl.IrFileImpl
+import org.jetbrains.kotlin.ir.expressions.IrBody
+import org.jetbrains.kotlin.ir.expressions.impl.IrBodyBase
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.util.*
 import java.util.*
@@ -38,12 +40,48 @@ private fun validationCallback(context: JsIrBackendContext, module: IrElement) {
     module.accept(CheckDeclarationParentsVisitor, null)
 }
 
+sealed class Lowering {
+    abstract fun declarationTransformer(context : JsIrBackendContext, data : ContextData): DeclarationTransformer
+
+    abstract val bodiesEnabled: Boolean
+}
+
+class DeclarationLowering(private val factory: (JsIrBackendContext, ContextData) -> DeclarationTransformer,
+                          override val bodiesEnabled: Boolean = false) : Lowering() {
+
+    override fun declarationTransformer(context: JsIrBackendContext, data: ContextData): DeclarationTransformer {
+        return factory(context, data)
+    }
+}
+
+class BodyLowering(private val factory: (JsIrBackendContext, ContextData) -> BodyLoweringPass): Lowering() {
+
+    override fun declarationTransformer(context: JsIrBackendContext, data: ContextData): DeclarationTransformer {
+        return factory(context, data).toDeclarationTransformer()
+    }
+
+    fun bodyLowering(context: JsIrBackendContext, data: ContextData): BodyLoweringPass {
+        return factory(context, data)
+    }
+
+    override val bodiesEnabled: Boolean = true
+}
+
 private fun makeJsModulePhase(
     lowering: (JsIrBackendContext, ContextData) -> DeclarationTransformer,
     name: String,
     description: String,
+    prerequisite: Set<Any?> = emptySet(),
+    bodiesEnabled: Boolean = false
+) = DeclarationLowering(lowering, bodiesEnabled)
+
+private fun makeBodyLoweringPhase(
+    lowering: (JsIrBackendContext, ContextData) -> BodyLoweringPass,
+    name: String,
+    description: String,
     prerequisite: Set<Any?> = emptySet()
-) = lowering
+) = BodyLowering(lowering)
+
 
 private fun makeCustomJsModulePhase(
     op: (JsIrBackendContext, IrModuleFragment) -> Unit,
@@ -81,20 +119,20 @@ private val expectDeclarationsRemovingPhase = makeJsModulePhase(
     description = "Remove expect declaration from module fragment"
 )
 
-private val expectDeclarationsBodyRemappingPhase = makeJsModulePhase(
-    { context, _ -> ExpectDeclarationDefaultValueRemapping(context).toDeclarationTransformer() },
+private val expectDeclarationsBodyRemappingPhase = makeBodyLoweringPhase(
+    { context, _ -> ExpectDeclarationDefaultValueRemapping(context) },
     name = "ExpectDeclarationsBodyRemapping",
     description = "Remove expect declaration from module fragment"
 )
 
-private val lateinitLoweringPhase = makeJsModulePhase(
-    { context, _ -> LateinitLowering(context).toDeclarationTransformer() },
+private val lateinitLoweringPhase = makeBodyLoweringPhase(
+    { context, _ -> LateinitLowering(context) },
     name = "LateinitLowering",
     description = "Insert checks for lateinit field references"
 )
 
-private val functionInliningPhase = makeJsModulePhase(
-    { context, _ -> FunctionInlining(context).toDeclarationTransformer() },
+private val functionInliningPhase = makeBodyLoweringPhase(
+    { context, _ -> FunctionInlining(context) },
     name = "FunctionInliningPhase",
     description = "Perform function inlining",
     prerequisite = setOf(expectDeclarationsRemovingPhase)
@@ -107,8 +145,8 @@ private val removeInlineFunctionsLoweringPhase = makeJsModulePhase(
     prerequisite = setOf(functionInliningPhase)
 )
 
-private val copyInlineFunctionBody = makeJsModulePhase(
-    { context, _ -> CopyInlineFunctionBody(context).toDeclarationTransformer() },
+private val copyInlineFunctionBody = makeBodyLoweringPhase(
+    { context, _ -> CopyInlineFunctionBody(context) },
     name = "CopyInlineFunctionBody",
     description = "Copy inline function body, so that the original version is saved in the history",
     prerequisite = setOf(removeInlineFunctionsLoweringPhase)
@@ -120,8 +158,8 @@ private val throwableSuccessorsLoweringPhase = makeJsModulePhase(
     description = "Link kotlin.Throwable and JavaScript Error together to provide proper interop between language and platform exceptions"
 )
 
-private val throwableSuccessorsBodyLoweringPhase = makeJsModulePhase(
-    { context, _ -> ThrowableSuccessorsBodyLowering(context).toDeclarationTransformer() },
+private val throwableSuccessorsBodyLoweringPhase = makeBodyLoweringPhase(
+    { context, _ -> ThrowableSuccessorsBodyLowering(context) },
     name = "ThrowableSuccessorsLowering",
     description = "Link kotlin.Throwable and JavaScript Error together to provide proper interop between language and platform exceptions"
 )
@@ -607,7 +645,7 @@ class MutableController : StageController {
             if (frozen) error("frozen!")
             withStage(i) {
                 ArrayList(file.declarations).forEach {
-                    lowerUpTo(it, i + 1)
+                    lowerUpTo(it, i + 1, false)
                 }
             }
             (file as? IrFileImpl)?.loweredUpTo = i
@@ -627,7 +665,7 @@ class MutableController : StageController {
         }
     }
 
-    private fun lowerUpTo(declaration: IrDeclaration, stageNonInclusive: Int) {
+    private fun lowerUpTo(declaration: IrDeclaration, stageNonInclusive: Int, skipBodyLowerings: Boolean) {
         val loweredUpTo = declaration.loweredUpTo
         for (i in loweredUpTo + 1 until stageNonInclusive) {
             withStage(i) {
@@ -645,30 +683,32 @@ class MutableController : StageController {
                     val fileBefore = topLevelDeclaration.parent as IrFileImpl
 
                     if (topLevelDeclaration in fileBefore.declarations) {
-                        if (frozen) {
-                            error("frozen! ${topLevelDeclaration.name.asString()} in ${fileBefore.fileEntry.name}")
-                        }
-
-                        val module = fileBefore.symbol.descriptor.containingDeclaration
-                        val data = dataMap[module]!!
-
                         val (lowering, loweringType) = perFilePhaseList[i - 1]
 
-                        val result = if (loweringType.bodiesEnabled)
-                            withBodies { lowering(context, data).transformFlat(topLevelDeclaration) }
-                        else
-                            lowering(context, data).transformFlat(topLevelDeclaration)
-
-                        topLevelDeclaration.loweredUpTo = i
-                        if (result != null) {
-                            result.forEach {
-                                it.loweredUpTo = i
-                                it.parent = fileBefore
+                        if (!(skipBodyLowerings && loweringType == LoweringType.BodyLowering)) {
+                            if (frozen) {
+                                error("frozen! ${topLevelDeclaration.name.asString()} in ${fileBefore.fileEntry.name}")
                             }
 
-                            fileBefore.declarations.remove(topLevelDeclaration)
+                            val module = fileBefore.symbol.descriptor.containingDeclaration
+                            val data = dataMap[module]!!
 
-                            fileBefore.declarations += result
+                            val result = if (loweringType.bodiesEnabled)
+                                withBodies { lowering(context, data).transformFlat(topLevelDeclaration) }
+                            else
+                                lowering(context, data).transformFlat(topLevelDeclaration)
+
+                            topLevelDeclaration.loweredUpTo = i
+                            if (result != null) {
+                                result.forEach {
+                                    it.loweredUpTo = i
+                                    it.parent = fileBefore
+                                }
+
+                                fileBefore.declarations.remove(topLevelDeclaration)
+
+                                fileBefore.declarations += result
+                            }
                         }
                     }
                 }
@@ -763,7 +803,33 @@ class MutableController : StageController {
     override fun lazyLower(declaration: IrDeclaration) {
         // TODO other declarations
         if (declaration is IrDeclarationBase<*> && currentStage > declaration.loweredUpTo) {
-            lowerUpTo(declaration, currentStage)
+            lowerUpTo(declaration, currentStage, true)
+        }
+    }
+
+    override fun lazyLower(body: IrBody) {
+        if (!stageController.bodiesEnabled)
+            error("Bodies disabled!")
+
+        if (body is IrBodyBase<*> && currentStage > body.loweredUpTo) {
+            lowerUpTo(body, currentStage)
+        }
+
+        super.lazyLower(body)
+    }
+
+    private fun lowerUpTo(body: IrBodyBase<*>, stageNonInclusive: Int) {
+        val loweredUpTo = body.loweredUpTo
+        for (i in loweredUpTo + 1 until stageNonInclusive) {
+            withStage(i) {
+                val (lowering, loweringType) = perFilePhaseList[i - 1]
+
+                if (loweringType == LoweringType.BodyLowering) {
+                    // TODO apply lowering to body
+                }
+
+                body.loweredUpTo = i
+            }
         }
     }
 
@@ -771,10 +837,6 @@ class MutableController : StageController {
         get() = parent.let {
             if (it is IrDeclaration) it.topLevel else this
         }
-
-    override fun lazyLower(file: IrFile) {
-        lowerUpTo(file, currentStage)
-    }
 
     var deserializer: IrDeserializer? = null
 

@@ -19,6 +19,7 @@ package org.jetbrains.kotlin.ir.declarations.impl
 import org.jetbrains.kotlin.descriptors.ClassDescriptor
 import org.jetbrains.kotlin.ir.declarations.IrAnonymousInitializer
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
+import org.jetbrains.kotlin.ir.expressions.IrBlock
 import org.jetbrains.kotlin.ir.expressions.IrBlockBody
 import org.jetbrains.kotlin.ir.symbols.IrAnonymousInitializerSymbol
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformer
@@ -30,7 +31,7 @@ class IrAnonymousInitializerImpl(
     origin: IrDeclarationOrigin,
     override val symbol: IrAnonymousInitializerSymbol,
     override val isStatic: Boolean = false
-) : IrDeclarationBase<AnonymousInitializerCarrier>(startOffset, endOffset, origin, AnonymousInitializerCarrier()),
+) : IrDeclarationWithBodyBase<AnonymousInitializerCarrier, IrBlockBody>(startOffset, endOffset, origin, AnonymousInitializerCarrier(), null),
     IrAnonymousInitializer {
 
     init {
@@ -40,9 +41,9 @@ class IrAnonymousInitializerImpl(
     override val descriptor: ClassDescriptor get() = symbol.descriptor
 
     override var body: IrBlockBody //by LateInitPersistentVar()
-        get() = getCarrier().body!!
+        get() = getBodyImpl()!!
         set(v) {
-            setCarrier().body = v
+            setBodyImpl(v)
         }
 
     override fun <R, D> accept(visitor: IrElementVisitor<R, D>, data: D): R {
@@ -60,16 +61,9 @@ class IrAnonymousInitializerImpl(
 
 class AnonymousInitializerCarrier: CarrierBase<AnonymousInitializerCarrier>() {
 
-    var body: IrBlockBody? = null
-
     override fun clone(): AnonymousInitializerCarrier {
         return AnonymousInitializerCarrier().also {
             fillCopy(it)
         }
-    }
-
-    override fun fillCopy(t: AnonymousInitializerCarrier) {
-        super.fillCopy(t)
-        t.body = body
     }
 }

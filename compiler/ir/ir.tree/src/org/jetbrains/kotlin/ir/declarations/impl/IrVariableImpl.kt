@@ -81,6 +81,7 @@ class IrVariableImpl(
 
     override val descriptor: VariableDescriptor get() = symbol.descriptor
 
+        // TODO Either variable is not persistent, or make this a body
     override var initializer: IrExpression? //by NullablePersistentVar()
         get() = getCarrier().initializer
         set(v) {

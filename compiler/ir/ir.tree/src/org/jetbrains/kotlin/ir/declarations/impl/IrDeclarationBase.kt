@@ -18,6 +18,7 @@ package org.jetbrains.kotlin.ir.declarations.impl
 
 import org.jetbrains.kotlin.ir.IrElementBase
 import org.jetbrains.kotlin.ir.declarations.*
+import org.jetbrains.kotlin.ir.expressions.IrBody
 import org.jetbrains.kotlin.ir.expressions.IrExpressionBody
 
 abstract class IrDeclarationBase<T : CarrierBase<out T>>(
@@ -45,7 +46,7 @@ abstract class IrDeclarationBase<T : CarrierBase<out T>>(
     override val metadata: MetadataSource?
         get() = null
 
-    val values = Array<Any?>(60) { null }.also {
+    private val values = Array<Any?>(60) { null }.also {
         it[stageController.currentStage] = initValue // TODO 0 -> currentStage?
     }
 
@@ -120,4 +121,66 @@ private fun <T> Array<Any?>.lowerEntry(index: Int): T {
         this[index] = lowerEntry(index - 1)
     }
     return this[index] as T
+}
+
+private object Null
+
+abstract class IrDeclarationWithBodyBase<T : CarrierBase<out T>, B: IrBody>(
+    startOffset: Int,
+    endOffset: Int,
+    origin: IrDeclarationOrigin,
+    initValue: T,
+    initBody: B?
+) : IrDeclarationBase<T>(startOffset, endOffset, origin, initValue) {
+
+    val bodiesLoweredUpTo = stageController.currentStage
+
+    private val bodies = Array<Any?>(60) { Null }.also {
+        it[stageController.currentStage] = initBody
+    }
+
+    protected fun getBodyImpl(): B? {
+        stageController.currentStage.let { stage ->
+            bodies[stage]?.let {
+                return it as B?
+            }
+            if (stage < createdOn) {
+                error("Cannot access declaration before is was created ($stage < $createdOn)")
+            }
+            if (stage > loweredUpTo) {
+                stageController.lazyLowerBody(this)
+            }
+
+            var i = stage - 1
+            while (bodies[i] == Null) --i
+            val r = bodies[i]
+            while (++i != stage) bodies[i] = r
+
+            return r as B?
+        }
+    }
+
+    protected fun setBodyImpl(b: B?) {
+        stageController.currentStage.let { stage ->
+            if (stage < createdOn) {
+                error("Cannot access declaration before is was created ($stage < $createdOn)")
+            }
+
+            if (bodies[stage + 1] != Null) {
+                error("Cannot modify old states ($stage < $loweredUpTo)")
+            }
+
+            if (stage > loweredUpTo) {
+                stageController.lazyLower(this)
+            }
+
+            var i = stage - 1
+            while (bodies[i] == Null) --i
+            val r = bodies[i]
+            while (++i != stage) bodies[i] = r
+
+            bodies[stage] = b
+        }
+    }
+
 }
