@@ -32,7 +32,7 @@ class IrEnumEntryImpl(
     origin: IrDeclarationOrigin,
     override val symbol: IrEnumEntrySymbol,
     override val name: Name
-) : IrDeclarationBase<EnumEntryCarrier>(startOffset, endOffset, origin, EnumEntryCarrier()),
+) : IrDeclarationWithBodyBase<EnumEntryCarrier, IrExpressionBody>(startOffset, endOffset, origin, EnumEntryCarrier(), null),
     IrEnumEntry {
 
     constructor(
@@ -55,9 +55,9 @@ class IrEnumEntryImpl(
         }
 
     override var initializerExpression: IrExpressionBody? //by NullablePersistentVar()
-        get() = getCarrier().initializerExpression
+        get() = getBodyImpl()
         set(v) {
-            setCarrier().initializerExpression = v
+            setBodyImpl(v)
         }
 
     override fun <R, D> accept(visitor: IrElementVisitor<R, D>, data: D): R {
@@ -78,8 +78,6 @@ class IrEnumEntryImpl(
 class EnumEntryCarrier: CarrierBase<EnumEntryCarrier>() {
 
     var correspondingClass: IrClass? = null
-    var initializerExpression: IrExpressionBody? = null
-
 
     override fun clone(): EnumEntryCarrier {
         return EnumEntryCarrier().also {
@@ -90,6 +88,5 @@ class EnumEntryCarrier: CarrierBase<EnumEntryCarrier>() {
     override fun fillCopy(t: EnumEntryCarrier) {
         super.fillCopy(t)
         t.correspondingClass = correspondingClass
-        t.initializerExpression = initializerExpression
     }
 }
