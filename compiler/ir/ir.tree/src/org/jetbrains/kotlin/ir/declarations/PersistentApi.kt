@@ -6,6 +6,7 @@
 package org.jetbrains.kotlin.ir.declarations
 
 import org.jetbrains.kotlin.ir.declarations.impl.IrDeclarationBase
+import org.jetbrains.kotlin.ir.declarations.impl.IrDeclarationWithBodyBase
 import org.jetbrains.kotlin.ir.expressions.IrBody
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.util.transformFlat
@@ -19,7 +20,7 @@ interface StageController {
 
     fun lazyLower(declaration: IrDeclaration) {}
 
-    fun lazyLowerBody(container: IrDeclaration) {}
+    fun lazyLowerBody(container: IrDeclarationWithBodyBase<*, *>) {}
 
     fun tryLoad(symbol: IrSymbol) {}
 

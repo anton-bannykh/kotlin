@@ -133,7 +133,10 @@ abstract class IrDeclarationWithBodyBase<T : CarrierBase<out T>, B: IrBody>(
     initBody: B?
 ) : IrDeclarationBase<T>(startOffset, endOffset, origin, initValue) {
 
-    val bodiesLoweredUpTo = stageController.currentStage
+    var bodiesLoweredUpTo = stageController.currentStage
+
+    val relevantBody: B?
+        get() = getBodyImpl()
 
     private val bodies = Array<Any?>(60) { Null }.also {
         it[stageController.currentStage] = initBody
@@ -141,8 +144,8 @@ abstract class IrDeclarationWithBodyBase<T : CarrierBase<out T>, B: IrBody>(
 
     protected fun getBodyImpl(): B? {
         stageController.currentStage.let { stage ->
-            bodies[stage]?.let {
-                return it as B?
+            if (bodies[stage] != Null) {
+                return bodies[stage] as B?
             }
             if (stage < createdOn) {
                 error("Cannot access declaration before is was created ($stage < $createdOn)")
@@ -154,7 +157,7 @@ abstract class IrDeclarationWithBodyBase<T : CarrierBase<out T>, B: IrBody>(
             var i = stage - 1
             while (bodies[i] == Null) --i
             val r = bodies[i]
-            while (++i != stage) bodies[i] = r
+            while (++i != stage && i < loweredUpTo) bodies[i] = r
 
             return r as B?
         }
@@ -162,6 +165,8 @@ abstract class IrDeclarationWithBodyBase<T : CarrierBase<out T>, B: IrBody>(
 
     protected fun setBodyImpl(b: B?) {
         stageController.currentStage.let { stage ->
+            if (bodies[stage] === b) return
+
             if (stage < createdOn) {
                 error("Cannot access declaration before is was created ($stage < $createdOn)")
             }
@@ -171,14 +176,15 @@ abstract class IrDeclarationWithBodyBase<T : CarrierBase<out T>, B: IrBody>(
             }
 
             if (stage > loweredUpTo) {
-                stageController.lazyLower(this)
+                stageController.lazyLowerBody(this)
             }
 
-            var i = stage - 1
-            while (bodies[i] == Null) --i
-            val r = bodies[i]
-            while (++i != stage) bodies[i] = r
-
+            if (bodies[stage] == Null) {
+                var i = stage - 1
+                while (bodies[i] == Null) --i
+                val r = bodies[i]
+                while (++i != stage) bodies[i] = r
+            }
             bodies[stage] = b
         }
     }

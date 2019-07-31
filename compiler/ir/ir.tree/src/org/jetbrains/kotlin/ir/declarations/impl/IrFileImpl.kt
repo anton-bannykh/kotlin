@@ -60,7 +60,7 @@ class IrFileImpl(
     override val annotations: SimpleList<IrExpressionBody> =
         DumbPersistentList(null, emptyList())
 
-    override var metadata: MetadataSource.File? by NullablePersistentVar(null)
+    override var metadata: MetadataSource.File? = null
 
     override fun <R, D> accept(visitor: IrElementVisitor<R, D>, data: D): R =
         visitor.visitFile(this, data)
