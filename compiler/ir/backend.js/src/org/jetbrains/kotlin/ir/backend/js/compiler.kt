@@ -92,14 +92,14 @@ fun compile(
 
         stageController.bodiesEnabled = false
 
-        var start = System.currentTimeMillis()
+        val start = System.currentTimeMillis()
 
         stageController.invokeTopLevel(phaseConfig, moduleFragment, dependencyModules)
 
         totalTime += System.currentTimeMillis() - start
         ++testCnt
 
-        println("Avg: ${totalTime / testCnt}ms")
+        println("#$testCnt: ${totalTime / testCnt}ms")
 
         stageController.bodiesEnabled = true
 
