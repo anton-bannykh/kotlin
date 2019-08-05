@@ -15,6 +15,7 @@ import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
+import org.jetbrains.kotlin.ir.backend.js.JsIrBackendContext
 import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.declarations.impl.IrFunctionImpl
 import org.jetbrains.kotlin.ir.expressions.*
@@ -173,6 +174,14 @@ class InitializersBodyLowering(
 class RemoveAnonymousInitializers(val context: CommonBackendContext) : ClassLoweringPass {
     override fun lower(irClass: IrClass) {
         irClass.declarations.removeAll { it is IrAnonymousInitializer }
-        irClass.declarations.filterIsInstance<IrField>().forEach { it.initializer = null }
+//        irClass.declarations.filterIsInstance<IrField>().forEach { it.initializer = null }
+    }
+}
+
+class RemoveClassFieldInitializers(val context: JsIrBackendContext): BodyLoweringPass {
+    override fun lower(irBody: IrBody, container: IrDeclaration) {
+        if (container is IrField && container.parent is IrClass) {
+            container.initializer = null
+        }
     }
 }

@@ -20,6 +20,7 @@ import org.jetbrains.kotlin.descriptors.ClassDescriptor
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
 import org.jetbrains.kotlin.ir.declarations.IrEnumEntry
+import org.jetbrains.kotlin.ir.declarations.stageController
 import org.jetbrains.kotlin.ir.expressions.IrExpressionBody
 import org.jetbrains.kotlin.ir.symbols.IrEnumEntrySymbol
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformer
@@ -65,12 +66,16 @@ class IrEnumEntryImpl(
     }
 
     override fun <D> acceptChildren(visitor: IrElementVisitor<Unit, D>, data: D) {
-        initializerExpression?.accept(visitor, data)
+        if (stageController.bodiesEnabled) {
+            initializerExpression?.accept(visitor, data)
+        }
         correspondingClass?.accept(visitor, data)
     }
 
     override fun <D> transformChildren(transformer: IrElementTransformer<D>, data: D) {
-        initializerExpression = initializerExpression?.transform(transformer, data)
+        if (stageController.bodiesEnabled) {
+            initializerExpression = initializerExpression?.transform(transformer, data)
+        }
         correspondingClass = correspondingClass?.transform(transformer, data) as? IrClass
     }
 }

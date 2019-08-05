@@ -9,9 +9,11 @@ import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.backend.js.utils.TODO
 import org.jetbrains.kotlin.ir.visitors.IrElementVisitor
 import org.jetbrains.kotlin.js.backend.ast.JsNode
+import org.jetbrains.kotlin.js.backend.ast.JsStringLiteral
 
 interface BaseIrElementToJsNodeTransformer<out R : JsNode, in D> : IrElementVisitor<R, D> {
     override fun visitElement(element: IrElement, data: D): R {
-        TODO(element)
+        return JsStringLiteral("TODO") as R
+//        TODO(element)
     }
 }

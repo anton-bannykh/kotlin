@@ -19,6 +19,7 @@ package org.jetbrains.kotlin.ir.declarations.impl
 import org.jetbrains.kotlin.descriptors.ClassDescriptor
 import org.jetbrains.kotlin.ir.declarations.IrAnonymousInitializer
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
+import org.jetbrains.kotlin.ir.declarations.stageController
 import org.jetbrains.kotlin.ir.expressions.IrBlock
 import org.jetbrains.kotlin.ir.expressions.IrBlockBody
 import org.jetbrains.kotlin.ir.symbols.IrAnonymousInitializerSymbol
@@ -51,11 +52,15 @@ class IrAnonymousInitializerImpl(
     }
 
     override fun <D> acceptChildren(visitor: IrElementVisitor<Unit, D>, data: D) {
-        body.accept(visitor, data)
+        if (stageController.bodiesEnabled) {
+            body.accept(visitor, data)
+        }
     }
 
     override fun <D> transformChildren(transformer: IrElementTransformer<D>, data: D) {
-        body = body.transform(transformer, data) as IrBlockBody
+        if (stageController.bodiesEnabled) {
+            body = body.transform(transformer, data) as IrBlockBody
+        }
     }
 }
 

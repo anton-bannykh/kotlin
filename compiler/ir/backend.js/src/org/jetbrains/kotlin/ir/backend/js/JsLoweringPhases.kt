@@ -24,6 +24,7 @@ import org.jetbrains.kotlin.ir.declarations.impl.IrFileImpl
 import org.jetbrains.kotlin.ir.expressions.IrBody
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.util.*
+import org.jetbrains.kotlin.ir.visitors.IrElementVisitorVoid
 import java.util.*
 import kotlin.collections.ArrayList
 
@@ -389,6 +390,13 @@ private val removeAnonymousInitializers = makeJsModulePhase(
     prerequisite = setOf(initializersLoweringPhase)
 )
 
+private val removeClassFieldInitializers = makeJsModulePhase(
+    { context, _ -> RemoveClassFieldInitializers(context).toDeclarationTransformer() },
+    name = "Class field lowering removal",
+    description = "Merge init block and field initializers into [primary] constructor",
+    prerequisite = setOf(initializersLoweringPhase)
+)
+
 private val multipleCatchesLoweringPhase = makeBodyLoweringPhase(
     { context, _ -> MultipleCatchesLowering(context) },
     name = "MultipleCatchesLowering",
@@ -546,6 +554,7 @@ private val perFilePhaseList = listOf(
     propertiesLoweringPhase, // OK
     initializersLoweringPhase, // OK
     removeAnonymousInitializers, // OK
+    removeClassFieldInitializers, // OK
     // Common prefix ends
     enumClassLoweringPhase, // OK
     enumClassBodyLoweringPhase, // OK
@@ -798,6 +807,22 @@ class MutableController : StageController {
                         lazyLower(decl)
                         changed = true
                     }
+
+                    decl.accept(object : IrElementVisitorVoid {
+                        override fun visitElement(element: IrElement) {
+                            element.acceptChildren(this, null)
+                        }
+
+                        override fun visitDeclaration(declaration: IrDeclaration) {
+                            declaration.acceptChildren(this, null)
+                            if (declaration is IrDeclarationWithBodyBase<*, *> && currentStage - 1 > declaration.bodiesLoweredUpTo) {
+                                changed = true
+                                withBodies {
+                                    lowerBodyUpTo(declaration, currentStage)
+                                }
+                            }
+                        }
+                    }, null)
                 }
             }
             if (!changed) break
@@ -828,7 +853,7 @@ class MutableController : StageController {
 //        if (!stageController.bodiesEnabled)
 //            error("Bodies disabled!")
 
-        if (currentStage > container.bodiesLoweredUpTo) {
+        if (currentStage - 1 > container.bodiesLoweredUpTo) {
             lowerBodyUpTo(container, currentStage)
         }
     }

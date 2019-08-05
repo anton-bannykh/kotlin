@@ -107,11 +107,15 @@ class IrFieldImpl(
     }
 
     override fun <D> acceptChildren(visitor: IrElementVisitor<Unit, D>, data: D) {
-        initializer?.accept(visitor, data)
+        if (stageController.bodiesEnabled) {
+            initializer?.accept(visitor, data)
+        }
     }
 
     override fun <D> transformChildren(transformer: IrElementTransformer<D>, data: D) {
-        initializer = initializer?.transform(transformer, data)
+        if (stageController.bodiesEnabled) {
+            initializer = initializer?.transform(transformer, data)
+        }
     }
 }
 
