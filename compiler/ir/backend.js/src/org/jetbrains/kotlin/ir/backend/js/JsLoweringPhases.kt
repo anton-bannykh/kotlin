@@ -631,6 +631,7 @@ class MutableController : StageController {
         val loweredUpTo = declaration.loweredUpTo
         for (i in loweredUpTo + 1 until stageNonInclusive) {
             withStage(i) {
+                lazyLowerIteration++
                 val topLevelDeclaration = declaration.topLevel
 
                 if (topLevelDeclaration is IrDeclarationBase<*> && topLevelDeclaration.loweredUpTo < i - 1) {
@@ -658,6 +659,8 @@ class MutableController : StageController {
                             withBodies { lowering(context, data).transformFlat(topLevelDeclaration) }
                         else
                             lowering(context, data).transformFlat(topLevelDeclaration)
+
+                        actualLoweringInvocations++
 
                         topLevelDeclaration.loweredUpTo = i
                         if (result != null) {
@@ -706,7 +709,19 @@ class MutableController : StageController {
 //            }
 //        }
 
-        jsPhases.invokeToplevel(phaseConfig, context, moduleFragment)
+        val start = System.currentTimeMillis()
+
+        for (stage in 1..perFilePhaseList.size) {
+            for (module in dependencyModules + moduleFragment) {
+                for (file in module.files) {
+                    lowerUpTo(file, stage + 1)
+                }
+            }
+        }
+
+        mainTime += System.currentTimeMillis() - start
+
+//        jsPhases.invokeToplevel(phaseConfig, context, moduleFragment)
 
         currentStage = perFilePhaseList.size + 1
 
@@ -737,7 +752,7 @@ class MutableController : StageController {
 
             for (file in moduleFragment.files + dependencyModules.flatMap { it.files }) {
                 for (decl in ArrayList(file.declarations)) {
-                    if (decl.loweredUpTo < currentStage - 1) {
+                    if (decl.loweredUpTo < perFilePhaseList.size) {
                         lazyLower(decl)
                         changed = true
                     }
@@ -762,7 +777,8 @@ class MutableController : StageController {
 
     override fun lazyLower(declaration: IrDeclaration) {
         // TODO other declarations
-        if (declaration is IrDeclarationBase<*> && currentStage > declaration.loweredUpTo) {
+        if (declaration is IrDeclarationBase<*> && currentStage - 1 > declaration.loweredUpTo) {
+            lazyLowerCalls++
             lowerUpTo(declaration, currentStage)
         }
     }

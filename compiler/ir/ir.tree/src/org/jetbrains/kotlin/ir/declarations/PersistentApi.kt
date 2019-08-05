@@ -5,7 +5,7 @@
 
 package org.jetbrains.kotlin.ir.declarations
 
-import org.jetbrains.kotlin.ir.declarations.impl.IrDeclarationBase
+import com.google.common.collect.Maps
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.util.transformFlat
 import java.util.*
@@ -275,7 +275,13 @@ class DumbPersistentList<T>(
     list: List<T> = emptyList()
 ) : SimpleList<T> {
     private val innerList: MutableList<Wrapper<T>> =
-        list.mapTo(mutableListOf()) { Wrapper(it) }
+        list.mapTo(mutableListOf()) { createWrapper(it) }
+
+    private val map = Maps.newIdentityHashMap<Any, MutableList<Wrapper<T>>>()
+
+    private fun createWrapper(element: T) = Wrapper(element).also {
+        map.getOrPut(element) { mutableListOf() }.add(it)
+    }
 
     private fun ensureLowered() {
         container?.let { stageController.lazyLower(it) }
@@ -283,22 +289,22 @@ class DumbPersistentList<T>(
 
     override fun add(element: T): Boolean {
         ensureLowered()
-        return innerList.add(Wrapper(element))
+        return innerList.add(createWrapper(element))
     }
 
     override fun addFirst(element: T) {
         ensureLowered()
-        innerList.add(0, Wrapper(element))
+        innerList.add(0, createWrapper(element))
     }
 
     override fun addAll(elements: Collection<T>): Boolean {
         ensureLowered()
-        return innerList.addAll(elements.map { Wrapper(it) })
+        return innerList.addAll(elements.map { createWrapper(it) })
     }
 
     override fun addFirstAll(elements: Collection<T>) {
         ensureLowered()
-        innerList.addAll(0, elements.map { Wrapper(it) })
+        innerList.addAll(0, elements.map { createWrapper(it) })
     }
 
     override fun plusAssign(element: T) {
@@ -340,7 +346,7 @@ class DumbPersistentList<T>(
                 val newValue = transformation(it.value)
                 if (newValue === it.value) null else {
                     it.remove()
-                    listOf(it, Wrapper(newValue))
+                    listOf(it, createWrapper(newValue))
                 }
             } else null
         }
@@ -359,7 +365,7 @@ class DumbPersistentList<T>(
                         if (it.value === e) {
                             preserved = true
                         } else {
-                            result += Wrapper(e)
+                            result += createWrapper(e)
                         }
                     }
 
@@ -393,7 +399,7 @@ class DumbPersistentList<T>(
 
     override fun contains(element: T): Boolean {
         ensureLowered()
-        return innerList.find { it.alive && it.value == element } != null
+        return map[element]?.any { it.alive } ?: false
     }
 
     override fun containsAll(elements: Collection<T>): Boolean {
@@ -405,7 +411,9 @@ class DumbPersistentList<T>(
         var result = 0
         var skipped = 0
         while (skipped < n) {
-            while (!innerList[result].alive) ++result
+            while (!innerList[result].alive) {
+                ++result
+            }
             ++skipped
             ++result
         }
@@ -530,5 +538,5 @@ fun <T> IrDeclaration.NullablePersistentVar() =
 fun <T : Any> IrDeclaration.LateInitPersistentVar() =
     LateInitPersistentVar<T>(this)
 
-fun <T> IrDeclaration.DumbPersistentList() =
-    DumbPersistentList<T>(this, kotlin.collections.emptyList())
+fun <T> IrDeclaration.DumbPersistentList() = SimpleMutableList<T>(mutableListOf())
+//    DumbPersistentList<T>(this, kotlin.collections.emptyList())

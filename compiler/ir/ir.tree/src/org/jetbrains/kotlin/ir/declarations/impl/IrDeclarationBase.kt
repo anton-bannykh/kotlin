@@ -57,7 +57,7 @@ abstract class IrDeclarationBase<T : CarrierBase<out T>>(
             if (stage < createdOn) {
                 error("Cannot access declaration before is was created ($stage < $createdOn)")
             }
-            if (stage > loweredUpTo) {
+            if (stage - 1 > loweredUpTo) {
                 stageController.lazyLower(this)
             }
 
@@ -83,7 +83,7 @@ abstract class IrDeclarationBase<T : CarrierBase<out T>>(
                 error("Cannot modify old states ($stage < $loweredUpTo)")
             }
 
-            if (stage > loweredUpTo) {
+            if (stage - 1 > loweredUpTo) {
                 stageController.lazyLower(this)
             }
             var i = stage - 1

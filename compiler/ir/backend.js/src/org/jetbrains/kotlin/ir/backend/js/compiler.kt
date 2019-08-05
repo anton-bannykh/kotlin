@@ -11,10 +11,7 @@ import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.descriptors.ModuleDescriptor
 import org.jetbrains.kotlin.descriptors.PropertyDescriptor
 import org.jetbrains.kotlin.ir.backend.js.transformers.irToJs.IrModuleToJsTransformer
-import org.jetbrains.kotlin.ir.declarations.IrDeclaration
-import org.jetbrains.kotlin.ir.declarations.IrProperty
-import org.jetbrains.kotlin.ir.declarations.NoopController
-import org.jetbrains.kotlin.ir.declarations.stageController
+import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.descriptors.IrBuiltIns
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.util.ExternalDependenciesGenerator
@@ -99,7 +96,11 @@ fun compile(
         totalTime += System.currentTimeMillis() - start
         ++testCnt
 
-        println("Avg: ${totalTime / testCnt}ms")
+        println("#$testCnt: ${totalTime / testCnt}ms")
+        println("main: ${mainTime / testCnt}ms")
+        println("LLC: ${lazyLowerCalls / testCnt}; LLI: ${lazyLowerIteration / testCnt}; ALI: ${actualLoweringInvocations / testCnt}")
+        println("LLCP: ${lazyLowerCalls * 100 / actualLoweringInvocations / 100.0}; LLIP: ${lazyLowerIteration * 100 / actualLoweringInvocations / 100.0}")
+        println()
 
         stageController.bodiesEnabled = true
 
@@ -161,3 +162,8 @@ object DeserializerProxy : IrDeserializer {
 
 var testCnt = 0
 var totalTime = 0L
+var mainTime = 0L
+
+var lazyLowerCalls = 0L
+var lazyLowerIteration = 0L
+var actualLoweringInvocations = 0L

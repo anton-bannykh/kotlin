@@ -18,6 +18,7 @@ package org.jetbrains.kotlin.backend.common
 
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.declarations.*
+import org.jetbrains.kotlin.ir.declarations.impl.IrDeclarationBase
 import org.jetbrains.kotlin.ir.expressions.IrBody
 import org.jetbrains.kotlin.ir.visitors.IrElementVisitor
 import org.jetbrains.kotlin.ir.visitors.IrElementVisitorVoid
@@ -132,6 +133,12 @@ fun DeclarationTransformer.toDeclarationContainerLoweringPass(): DeclarationCont
     }
 }
 
+inline fun IrDeclaration.advance() {
+    (this as? IrDeclarationBase<*>)?.let {
+        it.loweredUpTo = stageController.currentStage
+    }
+}
+
 fun DeclarationTransformer.runPostfix(): DeclarationTransformer {
     return object : DeclarationTransformer {
         override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
@@ -147,10 +154,13 @@ fun DeclarationTransformer.runPostfix(): DeclarationTransformer {
                 override fun visitClass(declaration: IrClass) {
                     declaration.acceptChildrenVoid(this)
                     declaration.declarations.transformFlat(this@runPostfix::transformFlat)
+                    declaration.advance()
                 }
             })
 
-            return this@runPostfix.transformFlat(declaration)
+            return this@runPostfix.transformFlat(declaration).also {
+                declaration.advance()
+            }
         }
     }
 }
@@ -170,8 +180,10 @@ fun ClassLoweringPass.toDeclarationTransformer(): DeclarationTransformer {
                 override fun visitClass(declaration: IrClass) {
                     declaration.acceptChildrenVoid(this)
                     this@toDeclarationTransformer.lower(declaration)
+                    declaration.advance()
                 }
             })
+            declaration.advance()
             return null
         }
     }
@@ -206,6 +218,7 @@ fun BodyLoweringPass.toDeclarationTransformer(): DeclarationTransformer {
 
                 override fun visitDeclaration(declaration: IrDeclaration, data: IrDeclaration) {
                     declaration.acceptChildren(this, declaration)
+                    declaration.advance()
                 }
 
                 override fun visitBody(body: IrBody, data: IrDeclaration) {
@@ -213,6 +226,7 @@ fun BodyLoweringPass.toDeclarationTransformer(): DeclarationTransformer {
                     lower(body, data)
                 }
             }, declaration)
+            declaration.advance()
             return null
         }
     }
@@ -231,44 +245,52 @@ fun NullableBodyLoweringPass.toDeclarationTransformer(): DeclarationTransformer 
                     declaration.annotations.forEach {
                         lower(it, declaration)
                     }
+                    declaration.advance()
                 }
 
                 override fun visitDeclaration(declaration: IrDeclaration) {
                     lowerAnnotations(declaration)
                     declaration.acceptChildrenVoid(this)
+                    declaration.advance()
                 }
 
                 override fun visitAnonymousInitializer(declaration: IrAnonymousInitializer) {
                     lowerAnnotations(declaration)
                     lower(declaration.body, declaration)
+                    declaration.advance()
                 }
 
                 override fun visitEnumEntry(declaration: IrEnumEntry) {
                     lowerAnnotations(declaration)
                     lower(declaration.initializerExpression, declaration)
                     declaration.correspondingClass?.accept(this, null)
+                    declaration.advance()
                 }
 
                 override fun visitField(declaration: IrField) {
                     lowerAnnotations(declaration)
                     lower(declaration.initializer, declaration)
+                    declaration.advance()
                 }
 
                 override fun visitFunction(declaration: IrFunction) {
                     lowerAnnotations(declaration)
                     declaration.valueParameters.forEach { visitValueParameter(it) }
                     lower(declaration.body, declaration)
+                    declaration.advance()
                 }
 
                 override fun visitValueParameter(declaration: IrValueParameter) {
                     lowerAnnotations(declaration)
                     lower(declaration.defaultValue, declaration)
+                    declaration.advance()
                 }
 
                 override fun visitBody(body: IrBody) {
                     error("Missed a body")
                 }
             }, null)
+            declaration.advance()
             return null
         }
     }
