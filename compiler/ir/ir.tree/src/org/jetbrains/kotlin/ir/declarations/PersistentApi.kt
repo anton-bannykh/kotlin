@@ -538,5 +538,5 @@ fun <T> IrDeclaration.NullablePersistentVar() =
 fun <T : Any> IrDeclaration.LateInitPersistentVar() =
     LateInitPersistentVar<T>(this)
 
-fun <T> IrDeclaration.DumbPersistentList() = SimpleMutableList<T>(mutableListOf())
-//    DumbPersistentList<T>(this, kotlin.collections.emptyList())
+fun <T> IrDeclaration.DumbPersistentList() =
+    DumbPersistentList<T>(this, kotlin.collections.emptyList())
