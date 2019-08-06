@@ -20,6 +20,7 @@ import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.descriptors.PropertyDescriptor
 import org.jetbrains.kotlin.descriptors.Visibility
 import org.jetbrains.kotlin.ir.declarations.*
+import org.jetbrains.kotlin.ir.declarations.impl.carriers.PropertyCarrier
 import org.jetbrains.kotlin.ir.symbols.IrPropertySymbol
 import org.jetbrains.kotlin.ir.symbols.impl.IrPropertySymbolImpl
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformer
@@ -41,8 +42,9 @@ class IrPropertyImpl(
     override val isLateinit: Boolean = symbol.descriptor.isLateInit,
     override val isDelegated: Boolean = symbol.descriptor.isDelegated,
     override val isExternal: Boolean = symbol.descriptor.isEffectivelyExternal()
-) : IrDeclarationBase<PropertyCarrier>(startOffset, endOffset, origin, PropertyCarrier()),
-    IrProperty {
+) : IrDeclarationBase<PropertyCarrier>(startOffset, endOffset, origin),
+    IrProperty,
+    PropertyCarrier {
 
     @Deprecated(message = "Don't use descriptor-based API for IrProperty", level = DeprecationLevel.WARNING)
     constructor(
@@ -127,22 +129,34 @@ class IrPropertyImpl(
 
     override val descriptor: PropertyDescriptor = symbol.descriptor
 
-    override var backingField: IrField? //by NullablePersistentVar()
-        get() = getCarrier().backingField
+    override var backingFieldField: IrField? = null
+
+    override var backingField: IrField?
+        get() = getCarrier().backingFieldField
         set(v) {
-            setCarrier().backingField = v
+            if (backingField !== v) {
+                setCarrier().backingFieldField = v
+            }
         }
 
-    override var getter: IrSimpleFunction? //by NullablePersistentVar()
-        get() = getCarrier().getter
+    override var getterField: IrSimpleFunction? = null
+
+    override var getter: IrSimpleFunction?
+        get() = getCarrier().getterField
         set(v) {
-            setCarrier().getter = v
+            if (getter !== v) {
+                setCarrier().getterField = v
+            }
         }
 
-    override var setter: IrSimpleFunction? //by NullablePersistentVar()
-        get() = getCarrier().setter
+    override var setterField: IrSimpleFunction? = null
+
+    override var setter: IrSimpleFunction?
+        get() = getCarrier().setterField
         set(v) {
-            setCarrier().setter = v
+            if (setter !== v) {
+                setCarrier().setterField = v
+            }
         }
 
 
@@ -156,36 +170,19 @@ class IrPropertyImpl(
         setter?.accept(visitor, data)
     }
 
-    override var metadata: MetadataSource? //by NullablePersistentVar()
-        get() = getCarrier().metadata
+    override var metadataField: MetadataSource? = null
+
+    override var metadata: MetadataSource?
+        get() = getCarrier().metadataField
         set(v) {
-            setCarrier().metadata = v
+            if (metadata !== v) {
+                setCarrier().metadataField = v
+            }
         }
 
     override fun <D> transformChildren(transformer: IrElementTransformer<D>, data: D) {
         backingField = backingField?.transform(transformer, data) as? IrField
         getter = getter?.run { transform(transformer, data) as IrSimpleFunction }
         setter = setter?.run { transform(transformer, data) as IrSimpleFunction }
-    }
-}
-
-class PropertyCarrier : CarrierBase<PropertyCarrier>() {
-    var backingField: IrField? = null
-    var getter: IrSimpleFunction? = null
-    var setter: IrSimpleFunction? = null
-    var metadata: MetadataSource? = null
-
-    override fun clone(): PropertyCarrier {
-        return PropertyCarrier().also {
-            fillCopy(it)
-        }
-    }
-
-    override fun fillCopy(t: PropertyCarrier) {
-        super.fillCopy(t)
-        t.backingField = backingField
-        t.getter = getter
-        t.setter = setter
-        t.metadata = metadata
     }
 }

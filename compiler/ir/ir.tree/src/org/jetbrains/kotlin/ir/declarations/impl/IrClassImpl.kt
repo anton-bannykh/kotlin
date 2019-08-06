@@ -21,6 +21,7 @@ import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.descriptors.Visibility
 import org.jetbrains.kotlin.ir.declarations.*
+import org.jetbrains.kotlin.ir.declarations.impl.carriers.ClassCarrier
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformer
@@ -43,8 +44,9 @@ class IrClassImpl(
     override val isExternal: Boolean,
     override val isInline: Boolean
 ) :
-    IrDeclarationBase<ClassCarrier>(startOffset, endOffset, origin, ClassCarrier()),
-    IrClass {
+    IrDeclarationBase<ClassCarrier>(startOffset, endOffset, origin),
+    IrClass,
+    ClassCarrier {
 
     constructor(
         startOffset: Int,
@@ -71,10 +73,14 @@ class IrClassImpl(
 
     override val descriptor: ClassDescriptor get() = symbol.descriptor
 
-    override var thisReceiver: IrValueParameter? //by NullablePersistentVar()
-        get() = getCarrier().thisReceiver
+    override var thisReceiverField: IrValueParameter? = null
+
+    override var thisReceiver: IrValueParameter?
+        get() = getCarrier().thisReceiverField
         set(v) {
-            setCarrier().thisReceiver = v
+            if (thisReceiver !== v) {
+                setCarrier().thisReceiverField = v
+            }
         }
 
     override val declarations: SimpleList<IrDeclaration> =
@@ -86,10 +92,14 @@ class IrClassImpl(
     override val superTypes: SimpleList<IrType> =
         DumbPersistentList()
 
-    override var metadata: MetadataSource? //by NullablePersistentVar()
-        get() = getCarrier().metadata
+    override var metadataField: MetadataSource? = null
+
+    override var metadata: MetadataSource?
+        get() = getCarrier().metadataField
         set(v) {
-            setCarrier().metadata = v
+            if (metadata !== v) {
+                setCarrier().metadataField = v
+            }
         }
 
     override fun <R, D> accept(visitor: IrElementVisitor<R, D>, data: D): R =
@@ -105,20 +115,5 @@ class IrClassImpl(
         thisReceiver = thisReceiver?.transform(transformer, data)
         typeParameters.transform { it.transform(transformer, data) }
         declarations.transform { it.transform(transformer, data) as IrDeclaration }
-    }
-}
-
-class ClassCarrier: CarrierBase<ClassCarrier>() {
-    var thisReceiver: IrValueParameter? = null
-    var metadata: MetadataSource? = null
-
-    override fun clone(): ClassCarrier {
-        return ClassCarrier().also { fillCopy(it) }
-    }
-
-    override fun fillCopy(t: ClassCarrier) {
-        super.fillCopy(t)
-        t.thisReceiver = thisReceiver
-        t.metadata = metadata
     }
 }

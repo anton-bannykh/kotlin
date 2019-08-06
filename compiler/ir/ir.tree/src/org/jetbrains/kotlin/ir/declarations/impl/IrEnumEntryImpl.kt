@@ -20,6 +20,7 @@ import org.jetbrains.kotlin.descriptors.ClassDescriptor
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
 import org.jetbrains.kotlin.ir.declarations.IrEnumEntry
+import org.jetbrains.kotlin.ir.declarations.impl.carriers.EnumEntryCarrier
 import org.jetbrains.kotlin.ir.expressions.IrExpressionBody
 import org.jetbrains.kotlin.ir.symbols.IrEnumEntrySymbol
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformer
@@ -32,8 +33,9 @@ class IrEnumEntryImpl(
     origin: IrDeclarationOrigin,
     override val symbol: IrEnumEntrySymbol,
     override val name: Name
-) : IrDeclarationBase<EnumEntryCarrier>(startOffset, endOffset, origin, EnumEntryCarrier()),
-    IrEnumEntry {
+) : IrDeclarationBase<EnumEntryCarrier>(startOffset, endOffset, origin),
+    IrEnumEntry,
+    EnumEntryCarrier {
 
     constructor(
         startOffset: Int,
@@ -48,16 +50,25 @@ class IrEnumEntryImpl(
     }
 
     override val descriptor: ClassDescriptor get() = symbol.descriptor
-    override var correspondingClass: IrClass? //by NullablePersistentVar()
-        get() = getCarrier().correspondingClass
+
+    override var correspondingClassField: IrClass? = null
+
+    override var correspondingClass: IrClass?
+        get() = getCarrier().correspondingClassField
         set(v) {
-            setCarrier().correspondingClass = v
+            if (correspondingClass !== v) {
+                setCarrier().correspondingClassField = v
+            }
         }
 
-    override var initializerExpression: IrExpressionBody? //by NullablePersistentVar()
-        get() = getCarrier().initializerExpression
+    override var initializerExpressionField: IrExpressionBody? = null
+
+    override var initializerExpression: IrExpressionBody?
+        get() = getCarrier().initializerExpressionField
         set(v) {
-            setCarrier().initializerExpression = v
+            if (initializerExpression !== v) {
+                setCarrier().initializerExpressionField = v
+            }
         }
 
     override fun <R, D> accept(visitor: IrElementVisitor<R, D>, data: D): R {
@@ -72,24 +83,5 @@ class IrEnumEntryImpl(
     override fun <D> transformChildren(transformer: IrElementTransformer<D>, data: D) {
         initializerExpression = initializerExpression?.transform(transformer, data)
         correspondingClass = correspondingClass?.transform(transformer, data) as? IrClass
-    }
-}
-
-class EnumEntryCarrier: CarrierBase<EnumEntryCarrier>() {
-
-    var correspondingClass: IrClass? = null
-    var initializerExpression: IrExpressionBody? = null
-
-
-    override fun clone(): EnumEntryCarrier {
-        return EnumEntryCarrier().also {
-            fillCopy(it)
-        }
-    }
-
-    override fun fillCopy(t: EnumEntryCarrier) {
-        super.fillCopy(t)
-        t.correspondingClass = correspondingClass
-        t.initializerExpression = initializerExpression
     }
 }

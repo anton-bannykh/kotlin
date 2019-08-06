@@ -21,6 +21,7 @@ import org.jetbrains.kotlin.ir.declarations.DumbPersistentList
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
 import org.jetbrains.kotlin.ir.declarations.IrTypeParameter
 import org.jetbrains.kotlin.ir.declarations.SimpleList
+import org.jetbrains.kotlin.ir.declarations.impl.carriers.TypeParameterCarrier
 import org.jetbrains.kotlin.ir.symbols.IrTypeParameterSymbol
 import org.jetbrains.kotlin.ir.symbols.impl.IrTypeParameterSymbolImpl
 import org.jetbrains.kotlin.ir.types.IrType
@@ -39,8 +40,9 @@ class IrTypeParameterImpl(
     override val isReified: Boolean,
     override val variance: Variance
 ) :
-    IrDeclarationBase<TypeParameterCarrier>(startOffset, endOffset, origin, TypeParameterCarrier()),
-    IrTypeParameter {
+    IrDeclarationBase<TypeParameterCarrier>(startOffset, endOffset, origin),
+    IrTypeParameter,
+    TypeParameterCarrier {
 
     constructor(
         startOffset: Int,
@@ -96,13 +98,5 @@ class IrTypeParameterImpl(
 
     override fun <D> transformChildren(transformer: IrElementTransformer<D>, data: D) {
         // no children
-    }
-}
-
-class TypeParameterCarrier: CarrierBase<TypeParameterCarrier>() {
-    override fun clone(): TypeParameterCarrier {
-        return TypeParameterCarrier().also {
-            fillCopy(it)
-        }
     }
 }

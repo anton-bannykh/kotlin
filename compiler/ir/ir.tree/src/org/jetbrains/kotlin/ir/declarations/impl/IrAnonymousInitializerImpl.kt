@@ -19,7 +19,7 @@ package org.jetbrains.kotlin.ir.declarations.impl
 import org.jetbrains.kotlin.descriptors.ClassDescriptor
 import org.jetbrains.kotlin.ir.declarations.IrAnonymousInitializer
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
-import org.jetbrains.kotlin.ir.declarations.LateInitPersistentVar
+import org.jetbrains.kotlin.ir.declarations.impl.carriers.AnonymousInitializerCarrier
 import org.jetbrains.kotlin.ir.expressions.IrBlockBody
 import org.jetbrains.kotlin.ir.symbols.IrAnonymousInitializerSymbol
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformer
@@ -31,8 +31,9 @@ class IrAnonymousInitializerImpl(
     origin: IrDeclarationOrigin,
     override val symbol: IrAnonymousInitializerSymbol,
     override val isStatic: Boolean = false
-) : IrDeclarationBase<AnonymousInitializerCarrier>(startOffset, endOffset, origin, AnonymousInitializerCarrier()),
-    IrAnonymousInitializer {
+) : IrDeclarationBase<AnonymousInitializerCarrier>(startOffset, endOffset, origin),
+    IrAnonymousInitializer,
+    AnonymousInitializerCarrier {
 
     init {
         symbol.bind(this)
@@ -40,10 +41,14 @@ class IrAnonymousInitializerImpl(
 
     override val descriptor: ClassDescriptor get() = symbol.descriptor
 
-    override var body: IrBlockBody //by LateInitPersistentVar()
-        get() = getCarrier().body!!
+    override var bodyField: IrBlockBody? = null
+
+    override var body: IrBlockBody
+        get() = getCarrier().bodyField!!
         set(v) {
-            setCarrier().body = v
+            if (getCarrier().bodyField !== v) {
+                setCarrier().bodyField = v
+            }
         }
 
     override fun <R, D> accept(visitor: IrElementVisitor<R, D>, data: D): R {
@@ -56,21 +61,5 @@ class IrAnonymousInitializerImpl(
 
     override fun <D> transformChildren(transformer: IrElementTransformer<D>, data: D) {
         body = body.transform(transformer, data) as IrBlockBody
-    }
-}
-
-class AnonymousInitializerCarrier: CarrierBase<AnonymousInitializerCarrier>() {
-
-    var body: IrBlockBody? = null
-
-    override fun clone(): AnonymousInitializerCarrier {
-        return AnonymousInitializerCarrier().also {
-            fillCopy(it)
-        }
-    }
-
-    override fun fillCopy(t: AnonymousInitializerCarrier) {
-        super.fillCopy(t)
-        t.body = body
     }
 }

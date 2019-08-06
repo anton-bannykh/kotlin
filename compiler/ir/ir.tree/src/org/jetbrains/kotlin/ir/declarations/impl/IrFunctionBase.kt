@@ -18,6 +18,7 @@ package org.jetbrains.kotlin.ir.declarations.impl
 
 import org.jetbrains.kotlin.descriptors.Visibility
 import org.jetbrains.kotlin.ir.declarations.*
+import org.jetbrains.kotlin.ir.declarations.impl.carriers.FunctionBaseCarrier
 import org.jetbrains.kotlin.ir.expressions.IrBody
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.impl.IrUninitializedType
@@ -25,7 +26,7 @@ import org.jetbrains.kotlin.ir.visitors.IrElementTransformer
 import org.jetbrains.kotlin.ir.visitors.IrElementVisitor
 import org.jetbrains.kotlin.name.Name
 
-abstract class IrFunctionBase<T : FunctionBaseCarrier<out T>>(
+abstract class IrFunctionBase<T : FunctionBaseCarrier<T>>(
     startOffset: Int,
     endOffset: Int,
     origin: IrDeclarationOrigin,
@@ -33,16 +34,20 @@ abstract class IrFunctionBase<T : FunctionBaseCarrier<out T>>(
     override val visibility: Visibility,
     override val isInline: Boolean,
     override val isExternal: Boolean,
-    initValue: T
+    returnType: IrType
 ) :
-    IrDeclarationBase<T>(startOffset, endOffset, origin, initValue),
-    IrFunction {
+    IrDeclarationBase<T>(startOffset, endOffset, origin),
+    IrFunction,
+    FunctionBaseCarrier<T> {
+
+    override var returnTypeFieldField: IrType = returnType
 
     private var returnTypeField: IrType
-        // by PersistentVar(returnType)
-        get() = getCarrier().returnTypeField
+        get() = getCarrier().returnTypeFieldField
         set(v) {
-            setCarrier().returnTypeField = v
+            if (returnTypeField !== v) {
+                setCarrier().returnTypeFieldField = v
+            }
         }
 
     final override var returnType: IrType
@@ -56,31 +61,47 @@ abstract class IrFunctionBase<T : FunctionBaseCarrier<out T>>(
     override val typeParameters: SimpleList<IrTypeParameter> =
         DumbPersistentList()
 
-    override var dispatchReceiverParameter: IrValueParameter? //by NullablePersistentVar()
-        get() = getCarrier().dispatchReceiverParameter
+    override var dispatchReceiverParameterField: IrValueParameter? = null
+
+    override var dispatchReceiverParameter: IrValueParameter?
+        get() = getCarrier().dispatchReceiverParameterField
         set(v) {
-            setCarrier().dispatchReceiverParameter = v
+            if (dispatchReceiverParameter !== v) {
+                setCarrier().dispatchReceiverParameterField = v
+            }
         }
 
-    override var extensionReceiverParameter: IrValueParameter? //by NullablePersistentVar()
-        get() = getCarrier().extensionReceiverParameter
+    override var extensionReceiverParameterField: IrValueParameter? = null
+
+    override var extensionReceiverParameter: IrValueParameter?
+        get() = getCarrier().extensionReceiverParameterField
         set(v) {
-            setCarrier().extensionReceiverParameter = v
+            if (extensionReceiverParameter !== v) {
+                setCarrier().extensionReceiverParameterField = v
+            }
         }
 
     override val valueParameters: SimpleList<IrValueParameter> =
         DumbPersistentList()
 
-    final override var body: IrBody? //by NullablePersistentVar()
-        get() = getCarrier().body
+    override var bodyField: IrBody? = null
+
+    final override var body: IrBody?
+        get() = getCarrier().bodyField
         set(v) {
-            setCarrier().body = v
+            if (body !== v) {
+                setCarrier().bodyField = v
+            }
         }
 
-    override var metadata: MetadataSource? //by NullablePersistentVar()
-        get() = getCarrier().metadata
+    override var metadataField: MetadataSource? = null
+
+    override var metadata: MetadataSource?
+        get() = getCarrier().metadataField
         set(v) {
-            setCarrier().metadata = v
+            if (metadata !== v) {
+                setCarrier().metadataField = v
+            }
         }
 
     override fun <D> acceptChildren(visitor: IrElementVisitor<Unit, D>, data: D) {
@@ -101,27 +122,5 @@ abstract class IrFunctionBase<T : FunctionBaseCarrier<out T>>(
         valueParameters.transform { it.transform(transformer, data) }
 
         body = body?.transform(transformer, data)
-    }
-}
-
-abstract class FunctionBaseCarrier<T : FunctionBaseCarrier<T>>(
-    var returnTypeField: IrType
-) : CarrierBase<T>() {
-
-    var dispatchReceiverParameter: IrValueParameter? = null
-
-    var extensionReceiverParameter: IrValueParameter? = null
-
-    var body: IrBody? = null
-
-    var metadata: MetadataSource? = null
-
-    override fun fillCopy(t: T) {
-        super.fillCopy(t)
-        t.returnTypeField = returnTypeField
-        t.dispatchReceiverParameter = dispatchReceiverParameter
-        t.extensionReceiverParameter = extensionReceiverParameter
-        t.body = body
-        t.metadata = metadata
     }
 }

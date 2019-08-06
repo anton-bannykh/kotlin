@@ -18,8 +18,8 @@ package org.jetbrains.kotlin.ir.declarations.impl
 
 import org.jetbrains.kotlin.descriptors.ClassConstructorDescriptor
 import org.jetbrains.kotlin.descriptors.Visibility
-import org.jetbrains.kotlin.ir.declarations.IrConstructor
-import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
+import org.jetbrains.kotlin.ir.declarations.*
+import org.jetbrains.kotlin.ir.declarations.impl.carriers.ConstructorCarrier
 import org.jetbrains.kotlin.ir.expressions.IrBody
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
 import org.jetbrains.kotlin.ir.types.IrType
@@ -41,9 +41,10 @@ class IrConstructorImpl(
 ) :
     IrFunctionBase<ConstructorCarrier>(
         startOffset, endOffset, origin, name,
-        visibility, isInline, isExternal, ConstructorCarrier(returnType)
+        visibility, isInline, isExternal, returnType
     ),
-    IrConstructor {
+    IrConstructor,
+    ConstructorCarrier {
 
     constructor(
         startOffset: Int,
@@ -72,13 +73,4 @@ class IrConstructorImpl(
 
     override fun <R, D> accept(visitor: IrElementVisitor<R, D>, data: D): R =
         visitor.visitConstructor(this, data)
-}
-
-class ConstructorCarrier(returnType: IrType): FunctionBaseCarrier<ConstructorCarrier>(returnType) {
-
-    override fun clone(): ConstructorCarrier {
-        return ConstructorCarrier(returnTypeField).also {
-            fillCopy(it)
-        }
-    }
 }

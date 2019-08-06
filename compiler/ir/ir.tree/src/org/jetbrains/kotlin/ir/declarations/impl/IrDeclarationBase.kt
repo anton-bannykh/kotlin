@@ -18,82 +18,91 @@ package org.jetbrains.kotlin.ir.declarations.impl
 
 import org.jetbrains.kotlin.ir.IrElementBase
 import org.jetbrains.kotlin.ir.declarations.*
+import org.jetbrains.kotlin.ir.declarations.impl.carriers.CarrierBase
 import org.jetbrains.kotlin.ir.expressions.IrExpressionBody
 
-abstract class IrDeclarationBase<T : CarrierBase<out T>>(
+abstract class IrDeclarationBase<T : CarrierBase<T>>(
     startOffset: Int,
     endOffset: Int,
-    override val origin: IrDeclarationOrigin,
-    initValue: T
+    override val origin: IrDeclarationOrigin
 ) : IrElementBase(startOffset, endOffset),
-    IrDeclaration, HasUserdata {
+    IrDeclaration,
+    HasUserdata,
+    CarrierBase<T> {
+
+    override var parentField: IrDeclarationParent? = null
 
     override var parent: IrDeclarationParent
-        get() = getCarrier().parent!!
+        get() = getCarrier().parentField!!
         set(p) {
-            setCarrier().parent = p
+            if (getCarrier().parentField !== p) {
+                setCarrier().parentField = p
+            }
         }
 
     override val annotations: SimpleList<IrExpressionBody> = DumbPersistentList()
 
     var loweredUpTo = stageController.currentStage
 
-    val createdOn = loweredUpTo
-
     override val userdata: MutableMap<MappingKey<*, *>, *> = mutableMapOf()
 
     override val metadata: MetadataSource?
         get() = null
 
-    val values = Array<Any?>(60) { null }.also {
-        it[stageController.currentStage] = initValue // TODO 0 -> currentStage?
-    }
+    var mask = 1L shl stageController.currentStage
+
+    private var values: Array<Any?>? = null
+
+//    init {
+//        stageController.register(this)
+//    }
 
     protected fun getCarrier(): T {
         stageController.currentStage.let { stage ->
-            values[stage]?.let {
-                return it as T
-            }
-            if (stage < createdOn) {
-                error("Cannot access declaration before is was created ($stage < $createdOn)")
-            }
-            if (stage - 1 > loweredUpTo) {
+            if (stage > loweredUpTo) {
                 stageController.lazyLower(this)
             }
 
-            var i = stage - 1
-            while (values[i] == null) --i
-            val r = values[i]
-            while (++i != stage) values[i] = r
+            val m = (1L shl (stage + 1)) - 1L
 
-            return r as T
+            if ((mask and m.inv()) == 0L) return this as T
+
+            val index = java.lang.Long.bitCount(mask and m) - 1
+
+            return values!![index] as T
         }
     }
 
     protected fun setCarrier(): T {
         stageController.currentStage.let { stage ->
-            values[stage]?.let {
-                return it as T
-            }
-            if (stage < createdOn) {
-                error("Cannot access declaration before is was created ($stage < $createdOn)")
-            }
-
-            if (values[stage + 1] != null) {
-                error("Cannot modify old states ($stage < $loweredUpTo)")
-            }
-
-            if (stage - 1 > loweredUpTo) {
+            if (stage > loweredUpTo) {
                 stageController.lazyLower(this)
             }
-            var i = stage - 1
-            while (values[i] == null) --i
-            var r = values[i]
-            while (++i != stage) values[i] = r
-            r = (r as T).clone()
-            values[stage] = r
 
-            return r
+            val bit = 1L shl stage
+
+            if ((mask and bit) != 0L) return this as T
+
+            val index = java.lang.Long.bitCount(mask and (bit - 1L)) - 1
+
+            val newValues = values?.let {
+                if (index == it.size) {
+                    it.copyOf(values!!.size + 1).also {
+                        values = it
+                    }
+                } else it
+            } ?: arrayOfNulls<Any?>(1).also {
+                values = it
+            }
+
+            if (index == 0 || !this.eq(newValues[index - 1] as T)) {
+                newValues[index] = this.clone()
+            } else {
+                mask = mask xor java.lang.Long.highestOneBit(mask and (bit - 1L))
+            }
+            mask = mask or bit
+
+            return this as T
         }
     }
 }
@@ -103,21 +112,3 @@ interface HasUserdata {
 }
 
 interface MappingKey<K : IrDeclaration, V>
-
-abstract class CarrierBase<T : CarrierBase<T>> {
-    var parent: IrDeclarationParent? = null
-
-    abstract fun clone(): T
-
-    open fun fillCopy(t: T) {
-        t.parent = parent
-    }
-}
-
-// TODO investigate what's wrong with this fun (NPE)
-private fun <T> Array<Any?>.lowerEntry(index: Int): T {
-    if (this[index] === null) {
-        this[index] = lowerEntry(index - 1)
-    }
-    return this[index] as T
-}

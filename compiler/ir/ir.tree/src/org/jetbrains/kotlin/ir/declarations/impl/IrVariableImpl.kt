@@ -19,7 +19,7 @@ package org.jetbrains.kotlin.ir.declarations.impl
 import org.jetbrains.kotlin.descriptors.VariableDescriptor
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
 import org.jetbrains.kotlin.ir.declarations.IrVariable
-import org.jetbrains.kotlin.ir.declarations.NullablePersistentVar
+import org.jetbrains.kotlin.ir.declarations.impl.carriers.VariableCarrier
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.symbols.IrVariableSymbol
 import org.jetbrains.kotlin.ir.symbols.impl.IrVariableSymbolImpl
@@ -40,8 +40,9 @@ class IrVariableImpl(
     override val isConst: Boolean,
     override val isLateinit: Boolean
 ) :
-    IrDeclarationBase<VariableCarrier>(startOffset, endOffset, origin, VariableCarrier()),
-    IrVariable {
+    IrDeclarationBase<VariableCarrier>(startOffset, endOffset, origin),
+    IrVariable,
+    VariableCarrier {
 
     constructor(
         startOffset: Int,
@@ -82,10 +83,14 @@ class IrVariableImpl(
 
     override val descriptor: VariableDescriptor get() = symbol.descriptor
 
-    override var initializer: IrExpression? //by NullablePersistentVar()
-        get() = getCarrier().initializer
+    override var initializerField: IrExpression? = null
+
+    override var initializer: IrExpression?
+        get() = getCarrier().initializerField
         set(v) {
-            setCarrier().initializer = v
+            if (initializer !== v) {
+                setCarrier().initializerField = v
+            }
         }
 
     override fun <R, D> accept(visitor: IrElementVisitor<R, D>, data: D): R =
@@ -97,21 +102,5 @@ class IrVariableImpl(
 
     override fun <D> transformChildren(transformer: IrElementTransformer<D>, data: D) {
         initializer = initializer?.transform(transformer, data)
-    }
-}
-
-class VariableCarrier : CarrierBase<VariableCarrier>() {
-
-    var initializer: IrExpression? = null
-
-    override fun clone(): VariableCarrier {
-        return VariableCarrier().also {
-            fillCopy(it)
-        }
-    }
-
-    override fun fillCopy(t: VariableCarrier) {
-        super.fillCopy(t)
-        t.initializer = initializer
     }
 }

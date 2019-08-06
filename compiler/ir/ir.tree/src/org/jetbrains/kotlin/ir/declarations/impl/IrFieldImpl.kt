@@ -19,6 +19,7 @@ package org.jetbrains.kotlin.ir.declarations.impl
 import org.jetbrains.kotlin.descriptors.PropertyDescriptor
 import org.jetbrains.kotlin.descriptors.Visibility
 import org.jetbrains.kotlin.ir.declarations.*
+import org.jetbrains.kotlin.ir.declarations.impl.carriers.FieldCarrier
 import org.jetbrains.kotlin.ir.expressions.IrExpressionBody
 import org.jetbrains.kotlin.ir.symbols.IrFieldSymbol
 import org.jetbrains.kotlin.ir.symbols.IrPropertySymbol
@@ -41,8 +42,9 @@ class IrFieldImpl(
     override val isFinal: Boolean,
     override val isExternal: Boolean,
     override val isStatic: Boolean
-) : IrDeclarationBase<FieldCarrier>(startOffset, endOffset, origin, FieldCarrier()),
-    IrField {
+) : IrDeclarationBase<FieldCarrier>(startOffset, endOffset, origin),
+    IrField,
+    FieldCarrier {
 
     constructor(
         startOffset: Int,
@@ -74,10 +76,14 @@ class IrFieldImpl(
 
     override val descriptor: PropertyDescriptor = symbol.descriptor
 
-    override var initializer: IrExpressionBody? //by NullablePersistentVar()
-        get() = getCarrier().initializer
+    override var initializerField: IrExpressionBody? = null
+
+    override var initializer: IrExpressionBody?
+        get() = getCarrier().initializerField
         set(v) {
-            setCarrier().initializer = v
+            if (initializer !== v) {
+                setCarrier().initializerField = v
+            }
         }
 
     @Suppress("OverridingDeprecatedMember")
@@ -87,19 +93,27 @@ class IrFieldImpl(
             correspondingPropertySymbol = value?.symbol
         }
 
-    override var correspondingPropertySymbol: IrPropertySymbol? //by NullablePersistentVar()
-        get() = getCarrier().correspondingPropertySymbol
+    override var correspondingPropertySymbolField: IrPropertySymbol? = null
+
+    override var correspondingPropertySymbol: IrPropertySymbol?
+        get() = getCarrier().correspondingPropertySymbolField
         set(v) {
-            setCarrier().correspondingPropertySymbol = v
+            if (correspondingPropertySymbol !== v) {
+                setCarrier().correspondingPropertySymbolField = v
+            }
         }
 
     override val overriddenSymbols: SimpleList<IrFieldSymbol> =
         DumbPersistentList()
 
-    override var metadata: MetadataSource.Property? //by NullablePersistentVar()
-        get() = getCarrier().metadata
+    override var metadataField: MetadataSource.Property? = null
+
+    override var metadata: MetadataSource.Property?
+        get() = getCarrier().metadataField
         set(v) {
-            setCarrier().metadata = v
+            if (metadata !== v) {
+                setCarrier().metadataField = v
+            }
         }
 
     override fun <R, D> accept(visitor: IrElementVisitor<R, D>, data: D): R {
@@ -112,25 +126,5 @@ class IrFieldImpl(
 
     override fun <D> transformChildren(transformer: IrElementTransformer<D>, data: D) {
         initializer = initializer?.transform(transformer, data)
-    }
-}
-
-class FieldCarrier: CarrierBase<FieldCarrier>() {
-
-    var initializer: IrExpressionBody? = null
-    var correspondingPropertySymbol: IrPropertySymbol? = null
-    var metadata: MetadataSource.Property? = null
-
-    override fun clone(): FieldCarrier {
-        return FieldCarrier().also {
-            fillCopy(it)
-        }
-    }
-
-    override fun fillCopy(t: FieldCarrier) {
-        super.fillCopy(t)
-        t.initializer = initializer
-        t.correspondingPropertySymbol = correspondingPropertySymbol
-        t.metadata = metadata
     }
 }

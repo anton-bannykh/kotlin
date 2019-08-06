@@ -9,6 +9,7 @@ import org.jetbrains.kotlin.descriptors.FunctionDescriptor
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.descriptors.Visibility
 import org.jetbrains.kotlin.ir.declarations.*
+import org.jetbrains.kotlin.ir.declarations.impl.carriers.FunctionCarrier
 import org.jetbrains.kotlin.ir.symbols.IrPropertySymbol
 import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
 import org.jetbrains.kotlin.ir.symbols.impl.IrSimpleFunctionSymbolImpl
@@ -30,8 +31,9 @@ class IrFunctionImpl(
     override val isTailrec: Boolean,
     override val isSuspend: Boolean
 ) :
-    IrFunctionBase<FunctionCarrier>(startOffset, endOffset, origin, name, visibility, isInline, isExternal, FunctionCarrier(returnType)),
-    IrSimpleFunction {
+    IrFunctionBase<FunctionCarrier>(startOffset, endOffset, origin, name, visibility, isInline, isExternal, returnType),
+    IrSimpleFunction,
+    FunctionCarrier {
 
     constructor(
         startOffset: Int,
@@ -65,10 +67,14 @@ class IrFunctionImpl(
             correspondingPropertySymbol = value?.symbol
         }
 
-    override var correspondingPropertySymbol: IrPropertySymbol? //by NullablePersistentVar()
-        get() = getCarrier().correspondingPropertySymbol
+    override var correspondingPropertySymbolField: IrPropertySymbol? = null
+
+    override var correspondingPropertySymbol: IrPropertySymbol?
+        get() = getCarrier().correspondingPropertySymbolField
         set(v) {
-            setCarrier().correspondingPropertySymbol = v
+            if (correspondingPropertySymbol !== v) {
+                setCarrier().correspondingPropertySymbolField = v
+            }
         }
 
     // Used by kotlin-native in InteropLowering.kt and IrUtils2.kt
@@ -89,19 +95,4 @@ class IrFunctionImpl(
 
     override fun <R, D> accept(visitor: IrElementVisitor<R, D>, data: D): R =
         visitor.visitSimpleFunction(this, data)
-}
-
-class FunctionCarrier(returnType: IrType) : FunctionBaseCarrier<FunctionCarrier>(returnType) {
-    var correspondingPropertySymbol: IrPropertySymbol? = null
-
-    override fun clone(): FunctionCarrier {
-        return FunctionCarrier(returnTypeField).also {
-            fillCopy(it)
-        }
-    }
-
-    override fun fillCopy(t: FunctionCarrier) {
-        super.fillCopy(t)
-        t.correspondingPropertySymbol = correspondingPropertySymbol
-    }
 }
