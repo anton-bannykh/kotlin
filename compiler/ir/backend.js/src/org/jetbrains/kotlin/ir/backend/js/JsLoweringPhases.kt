@@ -628,8 +628,8 @@ class MutableController : StageController {
     }
 
     private fun lowerUpTo(declaration: IrDeclaration, stageNonInclusive: Int) {
-        val loweredUpTo = declaration.loweredUpTo
-        for (i in loweredUpTo + 1 until stageNonInclusive) {
+        while (declaration.loweredUpTo + 1 < stageNonInclusive) {
+            val i = declaration.loweredUpTo + 1
             withStage(i) {
                 lazyLowerIteration++
                 val topLevelDeclaration = declaration.topLevel
@@ -676,7 +676,7 @@ class MutableController : StageController {
                     }
                 }
 
-                declaration.loweredUpTo = i
+                declaration.loweredUpTo = Math.max(i, topLevelDeclaration.loweredUpTo)
             }
         }
     }
@@ -719,9 +719,10 @@ class MutableController : StageController {
             }
         }
 
+//        jsPhases.invokeToplevel(phaseConfig, context, moduleFragment)
+
         mainTime += System.currentTimeMillis() - start
 
-//        jsPhases.invokeToplevel(phaseConfig, context, moduleFragment)
 
         currentStage = perFilePhaseList.size + 1
 
