@@ -505,7 +505,7 @@ private val perFilePhaseList = listOf(
     privateMembersBodyLoweringPhase to LoweringType.BodyLowering, // OK
     callableReferenceLoweringPhase to LoweringType.BodyLowering, // OK -- creates new declarations from bodies
 
-    defaultArgumentStubGeneratorPhase to LoweringType.DeclarationLowering, // OK
+    defaultArgumentStubGeneratorPhase to LoweringType.FIX_ME, // Copies type parameter annotations
     defaultArgumentStubBodyGeneratorPhase to LoweringType.BodyLowering, // OK
     defaultParameterInjectorPhase to LoweringType.BodyLowering, // OK
     jsDefaultCallbackGeneratorPhase to LoweringType.BodyLowering, // OK
