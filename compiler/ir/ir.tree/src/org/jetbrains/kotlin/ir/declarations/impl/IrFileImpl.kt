@@ -20,7 +20,6 @@ import org.jetbrains.kotlin.descriptors.PackageFragmentDescriptor
 import org.jetbrains.kotlin.ir.IrElementBase
 import org.jetbrains.kotlin.ir.SourceManager
 import org.jetbrains.kotlin.ir.declarations.*
-import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrExpressionBody
 import org.jetbrains.kotlin.ir.symbols.IrFileSymbol
 import org.jetbrains.kotlin.ir.symbols.impl.IrFileSymbolImpl
@@ -54,13 +53,11 @@ class IrFileImpl(
 
     var loweredUpTo = 0
 
-    override val declarations: SimpleList<IrDeclaration> =
-        DumbPersistentList(null, emptyList())
+    override val declarations: MutableList<IrDeclaration> = ArrayList()
 
-    override val annotations: SimpleList<IrExpressionBody> =
-        DumbPersistentList(null, emptyList())
+    override val annotations: MutableList<IrExpressionBody> = ArrayList()
 
-    override var metadata: MetadataSource.File? by NullablePersistentVar(null)
+    override var metadata: MetadataSource.File? = null
 
     override fun <R, D> accept(visitor: IrElementVisitor<R, D>, data: D): R =
         visitor.visitFile(this, data)
@@ -70,6 +67,8 @@ class IrFileImpl(
     }
 
     override fun <D> transformChildren(transformer: IrElementTransformer<D>, data: D) {
-        declarations.transform { it.transform(transformer, data) as IrDeclaration }
+        declarations.forEachIndexed { i, irDeclaration ->
+            declarations[i] = irDeclaration.transform(transformer, data) as IrDeclaration
+        }
     }
 }

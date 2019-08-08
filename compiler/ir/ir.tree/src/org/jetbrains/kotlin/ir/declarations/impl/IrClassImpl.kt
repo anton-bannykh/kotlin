@@ -24,10 +24,12 @@ import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.declarations.impl.carriers.ClassCarrier
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.types.IrType
+import org.jetbrains.kotlin.ir.util.transform
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformer
 import org.jetbrains.kotlin.ir.visitors.IrElementVisitor
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.resolve.descriptorUtil.isEffectivelyExternal
+import org.jetbrains.kotlin.utils.SmartList
 
 class IrClassImpl(
     startOffset: Int,
@@ -83,14 +85,20 @@ class IrClassImpl(
             }
         }
 
-    override val declarations: SimpleList<IrDeclaration> =
-        DumbPersistentList()
+    override val declarationsField: MutableList<IrDeclaration> = ArrayList()
 
-    override val typeParameters: SimpleList<IrTypeParameter> =
-        DumbPersistentList()
+    override val declarations: MutableList<IrDeclaration>
+        get() = setCarrier().declarationsField
 
-    override val superTypes: SimpleList<IrType> =
-        DumbPersistentList()
+    override val typeParametersField: MutableList<IrTypeParameter> = SmartList()
+
+    override val typeParameters: MutableList<IrTypeParameter>
+        get() = setCarrier().typeParametersField
+
+    override val superTypesField: MutableList<IrType> = SmartList()
+
+    override val superTypes: MutableList<IrType>
+        get() = setCarrier().superTypesField
 
     override var metadataField: MetadataSource? = null
 

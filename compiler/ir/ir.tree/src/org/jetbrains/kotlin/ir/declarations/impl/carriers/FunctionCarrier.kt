@@ -6,14 +6,18 @@
 package org.jetbrains.kotlin.ir.declarations.impl.carriers
 
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
+import org.jetbrains.kotlin.ir.declarations.IrTypeParameter
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.declarations.MetadataSource
 import org.jetbrains.kotlin.ir.expressions.IrBody
+import org.jetbrains.kotlin.ir.expressions.IrExpressionBody
 import org.jetbrains.kotlin.ir.symbols.IrPropertySymbol
+import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
 import org.jetbrains.kotlin.ir.types.IrType
 
 interface FunctionCarrier : FunctionBaseCarrier<FunctionCarrier> {
     var correspondingPropertySymbolField: IrPropertySymbol?
+    val overriddenSymbolsField: MutableList<IrSimpleFunctionSymbol>
 
     override fun eq(other: FunctionCarrier): Boolean {
         return parentField === other.parentField &&
@@ -22,28 +26,40 @@ interface FunctionCarrier : FunctionBaseCarrier<FunctionCarrier> {
                 extensionReceiverParameterField === other.extensionReceiverParameterField &&
                 bodyField === other.bodyField &&
                 metadataField === other.metadataField &&
-                correspondingPropertySymbolField === other.correspondingPropertySymbolField
+                correspondingPropertySymbolField === other.correspondingPropertySymbolField &&
+                annotationsField.eq(other.annotationsField) &&
+                typeParametersField.eq(other.typeParametersField) &&
+                valueParametersField.eq(other.valueParametersField) &&
+                overriddenSymbolsField.eq(other.overriddenSymbolsField)
     }
 
     override fun clone(): FunctionCarrier {
         return FunctionCarrierImpl(
             parentField,
+            annotationsField.clone(),
             returnTypeFieldField,
             dispatchReceiverParameterField,
             extensionReceiverParameterField,
             bodyField,
             metadataField,
-            correspondingPropertySymbolField
+            typeParametersField.clone(),
+            valueParametersField.clone(),
+            correspondingPropertySymbolField,
+            overriddenSymbolsField.clone()
         )
     }
 }
 
 class FunctionCarrierImpl(
     override var parentField: IrDeclarationParent?,
+    override val annotationsField: MutableList<IrExpressionBody>,
     override var returnTypeFieldField: IrType,
     override var dispatchReceiverParameterField: IrValueParameter?,
     override var extensionReceiverParameterField: IrValueParameter?,
     override var bodyField: IrBody?,
     override var metadataField: MetadataSource?,
-    override var correspondingPropertySymbolField: IrPropertySymbol?
+    override val typeParametersField: MutableList<IrTypeParameter>,
+    override val valueParametersField: MutableList<IrValueParameter>,
+    override var correspondingPropertySymbolField: IrPropertySymbol?,
+    override val overriddenSymbolsField: MutableList<IrSimpleFunctionSymbol>
 ) : FunctionCarrier

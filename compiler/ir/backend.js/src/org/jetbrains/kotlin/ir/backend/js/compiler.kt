@@ -105,7 +105,7 @@ fun compile(
         stageController.bodiesEnabled = true
 
         // TODO traverse all IR
-        generateTests(context, dataMap[moduleDescriptor]!!, dependencyModules + moduleFragment, phaseConfig)
+//        generateTests(context, dataMap[moduleDescriptor]!!, dependencyModules + moduleFragment, phaseConfig)
 
         stageController.freeze()
 

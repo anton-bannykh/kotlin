@@ -41,12 +41,12 @@ abstract class IrLazyFunctionBase(
         }
     }
 
-    override val valueParameters: SimpleList<IrValueParameter> by lazyVal {
-        SimpleMutableList(typeTranslator.buildWithScope(this) {
+    override val valueParameters: MutableList<IrValueParameter> by lazyVal {
+        typeTranslator.buildWithScope(this) {
             descriptor.valueParameters.mapTo(arrayListOf()) {
                 stubGenerator.generateValueParameterStub(it).apply { parent = this@IrLazyFunctionBase }
             }
-        })
+        }
     }
 
     final override var body: IrBody? = null

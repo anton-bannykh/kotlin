@@ -36,7 +36,7 @@ interface IrClass :
     val isExternal: Boolean
     val isInline: Boolean
 
-    val superTypes: SimpleList<IrType>
+    val superTypes: MutableList<IrType>
 
     var thisReceiver: IrValueParameter?
 }

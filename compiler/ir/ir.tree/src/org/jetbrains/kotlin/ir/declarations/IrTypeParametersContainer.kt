@@ -17,5 +17,5 @@
 package org.jetbrains.kotlin.ir.declarations
 
 interface IrTypeParametersContainer : IrDeclaration, IrDeclarationParent {
-    val typeParameters: SimpleList<IrTypeParameter>
+    val typeParameters: MutableList<IrTypeParameter>
 }

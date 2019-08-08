@@ -52,7 +52,7 @@ private class MoveCompanionObjectFieldsLowering(val context: CommonBackendContex
     }
 
     private fun handleObject(irObject: IrClass, fieldReplacementMap: MutableMap<IrFieldSymbol, IrFieldSymbol>) {
-        irObject.declarations.transform {
+        irObject.declarations.replaceAll {
             when (it) {
                 is IrProperty -> {
                     // The field is not actually moved, just replaced by a static field

@@ -8,6 +8,5 @@ package org.jetbrains.kotlin.ir.declarations
 import org.jetbrains.kotlin.ir.expressions.IrExpressionBody
 
 interface IrAnnotationContainer {
-    // TODO IrAnnotationBody
-    val annotations: SimpleList<IrExpressionBody>
+    val annotations: MutableList<IrExpressionBody>
 }

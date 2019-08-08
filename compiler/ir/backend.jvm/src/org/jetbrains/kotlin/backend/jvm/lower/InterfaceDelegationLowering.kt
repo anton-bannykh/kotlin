@@ -164,7 +164,7 @@ private class InterfaceDelegationLowering(val context: JvmBackendContext) : IrEl
         }
 
         override fun visitSimpleFunction(declaration: IrSimpleFunction) {
-            declaration.overriddenSymbols.transform { symbol -> replacementMap[symbol] ?: symbol }
+            declaration.overriddenSymbols.replaceAll(UnaryOperator { symbol -> replacementMap[symbol] ?: symbol })
             super.visitSimpleFunction(declaration)
         }
     }

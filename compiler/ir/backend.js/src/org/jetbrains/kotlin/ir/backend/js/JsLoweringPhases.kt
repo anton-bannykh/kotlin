@@ -607,7 +607,7 @@ class MutableController : StageController {
             if (frozen) error("frozen!")
             withStage(i) {
                 ArrayList(file.declarations).forEach {
-                    lowerUpTo(it, i + 1)
+                    lowerUpTo(it, i + 1, true)
                 }
             }
             (file as? IrFileImpl)?.loweredUpTo = i
@@ -627,7 +627,7 @@ class MutableController : StageController {
         }
     }
 
-    private fun lowerUpTo(declaration: IrDeclaration, stageNonInclusive: Int) {
+    private fun lowerUpTo(declaration: IrDeclaration, stageNonInclusive: Int, skipCheck: Boolean = false) {
         while (declaration.loweredUpTo + 1 < stageNonInclusive) {
             val i = declaration.loweredUpTo + 1
             withStage(i) {
@@ -645,7 +645,7 @@ class MutableController : StageController {
                 if (topLevelDeclaration.loweredUpTo == i - 1 && topLevelDeclaration.parent is IrFile) {
                     val fileBefore = topLevelDeclaration.parent as IrFileImpl
 
-                    if (topLevelDeclaration in fileBefore.declarations) {
+                    if (skipCheck || topLevelDeclaration in fileBefore.declarations) {
                         if (frozen) {
                             error("frozen! ${topLevelDeclaration.name.asString()} in ${fileBefore.fileEntry.name}")
                         }

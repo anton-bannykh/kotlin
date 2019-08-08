@@ -9,6 +9,7 @@ import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
 import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.MetadataSource
+import org.jetbrains.kotlin.ir.expressions.IrExpressionBody
 
 interface PropertyCarrier : CarrierBase<PropertyCarrier> {
     var backingFieldField: IrField?
@@ -21,12 +22,14 @@ interface PropertyCarrier : CarrierBase<PropertyCarrier> {
                 backingFieldField === other.backingFieldField &&
                 getterField === other.getterField &&
                 setterField === other.setterField &&
-                metadataField === other.metadataField
+                metadataField === other.metadataField &&
+                annotationsField.eq(other.annotationsField)
     }
 
     override fun clone(): PropertyCarrier {
         return PropertyCarrierImpl(
             parentField,
+            annotationsField.clone(),
             backingFieldField,
             getterField,
             setterField,
@@ -37,6 +40,7 @@ interface PropertyCarrier : CarrierBase<PropertyCarrier> {
 
 class PropertyCarrierImpl(
     override var parentField: IrDeclarationParent?,
+    override val annotationsField: MutableList<IrExpressionBody>,
     override var backingFieldField: IrField?,
     override var getterField: IrSimpleFunction?,
     override var setterField: IrSimpleFunction?,

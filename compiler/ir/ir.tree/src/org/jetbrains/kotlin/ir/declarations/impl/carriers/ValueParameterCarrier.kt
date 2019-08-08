@@ -12,15 +12,22 @@ interface ValueParameterCarrier : CarrierBase<ValueParameterCarrier> {
     var defaultValueField: IrExpressionBody?
 
     override fun eq(other: ValueParameterCarrier): Boolean {
-        return parentField === other.parentField && defaultValueField === other.defaultValueField
+        return parentField === other.parentField &&
+                defaultValueField === other.defaultValueField &&
+                annotationsField.eq(other.annotationsField)
     }
 
     override fun clone(): ValueParameterCarrier {
-        return ValueParameterCarrierImpl(parentField, defaultValueField)
+        return ValueParameterCarrierImpl(
+            parentField,
+            annotationsField.clone(),
+            defaultValueField
+        )
     }
 }
 
 class ValueParameterCarrierImpl(
     override var parentField: IrDeclarationParent?,
+    override val annotationsField: MutableList<IrExpressionBody>,
     override var defaultValueField: IrExpressionBody?
 ) : ValueParameterCarrier

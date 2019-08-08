@@ -362,7 +362,7 @@ internal class PropertyReferenceLowering(val context: JvmBackendContext) : Class
         // Put the new field at the beginning so that static delegated properties with initializers work correctly.
         // Since we do not cache property references with bound receivers, the new field does not reference anything else.
         if (kProperties.isNotEmpty()) {
-            irClass.declarations.addFirst(kPropertiesField.apply {
+            irClass.declarations.add(0, kPropertiesField.apply {
                 parent = irClass
                 initializer = context.createIrBuilder(irClass.symbol).run {
                     val initializers = kProperties.values.sortedBy { it.index }.map { it.initializer }
@@ -372,6 +372,6 @@ internal class PropertyReferenceLowering(val context: JvmBackendContext) : Class
                 }
             })
         }
-        irClass.declarations.addFirstAll(kPropertyClasses.values)
+        irClass.declarations.addAll(0, kPropertyClasses.values)
     }
 }

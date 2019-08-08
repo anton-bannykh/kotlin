@@ -47,7 +47,7 @@ interface IrSymbolDeclaration<out S : IrSymbol> : IrDeclaration, IrSymbolOwner {
 }
 
 interface IrOverridableDeclaration<S : IrSymbol> : IrDeclaration {
-    val overriddenSymbols: SimpleList<S>
+    val overriddenSymbols: MutableList<S>
 }
 
 interface IrDeclarationWithVisibility : IrDeclaration {

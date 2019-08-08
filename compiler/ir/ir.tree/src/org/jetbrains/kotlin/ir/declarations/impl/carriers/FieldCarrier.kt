@@ -8,33 +8,41 @@ package org.jetbrains.kotlin.ir.declarations.impl.carriers
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
 import org.jetbrains.kotlin.ir.declarations.MetadataSource
 import org.jetbrains.kotlin.ir.expressions.IrExpressionBody
+import org.jetbrains.kotlin.ir.symbols.IrFieldSymbol
 import org.jetbrains.kotlin.ir.symbols.IrPropertySymbol
 
 interface FieldCarrier : CarrierBase<FieldCarrier> {
     var initializerField: IrExpressionBody?
     var correspondingPropertySymbolField: IrPropertySymbol?
     var metadataField: MetadataSource.Property?
+    val overriddenSymbolsField: MutableList<IrFieldSymbol>
 
     override fun eq(other: FieldCarrier): Boolean {
         return parentField === other.parentField &&
                 initializerField === other.initializerField &&
                 correspondingPropertySymbolField === other.correspondingPropertySymbolField &&
-                metadataField === other.metadataField
+                metadataField === other.metadataField &&
+                annotationsField.eq(other.annotationsField) &&
+                overriddenSymbolsField.eq(other.overriddenSymbolsField)
     }
 
     override fun clone(): FieldCarrier {
         return FieldCarrierImpl(
             parentField,
+            annotationsField.clone(),
             initializerField,
             correspondingPropertySymbolField,
-            metadataField
+            metadataField,
+            overriddenSymbolsField.clone()
         )
     }
 }
 
 class FieldCarrierImpl(
     override var parentField: IrDeclarationParent?,
+    override val annotationsField: MutableList<IrExpressionBody>,
     override var initializerField: IrExpressionBody?,
     override var correspondingPropertySymbolField: IrPropertySymbol?,
-    override var metadataField: MetadataSource.Property?
+    override var metadataField: MetadataSource.Property?,
+    override val overriddenSymbolsField: MutableList<IrFieldSymbol>
 ): FieldCarrier

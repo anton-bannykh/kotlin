@@ -51,10 +51,10 @@ abstract class IrLazyDeclarationBase(
         createLazyParent()!!
     }
 
-    override val annotations: SimpleList<IrExpressionBody> by lazyVal {
-        SimpleMutableList(descriptor.annotations.map {
+    override val annotations: MutableList<IrExpressionBody> by lazyVal {
+        descriptor.annotations.map {
             IrExpressionBodyImpl(typeTranslator.constantValueGenerator.generateAnnotationConstructorCall(it))
-        }.toMutableList())
+        }.toMutableList()
     }
 
     override var metadata: Nothing?

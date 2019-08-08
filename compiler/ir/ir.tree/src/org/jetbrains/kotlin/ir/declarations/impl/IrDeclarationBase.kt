@@ -40,9 +40,14 @@ abstract class IrDeclarationBase<T : CarrierBase<T>>(
             }
         }
 
-    override val annotations: SimpleList<IrExpressionBody> = DumbPersistentList()
+    override val annotationsField: MutableList<IrExpressionBody> = ArrayList()
+
+    override val annotations: MutableList<IrExpressionBody>
+        get() = setCarrier().annotationsField
 
     var loweredUpTo = stageController.currentStage
+
+    val createdOn = stageController.currentStage
 
     override val userdata: MutableMap<MappingKey<*, *>, *> = mutableMapOf()
 
@@ -74,36 +79,37 @@ abstract class IrDeclarationBase<T : CarrierBase<T>>(
     }
 
     protected fun setCarrier(): T {
-        stageController.currentStage.let { stage ->
-            if (stage > loweredUpTo) {
-                stageController.lazyLower(this)
-            }
+        val stage = stageController.currentStage
 
-            val bit = 1L shl stage
+        if (stage > loweredUpTo) {
+            stageController.lazyLower(this)
+        }
 
-            if ((mask and bit) != 0L) return this as T
+        val m = (1L shl (stage + 1)) - 1L
 
-            val index = java.lang.Long.bitCount(mask and (bit - 1L)) - 1
+        if ((mask and m.inv()) == 0L) return this as T
 
+        val index = java.lang.Long.bitCount(mask and m) - 1
+
+        if (index == 0 || !this.eq(values!![index - 1] as T)) {
             val newValues = values?.let {
                 if (index == it.size) {
                     it.copyOf(values!!.size + 1).also {
                         values = it
                     }
-                } else it
+                } else error("retrospective modification")
             } ?: arrayOfNulls<Any?>(1).also {
                 values = it
             }
 
-            if (index == 0 || !this.eq(newValues[index - 1] as T)) {
-                newValues[index] = this.clone()
-            } else {
-                mask = mask xor java.lang.Long.highestOneBit(mask and (bit - 1L))
-            }
-            mask = mask or bit
-
-            return this as T
+            newValues[index] = this.clone()
+        } else {
+            val maskCopy = mask
+            mask = maskCopy xor java.lang.Long.highestOneBit(maskCopy and m)
         }
+        mask = mask or (1L shl stage)
+
+        return this as T
     }
 }
 

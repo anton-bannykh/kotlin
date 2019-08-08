@@ -58,8 +58,8 @@ class IrLazyFunction(
 
     override val descriptor: FunctionDescriptor = symbol.descriptor
 
-    override val typeParameters: SimpleList<IrTypeParameter> by lazyVal {
-        SimpleMutableList(typeTranslator.buildWithScope(this) {
+    override val typeParameters: MutableList<IrTypeParameter> by lazyVal {
+        typeTranslator.buildWithScope(this) {
             stubGenerator.symbolTable.withScope(descriptor) {
                 val propertyIfAccessor = descriptor.propertyIfAccessor
                 propertyIfAccessor.typeParameters.mapTo(arrayListOf()) {
@@ -72,14 +72,14 @@ class IrLazyFunction(
                     }
                 }
             }
-        })
+        }
     }
 
 
-    override val overriddenSymbols: SimpleList<IrSimpleFunctionSymbol> by lazyVal {
-        SimpleMutableList(descriptor.overriddenDescriptors.mapTo(arrayListOf()) {
+    override val overriddenSymbols: MutableList<IrSimpleFunctionSymbol> by lazyVal {
+        descriptor.overriddenDescriptors.mapTo(arrayListOf()) {
             stubGenerator.generateFunctionStub(it.original).symbol
-        })
+        }
     }
 
     @Suppress("OverridingDeprecatedMember")

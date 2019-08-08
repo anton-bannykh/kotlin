@@ -22,9 +22,11 @@ import org.jetbrains.kotlin.ir.declarations.impl.carriers.FunctionBaseCarrier
 import org.jetbrains.kotlin.ir.expressions.IrBody
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.impl.IrUninitializedType
+import org.jetbrains.kotlin.ir.util.transform
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformer
 import org.jetbrains.kotlin.ir.visitors.IrElementVisitor
 import org.jetbrains.kotlin.name.Name
+import org.jetbrains.kotlin.utils.SmartList
 
 abstract class IrFunctionBase<T : FunctionBaseCarrier<T>>(
     startOffset: Int,
@@ -58,8 +60,10 @@ abstract class IrFunctionBase<T : FunctionBaseCarrier<T>>(
             returnTypeField = c
         }
 
-    override val typeParameters: SimpleList<IrTypeParameter> =
-        DumbPersistentList()
+    override val typeParametersField: MutableList<IrTypeParameter> = SmartList()
+
+    override val typeParameters: MutableList<IrTypeParameter>
+        get() = setCarrier().typeParametersField
 
     override var dispatchReceiverParameterField: IrValueParameter? = null
 
@@ -81,8 +85,10 @@ abstract class IrFunctionBase<T : FunctionBaseCarrier<T>>(
             }
         }
 
-    override val valueParameters: SimpleList<IrValueParameter> =
-        DumbPersistentList()
+    override val valueParametersField: MutableList<IrValueParameter> = ArrayList()
+
+    override val valueParameters: MutableList<IrValueParameter>
+        get() = setCarrier().valueParametersField
 
     override var bodyField: IrBody? = null
 

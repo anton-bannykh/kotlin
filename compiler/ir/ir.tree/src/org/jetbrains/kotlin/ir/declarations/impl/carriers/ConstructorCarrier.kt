@@ -6,9 +6,11 @@
 package org.jetbrains.kotlin.ir.declarations.impl.carriers
 
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
+import org.jetbrains.kotlin.ir.declarations.IrTypeParameter
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.declarations.MetadataSource
 import org.jetbrains.kotlin.ir.expressions.IrBody
+import org.jetbrains.kotlin.ir.expressions.IrExpressionBody
 import org.jetbrains.kotlin.ir.types.IrType
 
 
@@ -19,26 +21,35 @@ interface ConstructorCarrier : FunctionBaseCarrier<ConstructorCarrier> {
                 dispatchReceiverParameterField === other.dispatchReceiverParameterField &&
                 extensionReceiverParameterField === other.extensionReceiverParameterField &&
                 bodyField === other.bodyField &&
-                metadataField === other.metadataField
+                metadataField === other.metadataField &&
+                annotationsField.eq(other.annotationsField) &&
+                typeParametersField.eq(other.typeParametersField) &&
+                valueParametersField.eq(other.valueParametersField)
     }
 
     override fun clone(): ConstructorCarrier {
         return ConstructorCarrierImpl(
             parentField,
+            annotationsField.clone(),
             returnTypeFieldField,
             dispatchReceiverParameterField,
             extensionReceiverParameterField,
             bodyField,
-            metadataField
+            metadataField,
+            typeParametersField.clone(),
+            valueParametersField.clone()
         )
     }
 }
 
 class ConstructorCarrierImpl(
     override var parentField: IrDeclarationParent?,
+    override val annotationsField: MutableList<IrExpressionBody>,
     override var returnTypeFieldField: IrType,
     override var dispatchReceiverParameterField: IrValueParameter?,
     override var extensionReceiverParameterField: IrValueParameter?,
     override var bodyField: IrBody?,
-    override var metadataField: MetadataSource?
+    override var metadataField: MetadataSource?,
+    override val typeParametersField: MutableList<IrTypeParameter>,
+    override val valueParametersField: MutableList<IrValueParameter>
 ) : ConstructorCarrier

@@ -21,8 +21,6 @@ import org.jetbrains.kotlin.ir.IrElementBase
 import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrExternalPackageFragment
-import org.jetbrains.kotlin.ir.declarations.SimpleList
-import org.jetbrains.kotlin.ir.declarations.SimpleMutableList
 import org.jetbrains.kotlin.ir.symbols.IrExternalPackageFragmentSymbol
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformer
 import org.jetbrains.kotlin.ir.visitors.IrElementVisitor
@@ -42,8 +40,7 @@ class IrExternalPackageFragmentImpl(
 
     override val packageFragmentDescriptor: PackageFragmentDescriptor get() = symbol.descriptor
 
-    override val declarations: SimpleList<IrDeclaration> =
-        SimpleMutableList<IrDeclaration>(ArrayList())
+    override val declarations: MutableList<IrDeclaration> = ArrayList()
 
     override fun <R, D> accept(visitor: IrElementVisitor<R, D>, data: D): R =
         visitor.visitExternalPackageFragment(this, data)
@@ -53,6 +50,8 @@ class IrExternalPackageFragmentImpl(
     }
 
     override fun <D> transformChildren(transformer: IrElementTransformer<D>, data: D) {
-        declarations.transform { it.transform(transformer, data) as IrDeclaration }
+        declarations.forEachIndexed { i, irDeclaration ->
+            declarations[i] = irDeclaration.transform(transformer, data) as IrDeclaration
+        }
     }
 }

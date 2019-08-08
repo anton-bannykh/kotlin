@@ -10,10 +10,12 @@ import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.descriptors.Visibility
 import org.jetbrains.kotlin.ir.declarations.*
+import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.util.DeclarationStubGenerator
 import org.jetbrains.kotlin.ir.util.TypeTranslator
+import org.jetbrains.kotlin.ir.util.transform
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformer
 import org.jetbrains.kotlin.ir.visitors.IrElementVisitor
 import org.jetbrains.kotlin.name.Name
@@ -73,8 +75,8 @@ class IrLazyClass(
     }
 
 
-    override val declarations: SimpleList<IrDeclaration> by lazyVar {
-        SimpleMutableList(ArrayList<IrDeclaration>().also {
+    override val declarations: MutableList<IrDeclaration> by lazyVar {
+        ArrayList<IrDeclaration>().also {
             typeTranslator.buildWithScope(this) {
                 generateChildStubs(descriptor.constructors, it)
                 generateMemberStubs(descriptor.defaultType.memberScope, it)
@@ -84,22 +86,22 @@ class IrLazyClass(
             it.forEach {
                 it.parent = this //initialize parent for non lazy cases
             }
-        })
+        }
     }
 
-    override val typeParameters: SimpleList<IrTypeParameter> by lazyVal {
-        SimpleMutableList(descriptor.declaredTypeParameters.mapTo(arrayListOf()) {
+    override val typeParameters: MutableList<IrTypeParameter> by lazyVal {
+        descriptor.declaredTypeParameters.mapTo(arrayListOf()) {
             stubGenerator.generateOrGetTypeParameterStub(it)
-        })
+        }
     }
 
-    override val superTypes: SimpleList<IrType> by lazyVal {
-        SimpleMutableList(typeTranslator.buildWithScope(this) {
+    override val superTypes: MutableList<IrType> by lazyVal {
+        typeTranslator.buildWithScope(this) {
             // TODO get rid of code duplication, see ClassGenerator#generateClass
             descriptor.typeConstructor.supertypes.mapNotNullTo(arrayListOf()) {
                 it.toIrType()
             }
-        })
+        }
     }
 
     override fun <R, D> accept(visitor: IrElementVisitor<R, D>, data: D): R =
@@ -114,6 +116,6 @@ class IrLazyClass(
     override fun <D> transformChildren(transformer: IrElementTransformer<D>, data: D) {
         thisReceiver = thisReceiver?.transform(transformer, data)
         typeParameters.transform { it.transform(transformer, data) }
-        declarations.transform { it.transform(transformer, data) as IrDeclaration }
+        declarations.transform { it.transform(transformer, data) }
     }
 }

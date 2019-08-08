@@ -16,12 +16,14 @@ interface EnumEntryCarrier : CarrierBase<EnumEntryCarrier> {
     override fun eq(other: EnumEntryCarrier): Boolean {
         return parentField === other.parentField &&
                 correspondingClassField === other.correspondingClassField &&
-                initializerExpressionField === other.initializerExpressionField
+                initializerExpressionField === other.initializerExpressionField &&
+                annotationsField.eq(other.annotationsField)
     }
 
     override fun clone(): EnumEntryCarrier {
         return EnumEntryCarrierImpl(
             parentField,
+            annotationsField.clone(),
             correspondingClassField,
             initializerExpressionField
         )
@@ -30,6 +32,7 @@ interface EnumEntryCarrier : CarrierBase<EnumEntryCarrier> {
 
 class EnumEntryCarrierImpl(
     override var parentField: IrDeclarationParent?,
+    override val annotationsField: MutableList<IrExpressionBody>,
     override var correspondingClassField: IrClass?,
     override var initializerExpressionField: IrExpressionBody?
 ) : EnumEntryCarrier

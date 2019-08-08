@@ -16,6 +16,7 @@ import org.jetbrains.kotlin.ir.symbols.impl.IrSimpleFunctionSymbolImpl
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.visitors.IrElementVisitor
 import org.jetbrains.kotlin.name.Name
+import org.jetbrains.kotlin.utils.SmartList
 
 class IrFunctionImpl(
     startOffset: Int,
@@ -57,8 +58,10 @@ class IrFunctionImpl(
 
     override val descriptor: FunctionDescriptor = symbol.descriptor
 
-    override val overriddenSymbols: SimpleList<IrSimpleFunctionSymbol> =
-        DumbPersistentList()
+    override val overriddenSymbolsField: MutableList<IrSimpleFunctionSymbol> = SmartList()
+
+    override val overriddenSymbols: MutableList<IrSimpleFunctionSymbol>
+        get() = setCarrier().overriddenSymbolsField
 
     @Suppress("OverridingDeprecatedMember")
     override var correspondingProperty: IrProperty?

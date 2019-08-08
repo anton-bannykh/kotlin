@@ -5,6 +5,7 @@
 
 package org.jetbrains.kotlin.ir.declarations.impl.carriers
 
+import org.jetbrains.kotlin.ir.declarations.IrTypeParameter
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.declarations.MetadataSource
 import org.jetbrains.kotlin.ir.expressions.IrBody
@@ -16,4 +17,6 @@ interface FunctionBaseCarrier<T : FunctionBaseCarrier<T>> : CarrierBase<T> {
     var extensionReceiverParameterField: IrValueParameter?
     var bodyField: IrBody?
     var metadataField: MetadataSource?
+    val typeParametersField: MutableList<IrTypeParameter>
+    val valueParametersField: MutableList<IrValueParameter>
 }

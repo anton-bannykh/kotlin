@@ -6,16 +6,30 @@
 package org.jetbrains.kotlin.ir.declarations.impl.carriers
 
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
+import org.jetbrains.kotlin.ir.expressions.IrExpressionBody
+import org.jetbrains.kotlin.ir.types.IrType
 
 interface TypeParameterCarrier : CarrierBase<TypeParameterCarrier> {
 
+    val superTypesField: MutableList<IrType>
+
     override fun eq(other: TypeParameterCarrier): Boolean {
-        return parentField === other.parentField
+        return parentField === other.parentField &&
+                annotationsField.eq(other.annotationsField) &&
+                superTypesField.eq(other.superTypesField)
     }
 
     override fun clone(): TypeParameterCarrier {
-        return TypeParameterCarrierImpl(parentField)
+        return TypeParameterCarrierImpl(
+            parentField,
+            annotationsField.clone(),
+            superTypesField.clone()
+        )
     }
 }
 
-class TypeParameterCarrierImpl(override var parentField: IrDeclarationParent?): TypeParameterCarrier
+class TypeParameterCarrierImpl(
+    override var parentField: IrDeclarationParent?,
+    override val annotationsField: MutableList<IrExpressionBody>,
+    override val superTypesField: MutableList<IrType>
+) : TypeParameterCarrier

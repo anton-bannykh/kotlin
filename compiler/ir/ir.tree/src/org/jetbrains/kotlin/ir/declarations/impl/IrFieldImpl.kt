@@ -103,8 +103,10 @@ class IrFieldImpl(
             }
         }
 
-    override val overriddenSymbols: SimpleList<IrFieldSymbol> =
-        DumbPersistentList()
+    override val overriddenSymbolsField: MutableList<IrFieldSymbol> = mutableListOf()
+
+    override val overriddenSymbols: MutableList<IrFieldSymbol>
+        get() = setCarrier().overriddenSymbolsField
 
     override var metadataField: MetadataSource.Property? = null
 
