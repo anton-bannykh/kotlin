@@ -211,21 +211,47 @@ fun FunctionLoweringPass.toDeclarationTransformer(): DeclarationTransformer {
 fun BodyLoweringPass.toDeclarationTransformer(): DeclarationTransformer {
     return object : DeclarationTransformer {
         override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
-            declaration.accept(object : IrElementVisitor<Unit, IrDeclaration> {
-                override fun visitElement(element: IrElement, data: IrDeclaration) {
-                    element.acceptChildren(this, data)
+            declaration.accept(object : IrElementVisitorVoid {
+                override fun visitElement(element: IrElement) {
+                    element.acceptChildrenVoid(this)
                 }
 
-                override fun visitDeclaration(declaration: IrDeclaration, data: IrDeclaration) {
-                    declaration.acceptChildren(this, declaration)
+                override fun visitDeclaration(declaration: IrDeclaration) {
+                    declaration.acceptChildrenVoid(this)
                     declaration.advance()
                 }
 
-                override fun visitBody(body: IrBody, data: IrDeclaration) {
-//                    body.acceptChildren(this, data)
-                    lower(body, data)
+                override fun visitAnonymousInitializer(declaration: IrAnonymousInitializer) {
+                    lower(declaration.body, declaration)
+                    declaration.advance()
                 }
-            }, declaration)
+
+                override fun visitEnumEntry(declaration: IrEnumEntry) {
+                    declaration.initializerExpression?.let { lower(it, declaration) }
+                    declaration.correspondingClass?.accept(this, null)
+                    declaration.advance()
+                }
+
+                override fun visitField(declaration: IrField) {
+                    declaration.initializer?.let { lower(it, declaration) }
+                    declaration.advance()
+                }
+
+                override fun visitFunction(declaration: IrFunction) {
+                    declaration.valueParameters.forEach { visitValueParameter(it) }
+                    declaration.body?.let { lower(it, declaration) }
+                    declaration.advance()
+                }
+
+                override fun visitValueParameter(declaration: IrValueParameter) {
+                    declaration.defaultValue?.let { lower(it, declaration) }
+                    declaration.advance()
+                }
+
+                override fun visitBody(body: IrBody) {
+                    error("Missed a body")
+                }
+            }, null)
             declaration.advance()
             return null
         }
