@@ -7,12 +7,12 @@ package org.jetbrains.kotlin.ir.backend.js.lower
 
 import org.jetbrains.kotlin.backend.common.BodyLoweringPass
 import org.jetbrains.kotlin.backend.common.ClassLoweringPass
-import org.jetbrains.kotlin.backend.common.NullableBodyLoweringPass
 import org.jetbrains.kotlin.backend.common.ir.copyTo
 import org.jetbrains.kotlin.backend.common.ir.copyTypeParametersFrom
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.IrStatement
+import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
 import org.jetbrains.kotlin.ir.backend.js.JsIrBackendContext
 import org.jetbrains.kotlin.ir.backend.js.getOrPut
 import org.jetbrains.kotlin.ir.backend.js.ir.JsIrBuilder
@@ -20,6 +20,7 @@ import org.jetbrains.kotlin.ir.backend.js.mapping
 import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.declarations.impl.MappingKey
 import org.jetbrains.kotlin.ir.expressions.*
+import org.jetbrains.kotlin.ir.expressions.impl.IrBlockBodyImpl
 import org.jetbrains.kotlin.ir.expressions.impl.IrCallImpl
 import org.jetbrains.kotlin.ir.expressions.impl.IrGetValueImpl
 import org.jetbrains.kotlin.ir.expressions.impl.IrReturnImpl
@@ -66,43 +67,20 @@ class SecondaryConstructorLowering(val context: JsIrBackendContext) : ClassLower
     }
 }
 
-class SecondaryConstructorBodyLowering(val context: JsIrBackendContext) : NullableBodyLoweringPass {
+class SecondaryConstructorBodyLowering(val context: JsIrBackendContext) : BodyLoweringPass {
 
-    override fun lower(irBody: IrBody?, container: IrDeclaration) {
-        if (irBody == null && container is IrSimpleFunction) {
+    override fun lower(irBody: IrBody, container: IrDeclaration) {
+        if (container is IrSimpleFunction) {
             container.delegateToConstructor?.let { constructor ->
-                generateInitBody(constructor, container.parentAsClass, container)
+                fillInitBody(constructor, container.parentAsClass, container)
             }
             container.stubToConstructor?.let { constructor ->
-                generateFactoryBody(constructor, container.parentAsClass, container, constructor.constructorPair!!.delegate)
+                fillFactoryBody(constructor, container.parentAsClass, container, constructor.constructorPair!!.delegate)
             }
         }
     }
 
-    private fun generateStubsBody(constructor: IrConstructor, irClass: IrClass, stubs: ConstructorPair) {
-        // We should split secondary constructor into two functions,
-        //   *  Initializer which contains constructor's body and takes just created object as implicit param `$this`
-        //   **   This function is also delegation constructor
-        //   *  Creation function which has same signature with original constructor,
-        //      creates new object via `Object.create` builtIn and passes it to corresponding `Init` function
-        // In other words:
-        // Foo::constructor(...) {
-        //   body
-        // }
-        // =>
-        // Foo_init_$Init$(..., $this) {
-        //   body[ this = $this ]
-        //   return $this
-        // }
-        // Foo_init_$Create$(...) {
-        //   val t = Object.create(Foo.prototype);
-        //   return Foo_init_$Init$(..., t)
-        // }
-        generateInitBody(constructor, irClass, stubs.delegate)
-        generateFactoryBody(constructor, irClass, stubs.stub, stubs.delegate)
-    }
-
-    private fun generateFactoryBody(constructor: IrConstructor, irClass: IrClass, stub: IrSimpleFunction, delegate: IrSimpleFunction) {
+    private fun fillFactoryBody(constructor: IrConstructor, irClass: IrClass, stub: IrSimpleFunction, delegate: IrSimpleFunction) {
         val type = irClass.defaultType
         val createFunctionIntrinsic = context.intrinsics.jsObjectCreate
         val irCreateCall = JsIrBuilder.buildCall(createFunctionIntrinsic.symbol, type, listOf(type))
@@ -119,11 +97,10 @@ class SecondaryConstructorBodyLowering(val context: JsIrBackendContext) : Nullab
         }
         val irReturn = JsIrBuilder.buildReturn(stub.symbol, irDelegateCall, context.irBuiltIns.nothingType)
 
-
-        stub.body = JsIrBuilder.buildBlockBody(listOf(irReturn))
+        (stub.body as IrBlockBody).statements += irReturn
     }
 
-    private fun generateInitBody(constructor: IrConstructor, irClass: IrClass, delegate: IrSimpleFunction) {
+    private fun fillInitBody(constructor: IrConstructor, irClass: IrClass, delegate: IrSimpleFunction) {
         val thisParam = delegate.valueParameters.last()
         val oldThisReceiver = irClass.thisReceiver!!
         val retStmt = JsIrBuilder.buildReturn(delegate.symbol, JsIrBuilder.buildGetValue(thisParam.symbol), context.irBuiltIns.nothingType)
@@ -132,11 +109,10 @@ class SecondaryConstructorBodyLowering(val context: JsIrBackendContext) : Nullab
         val oldValueParameters = constructor.valueParameters + oldThisReceiver
 
         // TODO: replace parameters as well
-        delegate.body = JsIrBuilder.buildBlockBody(statements + retStmt).apply {
-            transformChildrenVoid(ThisUsageReplaceTransformer(delegate.symbol, oldValueParameters.zip(delegate.valueParameters).toMap()))
+        (delegate.body as IrBlockBody).statements += (statements + retStmt).also {
+            it.forEach { s -> s.transformChildrenVoid(ThisUsageReplaceTransformer(delegate.symbol, oldValueParameters.zip(delegate.valueParameters).toMap())) }
         }
     }
-
 
     private class ThisUsageReplaceTransformer(
         val function: IrFunctionSymbol,
@@ -176,9 +152,9 @@ private fun buildInitDeclaration(constructor: IrConstructor, irClass: IrClass): 
         constructor.isExternal
     ).also {
         it.copyTypeParametersFrom(constructor.parentAsClass)
-
         constructor.valueParameters.mapTo(it.valueParameters) { p -> p.copyTo(it) }
         it.valueParameters += JsIrBuilder.buildValueParameter("\$this", constructor.valueParameters.size, type).apply { parent = it }
+        it.body = IrBlockBodyImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET)
     }
 }
 
@@ -198,9 +174,28 @@ private fun buildFactoryDeclaration(constructor: IrConstructor, irClass: IrClass
     ).also {
         it.copyTypeParametersFrom(constructor.parentAsClass)
         it.valueParameters += constructor.valueParameters.map { p -> p.copyTo(it) }
+        it.body = IrBlockBodyImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET)
     }
 }
 
+// We should split secondary constructor into two functions,
+//   *  Initializer which contains constructor's body and takes just created object as implicit param `$this`
+//   **   This function is also delegation constructor
+//   *  Creation function which has same signature with original constructor,
+//      creates new object via `Object.create` builtIn and passes it to corresponding `Init` function
+// In other words:
+// Foo::constructor(...) {
+//   body
+// }
+// =>
+// Foo_init_$Init$(..., $this) {
+//   body[ this = $this ]
+//   return $this
+// }
+// Foo_init_$Create$(...) {
+//   val t = Object.create(Foo.prototype);
+//   return Foo_init_$Init$(..., t)
+// }
 private fun buildConstructorStubDeclarations(constructor: IrConstructor, klass: IrClass) =
     ConstructorPair(buildInitDeclaration(constructor, klass), buildFactoryDeclaration(constructor, klass))
 
