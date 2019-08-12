@@ -85,11 +85,16 @@ abstract class IrDeclarationBase<T : CarrierBase<T>>(
             stageController.lazyLower(this)
         }
 
-        val m = (1L shl (stage + 1)) - 1L
+        val m = (1L shl stage) - 1L
+        val bit = 1L shl stage
 
-        if ((mask and m.inv()) == 0L) return this as T
+        if ((mask and m.inv()) == bit) return this as T
 
         val index = java.lang.Long.bitCount(mask and m) - 1
+
+        if  (index < 0) {
+            error("access before creation")
+        }
 
         if (index == 0 || !this.eq(values!![index - 1] as T)) {
             val newValues = values?.let {
@@ -97,7 +102,9 @@ abstract class IrDeclarationBase<T : CarrierBase<T>>(
                     it.copyOf(values!!.size + 1).also {
                         values = it
                     }
-                } else error("retrospective modification")
+                } else {
+                    error("retrospective modification")
+                }
             } ?: arrayOfNulls<Any?>(1).also {
                 values = it
             }
@@ -107,7 +114,7 @@ abstract class IrDeclarationBase<T : CarrierBase<T>>(
             val maskCopy = mask
             mask = maskCopy xor java.lang.Long.highestOneBit(maskCopy and m)
         }
-        mask = mask or (1L shl stage)
+        mask = mask or bit
 
         return this as T
     }
