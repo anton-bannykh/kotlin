@@ -120,7 +120,7 @@ class InlineClassLowering(val context: JsIrBackendContext) {
             val irClass = irConstructor.parentAsClass
 
             val irBody = staticMethod.body as IrBlockBody
-            val oldStatements = irBody.statements
+            val oldStatements = ArrayList(irBody.statements)
 
             irBody.statements.clear()
 
