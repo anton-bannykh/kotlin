@@ -26,26 +26,30 @@ import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
 import org.jetbrains.kotlin.ir.visitors.transformChildrenVoid
 import org.jetbrains.kotlin.utils.addIfNotNull
 
-private var IrFunction.originalField by mapping(object : MappingKey<IrFunction, IrField>{})
+private var IrFunction.originalField by mapping(object : MappingKey<IrFunction, IrField> {})
 
 class CreateIrFieldInitializerFunction(val context: JsIrBackendContext) : DeclarationTransformer {
 
     override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
         return if (declaration is IrField) {
-            val initFunction = JsIrBuilder.buildFunction(
-                declaration.name.asString() + "\$init\$",
-                context.irBuiltIns.nothingType, // Should be changed later
-                declaration.parent,
-                declaration.visibility // TODO  Shouldn't it be private?
-            )
+            declaration.initializer?.let { initializer ->
+                val initFunction = JsIrBuilder.buildFunction(
+                    declaration.name.asString() + "\$init\$",
+                    context.irBuiltIns.nothingType, // Should be changed later
+                    declaration.parent,
+                    declaration.visibility // TODO  Shouldn't it be private?
+                )
 
-            // TODO Is this even remotely correct?
-            initFunction.dispatchReceiverParameter = declaration.correspondingPropertySymbol?.owner?.getter?.dispatchReceiverParameter
-            initFunction.extensionReceiverParameter = declaration.correspondingPropertySymbol?.owner?.getter?.extensionReceiverParameter
+                // TODO Is this even remotely correct?
+                initFunction.dispatchReceiverParameter = declaration.correspondingPropertySymbol?.owner?.getter?.dispatchReceiverParameter
+                initFunction.extensionReceiverParameter = declaration.correspondingPropertySymbol?.owner?.getter?.extensionReceiverParameter
 
-            initFunction.originalField = declaration
+                initFunction.body = IrBlockBodyImpl(initializer.startOffset, initializer.endOffset)
 
-            listOf(initFunction, declaration)
+                initFunction.originalField = declaration
+
+                listOf(initFunction, declaration)
+            } ?: listOf(declaration)
         } else {
             listOf(declaration)
         }.also { result ->
@@ -53,15 +57,14 @@ class CreateIrFieldInitializerFunction(val context: JsIrBackendContext) : Declar
             result.forEach { it.patchDeclarationParents(it.parent, true) }
         }
     }
-
 }
 
-class BlockDecomposerLowering(context: JsIrBackendContext) : NullableBodyLoweringPass {
+class BlockDecomposerLowering(context: JsIrBackendContext) : BodyLoweringPass {
 
     private val decomposerTransformer = BlockDecomposerTransformer(context)
     private val nothingType = context.irBuiltIns.nothingType
 
-    override fun lower(irBody: IrBody?, container: IrDeclaration) {
+    override fun lower(irBody: IrBody, container: IrDeclaration) {
         if (container is IrFunction) {
             container.originalField?.let { oldField ->
                 convertInitializerToInitFunctionCall(oldField, container)
@@ -73,22 +76,15 @@ class BlockDecomposerLowering(context: JsIrBackendContext) : NullableBodyLowerin
     }
 
     private fun convertInitializerToInitFunctionCall(irField: IrField, initFunction: IrFunction) {
-        // Don't invoke twice
-        // TODO is there even a risk of invoking it twice?
-        if (initFunction.body != null) return
-
-        irField.initializer?.apply {
+        irField.initializer!!.apply {
             initFunction.returnType = expression.type
 
-            val newBody = toBlockBody(initFunction)
-            newBody.patchDeclarationParents(initFunction)
-            initFunction.body = newBody
+            (initFunction.body as IrBlockBody).statements += JsIrBuilder.buildReturn(initFunction.symbol, expression, nothingType)
+            initFunction.body!!.patchDeclarationParents(initFunction)
 
             lower(initFunction)
 
             expression = JsIrBuilder.buildCall(initFunction.symbol, expression.type)
-        } ?: run {
-            initFunction.body = IrBlockBodyImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET) // TODO just keep it as null
         }
     }
 
