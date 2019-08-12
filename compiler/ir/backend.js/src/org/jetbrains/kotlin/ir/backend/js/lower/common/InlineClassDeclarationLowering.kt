@@ -16,6 +16,7 @@ import org.jetbrains.kotlin.backend.common.lower.irBlock
 import org.jetbrains.kotlin.backend.common.lower.irBlockBody
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.ir.IrStatement
+import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
 import org.jetbrains.kotlin.ir.backend.js.JsIrBackendContext
 import org.jetbrains.kotlin.ir.backend.js.getOrPut
 import org.jetbrains.kotlin.ir.backend.js.mapping
@@ -24,6 +25,7 @@ import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.declarations.impl.IrFunctionImpl
 import org.jetbrains.kotlin.ir.declarations.impl.MappingKey
 import org.jetbrains.kotlin.ir.expressions.*
+import org.jetbrains.kotlin.ir.expressions.impl.IrBlockBodyImpl
 import org.jetbrains.kotlin.ir.symbols.IrFunctionSymbol
 import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
 import org.jetbrains.kotlin.ir.symbols.impl.IrSimpleFunctionSymbolImpl
@@ -65,6 +67,9 @@ class InlineClassLowering(val context: JsIrBackendContext) {
             // Secondary constructors are lowered into static function
             val result = getOrCreateStaticMethod(irConstructor).owner
 
+            result.body = irConstructor.body
+            irConstructor.body = IrBlockBodyImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET)
+
             irConstructor.newFunction = result
             result.originalFunction = irConstructor
 
@@ -80,8 +85,7 @@ class InlineClassLowering(val context: JsIrBackendContext) {
             val staticMethod = getOrCreateStaticMethod(function).owner
 
             staticMethod.body = function.body
-
-            function.body = null
+            function.body = IrBlockBodyImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET)
 
             function.newFunction = staticMethod
             staticMethod.originalFunction = function
@@ -93,8 +97,8 @@ class InlineClassLowering(val context: JsIrBackendContext) {
         }
     }
 
-    val inlineClassDeclarationBodyLowering = object : NullableBodyLoweringPass {
-        override fun lower(irBody: IrBody?, container: IrDeclaration) {
+    val inlineClassDeclarationBodyLowering = object : BodyLoweringPass {
+        override fun lower(irBody: IrBody, container: IrDeclaration) {
             if (container !is IrSimpleFunction) return
 
             container.originalFunction?.let {
@@ -115,8 +119,13 @@ class InlineClassLowering(val context: JsIrBackendContext) {
 
             val irClass = irConstructor.parentAsClass
 
+            val irBody = staticMethod.body as IrBlockBody
+            val oldStatements = irBody.statements
+
+            irBody.statements.clear()
+
             // Copied and adapted from Kotlin/Native InlineClassTransformer
-            staticMethod.body = context.createIrBuilder(staticMethod.symbol).irBlockBody(staticMethod) {
+            irBody.statements += context.createIrBuilder(staticMethod.symbol).irBlockBody(staticMethod) {
 
                 // Secondary ctors of inline class must delegate to some other constructors.
                 // Use these delegating call later to initialize this variable.
@@ -125,7 +134,7 @@ class InlineClassLowering(val context: JsIrBackendContext) {
                     irConstructor.valueParameters[it.index].symbol
                 }
 
-                (irConstructor.body as IrBlockBody).statements.forEach { statement ->
+                oldStatements.forEach { statement ->
                     +statement.transform(object : IrElementTransformerVoid() {
                         override fun visitDelegatingConstructorCall(expression: IrDelegatingConstructorCall): IrExpression {
                             expression.transformChildrenVoid()
@@ -170,7 +179,7 @@ class InlineClassLowering(val context: JsIrBackendContext) {
                     }, null)
                 }
                 +irReturn(irGet(thisVar))
-            }
+            }.statements
         }
 
         private fun transformMethodBodyFlat(function: IrSimpleFunction, staticMethod: IrSimpleFunction) {
@@ -210,7 +219,7 @@ class InlineClassLowering(val context: JsIrBackendContext) {
 
         private fun delegateToStaticMethod(function: IrSimpleFunction, staticMethod: IrSimpleFunction) {
             // Delegate original function to static implementation
-            function.body = context.createIrBuilder(function.symbol).irBlockBody {
+            (function.body as IrBlockBody).statements += context.createIrBuilder(function.symbol).irBlockBody {
                 +irReturn(
                     irCall(staticMethod).apply {
                         val parameters =
@@ -223,7 +232,7 @@ class InlineClassLowering(val context: JsIrBackendContext) {
                         extensionReceiver = function.extensionReceiverParameter?.let { irGet(it) }
                     }
                 )
-            }
+            }.statements
         }
     }
 
