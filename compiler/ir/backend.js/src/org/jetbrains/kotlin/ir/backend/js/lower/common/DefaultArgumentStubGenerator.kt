@@ -14,6 +14,7 @@ import org.jetbrains.kotlin.backend.common.lower.createIrBuilder
 import org.jetbrains.kotlin.backend.common.lower.irBlockBody
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.ir.IrElement
+import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
 import org.jetbrains.kotlin.ir.backend.js.JsIrBackendContext
 import org.jetbrains.kotlin.ir.backend.js.mapping
 import org.jetbrains.kotlin.ir.builders.*
@@ -91,11 +92,11 @@ open class DefaultArgumentStubGenerator(
     private fun log(msg: () -> String) = context.log { "DEFAULT-REPLACER: ${msg()}" }
 }
 
-open class DefaultArgumentDispatchFunctionBodyLowering(open val context: CommonBackendContext): NullableBodyLoweringPass {
+open class DefaultArgumentDispatchFunctionBodyLowering(open val context: CommonBackendContext): BodyLoweringPass {
 
     private val symbols get() = context.ir.symbols
 
-    override fun lower(irBody: IrBody?, newIrFunction: IrDeclaration) {
+    override fun lower(irBody: IrBody, newIrFunction: IrDeclaration) {
         if (newIrFunction !is IrFunction) return
 
         newIrFunction.originalFunction?.let { irFunction ->
@@ -108,7 +109,7 @@ open class DefaultArgumentDispatchFunctionBodyLowering(open val context: CommonB
 
             val builder = context.createIrBuilder(newIrFunction.symbol)
 
-            newIrFunction.body = builder.irBlockBody(newIrFunction) {
+            (newIrFunction.body as IrBlockBody).statements += builder.irBlockBody(newIrFunction) {
                 val params = mutableListOf<IrVariable>()
                 val variables = mutableMapOf<IrValueDeclaration, IrValueDeclaration>()
 
@@ -176,7 +177,7 @@ open class DefaultArgumentDispatchFunctionBodyLowering(open val context: CommonB
                     is IrSimpleFunction -> +irReturn(dispatchToImplementation(irFunction, newIrFunction, params))
                     else -> error("Unknown function declaration")
                 }
-            }
+            }.statements
         }
     }
 
@@ -475,6 +476,8 @@ private fun IrFunction.generateDefaultsFunctionImpl(
             }
         }
     }
+
+    newFunction.body = IrBlockBodyImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET)
 
     return newFunction
 }
