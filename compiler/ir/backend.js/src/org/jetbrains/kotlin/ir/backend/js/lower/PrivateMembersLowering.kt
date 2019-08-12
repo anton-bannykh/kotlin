@@ -5,8 +5,8 @@
 
 package org.jetbrains.kotlin.ir.backend.js.lower
 
+import org.jetbrains.kotlin.backend.common.BodyLoweringPass
 import org.jetbrains.kotlin.backend.common.ClassLoweringPass
-import org.jetbrains.kotlin.backend.common.NullableBodyLoweringPass
 import org.jetbrains.kotlin.backend.common.descriptors.WrappedSimpleFunctionDescriptor
 import org.jetbrains.kotlin.backend.common.descriptors.WrappedValueParameterDescriptor
 import org.jetbrains.kotlin.backend.common.ir.copyTo
@@ -19,11 +19,7 @@ import org.jetbrains.kotlin.ir.declarations.impl.IrFunctionImpl
 import org.jetbrains.kotlin.ir.declarations.impl.IrValueParameterImpl
 import org.jetbrains.kotlin.ir.declarations.impl.MappingKey
 import org.jetbrains.kotlin.ir.expressions.*
-import org.jetbrains.kotlin.ir.expressions.impl.IrCallImpl
-import org.jetbrains.kotlin.ir.expressions.impl.IrFunctionReferenceImpl
-import org.jetbrains.kotlin.ir.expressions.impl.IrGetValueImpl
-import org.jetbrains.kotlin.ir.expressions.impl.IrPropertyReferenceImpl
-import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
+import org.jetbrains.kotlin.ir.expressions.impl.*
 import org.jetbrains.kotlin.ir.symbols.impl.IrSimpleFunctionSymbolImpl
 import org.jetbrains.kotlin.ir.symbols.impl.IrValueParameterSymbolImpl
 import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
@@ -39,7 +35,6 @@ private var IrSimpleFunction.correspondingMember by mapping(object : MappingKey<
 class PrivateMembersLowering(val context: JsIrBackendContext) : ClassLoweringPass {
 
     override fun lower(irClass: IrClass) {
-
 
         irClass.declarations.transformFlat {
             when (it) {
@@ -102,6 +97,15 @@ class PrivateMembersLowering(val context: JsIrBackendContext) : ClassLoweringPas
         function.correspondingStatic = staticFunction
         staticFunction.correspondingMember = function
 
+        function.body?.let {
+            staticFunction.body = when (it) {
+                is IrBlockBody -> IrBlockBodyImpl(it.startOffset, it.endOffset)
+                is IrExpressionBody -> IrExpressionBodyImpl(IrErrorExpressionImpl(it.startOffset, it.endOffset, function.returnType, "Body copy stub"))
+                is IrSyntheticBody -> it
+                else -> error("Unexpected body kind: ${it.javaClass}")
+            }
+        }
+
         staticFunction.valueParameters += function.valueParameters.map {
             // TODO better way to avoid copying default value
             it.copyTo(staticFunction, index = it.index + 1, defaultValue = null).apply { defaultValue = it.defaultValue }
@@ -111,11 +115,9 @@ class PrivateMembersLowering(val context: JsIrBackendContext) : ClassLoweringPas
     }
 }
 
-class PrivateMemberBodiesLowering(val context: JsIrBackendContext): NullableBodyLoweringPass {
+class PrivateMemberBodiesLowering(val context: JsIrBackendContext): BodyLoweringPass {
 
-    override fun lower(irBody: IrBody?, staticFunction: IrDeclaration) {
-
-        var body = irBody
+    override fun lower(irBody: IrBody, staticFunction: IrDeclaration) {
 
         if (staticFunction is IrSimpleFunction) {
             staticFunction.correspondingMember?.let { function ->
@@ -131,19 +133,23 @@ class PrivateMemberBodiesLowering(val context: JsIrBackendContext): NullableBody
 
                 val parameterMapping = oldParameters.zip(newParameters).toMap()
 
-                staticFunction.body = function.body?.deepCopyWithSymbols(staticFunction)
+                function.body?.deepCopyWithSymbols(staticFunction)?.let { bodyCopy ->
+                    when (bodyCopy) {
+                        is IrBlockBody -> (irBody as IrBlockBodyImpl).statements.addAll(bodyCopy.statements)
+                        is IrExpressionBody -> (irBody as IrExpressionBody).expression = bodyCopy.expression
+                        else -> Unit
+                    }
+                }
 
                 staticFunction.transform(object : IrElementTransformerVoid() {
                     override fun visitGetValue(expression: IrGetValue) = parameterMapping[expression.symbol.owner]?.let {
                         expression.run { IrGetValueImpl(startOffset, endOffset, type, it.symbol, origin) }
                     } ?: expression
                 }, null)
-
-                body = staticFunction.body
             }
         }
 
-        body?.transform(object : IrElementTransformerVoid() {
+        irBody.transform(object : IrElementTransformerVoid() {
             override fun visitCall(expression: IrCall): IrExpression {
                 super.visitCall(expression)
 
