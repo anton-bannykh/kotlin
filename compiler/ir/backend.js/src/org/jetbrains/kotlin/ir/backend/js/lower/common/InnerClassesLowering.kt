@@ -8,7 +8,6 @@ package org.jetbrains.kotlin.ir.backend.js.lower.common
 import org.jetbrains.kotlin.backend.common.BackendContext
 import org.jetbrains.kotlin.backend.common.BodyLoweringPass
 import org.jetbrains.kotlin.backend.common.ClassLoweringPass
-import org.jetbrains.kotlin.backend.common.NullableBodyLoweringPass
 import org.jetbrains.kotlin.backend.common.lower.VariableRemapper
 import org.jetbrains.kotlin.backend.common.lower.createIrBuilder
 import org.jetbrains.kotlin.ir.IrStatement
@@ -37,15 +36,19 @@ class InnerClassesDeclarationLowering(val context: BackendContext, val data: Con
 
         // TODO This lowering removes an old constructor, while it is still referenced
         irClass.transformDeclarationsFlat { irMember ->
-            (irMember as? IrConstructor)?.let {
-                val newConstructor = data.declarationFactory.getInnerClassConstructorWithOuterThisParameter(it)
+            (irMember as? IrConstructor)?.let { oldConstructor ->
+                val newConstructor = data.declarationFactory.getInnerClassConstructorWithOuterThisParameter(oldConstructor)
+                newConstructor.body = oldConstructor.body
+                oldConstructor.valueParameters.forEach { param ->
+                    newConstructor.valueParameters[param.index + 1].defaultValue = param.defaultValue
+                }
                 listOf(newConstructor)
             }
         }
     }
 }
 
-class InnerClassesMemberBodyLowering(val context: BackendContext, val data: ContextData) : NullableBodyLoweringPass {
+class InnerClassesMemberBodyLowering(val context: BackendContext, val data: ContextData) : BodyLoweringPass {
 
     private val IrValueSymbol.classForImplicitThis: IrClass?
         // TODO: is this the correct way to get the class?
@@ -55,7 +58,7 @@ class InnerClassesMemberBodyLowering(val context: BackendContext, val data: Cont
         else
             null
 
-    override fun lower(irBody: IrBody?, container: IrDeclaration) {
+    override fun lower(irBody: IrBody, container: IrDeclaration) {
         val irClass = container.parent as? IrClass ?: return
 
         if (!irClass.isInner) return
@@ -77,36 +80,34 @@ class InnerClassesMemberBodyLowering(val context: BackendContext, val data: Cont
         if (container is IrConstructor) {
             // TODO ensure body is null?
             val loweredConstructor = container
-            val originalConstructor = data.declarationFactory.getInnerClassConstructorWithInnerThisParameter(loweredConstructor)
             val outerThisParameter = loweredConstructor.valueParameters[0]
 
-            val blockBody =
-                originalConstructor.body as? IrBlockBody ?: throw AssertionError("Unexpected constructor body: ${originalConstructor.body}")
+            val blockBody = loweredConstructor.body as? IrBlockBody
+                ?: throw AssertionError("Unexpected constructor body: ${loweredConstructor.body}")
+
             context.createIrBuilder(loweredConstructor.symbol, loweredConstructor.startOffset, loweredConstructor.endOffset).apply {
                 blockBody.statements.add(0, irSetField(irGet(irClass.thisReceiver!!), parentThisField, irGet(outerThisParameter)))
             }
             if (blockBody.statements.find { it is IrInstanceInitializerCall } == null) {
                 val delegatingConstructorCall =
                     blockBody.statements.find { it is IrDelegatingConstructorCall } as IrDelegatingConstructorCall?
-                        ?: throw AssertionError("Delegating constructor call expected: ${originalConstructor.dump()}")
+                        ?: throw AssertionError("Delegating constructor call expected: ${loweredConstructor.dump()}")
                 delegatingConstructorCall.apply { dispatchReceiver = IrGetValueImpl(startOffset, endOffset, outerThisParameter.symbol) }
             }
             blockBody.patchDeclarationParents(loweredConstructor)
 
             val oldConstructorParameterToNew = primaryConstructorParameterMap(container)
 
-            for ((oldParam, newParam) in oldConstructorParameterToNew.entries) {
-                newParam.defaultValue = oldParam.defaultValue
-                newParam.defaultValue?.patchDeclarationParents(container)
-                newParam.defaultValue?.transformChildrenVoid(VariableRemapper(oldConstructorParameterToNew))
-            }
-
             blockBody.transformChildrenVoid(VariableRemapper(oldConstructorParameterToNew))
 
             loweredConstructor.body = blockBody
             blockBody.fixThisReference(container, irClass)
         } else if (irBody != null) {
-            if (container is IrField || container is IrAnonymousInitializer) {
+            if (container is IrValueParameter) {
+                container.defaultValue?.patchDeclarationParents(container.parent)
+            }
+
+            if (container is IrField || container is IrAnonymousInitializer || container is IrValueParameter) {
                 // TODO Property initializer references primary constructor value parameters. Doesn't feel right to be honest
                 val primaryConstructor = irClass.declarations.find { it is IrConstructor && it.isPrimary } as? IrConstructor
                 if (primaryConstructor != null) {
