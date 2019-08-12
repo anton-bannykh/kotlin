@@ -7,7 +7,6 @@ package org.jetbrains.kotlin.ir.backend.js.lower
 
 import org.jetbrains.kotlin.backend.common.BodyLoweringPass
 import org.jetbrains.kotlin.backend.common.DeclarationTransformer
-import org.jetbrains.kotlin.backend.common.NullableBodyLoweringPass
 import org.jetbrains.kotlin.backend.common.atMostOne
 import org.jetbrains.kotlin.backend.common.descriptors.WrappedFieldDescriptor
 import org.jetbrains.kotlin.backend.common.ir.copyTo
@@ -38,9 +37,9 @@ import org.jetbrains.kotlin.name.Name
 
 data class DirectThrowableSuccessors(val klass: IrClass, val message: IrField, val cause: IrField)
 
-private var IrSimpleFunction.causeField by mapping(object : MappingKey<IrSimpleFunction, IrField>{})
+private var IrSimpleFunction.causeField by mapping(object : MappingKey<IrSimpleFunction, IrField> {})
 
-private var IrSimpleFunction.messageField by mapping(object : MappingKey<IrSimpleFunction, IrField>{})
+private var IrSimpleFunction.messageField by mapping(object : MappingKey<IrSimpleFunction, IrField> {})
 
 private var IrClass.pendingSuperUsages by mapping(object : MappingKey<IrClass, DirectThrowableSuccessors> {})
 
@@ -144,6 +143,7 @@ class ThrowableSuccessorsLowering(val context: JsIrBackendContext) : Declaration
 //            val returnValue = JsIrBuilder.buildGetField(field.symbol, thisReceiver, type = field.type)
 //            val returnStatement = JsIrBuilder.buildReturn(function.symbol, returnValue, nothingType)
 //            function.body = JsIrBuilder.buildBlockBody(listOf(returnStatement))
+            function.body = IrBlockBodyImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET)
 
             return function
         }
@@ -156,7 +156,7 @@ class ThrowableSuccessorsLowering(val context: JsIrBackendContext) : Declaration
             ?: irClass.declarations.filterIsInstance<IrSimpleFunction>().single { it.overriddenSymbols.any { s -> s == irBase } }
 }
 
-class ThrowableSuccessorsBodyLowering(val context: JsIrBackendContext) : NullableBodyLoweringPass {
+class ThrowableSuccessorsBodyLowering(val context: JsIrBackendContext) : BodyLoweringPass {
 
     private val unitType get() = context.irBuiltIns.unitType
     private val nothingNType get() = context.irBuiltIns.nothingNType
@@ -195,44 +195,39 @@ class ThrowableSuccessorsBodyLowering(val context: JsIrBackendContext) : Nullabl
     private val captureStackFunction = context.captureStackSymbol
     private val newThrowableFunction = context.newThrowableSymbol
 
-    override fun lower(irBody: IrBody?, container: IrDeclaration) {
-        var body = irBody
-
+    override fun lower(irBody: IrBody, container: IrDeclaration) {
         (container as? IrSimpleFunction)?.let { function ->
             container.messageField?.let { field ->
                 val thisReceiver = JsIrBuilder.buildGetValue(function.dispatchReceiverParameter!!.symbol)
                 val returnValue = JsIrBuilder.buildGetField(field.symbol, thisReceiver, type = field.type)
                 val returnStatement = JsIrBuilder.buildReturn(function.symbol, returnValue, nothingType)
-                function.body = JsIrBuilder.buildBlockBody(listOf(returnStatement))
-                body = function.body
+                (function.body as IrBlockBody).statements += returnStatement
             }
 
             container.causeField?.let { field ->
                 val thisReceiver = JsIrBuilder.buildGetValue(function.dispatchReceiverParameter!!.symbol)
                 val returnValue = JsIrBuilder.buildGetField(field.symbol, thisReceiver, type = field.type)
                 val returnStatement = JsIrBuilder.buildReturn(function.symbol, returnValue, nothingType)
-                function.body = JsIrBuilder.buildBlockBody(listOf(returnStatement))
-                body = function.body
+                (function.body as IrBlockBody).statements += returnStatement
             }
         }
 
-        if (body != null) {
-            var parent = container.parent
-            while (parent is IrDeclaration) {
-                if (parent is IrClass) {
-                    parent.pendingSuperUsages?.let {
-                        body?.transformChildren(ThrowableDirectSuccessorTransformer(it), it.klass)
-                    }
+
+        var parent = container.parent
+        while (parent is IrDeclaration) {
+            if (parent is IrClass) {
+                parent.pendingSuperUsages?.let {
+                    irBody.transformChildren(ThrowableDirectSuccessorTransformer(it), it.klass)
                 }
-                parent = parent.parent
             }
+            parent = parent.parent
         }
 
-        if (container is IrConstructor && container.isPrimary && body != null) {
+        if (container is IrConstructor && container.isPrimary) {
             container.transform(ThrowableNameSetterTransformer(), container.parent)
         }
-        body?.transform(ThrowablePropertiesUsageTransformer(), null)
-        body?.transform(ThrowableInstanceCreationLowering(), null)
+        irBody.transform(ThrowablePropertiesUsageTransformer(), null)
+        irBody.transform(ThrowableInstanceCreationLowering(), null)
     }
 
     inner class ThrowableNameSetterTransformer : IrElementTransformer<IrDeclarationParent> {
