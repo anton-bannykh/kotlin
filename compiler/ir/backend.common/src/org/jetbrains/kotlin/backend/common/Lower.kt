@@ -241,47 +241,34 @@ fun NullableBodyLoweringPass.toDeclarationTransformer(): DeclarationTransformer 
                     element.acceptChildrenVoid(this)
                 }
 
-                private fun lowerAnnotations(declaration: IrDeclaration) {
-                    declaration.annotations.forEach {
-                        lower(it, declaration)
-                    }
-                    declaration.advance()
-                }
-
                 override fun visitDeclaration(declaration: IrDeclaration) {
-                    lowerAnnotations(declaration)
                     declaration.acceptChildrenVoid(this)
                     declaration.advance()
                 }
 
                 override fun visitAnonymousInitializer(declaration: IrAnonymousInitializer) {
-                    lowerAnnotations(declaration)
                     lower(declaration.body, declaration)
                     declaration.advance()
                 }
 
                 override fun visitEnumEntry(declaration: IrEnumEntry) {
-                    lowerAnnotations(declaration)
                     lower(declaration.initializerExpression, declaration)
                     declaration.correspondingClass?.accept(this, null)
                     declaration.advance()
                 }
 
                 override fun visitField(declaration: IrField) {
-                    lowerAnnotations(declaration)
                     lower(declaration.initializer, declaration)
                     declaration.advance()
                 }
 
                 override fun visitFunction(declaration: IrFunction) {
-                    lowerAnnotations(declaration)
                     declaration.valueParameters.forEach { visitValueParameter(it) }
                     lower(declaration.body, declaration)
                     declaration.advance()
                 }
 
                 override fun visitValueParameter(declaration: IrValueParameter) {
-                    lowerAnnotations(declaration)
                     lower(declaration.defaultValue, declaration)
                     declaration.advance()
                 }
