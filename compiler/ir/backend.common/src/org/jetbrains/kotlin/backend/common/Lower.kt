@@ -53,10 +53,6 @@ interface BodyLoweringPass : FileLoweringPass {
     override fun lower(irFile: IrFile) = runOnFilePostfix(irFile)
 }
 
-interface NullableBodyLoweringPass {
-    fun lower(irBody: IrBody?, container: IrDeclaration)
-}
-
 fun FileLoweringPass.lower(moduleFragment: IrModuleFragment) = moduleFragment.files.forEach { lower(it) }
 
 fun ClassLoweringPass.runOnFilePostfix(irFile: IrFile) {
@@ -245,57 +241,6 @@ fun BodyLoweringPass.toDeclarationTransformer(): DeclarationTransformer {
 
                 override fun visitValueParameter(declaration: IrValueParameter) {
                     declaration.defaultValue?.let { lower(it, declaration) }
-                    declaration.advance()
-                }
-
-                override fun visitBody(body: IrBody) {
-                    error("Missed a body")
-                }
-            }, null)
-            declaration.advance()
-            return null
-        }
-    }
-}
-
-// TODO should it really be run recursively?
-fun NullableBodyLoweringPass.toDeclarationTransformer(): DeclarationTransformer {
-    return object : DeclarationTransformer {
-        override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
-            declaration.accept(object : IrElementVisitorVoid {
-                override fun visitElement(element: IrElement) {
-                    element.acceptChildrenVoid(this)
-                }
-
-                override fun visitDeclaration(declaration: IrDeclaration) {
-                    declaration.acceptChildrenVoid(this)
-                    declaration.advance()
-                }
-
-                override fun visitAnonymousInitializer(declaration: IrAnonymousInitializer) {
-                    lower(declaration.body, declaration)
-                    declaration.advance()
-                }
-
-                override fun visitEnumEntry(declaration: IrEnumEntry) {
-                    lower(declaration.initializerExpression, declaration)
-                    declaration.correspondingClass?.accept(this, null)
-                    declaration.advance()
-                }
-
-                override fun visitField(declaration: IrField) {
-                    lower(declaration.initializer, declaration)
-                    declaration.advance()
-                }
-
-                override fun visitFunction(declaration: IrFunction) {
-                    declaration.valueParameters.forEach { visitValueParameter(it) }
-                    lower(declaration.body, declaration)
-                    declaration.advance()
-                }
-
-                override fun visitValueParameter(declaration: IrValueParameter) {
-                    lower(declaration.defaultValue, declaration)
                     declaration.advance()
                 }
 
