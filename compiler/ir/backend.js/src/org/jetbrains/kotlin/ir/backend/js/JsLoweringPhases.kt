@@ -23,6 +23,7 @@ import org.jetbrains.kotlin.ir.declarations.impl.IrDeclarationWithBodyBase
 import org.jetbrains.kotlin.ir.declarations.impl.IrFileImpl
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.util.*
+import org.jetbrains.kotlin.ir.visitors.IrElementVisitorVoid
 import java.util.*
 import kotlin.collections.ArrayList
 
@@ -696,23 +697,25 @@ class MutableController : StageController {
 
                         val lowering = perFilePhaseList[i - 1]
 
-                        val result = if (lowering.bodiesEnabled)
-                            withBodies { lowering.declarationTransformer(context, data).transformFlat(topLevelDeclaration) }
-                        else
-                            lowering.declarationTransformer(context, data).transformFlat(topLevelDeclaration)
+                        if (lowering !is BodyLowering) {
+                            val result = if (lowering.bodiesEnabled)
+                                withBodies { lowering.declarationTransformer(context, data).transformFlat(topLevelDeclaration) }
+                            else
+                                lowering.declarationTransformer(context, data).transformFlat(topLevelDeclaration)
 
-                        actualLoweringInvocations++
+                            actualLoweringInvocations++
 
-                        topLevelDeclaration.loweredUpTo = i
-                        if (result != null) {
-                            result.forEach {
-                                it.loweredUpTo = i
-                                it.parent = fileBefore
+                            topLevelDeclaration.loweredUpTo = i
+                            if (result != null) {
+                                result.forEach {
+                                    it.loweredUpTo = i
+                                    it.parent = fileBefore
+                                }
+
+                                fileBefore.declarations.remove(topLevelDeclaration)
+
+                                fileBefore.declarations += result
                             }
-
-                            fileBefore.declarations.remove(topLevelDeclaration)
-
-                            fileBefore.declarations += result
                         }
                     }
                 }
@@ -794,10 +797,26 @@ class MutableController : StageController {
 
             for (file in moduleFragment.files + dependencyModules.flatMap { it.files }) {
                 for (decl in ArrayList(file.declarations)) {
-                    if (decl.loweredUpTo < perFilePhaseList.size) {
+                    if (decl.loweredUpTo < currentStage - 1) {
                         lazyLower(decl)
                         changed = true
                     }
+
+                    decl.accept(object : IrElementVisitorVoid {
+                        override fun visitElement(element: IrElement) {
+                            element.acceptChildren(this, null)
+                        }
+
+                        override fun visitDeclaration(declaration: IrDeclaration) {
+                            declaration.acceptChildren(this, null)
+                            if (declaration is IrDeclarationWithBodyBase<*, *> && currentStage - 1 > declaration.bodyLoweredUpTo) {
+                                changed = true
+                                withBodies {
+                                    lowerBody(declaration)
+                                }
+                            }
+                        }
+                    }, null)
                 }
             }
             if (!changed) break
@@ -835,28 +854,28 @@ class MutableController : StageController {
     }
 
     override fun lowerBody(declaration: IrDeclarationWithBodyBase<*, *>) {
-//        if (declaration.bodyLoweredUpTo + 1 < stageController.currentStage) {
-//            lazyLower(declaration)
-//            for (i in (declaration.bodyLoweredUpTo + 1) until stageController.currentStage) {
-//                withStage(i) {
-//                    val fileBefore = declaration.fileOrNull as? IrFileImpl
-//                    if (fileBefore != null) {
-//                        val body = declaration.getBodyImpl()
-//                        if (body != null) {
-//                            val module = fileBefore.symbol.descriptor.containingDeclaration
-//                            val data = dataMap[module]!!
-//
-//                            val lowering = perFilePhaseList[i - 1]
-//
-//                            if (lowering is BodyLowering) {
-//                                lowering.bodyLowering(context, data).lower(body, declaration)
-//                            }
-//                        }
-//                    }
-//                    declaration.bodyLoweredUpTo = i
-//                }
-//            }
-//        }
+        if (declaration.bodyLoweredUpTo + 1 < stageController.currentStage) {
+            lazyLower(declaration)
+            for (i in (declaration.bodyLoweredUpTo + 1) until stageController.currentStage) {
+                withStage(i) {
+                    val fileBefore = declaration.fileOrNull as? IrFileImpl
+                    if (fileBefore != null) {
+                        val body = declaration.getBodyImpl()
+                        if (body != null) {
+                            val module = fileBefore.symbol.descriptor.containingDeclaration
+                            val data = dataMap[module]!!
+
+                            val lowering = perFilePhaseList[i - 1]
+
+                            if (lowering is BodyLowering) {
+                                lowering.bodyLowering(context, data).lower(body, declaration)
+                            }
+                        }
+                    }
+                    declaration.bodyLoweredUpTo = i
+                }
+            }
+        }
     }
 
     var deserializer: IrDeserializer? = null

@@ -134,16 +134,16 @@ abstract class IrDeclarationWithBodyBase<B: IrBody, T : CarrierWithBody<B, T>>(
     override var bodyField: B? = null
 
     fun getBodyImpl(): B? {
-//        if (stageController.bodiesEnabled && bodyLoweredUpTo + 1 < stageController.currentStage) {
-//            stageController.lowerBody(this)
-//        }
+        if (stageController.bodiesEnabled && bodyLoweredUpTo + 1 < stageController.currentStage) {
+            stageController.lowerBody(this)
+        }
         return getCarrier().bodyField
     }
 
     fun setBodyImpl(b: B?) {
-//        if (stageController.bodiesEnabled && bodyLoweredUpTo + 1< stageController.currentStage) {
-//            stageController.lowerBody(this)
-//        }
+        if (stageController.bodiesEnabled && bodyLoweredUpTo + 1< stageController.currentStage) {
+            stageController.lowerBody(this)
+        }
 
         if (getCarrier().bodyField !== b) {
             setCarrier().bodyField = b

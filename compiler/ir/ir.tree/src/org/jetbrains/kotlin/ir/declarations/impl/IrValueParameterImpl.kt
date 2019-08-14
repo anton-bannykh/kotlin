@@ -21,6 +21,7 @@ import org.jetbrains.kotlin.descriptors.ValueParameterDescriptor
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.declarations.impl.carriers.ValueParameterCarrier
+import org.jetbrains.kotlin.ir.declarations.stageController
 import org.jetbrains.kotlin.ir.expressions.IrExpressionBody
 import org.jetbrains.kotlin.ir.symbols.IrValueParameterSymbol
 import org.jetbrains.kotlin.ir.symbols.impl.IrValueParameterSymbolImpl
@@ -94,10 +95,14 @@ class IrValueParameterImpl(
         transformer.visitValueParameter(this, data) as IrValueParameter
 
     override fun <D> acceptChildren(visitor: IrElementVisitor<Unit, D>, data: D) {
-        defaultValue?.accept(visitor, data)
+        if (stageController.bodiesEnabled) {
+            defaultValue?.accept(visitor, data)
+        }
     }
 
     override fun <D> transformChildren(transformer: IrElementTransformer<D>, data: D) {
-        defaultValue = defaultValue?.transform(transformer, data)
+        if (stageController.bodiesEnabled) {
+            defaultValue = defaultValue?.transform(transformer, data)
+        }
     }
 }
