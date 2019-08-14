@@ -36,7 +36,7 @@ abstract class IrFunctionBase<T : FunctionBaseCarrier<T>>(
     override val isExternal: Boolean,
     returnType: IrType
 ) :
-    IrDeclarationBase<T>(startOffset, endOffset, origin),
+    IrDeclarationWithBodyBase<IrBody, T>(startOffset, endOffset, origin),
     IrFunction,
     FunctionBaseCarrier<T> {
 
@@ -83,8 +83,6 @@ abstract class IrFunctionBase<T : FunctionBaseCarrier<T>>(
 
     override val valueParameters: SimpleList<IrValueParameter> =
         DumbPersistentList()
-
-    override var bodyField: IrBody? = null
 
     final override var body: IrBody?
         get() = getCarrier().bodyField

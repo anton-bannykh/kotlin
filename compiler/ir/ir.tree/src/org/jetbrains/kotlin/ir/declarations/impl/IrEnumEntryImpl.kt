@@ -33,7 +33,7 @@ class IrEnumEntryImpl(
     origin: IrDeclarationOrigin,
     override val symbol: IrEnumEntrySymbol,
     override val name: Name
-) : IrDeclarationBase<EnumEntryCarrier>(startOffset, endOffset, origin),
+) : IrDeclarationWithBodyBase<IrExpressionBody, EnumEntryCarrier>(startOffset, endOffset, origin),
     IrEnumEntry,
     EnumEntryCarrier {
 
@@ -61,13 +61,11 @@ class IrEnumEntryImpl(
             }
         }
 
-    override var initializerExpressionField: IrExpressionBody? = null
-
     override var initializerExpression: IrExpressionBody?
-        get() = getCarrier().initializerExpressionField
+        get() = getCarrier().bodyField
         set(v) {
             if (initializerExpression !== v) {
-                setCarrier().initializerExpressionField = v
+                setCarrier().bodyField = v
             }
         }
 

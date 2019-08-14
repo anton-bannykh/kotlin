@@ -19,6 +19,8 @@ package org.jetbrains.kotlin.ir.declarations.impl
 import org.jetbrains.kotlin.ir.IrElementBase
 import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.declarations.impl.carriers.CarrierBase
+import org.jetbrains.kotlin.ir.declarations.impl.carriers.CarrierWithBody
+import org.jetbrains.kotlin.ir.expressions.IrBody
 import org.jetbrains.kotlin.ir.expressions.IrExpressionBody
 
 abstract class IrDeclarationBase<T : CarrierBase<T>>(
@@ -112,3 +114,31 @@ interface HasUserdata {
 }
 
 interface MappingKey<K : IrDeclaration, V>
+
+abstract class IrDeclarationWithBodyBase<B: IrBody, T : CarrierWithBody<B, T>>(
+    startOffset: Int,
+    endOffset: Int,
+    origin: IrDeclarationOrigin
+) : IrDeclarationBase<T>(startOffset, endOffset, origin), CarrierWithBody<B, T> {
+
+    var bodyLoweredUpTo = stageController.currentStage
+
+    override var bodyField: B? = null
+
+    fun getBodyImpl(): B? {
+//        if (stageController.bodiesEnabled && bodyLoweredUpTo + 1 < stageController.currentStage) {
+//            stageController.lowerBody(this)
+//        }
+        return getCarrier().bodyField
+    }
+
+    fun setBodyImpl(b: B?) {
+//        if (stageController.bodiesEnabled && bodyLoweredUpTo + 1< stageController.currentStage) {
+//            stageController.lowerBody(this)
+//        }
+
+        if (bodyField !== b) {
+            setCarrier().bodyField = b
+        }
+    }
+}
