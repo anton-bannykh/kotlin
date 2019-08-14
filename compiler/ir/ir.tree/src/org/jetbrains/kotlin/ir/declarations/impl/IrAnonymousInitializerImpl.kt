@@ -42,11 +42,9 @@ class IrAnonymousInitializerImpl(
     override val descriptor: ClassDescriptor get() = symbol.descriptor
 
     override var body: IrBlockBody
-        get() = getCarrier().bodyField!!
+        get() = getBodyImpl()!!
         set(v) {
-            if (getCarrier().bodyField !== v) {
-                setCarrier().bodyField = v
-            }
+            setBodyImpl(v)
         }
 
     override fun <R, D> accept(visitor: IrElementVisitor<R, D>, data: D): R {

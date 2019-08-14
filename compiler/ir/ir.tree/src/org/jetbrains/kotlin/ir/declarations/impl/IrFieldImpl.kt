@@ -77,11 +77,9 @@ class IrFieldImpl(
     override val descriptor: PropertyDescriptor = symbol.descriptor
 
     override var initializer: IrExpressionBody?
-        get() = getCarrier().bodyField
+        get() = getBodyImpl()
         set(v) {
-            if (initializer !== v) {
-                setCarrier().bodyField = v
-            }
+            setBodyImpl(v)
         }
 
     @Suppress("OverridingDeprecatedMember")
