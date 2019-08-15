@@ -33,13 +33,9 @@ class IrExpressionBodyImpl(
     constructor(expression: IrExpression) : this(expression.startOffset, expression.endOffset, expression)
 
     override var expression: IrExpression = expression
-        get() {
-            ensureLowered()
-            return field
-        }
+        get() = checkEnabled { field }
         set(e) {
-            ensureLowered()
-            field = e
+            checkEnabled { field = e }
         }
 
     override fun <R, D> accept(visitor: IrElementVisitor<R, D>, data: D): R =

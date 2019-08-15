@@ -67,6 +67,9 @@ class IrEnumEntryImpl(
         get() = getCarrier().initializerExpressionField
         set(v) {
             if (initializerExpression !== v) {
+                if (v is IrBodyBase) {
+                    v.container = this
+                }
                 setCarrier().initializerExpressionField = v
             }
         }

@@ -35,10 +35,7 @@ class IrBlockBodyImpl(
     }
 
     override val statements: MutableList<IrStatement> = ArrayList()
-        get() {
-            ensureLowered()
-            return field
-        }
+        get() = checkEnabled { field }
 
     override fun <R, D> accept(visitor: IrElementVisitor<R, D>, data: D): R {
         return visitor.visitBlockBody(this, data)

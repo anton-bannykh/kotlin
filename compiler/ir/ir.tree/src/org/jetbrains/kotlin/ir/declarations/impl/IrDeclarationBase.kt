@@ -137,8 +137,13 @@ abstract class IrBodyBase(
             }
         }
 
-    override fun ensureLowered() {
+    inline fun <T> checkEnabled(fn: () -> T): T {
         if (!stageController.bodiesEnabled) error("Bodies disabled!")
+        return fn()
+    }
+
+    override fun ensureLowered() {
+//        if (!stageController.bodiesEnabled) error("Bodies disabled!")
         // TODO
     }
 }
