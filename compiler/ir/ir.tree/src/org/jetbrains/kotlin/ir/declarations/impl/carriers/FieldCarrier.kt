@@ -10,13 +10,14 @@ import org.jetbrains.kotlin.ir.declarations.MetadataSource
 import org.jetbrains.kotlin.ir.expressions.IrExpressionBody
 import org.jetbrains.kotlin.ir.symbols.IrPropertySymbol
 
-interface FieldCarrier : CarrierWithBody<IrExpressionBody, FieldCarrier> {
+interface FieldCarrier : CarrierBase<FieldCarrier> {
+    var initializerField: IrExpressionBody?
     var correspondingPropertySymbolField: IrPropertySymbol?
     var metadataField: MetadataSource.Property?
 
     override fun eq(other: FieldCarrier): Boolean {
         return parentField === other.parentField &&
-                bodyField === other.bodyField &&
+                initializerField === other.initializerField &&
                 correspondingPropertySymbolField === other.correspondingPropertySymbolField &&
                 metadataField === other.metadataField
     }
@@ -24,7 +25,7 @@ interface FieldCarrier : CarrierWithBody<IrExpressionBody, FieldCarrier> {
     override fun clone(): FieldCarrier {
         return FieldCarrierImpl(
             parentField,
-            bodyField,
+            initializerField,
             correspondingPropertySymbolField,
             metadataField
         )
@@ -33,7 +34,7 @@ interface FieldCarrier : CarrierWithBody<IrExpressionBody, FieldCarrier> {
 
 class FieldCarrierImpl(
     override var parentField: IrDeclarationParent?,
-    override var bodyField: IrExpressionBody?,
+    override var initializerField: IrExpressionBody?,
     override var correspondingPropertySymbolField: IrPropertySymbol?,
     override var metadataField: MetadataSource.Property?
 ): FieldCarrier

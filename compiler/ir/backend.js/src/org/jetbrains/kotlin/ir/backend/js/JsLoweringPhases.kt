@@ -19,7 +19,6 @@ import org.jetbrains.kotlin.ir.backend.js.lower.inline.RemoveInlineFunctionsLowe
 import org.jetbrains.kotlin.ir.backend.js.lower.inline.ReturnableBlockLowering
 import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.declarations.impl.IrDeclarationBase
-import org.jetbrains.kotlin.ir.declarations.impl.IrDeclarationWithBodyBase
 import org.jetbrains.kotlin.ir.declarations.impl.IrFileImpl
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.util.*
@@ -832,31 +831,6 @@ class MutableController : StageController {
 
     override fun lazyLower(file: IrFile) {
         lowerUpTo(file, currentStage)
-    }
-
-    override fun lowerBody(declaration: IrDeclarationWithBodyBase<*, *>) {
-//        if (declaration.bodyLoweredUpTo + 1 < stageController.currentStage) {
-//            lazyLower(declaration)
-//            for (i in (declaration.bodyLoweredUpTo + 1) until stageController.currentStage) {
-//                withStage(i) {
-//                    val fileBefore = declaration.fileOrNull as? IrFileImpl
-//                    if (fileBefore != null) {
-//                        val body = declaration.getBodyImpl()
-//                        if (body != null) {
-//                            val module = fileBefore.symbol.descriptor.containingDeclaration
-//                            val data = dataMap[module]!!
-//
-//                            val lowering = perFilePhaseList[i - 1]
-//
-//                            if (lowering is BodyLowering) {
-//                                lowering.bodyLowering(context, data).lower(body, declaration)
-//                            }
-//                        }
-//                    }
-//                    declaration.bodyLoweredUpTo = i
-//                }
-//            }
-//        }
     }
 
     var deserializer: IrDeserializer? = null

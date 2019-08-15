@@ -31,7 +31,7 @@ class IrAnonymousInitializerImpl(
     origin: IrDeclarationOrigin,
     override val symbol: IrAnonymousInitializerSymbol,
     override val isStatic: Boolean = false
-) : IrDeclarationWithBodyBase<IrBlockBody, AnonymousInitializerCarrier>(startOffset, endOffset, origin),
+) : IrDeclarationBase<AnonymousInitializerCarrier>(startOffset, endOffset, origin),
     IrAnonymousInitializer,
     AnonymousInitializerCarrier {
 
@@ -40,6 +40,8 @@ class IrAnonymousInitializerImpl(
     }
 
     override val descriptor: ClassDescriptor get() = symbol.descriptor
+
+    override var bodyField: IrBlockBody? = null
 
     override var body: IrBlockBody
         get() = getCarrier().bodyField!!

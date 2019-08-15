@@ -6,7 +6,6 @@
 package org.jetbrains.kotlin.ir.declarations
 
 import com.google.common.collect.Maps
-import org.jetbrains.kotlin.ir.declarations.impl.IrDeclarationWithBodyBase
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.util.transformFlat
 import java.util.*
@@ -22,8 +21,6 @@ interface StageController {
     fun lazyLower(declaration: IrDeclaration) {}
 
     fun lazyLower(file: IrFile) {}
-
-    fun lowerBody(declaration: IrDeclarationWithBodyBase<*, *>) {}
 
     fun tryLoad(symbol: IrSymbol) {}
 

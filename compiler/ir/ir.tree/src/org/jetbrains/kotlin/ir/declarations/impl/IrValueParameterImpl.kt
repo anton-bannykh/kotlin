@@ -42,7 +42,7 @@ class IrValueParameterImpl(
     override val isCrossinline: Boolean,
     override val isNoinline: Boolean
 ) :
-    IrDeclarationWithBodyBase<IrExpressionBody, ValueParameterCarrier>(startOffset, endOffset, origin),
+    IrDeclarationBase<ValueParameterCarrier>(startOffset, endOffset, origin),
     IrValueParameter,
     ValueParameterCarrier {
 
@@ -81,11 +81,13 @@ class IrValueParameterImpl(
         symbol.bind(this)
     }
 
+    override var defaultValueField: IrExpressionBody? = null
+
     override var defaultValue: IrExpressionBody?
-        get() = getCarrier().bodyField
+        get() = getCarrier().defaultValueField
         set(v) {
             if (defaultValue !== v) {
-                setCarrier().bodyField = v
+                setCarrier().defaultValueField = v
             }
         }
 

@@ -8,18 +8,19 @@ package org.jetbrains.kotlin.ir.declarations.impl.carriers
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
 import org.jetbrains.kotlin.ir.expressions.IrExpressionBody
 
-interface ValueParameterCarrier : CarrierWithBody<IrExpressionBody, ValueParameterCarrier> {
+interface ValueParameterCarrier : CarrierBase<ValueParameterCarrier> {
+    var defaultValueField: IrExpressionBody?
 
     override fun eq(other: ValueParameterCarrier): Boolean {
-        return parentField === other.parentField && bodyField === other.bodyField
+        return parentField === other.parentField && defaultValueField === other.defaultValueField
     }
 
     override fun clone(): ValueParameterCarrier {
-        return ValueParameterCarrierImpl(parentField, bodyField)
+        return ValueParameterCarrierImpl(parentField, defaultValueField)
     }
 }
 
 class ValueParameterCarrierImpl(
     override var parentField: IrDeclarationParent?,
-    override var bodyField: IrExpressionBody?
+    override var defaultValueField: IrExpressionBody?
 ) : ValueParameterCarrier

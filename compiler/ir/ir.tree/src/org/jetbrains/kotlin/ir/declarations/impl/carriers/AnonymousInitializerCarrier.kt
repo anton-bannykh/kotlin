@@ -8,7 +8,8 @@ package org.jetbrains.kotlin.ir.declarations.impl.carriers
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
 import org.jetbrains.kotlin.ir.expressions.IrBlockBody
 
-interface AnonymousInitializerCarrier : CarrierWithBody<IrBlockBody, AnonymousInitializerCarrier> {
+interface AnonymousInitializerCarrier : CarrierBase<AnonymousInitializerCarrier> {
+    var bodyField: IrBlockBody?
 
     override fun eq(other: AnonymousInitializerCarrier): Boolean {
         return parentField === other.parentField &&

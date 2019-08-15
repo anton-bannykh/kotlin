@@ -9,20 +9,21 @@ import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
 import org.jetbrains.kotlin.ir.expressions.IrExpressionBody
 
-interface EnumEntryCarrier : CarrierWithBody<IrExpressionBody, EnumEntryCarrier> {
+interface EnumEntryCarrier : CarrierBase<EnumEntryCarrier> {
     var correspondingClassField: IrClass?
+    var initializerExpressionField: IrExpressionBody?
 
     override fun eq(other: EnumEntryCarrier): Boolean {
         return parentField === other.parentField &&
                 correspondingClassField === other.correspondingClassField &&
-                bodyField === other.bodyField
+                initializerExpressionField === other.initializerExpressionField
     }
 
     override fun clone(): EnumEntryCarrier {
         return EnumEntryCarrierImpl(
             parentField,
             correspondingClassField,
-            bodyField
+            initializerExpressionField
         )
     }
 }
@@ -30,5 +31,5 @@ interface EnumEntryCarrier : CarrierWithBody<IrExpressionBody, EnumEntryCarrier>
 class EnumEntryCarrierImpl(
     override var parentField: IrDeclarationParent?,
     override var correspondingClassField: IrClass?,
-    override var bodyField: IrExpressionBody?
+    override var initializerExpressionField: IrExpressionBody?
 ) : EnumEntryCarrier

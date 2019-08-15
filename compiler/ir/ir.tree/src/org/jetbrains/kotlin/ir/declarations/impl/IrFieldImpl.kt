@@ -42,7 +42,7 @@ class IrFieldImpl(
     override val isFinal: Boolean,
     override val isExternal: Boolean,
     override val isStatic: Boolean
-) : IrDeclarationWithBodyBase<IrExpressionBody, FieldCarrier>(startOffset, endOffset, origin),
+) : IrDeclarationBase<FieldCarrier>(startOffset, endOffset, origin),
     IrField,
     FieldCarrier {
 
@@ -76,11 +76,13 @@ class IrFieldImpl(
 
     override val descriptor: PropertyDescriptor = symbol.descriptor
 
+    override var initializerField: IrExpressionBody? = null
+
     override var initializer: IrExpressionBody?
-        get() = getCarrier().bodyField
+        get() = getCarrier().initializerField
         set(v) {
             if (initializer !== v) {
-                setCarrier().bodyField = v
+                setCarrier().initializerField = v
             }
         }
 
