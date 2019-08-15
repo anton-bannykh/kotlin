@@ -21,7 +21,7 @@ import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.declarations.impl.carriers.CarrierBase
 import org.jetbrains.kotlin.ir.declarations.impl.carriers.CarrierWithBody
 import org.jetbrains.kotlin.ir.expressions.IrBody
-import org.jetbrains.kotlin.ir.expressions.IrExpressionBody
+import org.jetbrains.kotlin.ir.expressions.IrCall
 
 abstract class IrDeclarationBase<T : CarrierBase<T>>(
     startOffset: Int,
@@ -42,7 +42,7 @@ abstract class IrDeclarationBase<T : CarrierBase<T>>(
             }
         }
 
-    override val annotations: SimpleList<IrExpressionBody> = DumbPersistentList()
+    override val annotations: SimpleList<IrCall> = DumbPersistentList()
 
     var loweredUpTo = stageController.currentStage
 

@@ -13,8 +13,6 @@ import org.jetbrains.kotlin.ir.declarations.impl.HasUserdata
 import org.jetbrains.kotlin.ir.declarations.impl.IrValueParameterImpl
 import org.jetbrains.kotlin.ir.declarations.impl.MappingKey
 import org.jetbrains.kotlin.ir.expressions.IrCall
-import org.jetbrains.kotlin.ir.expressions.IrExpressionBody
-import org.jetbrains.kotlin.ir.expressions.impl.IrExpressionBodyImpl
 import org.jetbrains.kotlin.ir.util.DeclarationStubGenerator
 import org.jetbrains.kotlin.ir.util.TypeTranslator
 import org.jetbrains.kotlin.resolve.scopes.MemberScope
@@ -51,9 +49,9 @@ abstract class IrLazyDeclarationBase(
         createLazyParent()!!
     }
 
-    override val annotations: SimpleList<IrExpressionBody> by lazyVal {
+    override val annotations: SimpleList<IrCall> by lazy {
         SimpleMutableList(descriptor.annotations.map {
-            IrExpressionBodyImpl(typeTranslator.constantValueGenerator.generateAnnotationConstructorCall(it))
+            typeTranslator.constantValueGenerator.generateAnnotationConstructorCall(it)
         }.toMutableList())
     }
 

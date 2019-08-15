@@ -6,12 +6,11 @@
 package org.jetbrains.kotlin.ir.types
 
 import org.jetbrains.kotlin.ir.expressions.IrCall
-import org.jetbrains.kotlin.ir.expressions.IrExpressionBody
 import org.jetbrains.kotlin.ir.symbols.IrClassifierSymbol
 import org.jetbrains.kotlin.types.Variance
 
 interface IrType {
-    val annotations: List<IrExpressionBody>
+    val annotations: List<IrCall>
 
     /**
      * @return true if this type is equal to [other] symbolically. Note that this is NOT EQUIVALENT to the full type checking algorithm

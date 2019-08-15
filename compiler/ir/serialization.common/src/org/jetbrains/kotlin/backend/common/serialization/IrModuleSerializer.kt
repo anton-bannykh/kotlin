@@ -173,10 +173,10 @@ open class IrModuleSerializer(
         Variance.INVARIANT -> KotlinIr.IrTypeVariance.INV
     }
 
-    fun serializeAnnotations(annotations: List<IrExpressionBody>): KotlinIr.Annotations {
+    fun serializeAnnotations(annotations: List<IrCall>): KotlinIr.Annotations {
         val proto = KotlinIr.Annotations.newBuilder()
         annotations.forEach {
-            proto.addAnnotation(serializeCall(it.expression as IrCall))
+            proto.addAnnotation(serializeCall(it))
         }
         return proto.build()
     }
@@ -250,7 +250,7 @@ open class IrModuleSerializer(
         val classifier: IrClassifierSymbol?,
         val hasQuestionMark: Boolean?,
         val arguments: List<IrTypeArgumentKey>?,
-        val annotations: List<IrExpressionBody>
+        val annotations: List<IrCall>
     )
 
     data class IrTypeArgumentKey (

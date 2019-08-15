@@ -6,7 +6,6 @@
 package org.jetbrains.kotlin.ir.types.impl
 
 import org.jetbrains.kotlin.ir.expressions.IrCall
-import org.jetbrains.kotlin.ir.expressions.IrExpressionBody
 import org.jetbrains.kotlin.ir.symbols.FqNameEqualityChecker
 import org.jetbrains.kotlin.ir.symbols.IrClassifierSymbol
 import org.jetbrains.kotlin.ir.types.*
@@ -18,14 +17,14 @@ class IrSimpleTypeImpl(
     override val classifier: IrClassifierSymbol,
     override val hasQuestionMark: Boolean,
     override val arguments: List<IrTypeArgument>,
-    annotations: List<IrExpressionBody>
+    annotations: List<IrCall>
 ) : IrTypeBase(kotlinType, annotations, Variance.INVARIANT), IrSimpleType, IrTypeProjection {
 
     constructor(
         classifier: IrClassifierSymbol,
         hasQuestionMark: Boolean,
         arguments: List<IrTypeArgument>,
-        annotations: List<IrExpressionBody>
+        annotations: List<IrCall>
     ) : this(null, classifier, hasQuestionMark, arguments, annotations)
 
     override fun equals(other: Any?): Boolean =
@@ -45,7 +44,7 @@ class IrSimpleTypeBuilder {
     var classifier: IrClassifierSymbol? = null
     var hasQuestionMark = false
     var arguments: List<IrTypeArgument> = emptyList()
-    var annotations: List<IrExpressionBody> = emptyList()
+    var annotations: List<IrCall> = emptyList()
     var variance = Variance.INVARIANT
 }
 

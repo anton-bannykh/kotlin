@@ -21,7 +21,6 @@ import org.jetbrains.kotlin.ir.IrElementBase
 import org.jetbrains.kotlin.ir.SourceManager
 import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.expressions.IrCall
-import org.jetbrains.kotlin.ir.expressions.IrExpressionBody
 import org.jetbrains.kotlin.ir.symbols.IrFileSymbol
 import org.jetbrains.kotlin.ir.symbols.impl.IrFileSymbolImpl
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformer
@@ -57,7 +56,7 @@ class IrFileImpl(
     override val declarations: SimpleList<IrDeclaration> =
         DumbPersistentList(null, emptyList())
 
-    override val annotations: SimpleList<IrExpressionBody> =
+    override val annotations: SimpleList<IrCall> =
         DumbPersistentList(null, emptyList())
 
     override var metadata: MetadataSource.File? by NullablePersistentVar(null)

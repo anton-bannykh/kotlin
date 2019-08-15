@@ -29,7 +29,6 @@ import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.IrGetEnumValue
 import org.jetbrains.kotlin.ir.expressions.IrVararg
 import org.jetbrains.kotlin.ir.expressions.impl.IrCallImpl
-import org.jetbrains.kotlin.ir.expressions.impl.IrExpressionBodyImpl
 import org.jetbrains.kotlin.ir.expressions.impl.IrGetEnumValueImpl
 import org.jetbrains.kotlin.ir.expressions.impl.IrVarargImpl
 import org.jetbrains.kotlin.ir.symbols.impl.IrEnumEntrySymbolImpl
@@ -143,9 +142,9 @@ private class AdditionalClassAnnotationLowering(private val context: JvmBackendC
         }
 
         irClass.annotations.add(
-            IrExpressionBodyImpl(IrCallImpl(
+            IrCallImpl(
                 UNDEFINED_OFFSET, UNDEFINED_OFFSET, documentedConstructor.returnType, documentedConstructor.symbol
-            ))
+            )
         )
     }
 
@@ -161,7 +160,7 @@ private class AdditionalClassAnnotationLowering(private val context: JvmBackendC
         val javaRetentionPolicy = annotationRetentionMap[kotlinRetentionPolicy] ?: rpRuntime
 
         irClass.annotations.add(
-            IrExpressionBodyImpl(IrCallImpl(
+            IrCallImpl(
                 UNDEFINED_OFFSET, UNDEFINED_OFFSET, retentionConstructor.returnType, retentionConstructor.symbol
             ).apply {
                 putValueArgument(
@@ -170,7 +169,7 @@ private class AdditionalClassAnnotationLowering(private val context: JvmBackendC
                         UNDEFINED_OFFSET, UNDEFINED_OFFSET, retentionPolicyEnum.defaultType, javaRetentionPolicy.symbol
                     )
                 )
-            })
+            }
         )
     }
 
@@ -229,11 +228,11 @@ private class AdditionalClassAnnotationLowering(private val context: JvmBackendC
         }
 
         irClass.annotations.add(
-            IrExpressionBodyImpl(IrCallImpl(
+            IrCallImpl(
                 UNDEFINED_OFFSET, UNDEFINED_OFFSET, targetConstructor.returnType, targetConstructor.symbol
             ).apply {
                 putValueArgument(0, vararg)
-            })
+            }
         )
         // TODO
     }

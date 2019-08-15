@@ -6,7 +6,6 @@
 package org.jetbrains.kotlin.ir.types.impl
 
 import org.jetbrains.kotlin.ir.expressions.IrCall
-import org.jetbrains.kotlin.ir.expressions.IrExpressionBody
 import org.jetbrains.kotlin.ir.types.*
 import org.jetbrains.kotlin.types.KotlinType
 import org.jetbrains.kotlin.types.Variance
@@ -14,7 +13,7 @@ import org.jetbrains.kotlin.utils.addToStdlib.safeAs
 
 abstract class IrTypeBase(
     val kotlinType: KotlinType?,
-    override val annotations: List<IrExpressionBody>,
+    override val annotations: List<IrCall>,
     override val variance: Variance
 ) : IrType, IrTypeProjection {
     override val type: IrType get() = this
@@ -22,7 +21,7 @@ abstract class IrTypeBase(
 
 class IrErrorTypeImpl(
     kotlinType: KotlinType?,
-    annotations: List<IrExpressionBody>,
+    annotations: List<IrCall>,
     variance: Variance
 ) : IrTypeBase(kotlinType, annotations, variance), IrErrorType {
     override fun equals(other: Any?): Boolean = other is IrErrorTypeImpl
@@ -32,7 +31,7 @@ class IrErrorTypeImpl(
 
 class IrDynamicTypeImpl(
     kotlinType: KotlinType?,
-    annotations: List<IrExpressionBody>,
+    annotations: List<IrCall>,
     variance: Variance
 ) : IrTypeBase(kotlinType, annotations, variance), IrDynamicType, IrTypeProjection {
     override fun equals(other: Any?): Boolean = other is IrDynamicTypeImpl
@@ -53,7 +52,7 @@ object IrStarProjectionImpl : IrStarProjection {
 
 @Deprecated("Hack to temporary cover late type initialization")
 object IrUninitializedType : IrType {
-    override val annotations: List<IrExpressionBody> = emptyList()
+    override val annotations: List<IrCall> = emptyList()
 
     override fun equals(other: Any?): Boolean = this === other
 

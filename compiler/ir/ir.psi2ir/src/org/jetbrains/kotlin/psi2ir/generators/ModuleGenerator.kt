@@ -22,7 +22,6 @@ import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
 import org.jetbrains.kotlin.ir.declarations.MetadataSource
 import org.jetbrains.kotlin.ir.declarations.impl.IrFileImpl
 import org.jetbrains.kotlin.ir.declarations.impl.IrModuleFragmentImpl
-import org.jetbrains.kotlin.ir.expressions.impl.IrExpressionBodyImpl
 import org.jetbrains.kotlin.ir.util.ExternalDependenciesGenerator
 import org.jetbrains.kotlin.ir.util.IrDeserializer
 import org.jetbrains.kotlin.psi.KtFile
@@ -62,7 +61,7 @@ class ModuleGenerator(override val context: GeneratorContext) : Generator {
 
         for (ktAnnotationEntry in ktFile.annotationEntries) {
             val annotationDescriptor = getOrFail(BindingContext.ANNOTATION, ktAnnotationEntry)
-            irFile.annotations.add(IrExpressionBodyImpl(constantValueGenerator.generateAnnotationConstructorCall(annotationDescriptor)))
+            irFile.annotations.add(constantValueGenerator.generateAnnotationConstructorCall(annotationDescriptor))
         }
 
         for (ktDeclaration in ktFile.declarations) {

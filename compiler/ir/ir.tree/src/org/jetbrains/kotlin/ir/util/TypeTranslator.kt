@@ -13,8 +13,6 @@ import org.jetbrains.kotlin.descriptors.TypeParameterDescriptor
 import org.jetbrains.kotlin.descriptors.annotations.Annotations
 import org.jetbrains.kotlin.ir.declarations.IrTypeParametersContainer
 import org.jetbrains.kotlin.ir.expressions.IrCall
-import org.jetbrains.kotlin.ir.expressions.IrExpressionBody
-import org.jetbrains.kotlin.ir.expressions.impl.IrExpressionBodyImpl
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.IrTypeProjection
 import org.jetbrains.kotlin.ir.types.impl.*
@@ -133,11 +131,8 @@ class TypeTranslator(
     }
 
 
-    private fun translateTypeAnnotations(annotations: Annotations): List<IrExpressionBody> =
-        annotations.map {
-            IrExpressionBodyImpl(constantValueGenerator.generateAnnotationConstructorCall(it))
-        }
-
+    private fun translateTypeAnnotations(annotations: Annotations): List<IrCall> =
+        annotations.map(constantValueGenerator::generateAnnotationConstructorCall)
 
     private fun translateTypeArguments(arguments: List<TypeProjection>) =
         arguments.map {
