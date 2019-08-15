@@ -10,7 +10,7 @@ import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.MetadataSource
 
-interface PropertyCarrier : CarrierBase<PropertyCarrier> {
+interface PropertyCarrier : DeclarationCarrier<PropertyCarrier> {
     var backingFieldField: IrField?
     var getterField: IrSimpleFunction?
     var setterField: IrSimpleFunction?

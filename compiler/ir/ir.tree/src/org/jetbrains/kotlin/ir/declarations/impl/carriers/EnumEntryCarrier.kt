@@ -9,7 +9,7 @@ import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
 import org.jetbrains.kotlin.ir.expressions.IrExpressionBody
 
-interface EnumEntryCarrier : CarrierBase<EnumEntryCarrier> {
+interface EnumEntryCarrier : DeclarationCarrier<EnumEntryCarrier> {
     var correspondingClassField: IrClass?
     var initializerExpressionField: IrExpressionBody?
 

@@ -9,7 +9,7 @@ import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.declarations.MetadataSource
 
-interface ClassCarrier : CarrierBase<ClassCarrier> {
+interface ClassCarrier : DeclarationCarrier<ClassCarrier> {
     var thisReceiverField: IrValueParameter?
     var metadataField: MetadataSource?
 

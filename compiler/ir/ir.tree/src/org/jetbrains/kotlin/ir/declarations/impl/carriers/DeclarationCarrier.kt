@@ -7,10 +7,6 @@ package org.jetbrains.kotlin.ir.declarations.impl.carriers
 
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
 
-interface CarrierBase<in T : CarrierBase<T>> {
+interface DeclarationCarrier<in T : DeclarationCarrier<T>>: Carrier<T> {
     var parentField: IrDeclarationParent?
-
-    fun eq(other: T): Boolean
-
-    fun clone(): CarrierBase<T>
 }

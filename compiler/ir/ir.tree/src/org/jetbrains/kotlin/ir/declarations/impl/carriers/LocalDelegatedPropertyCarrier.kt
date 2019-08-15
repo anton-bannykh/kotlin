@@ -9,7 +9,7 @@ import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrVariable
 
-interface LocalDelegatedPropertyCarrier : CarrierBase<LocalDelegatedPropertyCarrier> {
+interface LocalDelegatedPropertyCarrier : DeclarationCarrier<LocalDelegatedPropertyCarrier> {
     var delegateField: IrVariable?
     var getterField: IrFunction?
     var setterField: IrFunction?

@@ -18,17 +18,18 @@ package org.jetbrains.kotlin.ir.declarations.impl
 
 import org.jetbrains.kotlin.ir.IrElementBase
 import org.jetbrains.kotlin.ir.declarations.*
-import org.jetbrains.kotlin.ir.declarations.impl.carriers.CarrierBase
+import org.jetbrains.kotlin.ir.declarations.impl.carriers.Carrier
+import org.jetbrains.kotlin.ir.declarations.impl.carriers.DeclarationCarrier
 import org.jetbrains.kotlin.ir.expressions.IrCall
 
-abstract class IrDeclarationBase<T : CarrierBase<T>>(
+abstract class IrDeclarationBase<T : DeclarationCarrier<T>>(
     startOffset: Int,
     endOffset: Int,
     override val origin: IrDeclarationOrigin
-) : IrElementBase(startOffset, endOffset),
+) : IrPersistingElementBase<T>(startOffset, endOffset),
     IrDeclaration,
     HasUserdata,
-    CarrierBase<T> {
+    DeclarationCarrier<T> {
 
     override var parentField: IrDeclarationParent? = null
 
@@ -42,26 +43,41 @@ abstract class IrDeclarationBase<T : CarrierBase<T>>(
 
     override val annotations: SimpleList<IrCall> = DumbPersistentList()
 
-    var loweredUpTo = stageController.currentStage
-
     override val userdata: MutableMap<MappingKey<*, *>, *> = mutableMapOf()
 
     override val metadata: MetadataSource?
         get() = null
 
+    override fun ensureLowered() {
+        if (stageController.currentStage > loweredUpTo) {
+            stageController.lazyLower(this)
+        }
+    }
+}
+
+interface HasUserdata {
+    val userdata: MutableMap<MappingKey<*, *>, *>
+}
+
+interface MappingKey<K : IrDeclaration, V>
+
+abstract class IrPersistingElementBase<T : DeclarationCarrier<T>>(
+    startOffset: Int,
+    endOffset: Int
+) : IrElementBase(startOffset, endOffset),
+    Carrier<T> {
+
+    var loweredUpTo = stageController.currentStage
+
     var mask = 1L shl stageController.currentStage
 
     private var values: Array<Any?>? = null
 
-//    init {
-//        stageController.register(this)
-//    }
+    abstract fun ensureLowered()
 
     protected fun getCarrier(): T {
         stageController.currentStage.let { stage ->
-            if (stage > loweredUpTo) {
-                stageController.lazyLower(this)
-            }
+            ensureLowered()
 
             val m = (1L shl (stage + 1)) - 1L
 
@@ -75,9 +91,7 @@ abstract class IrDeclarationBase<T : CarrierBase<T>>(
 
     protected fun setCarrier(): T {
         stageController.currentStage.let { stage ->
-            if (stage > loweredUpTo) {
-                stageController.lazyLower(this)
-            }
+            ensureLowered()
 
             val bit = 1L shl stage
 
@@ -106,9 +120,3 @@ abstract class IrDeclarationBase<T : CarrierBase<T>>(
         }
     }
 }
-
-interface HasUserdata {
-    val userdata: MutableMap<MappingKey<*, *>, *>
-}
-
-interface MappingKey<K : IrDeclaration, V>

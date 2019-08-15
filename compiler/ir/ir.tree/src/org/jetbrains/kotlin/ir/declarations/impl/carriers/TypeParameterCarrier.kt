@@ -7,7 +7,7 @@ package org.jetbrains.kotlin.ir.declarations.impl.carriers
 
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
 
-interface TypeParameterCarrier : CarrierBase<TypeParameterCarrier> {
+interface TypeParameterCarrier : DeclarationCarrier<TypeParameterCarrier> {
 
     override fun eq(other: TypeParameterCarrier): Boolean {
         return parentField === other.parentField

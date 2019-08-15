@@ -8,7 +8,7 @@ package org.jetbrains.kotlin.ir.declarations.impl.carriers
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
 import org.jetbrains.kotlin.ir.expressions.IrExpressionBody
 
-interface ValueParameterCarrier : CarrierBase<ValueParameterCarrier> {
+interface ValueParameterCarrier : DeclarationCarrier<ValueParameterCarrier> {
     var defaultValueField: IrExpressionBody?
 
     override fun eq(other: ValueParameterCarrier): Boolean {

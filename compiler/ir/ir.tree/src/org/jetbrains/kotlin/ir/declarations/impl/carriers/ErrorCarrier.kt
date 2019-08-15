@@ -7,7 +7,7 @@ package org.jetbrains.kotlin.ir.declarations.impl.carriers
 
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
 
-interface ErrorCarrier : CarrierBase<ErrorCarrier> {
+interface ErrorCarrier : DeclarationCarrier<ErrorCarrier> {
 
     override fun eq(other: ErrorCarrier): Boolean {
         return parentField === other.parentField

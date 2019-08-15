@@ -8,7 +8,7 @@ package org.jetbrains.kotlin.ir.declarations.impl.carriers
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 
-interface VariableCarrier : CarrierBase<VariableCarrier> {
+interface VariableCarrier : DeclarationCarrier<VariableCarrier> {
     var initializerField: IrExpression?
 
     override fun eq(other: VariableCarrier): Boolean {

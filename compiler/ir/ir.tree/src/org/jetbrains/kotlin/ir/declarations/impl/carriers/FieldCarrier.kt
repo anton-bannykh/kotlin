@@ -10,7 +10,7 @@ import org.jetbrains.kotlin.ir.declarations.MetadataSource
 import org.jetbrains.kotlin.ir.expressions.IrExpressionBody
 import org.jetbrains.kotlin.ir.symbols.IrPropertySymbol
 
-interface FieldCarrier : CarrierBase<FieldCarrier> {
+interface FieldCarrier : DeclarationCarrier<FieldCarrier> {
     var initializerField: IrExpressionBody?
     var correspondingPropertySymbolField: IrPropertySymbol?
     var metadataField: MetadataSource.Property?
