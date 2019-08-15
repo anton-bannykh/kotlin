@@ -76,44 +76,36 @@ abstract class IrDeclarationBase<T : CarrierBase<T>>(
     }
 
     protected fun setCarrier(): T {
-        val stage = stageController.currentStage
+        stageController.currentStage.let { stage ->
+            if (stage > loweredUpTo) {
+                stageController.lazyLower(this)
+            }
 
-        if (stage > loweredUpTo) {
-            stageController.lazyLower(this)
-        }
+            val bit = 1L shl stage
 
-        val m = (1L shl stage) - 1L
-        val bit = 1L shl stage
+            if ((mask and bit) != 0L) return this as T
 
-        if ((mask and m.inv()) == bit) return this as T
+            val index = java.lang.Long.bitCount(mask and (bit - 1L)) - 1
 
-        val index = java.lang.Long.bitCount(mask and m) - 1
-
-        if  (index < 0) {
-            error("access before creation")
-        }
-
-        if (index == 0 || !this.eq(values!![index - 1] as T)) {
             val newValues = values?.let {
                 if (index == it.size) {
                     it.copyOf(values!!.size + 1).also {
                         values = it
                     }
-                } else {
-                    error("retrospective modification")
-                }
+                } else it
             } ?: arrayOfNulls<Any?>(1).also {
                 values = it
             }
 
-            newValues[index] = this.clone()
-        } else {
-            val maskCopy = mask
-            mask = maskCopy xor java.lang.Long.highestOneBit(maskCopy and m)
-        }
-        mask = mask or bit
+            if (index == 0 || !this.eq(newValues[index - 1] as T)) {
+                newValues[index] = this.clone()
+            } else {
+                mask = mask xor java.lang.Long.highestOneBit(mask and (bit - 1L))
+            }
+            mask = mask or bit
 
-        return this as T
+            return this as T
+        }
     }
 }
 
@@ -145,7 +137,7 @@ abstract class IrDeclarationWithBodyBase<B: IrBody, T : CarrierWithBody<B, T>>(
 //            stageController.lowerBody(this)
 //        }
 
-        if (getCarrier().bodyField !== b) {
+        if (bodyField !== b) {
             setCarrier().bodyField = b
         }
     }

@@ -62,9 +62,11 @@ class IrEnumEntryImpl(
         }
 
     override var initializerExpression: IrExpressionBody?
-        get() = getBodyImpl()
+        get() = getCarrier().bodyField
         set(v) {
-            setBodyImpl(v)
+            if (initializerExpression !== v) {
+                setCarrier().bodyField = v
+            }
         }
 
     override fun <R, D> accept(visitor: IrElementVisitor<R, D>, data: D): R {

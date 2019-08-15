@@ -82,9 +82,11 @@ class IrValueParameterImpl(
     }
 
     override var defaultValue: IrExpressionBody?
-        get() = getBodyImpl()
+        get() = getCarrier().bodyField
         set(v) {
-            setBodyImpl(v)
+            if (defaultValue !== v) {
+                setCarrier().bodyField = v
+            }
         }
 
     override fun <R, D> accept(visitor: IrElementVisitor<R, D>, data: D): R =

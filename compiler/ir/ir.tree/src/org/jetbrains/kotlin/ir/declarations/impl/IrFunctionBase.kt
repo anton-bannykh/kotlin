@@ -85,9 +85,11 @@ abstract class IrFunctionBase<T : FunctionBaseCarrier<T>>(
         DumbPersistentList()
 
     final override var body: IrBody?
-        get() = getBodyImpl()
+        get() = getCarrier().bodyField
         set(v) {
-            setBodyImpl(v)
+            if (body !== v) {
+                setCarrier().bodyField = v
+            }
         }
 
     override var metadataField: MetadataSource? = null
