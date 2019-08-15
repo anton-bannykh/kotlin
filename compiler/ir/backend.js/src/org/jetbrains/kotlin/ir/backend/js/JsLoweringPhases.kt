@@ -41,20 +41,28 @@ private fun validationCallback(context: JsIrBackendContext, module: IrElement) {
 }
 
 sealed class Lowering {
-    abstract fun declarationTransformer(context : JsIrBackendContext, data : ContextData): DeclarationTransformer
+    abstract val name: String
+
+    abstract fun declarationTransformer(context: JsIrBackendContext, data: ContextData): DeclarationTransformer
 
     abstract val bodiesEnabled: Boolean
 }
 
-class DeclarationLowering(private val factory: (JsIrBackendContext, ContextData) -> DeclarationTransformer,
-                          override val bodiesEnabled: Boolean = false) : Lowering() {
+class DeclarationLowering(
+    override val name: String,
+    private val factory: (JsIrBackendContext, ContextData) -> DeclarationTransformer,
+    override val bodiesEnabled: Boolean = false
+) : Lowering() {
 
     override fun declarationTransformer(context: JsIrBackendContext, data: ContextData): DeclarationTransformer {
         return factory(context, data)
     }
 }
 
-class BodyLowering(private val factory: (JsIrBackendContext, ContextData) -> BodyLoweringPass): Lowering() {
+class BodyLowering(
+    override val name: String,
+    private val factory: (JsIrBackendContext, ContextData) -> BodyLoweringPass
+) : Lowering() {
 
     override fun declarationTransformer(context: JsIrBackendContext, data: ContextData): DeclarationTransformer {
         return factory(context, data).toDeclarationTransformer()
@@ -73,14 +81,14 @@ private fun makeJsModulePhase(
     description: String,
     prerequisite: Set<Any?> = emptySet(),
     bodiesEnabled: Boolean = false
-) = DeclarationLowering(lowering, bodiesEnabled)
+) = DeclarationLowering(name, lowering, bodiesEnabled)
 
 private fun makeBodyLoweringPhase(
     lowering: (JsIrBackendContext, ContextData) -> BodyLoweringPass,
     name: String,
     description: String,
     prerequisite: Set<Any?> = emptySet()
-) = BodyLowering(lowering)
+) = BodyLowering(name, lowering)
 
 private fun makeCustomJsModulePhase(
     op: (JsIrBackendContext, IrModuleFragment) -> Unit,
@@ -720,7 +728,7 @@ class MutableController : StageController {
                     }
                 }
 
-                declaration.loweredUpTo = Math.max(i, topLevelDeclaration.loweredUpTo)
+                declaration.loweredUpTo = i
             }
         }
     }
@@ -853,9 +861,22 @@ class MutableController : StageController {
         lowerUpTo(file, currentStage)
     }
 
+    private fun <T> withoutBodies(fn: () -> T): T {
+        val previousBodies = bodiesEnabled
+        bodiesEnabled = false
+
+        return try {
+            fn()
+        } finally {
+            bodiesEnabled = previousBodies
+        }
+    }
+
     override fun lowerBody(declaration: IrDeclarationWithBodyBase<*, *>) {
         if (declaration.bodyLoweredUpTo + 1 < stageController.currentStage) {
-            lazyLower(declaration)
+            withoutBodies {
+                lazyLower(declaration)
+            }
             for (i in (declaration.bodyLoweredUpTo + 1) until stageController.currentStage) {
                 withStage(i) {
                     val fileBefore = declaration.fileOrNull as? IrFileImpl
