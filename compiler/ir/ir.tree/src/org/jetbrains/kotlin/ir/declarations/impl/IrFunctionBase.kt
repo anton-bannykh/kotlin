@@ -107,9 +107,7 @@ abstract class IrFunctionBase<T : FunctionBaseCarrier<T>>(
         extensionReceiverParameter?.accept(visitor, data)
         valueParameters.forEach { it.accept(visitor, data) }
 
-        if (stageController.bodiesEnabled) {
-            body?.accept(visitor, data)
-        }
+        body?.accept(visitor, data)
     }
 
     override fun <D> transformChildren(transformer: IrElementTransformer<D>, data: D) {
@@ -119,8 +117,6 @@ abstract class IrFunctionBase<T : FunctionBaseCarrier<T>>(
         extensionReceiverParameter = extensionReceiverParameter?.transform(transformer, data)
         valueParameters.transform { it.transform(transformer, data) }
 
-        if (stageController.bodiesEnabled) {
-            body = body?.transform(transformer, data)
-        }
+        body = body?.transform(transformer, data)
     }
 }
