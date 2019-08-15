@@ -40,12 +40,9 @@ private fun validationCallback(context: JsIrBackendContext, module: IrElement) {
 
 sealed class Lowering {
     abstract fun declarationTransformer(context : JsIrBackendContext, data : ContextData): DeclarationTransformer
-
-    abstract val bodiesEnabled: Boolean
 }
 
-class DeclarationLowering(private val factory: (JsIrBackendContext, ContextData) -> DeclarationTransformer,
-                          override val bodiesEnabled: Boolean = false) : Lowering() {
+class DeclarationLowering(private val factory: (JsIrBackendContext, ContextData) -> DeclarationTransformer) : Lowering() {
 
     override fun declarationTransformer(context: JsIrBackendContext, data: ContextData): DeclarationTransformer {
         return factory(context, data)
@@ -61,17 +58,14 @@ class BodyLowering(private val factory: (JsIrBackendContext, ContextData) -> Bod
     fun bodyLowering(context: JsIrBackendContext, data: ContextData): BodyLoweringPass {
         return factory(context, data)
     }
-
-    override val bodiesEnabled: Boolean = true
 }
 
 private fun makeJsModulePhase(
     lowering: (JsIrBackendContext, ContextData) -> DeclarationTransformer,
     name: String,
     description: String,
-    prerequisite: Set<Any?> = emptySet(),
-    bodiesEnabled: Boolean = false
-) = DeclarationLowering(lowering, bodiesEnabled)
+    prerequisite: Set<Any?> = emptySet()
+) = DeclarationLowering(lowering)
 
 private fun makeBodyLoweringPhase(
     lowering: (JsIrBackendContext, ContextData) -> BodyLoweringPass,
@@ -107,8 +101,7 @@ private fun makeCustomJsModulePhase(
 private val moveBodilessDeclarationsToSeparatePlacePhase = makeJsModulePhase(
     { context, data -> MoveBodilessDeclarationsToSeparatePlaceLowering(context, data) },
     name = "MoveBodilessDeclarationsToSeparatePlace",
-    description = "Move `external` and `built-in` declarations into separate place to make the following lowerings do not care about them",
-    bodiesEnabled = true
+    description = "Move `external` and `built-in` declarations into separate place to make the following lowerings do not care about them"
 )
 
 private val expectDeclarationsRemovingPhase = makeJsModulePhase(
@@ -310,8 +303,7 @@ private val callableReferenceLoweringPhase = makeBodyLoweringPhase(
 private val defaultArgumentStubGeneratorPhase = makeJsModulePhase(
     { context, _ -> DefaultArgumentStubGenerator(context).runPostfix() },
     name = "DefaultArgumentStubGenerator",
-    description = "Generate synthetic stubs for functions with default parameter values",
-    bodiesEnabled = true //
+    description = "Generate synthetic stubs for functions with default parameter values"
 )
 
 private val defaultArgumentStubBodyGeneratorPhase = makeBodyLoweringPhase(
@@ -383,8 +375,7 @@ private val bridgesConstructionPhase = makeJsModulePhase(
     { context, _ -> BridgesConstruction(context).toDeclarationTransformer() },
     name = "BridgesConstruction",
     description = "Generate bridges",
-    prerequisite = setOf(suspendFunctionsLoweringPhase),
-    bodiesEnabled = true
+    prerequisite = setOf(suspendFunctionsLoweringPhase)
 )
 
 private val bridgesBodyConstructionPhase = makeBodyLoweringPhase(
@@ -695,7 +686,7 @@ class MutableController : StageController {
 
                         val lowering = perFilePhaseList[i - 1]
 
-                        val result = if (lowering.bodiesEnabled)
+                        val result = if (lowering is BodyLowering)
                             withBodies { lowering.declarationTransformer(context, data).transformFlat(topLevelDeclaration) }
                         else
                             lowering.declarationTransformer(context, data).transformFlat(topLevelDeclaration)
