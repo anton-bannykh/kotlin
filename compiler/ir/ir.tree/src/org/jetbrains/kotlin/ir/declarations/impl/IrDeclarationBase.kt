@@ -18,8 +18,10 @@ package org.jetbrains.kotlin.ir.declarations.impl
 
 import org.jetbrains.kotlin.ir.IrElementBase
 import org.jetbrains.kotlin.ir.declarations.*
+import org.jetbrains.kotlin.ir.declarations.impl.carriers.BodyCarrier
 import org.jetbrains.kotlin.ir.declarations.impl.carriers.Carrier
 import org.jetbrains.kotlin.ir.declarations.impl.carriers.DeclarationCarrier
+import org.jetbrains.kotlin.ir.expressions.IrBody
 import org.jetbrains.kotlin.ir.expressions.IrCall
 
 abstract class IrDeclarationBase<T : DeclarationCarrier<T>>(
@@ -61,7 +63,7 @@ interface HasUserdata {
 
 interface MappingKey<K : IrDeclaration, V>
 
-abstract class IrPersistingElementBase<T : DeclarationCarrier<T>>(
+abstract class IrPersistingElementBase<T : Carrier<T>>(
     startOffset: Int,
     endOffset: Int
 ) : IrElementBase(startOffset, endOffset),
@@ -118,5 +120,25 @@ abstract class IrPersistingElementBase<T : DeclarationCarrier<T>>(
 
             return this as T
         }
+    }
+}
+
+abstract class IrBodyBase(
+    startOffset: Int,
+    endOffset: Int
+): IrPersistingElementBase<BodyCarrier>(startOffset, endOffset), IrBody, BodyCarrier {
+    override var containerField: IrDeclaration? = null
+
+    var container: IrDeclaration
+        get() = getCarrier().containerField!!
+        set(p) {
+            if (getCarrier().containerField !== p) {
+                setCarrier().containerField = p
+            }
+        }
+
+    override fun ensureLowered() {
+        if (!stageController.bodiesEnabled) error("Bodies disabled!")
+        // TODO
     }
 }

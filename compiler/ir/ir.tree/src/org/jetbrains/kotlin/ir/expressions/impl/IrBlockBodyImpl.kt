@@ -16,9 +16,8 @@
 
 package org.jetbrains.kotlin.ir.expressions.impl
 
-import org.jetbrains.kotlin.ir.IrElementBase
 import org.jetbrains.kotlin.ir.IrStatement
-import org.jetbrains.kotlin.ir.declarations.BodyEnabledVar
+import org.jetbrains.kotlin.ir.declarations.impl.IrBodyBase
 import org.jetbrains.kotlin.ir.expressions.IrBlockBody
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformer
 import org.jetbrains.kotlin.ir.visitors.IrElementVisitor
@@ -28,14 +27,18 @@ class IrBlockBodyImpl(
     startOffset: Int,
     endOffset: Int
 ) :
-    IrElementBase(startOffset, endOffset),
+    IrBodyBase(startOffset, endOffset),
     IrBlockBody {
 
     constructor(startOffset: Int, endOffset: Int, statements: List<IrStatement>) : this(startOffset, endOffset) {
         this.statements.addAll(statements)
     }
 
-    override val statements: MutableList<IrStatement> by BodyEnabledVar(ArrayList())
+    override val statements: MutableList<IrStatement> = ArrayList()
+        get() {
+            ensureLowered()
+            return field
+        }
 
     override fun <R, D> accept(visitor: IrElementVisitor<R, D>, data: D): R {
         return visitor.visitBlockBody(this, data)
