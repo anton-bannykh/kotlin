@@ -174,14 +174,6 @@ class InitializersBodyLowering(
 class RemoveAnonymousInitializers(val context: CommonBackendContext) : ClassLoweringPass {
     override fun lower(irClass: IrClass) {
         irClass.declarations.removeAll { it is IrAnonymousInitializer }
-//        irClass.declarations.filterIsInstance<IrField>().forEach { it.initializer = null }
-    }
-}
-
-class RemoveClassFieldInitializers(val context: JsIrBackendContext): BodyLoweringPass {
-    override fun lower(irBody: IrBody, container: IrDeclaration) {
-        if (container is IrField && container.parent is IrClass) {
-            container.initializer = null
-        }
+        irClass.declarations.filterIsInstance<IrField>().forEach { it.initializer = null }
     }
 }

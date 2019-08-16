@@ -92,34 +92,42 @@ abstract class IrPersistingElementBase<T : Carrier<T>>(
     }
 
     protected fun setCarrier(): T {
-        stageController.currentStage.let { stage ->
-            ensureLowered()
+        val stage = stageController.currentStage
 
-            val bit = 1L shl stage
+        ensureLowered()
 
-            if ((mask and bit) != 0L) return this as T
+        val m = (1L shl stage) - 1L
+        val bit = 1L shl stage
 
-            val index = java.lang.Long.bitCount(mask and (bit - 1L)) - 1
+        if ((mask and m.inv()) == bit) return this as T
 
+        val index = java.lang.Long.bitCount(mask and m) - 1
+
+        if (index < 0 || loweredUpTo > stage) {
+            error("access before creation")
+        }
+
+        if (index == 0 || !this.eq(values!![index - 1] as T)) {
             val newValues = values?.let {
                 if (index == it.size) {
                     it.copyOf(values!!.size + 1).also {
                         values = it
                     }
-                } else it
+                } else {
+                    error("retrospective modification")
+                }
             } ?: arrayOfNulls<Any?>(1).also {
                 values = it
             }
 
-            if (index == 0 || !this.eq(newValues[index - 1] as T)) {
-                newValues[index] = this.clone()
-            } else {
-                mask = mask xor java.lang.Long.highestOneBit(mask and (bit - 1L))
-            }
-            mask = mask or bit
-
-            return this as T
+            newValues[index] = this.clone()
+        } else {
+            val maskCopy = mask
+            mask = maskCopy xor java.lang.Long.highestOneBit(maskCopy and m)
         }
+        mask = mask or bit
+
+        return this as T
     }
 }
 
@@ -139,6 +147,9 @@ abstract class IrBodyBase(
 
     inline fun <T> checkEnabled(fn: () -> T): T {
         if (!stageController.bodiesEnabled) error("Bodies disabled!")
+        if (loweredUpTo + 1 < stageController.currentStage) {
+            stageController.lowerBody(this)
+        }
         return fn()
     }
 

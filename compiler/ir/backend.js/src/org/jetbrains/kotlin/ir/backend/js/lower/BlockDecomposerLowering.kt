@@ -25,7 +25,8 @@ import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
 import org.jetbrains.kotlin.ir.visitors.transformChildrenVoid
 import org.jetbrains.kotlin.utils.addIfNotNull
 
-private var IrFunction.originalField by mapping(object : MappingKey<IrFunction, IrField> {})
+private var IrFunction.originalExpressionBody by mapping(object : MappingKey<IrFunction, IrExpressionBody> {})
+private var IrField.initFun by mapping(object : MappingKey<IrField, IrFunction> {})
 
 class CreateIrFieldInitializerFunction(val context: JsIrBackendContext) : DeclarationTransformer {
 
@@ -34,7 +35,7 @@ class CreateIrFieldInitializerFunction(val context: JsIrBackendContext) : Declar
             declaration.initializer?.let { initializer ->
                 val initFunction = JsIrBuilder.buildFunction(
                     declaration.name.asString() + "\$init\$",
-                    context.irBuiltIns.nothingType, // Should be changed later
+                    declaration.type,
                     declaration.parent,
                     declaration.visibility // TODO  Shouldn't it be private?
                 )
@@ -45,7 +46,9 @@ class CreateIrFieldInitializerFunction(val context: JsIrBackendContext) : Declar
 
                 initFunction.body = IrBlockBodyImpl(initializer.startOffset, initializer.endOffset)
 
-                initFunction.originalField = declaration
+                initFunction.originalExpressionBody = initializer
+                declaration.initFun = initFunction
+                declaration.initializer = IrExpressionBodyImpl(IrErrorExpressionImpl(initializer.startOffset, initializer.endOffset, declaration.type, ""))
 
                 listOf(initFunction, declaration)
             } ?: listOf(declaration)
@@ -65,26 +68,25 @@ class BlockDecomposerLowering(context: JsIrBackendContext) : BodyLoweringPass {
 
     override fun lower(irBody: IrBody, container: IrDeclaration) {
         if (container is IrFunction) {
-            container.originalField?.let { oldField ->
-                convertInitializerToInitFunctionCall(oldField, container)
+            container.originalExpressionBody?.let { initializer ->
+                convertInitializerToInitFunctionCall(initializer, container)
             }
 
             lower(container)
+        } else if (container is IrField) {
+            container.initFun?.let { initFun ->
+                container.initializer!!.expression = JsIrBuilder.buildCall(initFun.symbol, initFun.returnType)
+            }
         }
+
         container.patchDeclarationParents(container.parent)
     }
 
-    private fun convertInitializerToInitFunctionCall(irField: IrField, initFunction: IrFunction) {
-        irField.initializer!!.apply {
-            initFunction.returnType = expression.type
+    private fun convertInitializerToInitFunctionCall(initializer: IrExpressionBody, initFunction: IrFunction) {
+        (initFunction.body as IrBlockBody).statements += JsIrBuilder.buildReturn(initFunction.symbol, initializer.expression, nothingType)
+        initFunction.body!!.patchDeclarationParents(initFunction)
 
-            (initFunction.body as IrBlockBody).statements += JsIrBuilder.buildReturn(initFunction.symbol, expression, nothingType)
-            initFunction.body!!.patchDeclarationParents(initFunction)
-
-            lower(initFunction)
-
-            expression = JsIrBuilder.buildCall(initFunction.symbol, expression.type)
-        }
+        lower(initFunction)
     }
 
 //    override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {

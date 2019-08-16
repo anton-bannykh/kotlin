@@ -13,15 +13,15 @@ import org.jetbrains.kotlin.ir.backend.js.lower.*
 import org.jetbrains.kotlin.ir.backend.js.lower.calls.CallsLowering
 import org.jetbrains.kotlin.ir.backend.js.lower.common.*
 import org.jetbrains.kotlin.ir.backend.js.lower.coroutines.JsSuspendFunctionsLowering
-import org.jetbrains.kotlin.ir.backend.js.lower.inline.CopyInlineFunctionBody
-import org.jetbrains.kotlin.ir.backend.js.lower.inline.FunctionInlining
-import org.jetbrains.kotlin.ir.backend.js.lower.inline.RemoveInlineFunctionsLowering
-import org.jetbrains.kotlin.ir.backend.js.lower.inline.ReturnableBlockLowering
+import org.jetbrains.kotlin.ir.backend.js.lower.inline.*
 import org.jetbrains.kotlin.ir.declarations.*
+import org.jetbrains.kotlin.ir.declarations.impl.IrBodyBase
 import org.jetbrains.kotlin.ir.declarations.impl.IrDeclarationBase
 import org.jetbrains.kotlin.ir.declarations.impl.IrFileImpl
+import org.jetbrains.kotlin.ir.expressions.IrBody
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.util.*
+import org.jetbrains.kotlin.ir.visitors.IrElementVisitorVoid
 import java.util.*
 import kotlin.collections.ArrayList
 
@@ -39,7 +39,7 @@ private fun validationCallback(context: JsIrBackendContext, module: IrElement) {
 }
 
 sealed class Lowering {
-    abstract fun declarationTransformer(context : JsIrBackendContext, data : ContextData): DeclarationTransformer
+    abstract fun declarationTransformer(context: JsIrBackendContext, data: ContextData): DeclarationTransformer
 }
 
 class DeclarationLowering(private val factory: (JsIrBackendContext, ContextData) -> DeclarationTransformer) : Lowering() {
@@ -49,7 +49,7 @@ class DeclarationLowering(private val factory: (JsIrBackendContext, ContextData)
     }
 }
 
-class BodyLowering(private val factory: (JsIrBackendContext, ContextData) -> BodyLoweringPass): Lowering() {
+class BodyLowering(private val factory: (JsIrBackendContext, ContextData) -> BodyLoweringPass) : Lowering() {
 
     override fun declarationTransformer(context: JsIrBackendContext, data: ContextData): DeclarationTransformer {
         return factory(context, data).toDeclarationTransformer()
@@ -136,10 +136,17 @@ private val removeInlineFunctionsLoweringPhase = makeJsModulePhase(
     prerequisite = setOf(functionInliningPhase)
 )
 
-private val copyInlineFunctionBody = makeBodyLoweringPhase(
-    { context, _ -> CopyInlineFunctionBody(context) },
+private val copyInlineFunctionBody = makeJsModulePhase(
+    { context, _ -> CopyInlineFunctionBody(context).runPostfix() },
     name = "CopyInlineFunctionBody",
     description = "Copy inline function body, so that the original version is saved in the history",
+    prerequisite = setOf(removeInlineFunctionsLoweringPhase)
+)
+
+private val fillInlineFunctionBody = makeBodyLoweringPhase(
+    { context, _ -> FillInlineFunctionBody(context) },
+    name = "FillInlineFunctionBody",
+    description = "TODO",
     prerequisite = setOf(removeInlineFunctionsLoweringPhase)
 )
 
@@ -358,13 +365,6 @@ private val removeAnonymousInitializers = makeJsModulePhase(
     prerequisite = setOf(initializersLoweringPhase)
 )
 
-private val removeClassFieldInitializers = makeBodyLoweringPhase(
-    { context, _ -> RemoveClassFieldInitializers(context) },
-    name = "Class field lowering removal",
-    description = "Merge init block and field initializers into [primary] constructor",
-    prerequisite = setOf(initializersLoweringPhase)
-)
-
 private val multipleCatchesLoweringPhase = makeBodyLoweringPhase(
     { context, _ -> MultipleCatchesLowering(context) },
     name = "MultipleCatchesLowering",
@@ -503,6 +503,7 @@ private val perFilePhaseList = listOf(
     functionInliningPhase, // OK
     removeInlineFunctionsLoweringPhase, // OK
     copyInlineFunctionBody, // OK
+    fillInlineFunctionBody, // OK
     lateinitLoweringPhase, // OK
     tailrecLoweringPhase, // OK
     enumClassConstructorLoweringPhase, // OK
@@ -521,7 +522,6 @@ private val perFilePhaseList = listOf(
     propertiesLoweringPhase, // OK
     initializersLoweringPhase, // OK
     removeAnonymousInitializers, // OK
-    removeClassFieldInitializers, // OK
     // Common prefix ends
     enumClassLoweringPhase, // OK
     enumClassBodyLoweringPhase, // OK
@@ -686,28 +686,27 @@ class MutableController : StageController {
 
                         val lowering = perFilePhaseList[i - 1]
 
-                        val result = if (lowering is BodyLowering)
-                            withBodies { lowering.declarationTransformer(context, data).transformFlat(topLevelDeclaration) }
-                        else
-                            lowering.declarationTransformer(context, data).transformFlat(topLevelDeclaration)
+                        if (lowering !is BodyLowering) {
+                            val result = withoutBodies { lowering.declarationTransformer(context, data).transformFlat(topLevelDeclaration) }
 
-                        actualLoweringInvocations++
+                            actualLoweringInvocations++
 
-                        topLevelDeclaration.loweredUpTo = i
-                        if (result != null) {
-                            result.forEach {
-                                it.loweredUpTo = i
-                                it.parent = fileBefore
+                            topLevelDeclaration.loweredUpTo = i
+                            if (result != null) {
+                                result.forEach {
+                                    it.loweredUpTo = i
+                                    it.parent = fileBefore
+                                }
+
+                                fileBefore.declarations.remove(topLevelDeclaration)
+
+                                fileBefore.declarations += result
                             }
-
-                            fileBefore.declarations.remove(topLevelDeclaration)
-
-                            fileBefore.declarations += result
                         }
                     }
                 }
 
-                declaration.loweredUpTo = Math.max(i, topLevelDeclaration.loweredUpTo)
+                declaration.loweredUpTo = i//Math.max(i, topLevelDeclaration.loweredUpTo)
             }
         }
     }
@@ -723,9 +722,9 @@ class MutableController : StageController {
 //        val generator = dependencyGenerator
 //        try {
 //            dependencyGenerator = null
-            return withStage(0) {
-                block()
-            }
+        return withStage(0) {
+            block()
+        }
 //        } finally {
 //            dependencyGenerator = generator
 //        }
@@ -784,10 +783,25 @@ class MutableController : StageController {
 
             for (file in moduleFragment.files + dependencyModules.flatMap { it.files }) {
                 for (decl in ArrayList(file.declarations)) {
-                    if (decl.loweredUpTo < perFilePhaseList.size) {
+                    if (decl.loweredUpTo < currentStage - 1) {
                         lazyLower(decl)
                         changed = true
                     }
+
+                    decl.accept(object : IrElementVisitorVoid {
+                        override fun visitElement(element: IrElement) {
+                            element.acceptChildren(this, null)
+                        }
+
+                        override fun visitBody(body: IrBody) {
+                            if (body is IrBodyBase && body.loweredUpTo + 1 < currentStage) {
+                                changed = true
+                                withBodies {
+                                    lowerBody(body)
+                                }
+                            }
+                        }
+                    }, null)
                 }
             }
             if (!changed) break
@@ -807,6 +821,17 @@ class MutableController : StageController {
         frozen = true
     }
 
+    private fun <T> withoutBodies(fn: () -> T): T {
+        val previousBodies = bodiesEnabled
+        bodiesEnabled = false
+
+        return try {
+            fn()
+        } finally {
+            bodiesEnabled = previousBodies
+        }
+    }
+
     override fun lazyLower(declaration: IrDeclaration) {
         // TODO other declarations
         if (declaration is IrDeclarationBase<*> && currentStage - 1 > declaration.loweredUpTo) {
@@ -824,6 +849,28 @@ class MutableController : StageController {
         lowerUpTo(file, currentStage)
     }
 
+    override fun lowerBody(body: IrBodyBase) {
+        if (body.loweredUpTo + 1 < stageController.currentStage) {
+            for (i in (body.loweredUpTo + 1) until stageController.currentStage) {
+                withStage(i) {
+                    val declaration = body.container
+                    val fileBefore = declaration.fileOrNull as? IrFileImpl
+                    if (fileBefore != null) {
+                        val module = fileBefore.symbol.descriptor.containingDeclaration
+                        val data = dataMap[module]!!
+
+                        val lowering = perFilePhaseList[i - 1]
+
+                        if (lowering is BodyLowering) {
+                            lowering.bodyLowering(context, data).lower(body, declaration)
+                        }
+                    }
+                    body.loweredUpTo = i
+                }
+            }
+        }
+    }
+
     var deserializer: IrDeserializer? = null
 
     var dependencyGenerator: ExternalDependenciesGenerator? = null
@@ -837,7 +884,7 @@ class MutableController : StageController {
 
         dependencyGenerator?.let { generator ->
             withBodies {
-//                generator.loadSymbol(symbol)
+                //                generator.loadSymbol(symbol)
                 try {
                     dependencyGenerator = null
                     if (!symbol.isBound) {
