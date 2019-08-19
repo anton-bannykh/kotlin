@@ -161,6 +161,13 @@ class LocalDeclarationsLowering(
             rewriteDeclarations()
 
             insertLoweredDeclarationForLocalFunctions()
+
+            for (declaration in transformedDeclarations.values + container) {
+                // TODO other bodies
+                (declaration as? IrFunction)?.body?.let {
+                    LocalClassPopupLowering(context).lower(it, declaration)
+                }
+            }
         }
 
         private fun insertLoweredDeclarationForLocalFunctions() {
