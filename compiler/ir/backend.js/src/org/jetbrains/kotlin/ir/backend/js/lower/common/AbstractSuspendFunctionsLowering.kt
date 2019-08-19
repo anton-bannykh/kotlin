@@ -31,7 +31,7 @@ import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.resolve.descriptorUtil.module
 
 
-private var IrFunction.coroutineConstructor by mapping(object : MappingKey<IrFunction, IrConstructor>{})
+private var IrFunction.coroutineConstructor by mapping(object : MappingKey<IrFunction, IrConstructor> {})
 
 abstract class AbstractSuspendFunctionsLowering<C : CommonBackendContext>(val context: C, val symbolTable: SymbolTable) : BodyLoweringPass {
 
@@ -236,25 +236,28 @@ abstract class AbstractSuspendFunctionsLowering<C : CommonBackendContext>(val co
         if (!irFunction.isLambda && functionReference == null) {
             // It is not a lambda - replace original function with a call to constructor of the built coroutine.
             val irBuilder = context.createIrBuilder(irFunction.symbol, irFunction.startOffset, irFunction.endOffset)
-            irFunction.body = irBuilder.irBlockBody(irFunction) {
-                val constructor = coroutine.coroutineConstructor
-                generateCoroutineStart(coroutine.stateMachineFunction,
-                                       irCallConstructor(constructor.symbol, irFunction.typeParameters.map {
-                                           IrSimpleTypeImpl(it.symbol, true, emptyList(), emptyList())
-                                       }).apply {
-                                           val functionParameters = irFunction.explicitParameters
-                                           functionParameters.forEachIndexed { index, argument ->
-                                               putValueArgument(index, irGet(argument))
-                                           }
-                                           putValueArgument(
-                                               functionParameters.size,
-                                               irCall(
-                                                   getContinuationSymbol,
-                                                   getContinuationSymbol.owner.returnType,
-                                                   listOf(irFunction.returnType)
+            (irFunction.body as IrBlockBody).statements.let {
+                it.clear()
+                it += irBuilder.irBlockBody(irFunction) {
+                    val constructor = coroutine.coroutineConstructor
+                    generateCoroutineStart(coroutine.stateMachineFunction,
+                                           irCallConstructor(constructor.symbol, irFunction.typeParameters.map {
+                                               IrSimpleTypeImpl(it.symbol, true, emptyList(), emptyList())
+                                           }).apply {
+                                               val functionParameters = irFunction.explicitParameters
+                                               functionParameters.forEachIndexed { index, argument ->
+                                                   putValueArgument(index, irGet(argument))
+                                               }
+                                               putValueArgument(
+                                                   functionParameters.size,
+                                                   irCall(
+                                                       getContinuationSymbol,
+                                                       getContinuationSymbol.owner.returnType,
+                                                       listOf(irFunction.returnType)
+                                                   )
                                                )
-                                           )
-                                       })
+                                           })
+                }.statements
             }
         }
 

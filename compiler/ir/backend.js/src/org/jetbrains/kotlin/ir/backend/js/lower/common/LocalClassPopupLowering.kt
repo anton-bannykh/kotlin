@@ -30,11 +30,11 @@ class LocalClassPopupLowering(val context: BackendContext) : BodyLoweringPass {
                     return newDeclaration
                 }
 
-                val newContainer = allScopes.asReversed().drop(1/*skip self*/).firstOrNull {
+                val newContainer = /*allScopes.asReversed().drop(1*//*skip self*//*).firstOrNull {
                     //find first class local or not;
                     // to reproduce original LocalDeclarationLowering behaviour add: '&& !it.irElement.isLocal' condition
                     it.irElement is IrClass
-                }?.irElement as? IrClass ?: container.file
+                }?.irElement as? IrClass ?: */container.file
                 extractedLocalClasses.add(newDeclaration to newContainer)
                 return IrCompositeImpl(declaration.startOffset, declaration.endOffset, context.irBuiltIns.unitType)
             }

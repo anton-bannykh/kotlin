@@ -105,7 +105,8 @@ class LateinitLowering(val context: CommonBackendContext) : BodyLoweringPass {
         val endOffset = getter.endOffset
         val irBuilder = context.createIrBuilder(getter.symbol, startOffset, endOffset)
         irBuilder.run {
-            val body = IrBlockBodyImpl(startOffset, endOffset)
+            val body = getter.body as IrBlockBody
+            body.statements.clear() // TODO assert it consists of a single get
             val resultVar = scope.createTemporaryVariable(
                 irGetField(getter.dispatchReceiverParameter?.let { irGet(it) }, backingField)
             )
@@ -118,7 +119,6 @@ class LateinitLowering(val context: CommonBackendContext) : BodyLoweringPass {
                 throwUninitializedPropertyAccessException(backingField.name.asString())
             )
             body.statements.add(throwIfNull)
-            getter.body = body
         }
     }
 

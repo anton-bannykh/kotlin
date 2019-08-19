@@ -73,13 +73,14 @@ class BlockDecomposerLowering(context: JsIrBackendContext) : BodyLoweringPass {
             }
 
             lower(container)
+            irBody.patchDeclarationParents(container)
         } else if (container is IrField) {
             container.initFun?.let { initFun ->
                 container.initializer!!.expression = JsIrBuilder.buildCall(initFun.symbol, initFun.returnType)
             }
         }
 
-        container.patchDeclarationParents(container.parent)
+//        container.patchDeclarationParents(container.parent)
     }
 
     private fun convertInitializerToInitFunctionCall(initializer: IrExpressionBody, initFunction: IrFunction) {
