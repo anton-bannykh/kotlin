@@ -5,19 +5,27 @@
 
 package org.jetbrains.kotlin.ir.backend.js
 
+import com.google.common.collect.Sets
 import com.intellij.openapi.project.Project
 import org.jetbrains.kotlin.backend.common.phaser.PhaseConfig
 import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.descriptors.ModuleDescriptor
 import org.jetbrains.kotlin.descriptors.PropertyDescriptor
+import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.backend.js.transformers.irToJs.IrModuleToJsTransformer
 import org.jetbrains.kotlin.ir.declarations.*
-import org.jetbrains.kotlin.ir.descriptors.IrBuiltIns
+import org.jetbrains.kotlin.ir.expressions.*
+import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
+import org.jetbrains.kotlin.ir.types.classifierOrNull
 import org.jetbrains.kotlin.ir.util.ExternalDependenciesGenerator
 import org.jetbrains.kotlin.ir.util.IrDeserializer
 import org.jetbrains.kotlin.ir.util.SymbolTable
+import org.jetbrains.kotlin.ir.visitors.IrElementVisitorVoid
+import org.jetbrains.kotlin.ir.visitors.acceptChildrenVoid
+import org.jetbrains.kotlin.ir.visitors.acceptVoid
 import org.jetbrains.kotlin.psi.KtFile
+import java.util.*
 
 val compilationCache = mutableMapOf<KlibModuleRef, CacheInfo>()
 
@@ -25,9 +33,9 @@ val dataCache = mutableMapOf<ModuleDescriptor, ContextData>()
 
 val intrinsicsCache = mutableMapOf<KlibModuleRef, JsIntrinsics>()
 
-val lazyLoad = false
+val lazyLoad = true
 
-val icOn = false
+val icOn = true
 
 fun compile(
     project: Project,
@@ -109,8 +117,11 @@ fun compile(
 
         stageController.freeze()
 
+
+        val usefulDeclarations = usefulDeclarations(moduleFragment)
+
         // TODO traverse all IR
-        val jsProgram = IrModuleToJsTransformer(context, dataMap).generateModule(dependencyModules + moduleFragment)
+        val jsProgram = IrModuleToJsTransformer(context, dataMap, usefulDeclarations).generateModule(dependencyModules + moduleFragment)
 
         stageController.deinit()
 
@@ -167,3 +178,83 @@ var mainTime = 0L
 var lazyLowerCalls = 0L
 var lazyLowerIteration = 0L
 var actualLoweringInvocations = 0L
+
+fun usefulDeclarations(module: IrModuleFragment): Set<IrDeclaration> {
+    val queue = ArrayDeque<IrDeclaration>()
+    val result = Sets.newIdentityHashSet<IrDeclaration>()
+
+    fun IrDeclaration.enqueue() {
+        if (this !in result) {
+            result.add(this)
+            queue.addLast(this)
+        }
+    }
+
+    for (file in module.files) {
+        for (declaration in file.declarations) {
+            declaration.acceptVoid(object : IrElementVisitorVoid {
+                override fun visitElement(element: IrElement) {
+                    element.acceptChildrenVoid(this)
+                }
+
+                override fun visitBody(body: IrBody) {
+                    // Skip
+                }
+
+                override fun visitDeclaration(declaration: IrDeclaration) {
+                    declaration.enqueue()
+                }
+            })
+        }
+    }
+
+    while (queue.isNotEmpty()) {
+        val declaration = queue.pollFirst()
+
+        if (declaration is IrClass) {
+            declaration.superTypes.forEach {
+                (it.classifierOrNull as? IrClassSymbol)?.owner?.enqueue()
+            }
+            declaration.declarations.filter { it is IrConstructor && it.isPrimary }.forEach { it.enqueue() }
+        }
+
+        // TODO overrides
+
+        val body = when (declaration) {
+            is IrFunction -> declaration.body
+            is IrField -> declaration.initializer
+            is IrVariable -> declaration.initializer
+            else -> null
+        }
+
+        if (body != null) {
+            body.acceptVoid(object : IrElementVisitorVoid {
+                override fun visitElement(element: IrElement) {
+                    element.acceptChildrenVoid(this)
+                }
+
+                override fun visitDelegatingConstructorCall(expression: IrDelegatingConstructorCall) {
+                    expression.symbol.owner.enqueue()
+                }
+
+                override fun visitCall(expression: IrCall) {
+                    expression.symbol.owner.enqueue()
+                }
+
+                override fun visitGetField(expression: IrGetField) {
+                    expression.symbol.owner.enqueue()
+                }
+
+                override fun visitSetField(expression: IrSetField) {
+                    expression.symbol.owner.enqueue()
+                }
+
+                override fun visitDeclaration(declaration: IrDeclaration) {
+                    declaration.enqueue()
+                }
+            })
+        }
+    }
+
+    return result
+}

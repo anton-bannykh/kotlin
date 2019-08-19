@@ -21,7 +21,8 @@ import org.jetbrains.kotlin.utils.addIfNotNull
 
 class IrModuleToJsTransformer(
     private val backendContext: JsIrBackendContext,
-    private val dataMap: Map<ModuleDescriptor, ContextData>
+    private val dataMap: Map<ModuleDescriptor, ContextData>,
+    private val usefulDeclarations: Set<IrDeclaration>
 ) {
 
     val moduleName = backendContext.configuration[CommonConfigurationKeys.MODULE_NAME]!!
@@ -91,6 +92,8 @@ class IrModuleToJsTransformer(
         context: JsGenerationContext,
         internalModuleName: JsName
     ): JsExpressionStatement? {
+        if (declaration !in usefulDeclarations) return null
+
         if (declaration !is IrDeclarationWithVisibility ||
             declaration !is IrDeclarationWithName ||
             declaration.visibility != Visibilities.PUBLIC
@@ -144,7 +147,8 @@ class IrModuleToJsTransformer(
         val staticContext = JsStaticContext(
             backendContext = backendContext,
             irNamer = nameGenerator,
-            rootScope = program.rootScope
+            rootScope = program.rootScope,
+            usefulDeclarations = usefulDeclarations
         )
         val rootContext = JsGenerationContext(
             parent = null,

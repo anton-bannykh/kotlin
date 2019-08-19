@@ -13,15 +13,21 @@ import org.jetbrains.kotlin.js.backend.ast.*
 class IrDeclarationToJsTransformer : BaseIrElementToJsNodeTransformer<JsStatement, JsGenerationContext> {
 
     override fun visitSimpleFunction(declaration: IrSimpleFunction, context: JsGenerationContext): JsStatement {
+        if (declaration !in context.staticContext.usefulDeclarations) return JsEmpty
+
         if (declaration.descriptor.isExpect) return JsEmpty // TODO: fix it in Psi2Ir
         return declaration.accept(IrFunctionToJsTransformer(), context).makeStmt()
     }
 
     override fun visitConstructor(declaration: IrConstructor, context: JsGenerationContext): JsStatement {
+        if (declaration !in context.staticContext.usefulDeclarations) return JsEmpty
+
         return declaration.accept(IrFunctionToJsTransformer(), context).makeStmt()
     }
 
     override fun visitClass(declaration: IrClass, context: JsGenerationContext): JsStatement {
+        if (declaration !in context.staticContext.usefulDeclarations) return JsEmpty
+
         return JsClassGenerator(
             declaration,
             context.newDeclaration(
@@ -34,6 +40,8 @@ class IrDeclarationToJsTransformer : BaseIrElementToJsNodeTransformer<JsStatemen
     }
 
     override fun visitField(declaration: IrField, context: JsGenerationContext): JsStatement {
+        if (declaration !in context.staticContext.usefulDeclarations) return JsEmpty
+
         val fieldName = context.getNameForField(declaration)
 
         if (declaration.isExternal) return JsEmpty
@@ -47,6 +55,8 @@ class IrDeclarationToJsTransformer : BaseIrElementToJsNodeTransformer<JsStatemen
     }
 
     override fun visitVariable(declaration: IrVariable, context: JsGenerationContext): JsStatement {
+        if (declaration !in context.staticContext.usefulDeclarations) return JsEmpty
+
         return declaration.accept(IrElementToJsStatementTransformer(), context)
     }
 }
