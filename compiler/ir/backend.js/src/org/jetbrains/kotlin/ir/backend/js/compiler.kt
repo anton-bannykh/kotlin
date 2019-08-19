@@ -18,9 +18,7 @@ import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.types.classifierOrNull
-import org.jetbrains.kotlin.ir.util.ExternalDependenciesGenerator
-import org.jetbrains.kotlin.ir.util.IrDeserializer
-import org.jetbrains.kotlin.ir.util.SymbolTable
+import org.jetbrains.kotlin.ir.util.*
 import org.jetbrains.kotlin.ir.visitors.IrElementVisitorVoid
 import org.jetbrains.kotlin.ir.visitors.acceptChildrenVoid
 import org.jetbrains.kotlin.ir.visitors.acceptVoid
@@ -118,7 +116,7 @@ fun compile(
         stageController.freeze()
 
 
-        val usefulDeclarations = usefulDeclarations(moduleFragment)
+        val usefulDeclarations = usefulDeclarations(moduleFragment, context)
 
         // TODO traverse all IR
         val jsProgram = IrModuleToJsTransformer(context, dataMap, usefulDeclarations).generateModule(dependencyModules + moduleFragment)
@@ -179,7 +177,7 @@ var lazyLowerCalls = 0L
 var lazyLowerIteration = 0L
 var actualLoweringInvocations = 0L
 
-fun usefulDeclarations(module: IrModuleFragment): Set<IrDeclaration> {
+fun usefulDeclarations(module: IrModuleFragment, context: JsIrBackendContext): Set<IrDeclaration> {
     val queue = ArrayDeque<IrDeclaration>()
     val result = Sets.newIdentityHashSet<IrDeclaration>()
 
@@ -219,6 +217,20 @@ fun usefulDeclarations(module: IrModuleFragment): Set<IrDeclaration> {
         }
 
         // TODO overrides
+        if (declaration is IrSimpleFunction) {
+//            declaration.overriddenSymbols.forEach {
+//                it.owner.enqueue()
+//            }
+        }
+
+        if (declaration is IrConstructor) {
+            declaration.constructedClass.enqueue()
+        }
+
+        if (declaration is IrSimpleFunction && declaration.name.asString() == "equals" &&
+            (declaration.parent as? IrClass)?.name?.asString() == "Char") {
+            println("!!!")
+        }
 
         val body = when (declaration) {
             is IrFunction -> declaration.body
@@ -233,24 +245,47 @@ fun usefulDeclarations(module: IrModuleFragment): Set<IrDeclaration> {
                     element.acceptChildrenVoid(this)
                 }
 
-                override fun visitDelegatingConstructorCall(expression: IrDelegatingConstructorCall) {
+                override fun visitFunctionAccess(expression: IrFunctionAccessExpression) {
+                    super.visitFunctionAccess(expression)
+
                     expression.symbol.owner.enqueue()
                 }
 
                 override fun visitCall(expression: IrCall) {
-                    expression.symbol.owner.enqueue()
+                    super.visitCall(expression)
+
+                    when (expression.symbol) {
+                        context.libraryIntrinsics.jsBoxIntrinsic -> {
+                            val inlineClass = expression.getTypeArgument(0)!!.getInlinedClass()!!
+                            val constructor = inlineClass.declarations.filterIsInstance<IrConstructor>().single { it.isPrimary }
+                            constructor.enqueue()
+                        }
+                        context.libraryIntrinsics.jsClass -> {
+                            (expression.getTypeArgument(0)?.classifierOrNull as? IrClassSymbol)?.owner?.enqueue()
+                        }
+                    }
                 }
 
-                override fun visitGetField(expression: IrGetField) {
-                    expression.symbol.owner.enqueue()
-                }
+                override fun visitFieldAccess(expression: IrFieldAccessExpression) {
+                    super.visitFieldAccess(expression)
 
-                override fun visitSetField(expression: IrSetField) {
                     expression.symbol.owner.enqueue()
                 }
 
                 override fun visitDeclaration(declaration: IrDeclaration) {
                     declaration.enqueue()
+                }
+
+                override fun visitInstanceInitializerCall(expression: IrInstanceInitializerCall) {
+                    super.visitInstanceInitializerCall(expression)
+
+                    expression.classSymbol.owner.enqueue()
+                }
+
+                override fun visitGetObjectValue(expression: IrGetObjectValue) {
+                    super.visitGetObjectValue(expression)
+
+                    expression.symbol.owner.enqueue()
                 }
             })
         }
