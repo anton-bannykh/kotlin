@@ -221,6 +221,10 @@ fun usefulDeclarations(module: IrModuleFragment, context: JsIrBackendContext): S
         it.owner.declarations.forEach { it.enqueue() }
     }
 
+    fun IrSimpleFunction.overridesUsefulFunction(): Boolean {
+        return this.overriddenSymbols.any { it.owner in result || it.owner.overridesUsefulFunction() }
+    }
+
     while (queue.isNotEmpty()) {
         val declaration = queue.pollFirst()
 
@@ -229,6 +233,11 @@ fun usefulDeclarations(module: IrModuleFragment, context: JsIrBackendContext): S
                 (it.classifierOrNull as? IrClassSymbol)?.owner?.enqueue()
             }
             declaration.declarations.filter { it is IrConstructor && it.isPrimary }.forEach { it.enqueue() }
+            declaration.declarations.forEach {
+                if (it is IrSimpleFunction && it.overridesUsefulFunction()) {
+                    it.enqueue()
+                }
+            }
         }
 
         (declaration.parent as? IrClass)?.enqueue()
