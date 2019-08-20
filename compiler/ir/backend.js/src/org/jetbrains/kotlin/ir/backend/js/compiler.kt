@@ -221,8 +221,12 @@ fun usefulDeclarations(module: IrModuleFragment, context: JsIrBackendContext): S
         it.owner.declarations.forEach { it.enqueue() }
     }
 
-    fun IrSimpleFunction.overridesUsefulFunction(): Boolean {
-        return this.overriddenSymbols.any { it.owner in result || it.owner.overridesUsefulFunction() }
+    fun IrOverridableDeclaration<*>.overridesUsefulFunction(): Boolean {
+        return this.overriddenSymbols.any {
+            (it.owner as? IrOverridableDeclaration<*>)?.let {
+                it in result || it.overridesUsefulFunction()
+            } ?: false
+        }
     }
 
     while (queue.isNotEmpty()) {
@@ -234,7 +238,7 @@ fun usefulDeclarations(module: IrModuleFragment, context: JsIrBackendContext): S
             }
             declaration.declarations.filter { it is IrConstructor && it.isPrimary }.forEach { it.enqueue() }
             declaration.declarations.forEach {
-                if (it is IrSimpleFunction && it.overridesUsefulFunction()) {
+                if (it is IrOverridableDeclaration<*> && it.overridesUsefulFunction()) {
                     it.enqueue()
                 }
             }
@@ -248,7 +252,7 @@ fun usefulDeclarations(module: IrModuleFragment, context: JsIrBackendContext): S
             (declaration.parent as? IrClass)?.let { clazz ->
                 descendants[clazz]?.forEach { d ->
                     d.declarations.forEach {
-                        if (it is IrSimpleFunction && it.overriddenSymbols.contains(declaration.symbol)) {
+                        if (it is IrOverridableDeclaration<*> && it.overriddenSymbols.contains(declaration.symbol)) {
                             it.enqueue()
                         }
                     }

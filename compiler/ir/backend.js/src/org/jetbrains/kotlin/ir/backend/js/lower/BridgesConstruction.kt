@@ -131,7 +131,8 @@ class BridgesConstruction(val context: JsIrBackendContext) : ClassLoweringPass {
             copyTypeParametersFrom(bridge)
             valueParameters += bridge.valueParameters.map { p -> p.copyTo(this) }
             annotations += bridge.annotations
-            overriddenSymbols.addAll(delegateTo.overriddenSymbols)
+            overriddenSymbols.addAll(delegateTo.overriddenSymbols) // ??
+            overriddenSymbols.add(bridge.symbol)
 
             body = IrBlockBodyImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET)
         }
