@@ -14,6 +14,7 @@ import org.jetbrains.kotlin.descriptors.ModuleDescriptor
 import org.jetbrains.kotlin.descriptors.PropertyDescriptor
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.backend.js.transformers.irToJs.IrModuleToJsTransformer
+import org.jetbrains.kotlin.ir.backend.js.utils.getJsNameOrKotlinName
 import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
@@ -221,6 +222,12 @@ fun usefulDeclarations(module: IrModuleFragment, context: JsIrBackendContext): S
         it.owner.declarations.forEach { it.enqueue() }
     }
 
+    // TODO Why? Seems like native exception constructors read message field
+    context.throwableClass.owner.declarations.filterIsInstance<IrSimpleFunction>().filter { it.name.asString() == "<get-message>" }.forEach { it.enqueue() }
+    context.throwableClass.owner.declarations.filterIsInstance<IrProperty>().filter { it.name.asString() == "message" }.forEach { it.getter?.enqueue() }
+    context.throwableClass.owner.declarations.filterIsInstance<IrSimpleFunction>().filter { it.name.asString() == "<get-cause>" }.forEach { it.enqueue() }
+    context.throwableClass.owner.declarations.filterIsInstance<IrProperty>().filter { it.name.asString() == "cause" }.forEach { it.getter?.enqueue() }
+
     fun IrOverridableDeclaration<*>.overridesUsefulFunction(): Boolean {
         return this.overriddenSymbols.any {
             (it.owner as? IrOverridableDeclaration<*>)?.let {
@@ -239,6 +246,9 @@ fun usefulDeclarations(module: IrModuleFragment, context: JsIrBackendContext): S
             declaration.declarations.filter { it is IrConstructor && it.isPrimary }.forEach { it.enqueue() }
             declaration.declarations.forEach {
                 if (it is IrOverridableDeclaration<*> && it.overridesUsefulFunction()) {
+                    it.enqueue()
+                }
+                if (it is IrSimpleFunction && it.getJsNameOrKotlinName().asString() == "valueOf") {
                     it.enqueue()
                 }
             }
