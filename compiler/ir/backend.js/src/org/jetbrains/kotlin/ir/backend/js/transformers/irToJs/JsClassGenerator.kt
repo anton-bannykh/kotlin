@@ -48,6 +48,8 @@ class JsClassGenerator(private val irClass: IrClass, val context: JsGenerationCo
         val properties = mutableSetOf<IrProperty>()
 
         for (declaration in irClass.declarations) {
+            if (declaration !in context.staticContext.usefulDeclarations) continue
+
             when (declaration) {
                 is IrConstructor -> {
                     classBlock.statements += declaration.accept(transformer, context)

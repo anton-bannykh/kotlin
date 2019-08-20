@@ -5,6 +5,7 @@
 
 package org.jetbrains.kotlin.ir.backend.js
 
+import com.google.common.collect.Maps
 import com.google.common.collect.Sets
 import com.intellij.openapi.project.Project
 import org.jetbrains.kotlin.backend.common.phaser.PhaseConfig
@@ -180,11 +181,19 @@ var actualLoweringInvocations = 0L
 fun usefulDeclarations(module: IrModuleFragment, context: JsIrBackendContext): Set<IrDeclaration> {
     val queue = ArrayDeque<IrDeclaration>()
     val result = Sets.newIdentityHashSet<IrDeclaration>()
+    val descendants = Maps.newIdentityHashMap<IrClass, MutableList<IrClass>>()
 
     fun IrDeclaration.enqueue() {
         if (this !in result) {
             result.add(this)
             queue.addLast(this)
+            if (this is IrClass) {
+                this.superTypes.forEach {
+                    (it.classifierOrNull as? IrClassSymbol)?.owner?.let { baseClass ->
+                        descendants.getOrPut(baseClass) { mutableListOf() }.add(this)
+                    }
+                }
+            }
         }
     }
 
@@ -206,6 +215,12 @@ fun usefulDeclarations(module: IrModuleFragment, context: JsIrBackendContext): S
         }
     }
 
+    // TODO remove
+    // The PrimitiveCompanionLowering doesn't rewrite the calls
+    context.primitiveCompanionObjects.values.forEach {
+        it.owner.declarations.forEach { it.enqueue() }
+    }
+
     while (queue.isNotEmpty()) {
         val declaration = queue.pollFirst()
 
@@ -216,19 +231,34 @@ fun usefulDeclarations(module: IrModuleFragment, context: JsIrBackendContext): S
             declaration.declarations.filter { it is IrConstructor && it.isPrimary }.forEach { it.enqueue() }
         }
 
+        (declaration.parent as? IrClass)?.enqueue()
+
         // TODO overrides
         if (declaration is IrSimpleFunction) {
-//            declaration.overriddenSymbols.forEach {
-//                it.owner.enqueue()
-//            }
+            declaration.correspondingPropertySymbol?.owner?.enqueue()
+            (declaration.parent as? IrClass)?.let { clazz ->
+                descendants[clazz]?.forEach { d ->
+                    d.declarations.forEach {
+                        if (it is IrSimpleFunction && it.overriddenSymbols.contains(declaration.symbol)) {
+                            it.enqueue()
+                        }
+                    }
+                }
+            }
+
+            if (declaration.origin == IrDeclarationOrigin.FAKE_OVERRIDE) {
+                declaration.overriddenSymbols.forEach {
+                    it.owner.enqueue()
+                }
+            }
         }
 
         if (declaration is IrConstructor) {
             declaration.constructedClass.enqueue()
         }
 
-        if (declaration is IrSimpleFunction && declaration.name.asString() == "equals" &&
-            (declaration.parent as? IrClass)?.name?.asString() == "Char") {
+        if (declaration is IrConstructor && declaration.isPrimary &&
+            (declaration.parent as? IrClass)?.name?.asString() == "IntProgression") {
             println("!!!")
         }
 
@@ -284,6 +314,12 @@ fun usefulDeclarations(module: IrModuleFragment, context: JsIrBackendContext): S
 
                 override fun visitGetObjectValue(expression: IrGetObjectValue) {
                     super.visitGetObjectValue(expression)
+
+                    expression.symbol.owner.enqueue()
+                }
+
+                override fun visitVariableAccess(expression: IrValueAccessExpression) {
+                    super.visitVariableAccess(expression)
 
                     expression.symbol.owner.enqueue()
                 }
