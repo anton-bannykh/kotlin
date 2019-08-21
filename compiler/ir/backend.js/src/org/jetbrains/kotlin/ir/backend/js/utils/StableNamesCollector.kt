@@ -9,6 +9,9 @@ import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
+import org.jetbrains.kotlin.ir.declarations.impl.IrBodyBase
+import org.jetbrains.kotlin.ir.declarations.stageController
+import org.jetbrains.kotlin.ir.expressions.IrBody
 import org.jetbrains.kotlin.ir.util.isEffectivelyExternal
 import org.jetbrains.kotlin.ir.util.isPropertyAccessor
 import org.jetbrains.kotlin.ir.util.isPropertyField
@@ -27,6 +30,12 @@ class StableNamesCollector : IrElementVisitorVoid {
 
     override fun visitElement(element: IrElement) {
         element.acceptChildrenVoid(this)
+    }
+
+    override fun visitBody(body: IrBody) {
+        if (body is IrBodyBase && body.loweredUpTo < stageController.currentStage - 1) return
+
+        super.visitBody(body)
     }
 
     override fun visitDeclaration(declaration: IrDeclaration) {

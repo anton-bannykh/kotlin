@@ -647,7 +647,7 @@ class MutableController : StageController {
 
     override var bodiesEnabled = false
 
-    private fun <T> withBodies(fn: () -> T): T {
+    fun <T> withBodies(fn: () -> T): T {
         val previousBodies = bodiesEnabled
         bodiesEnabled = true
 
@@ -753,8 +753,26 @@ class MutableController : StageController {
 
         mainTime += System.currentTimeMillis() - start
 
-
         currentStage = perFilePhaseList.size + 1
+
+        val usefulDeclarations = usefulDeclarations(moduleFragment, context, this)
+
+        // Load bodies
+        for (decl in usefulDeclarations) {
+            decl.accept(object : IrElementVisitorVoid {
+                override fun visitElement(element: IrElement) {
+                    element.acceptChildren(this, null)
+                }
+
+                override fun visitBody(body: IrBody) {
+                    if (body is IrBodyBase && body.loweredUpTo + 1 < currentStage) {
+                        withBodies {
+                            lowerBody(body)
+                        }
+                    }
+                }
+            }, null)
+        }
 
         while (true) {
             var changed = false
@@ -783,23 +801,22 @@ class MutableController : StageController {
 
             for (file in moduleFragment.files + dependencyModules.flatMap { it.files }) {
                 for (decl in ArrayList(file.declarations)) {
-                    if (decl.loweredUpTo < currentStage - 1) {
-                        lazyLower(decl)
-                        changed = true
-                    }
-
                     decl.accept(object : IrElementVisitorVoid {
                         override fun visitElement(element: IrElement) {
                             element.acceptChildren(this, null)
                         }
 
                         override fun visitBody(body: IrBody) {
-                            if (body is IrBodyBase && body.loweredUpTo + 1 < currentStage) {
+                            // Skip
+                        }
+
+                        override fun visitDeclaration(declaration: IrDeclaration) {
+                            if (decl.loweredUpTo < currentStage - 1) {
+                                lazyLower(decl)
                                 changed = true
-                                withBodies {
-                                    lowerBody(body)
-                                }
                             }
+
+                            super.visitDeclaration(declaration)
                         }
                     }, null)
                 }
@@ -851,6 +868,9 @@ class MutableController : StageController {
 
     override fun lowerBody(body: IrBodyBase) {
         if (body.loweredUpTo + 1 < stageController.currentStage) {
+            if (frozen) {
+                error("Frozen! Cannot lazy lower body")
+            }
             for (i in (body.loweredUpTo + 1) until stageController.currentStage) {
                 withStage(i) {
                     val declaration = body.container
@@ -878,9 +898,9 @@ class MutableController : StageController {
     val loaded = ArrayDeque<IrDeclaration>()
 
     override fun tryLoad(symbol: IrSymbol) {
-//        if (frozen) {
-//            error("Cannot load after freeze")
-//        }
+        if (frozen) {
+            error("Cannot load after freeze")
+        }
 
         dependencyGenerator?.let { generator ->
             withBodies {

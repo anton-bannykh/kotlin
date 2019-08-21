@@ -9,6 +9,8 @@ import org.jetbrains.kotlin.backend.common.ir.isTopLevel
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.backend.js.JsLoweredDeclarationOrigin
 import org.jetbrains.kotlin.ir.declarations.*
+import org.jetbrains.kotlin.ir.declarations.impl.IrBodyBase
+import org.jetbrains.kotlin.ir.expressions.IrBody
 import org.jetbrains.kotlin.ir.expressions.IrLoop
 import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
 import org.jetbrains.kotlin.ir.util.isEffectivelyExternal
@@ -171,6 +173,12 @@ class NameTables(packages: List<IrPackageFragment>) {
         private val localLoopNames = NameTable<IrLoop>()
         override fun visitElement(element: IrElement) {
             element.acceptChildrenVoid(this)
+        }
+
+        override fun visitBody(body: IrBody) {
+            if (body is IrBodyBase && body.loweredUpTo < stageController.currentStage - 1) return
+
+            super.visitBody(body)
         }
 
         override fun visitValueParameter(declaration: IrValueParameter) {
