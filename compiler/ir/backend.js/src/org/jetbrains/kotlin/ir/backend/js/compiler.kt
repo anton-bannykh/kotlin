@@ -99,7 +99,7 @@ fun compile(
 
         var start = System.currentTimeMillis()
 
-        stageController.invokeTopLevel(phaseConfig, moduleFragment, dependencyModules)
+        val usefulDeclarations = stageController.invokeTopLevel(phaseConfig, moduleFragment, dependencyModules)
 
         totalTime += System.currentTimeMillis() - start
         ++testCnt
@@ -115,12 +115,12 @@ fun compile(
         stageController.bodiesEnabled = true
 
         // TODO traverse all IR
-        generateTests(context, dataMap[moduleDescriptor]!!, dependencyModules + moduleFragment, phaseConfig)
+//        generateTests(context, dataMap[moduleDescriptor]!!, dependencyModules + moduleFragment, phaseConfig)
 
         stageController.freeze()
 
 
-        val usefulDeclarations = usefulDeclarations(moduleFragment, context, stageController)
+//        val usefulDeclarations = usefulDeclarations(moduleFragment, context, stageController)
 
         // TODO traverse all IR
         val jsProgram = IrModuleToJsTransformer(context, dataMap, usefulDeclarations).generateModule(dependencyModules + moduleFragment)

@@ -732,7 +732,7 @@ class MutableController : StageController {
 
     private var frozen = false
 
-    fun invokeTopLevel(phaseConfig: PhaseConfig, moduleFragment: IrModuleFragment, dependencyModules: List<IrModuleFragment>) {
+    fun invokeTopLevel(phaseConfig: PhaseConfig, moduleFragment: IrModuleFragment, dependencyModules: List<IrModuleFragment>): Set<IrDeclaration> {
 //        for (module in listOf(moduleFragment) + dependencyModules) {
 //            for (file in module.files) {
 //                fileToModule[file] = module.descriptor
@@ -741,15 +741,15 @@ class MutableController : StageController {
 
         val start = System.currentTimeMillis()
 
-        for (stage in 1..perFilePhaseList.size) {
-            for (module in dependencyModules + moduleFragment) {
-                for (file in module.files) {
-                    lowerUpTo(file, stage + 1)
-                }
-            }
-        }
+//        for (stage in 1..perFilePhaseList.size) {
+//            for (module in dependencyModules + moduleFragment) {
+//                for (file in module.files) {
+//                    lowerUpTo(file, stage + 1)
+//                }
+//            }
+//        }
 
-//        jsPhases.invokeToplevel(phaseConfig, context, moduleFragment)
+        jsPhases.invokeToplevel(phaseConfig, context, moduleFragment)
 
         val afterMain = System.currentTimeMillis()
         mainTime += afterMain - start
@@ -805,30 +805,18 @@ class MutableController : StageController {
 
             for (file in moduleFragment.files + dependencyModules.flatMap { it.files }) {
                 for (decl in ArrayList(file.declarations)) {
-                    decl.accept(object : IrElementVisitorVoid {
-                        override fun visitElement(element: IrElement) {
-                            element.acceptChildren(this, null)
-                        }
-
-                        override fun visitBody(body: IrBody) {
-                            // Skip
-                        }
-
-                        override fun visitDeclaration(declaration: IrDeclaration) {
-                            if (decl.loweredUpTo < currentStage - 1) {
-                                lazyLower(decl)
-                                changed = true
-                            }
-
-                            super.visitDeclaration(declaration)
-                        }
-                    }, null)
+                    if (decl.loweredUpTo < currentStage - 1) {
+                        lazyLower(decl)
+                        changed = true
+                    }
                 }
             }
             if (!changed) break
         }
 
         finishingTime += System.currentTimeMillis() - afterDce
+
+        return usefulDeclarations
 
 //        while (!loaded.isEmpty()) {
 //            val decl = loaded.pop()
