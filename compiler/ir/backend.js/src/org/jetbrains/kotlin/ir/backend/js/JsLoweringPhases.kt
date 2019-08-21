@@ -778,41 +778,41 @@ class MutableController : StageController {
         val afterDce = System.currentTimeMillis()
         dceTime += afterDce - afterMain
 
-        while (true) {
-            var changed = false
-
-            ArrayList(context.symbolTable.unboundClasses).forEach {
-                tryLoad(it)
-            }
-            ArrayList(context.symbolTable.unboundConstructors).forEach {
-                tryLoad(it)
-            }
-            ArrayList(context.symbolTable.unboundEnumEntries).forEach {
-                tryLoad(it)
-            }
-            ArrayList(context.symbolTable.unboundFields).forEach {
-                tryLoad(it)
-            }
-            ArrayList(context.symbolTable.unboundSimpleFunctions).forEach {
-                tryLoad(it)
-            }
-            ArrayList(context.symbolTable.unboundProperties).forEach {
-                tryLoad(it)
-            }
-            ArrayList(context.symbolTable.unboundTypeParameters).forEach {
-                tryLoad(it)
-            }
-
-            for (file in moduleFragment.files + dependencyModules.flatMap { it.files }) {
-                for (decl in ArrayList(file.declarations)) {
-                    if (decl.loweredUpTo < currentStage - 1) {
-                        lazyLower(decl)
-                        changed = true
-                    }
-                }
-            }
-            if (!changed) break
-        }
+//        while (true) {
+//            var changed = false
+//
+//            ArrayList(context.symbolTable.unboundClasses).forEach {
+//                tryLoad(it)
+//            }
+//            ArrayList(context.symbolTable.unboundConstructors).forEach {
+//                tryLoad(it)
+//            }
+//            ArrayList(context.symbolTable.unboundEnumEntries).forEach {
+//                tryLoad(it)
+//            }
+//            ArrayList(context.symbolTable.unboundFields).forEach {
+//                tryLoad(it)
+//            }
+//            ArrayList(context.symbolTable.unboundSimpleFunctions).forEach {
+//                tryLoad(it)
+//            }
+//            ArrayList(context.symbolTable.unboundProperties).forEach {
+//                tryLoad(it)
+//            }
+//            ArrayList(context.symbolTable.unboundTypeParameters).forEach {
+//                tryLoad(it)
+//            }
+//
+//            for (file in moduleFragment.files + dependencyModules.flatMap { it.files }) {
+//                for (decl in ArrayList(file.declarations)) {
+//                    if (decl.loweredUpTo < currentStage - 1) {
+//                        lazyLower(decl)
+//                        changed = true
+//                    }
+//                }
+//            }
+//            if (!changed) break
+//        }
 
         finishingTime += System.currentTimeMillis() - afterDce
 
@@ -917,6 +917,6 @@ class MutableController : StageController {
     }
 
     fun deinit() {
-        stageController = NoopController()
+        stageController = NoopController(currentStage)
     }
 }

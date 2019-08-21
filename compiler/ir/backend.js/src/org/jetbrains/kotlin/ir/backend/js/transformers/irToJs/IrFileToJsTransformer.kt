@@ -18,7 +18,9 @@ class IrFileToJsTransformer : BaseIrElementToJsNodeTransformer<JsStatement, JsGe
         val block = fileContext.currentBlock
 
         declaration.declarations.forEach {
-            block.statements.add(it.accept(IrDeclarationToJsTransformer(), fileContext))
+            if (it in context.staticContext.usefulDeclarations) {
+                block.statements.add(it.accept(IrDeclarationToJsTransformer(), fileContext))
+            }
         }
 
         return block

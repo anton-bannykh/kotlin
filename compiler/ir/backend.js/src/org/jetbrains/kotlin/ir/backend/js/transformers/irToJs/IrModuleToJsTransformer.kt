@@ -135,7 +135,7 @@ class IrModuleToJsTransformer(
                 it.externalPackageFragment,
                 it.bodilessBuiltInsPackageFragment
             ) + it.packageLevelJsModules.values
-        })
+        }, usefulDeclarations)
 
         val program = JsProgram()
 

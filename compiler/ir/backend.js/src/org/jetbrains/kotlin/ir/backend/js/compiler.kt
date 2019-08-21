@@ -122,10 +122,11 @@ fun compile(
 
 //        val usefulDeclarations = usefulDeclarations(moduleFragment, context, stageController)
 
+        stageController.deinit()
+
         // TODO traverse all IR
         val jsProgram = IrModuleToJsTransformer(context, dataMap, usefulDeclarations).generateModule(dependencyModules + moduleFragment)
 
-        stageController.deinit()
 
         dependencyModules.forEach {
             if (it.name.asString() == "<JS_IR_RUNTIME>") {

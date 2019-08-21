@@ -19,7 +19,7 @@ import org.jetbrains.kotlin.ir.visitors.IrElementVisitorVoid
 import org.jetbrains.kotlin.ir.visitors.acceptChildrenVoid
 import org.jetbrains.kotlin.utils.addIfNotNull
 
-class StableNamesCollector : IrElementVisitorVoid {
+class StableNamesCollector(val usefulDeclarations: Set<IrDeclaration>) : IrElementVisitorVoid {
     val staticNames = mutableSetOf<String>()
     val memberNames = mutableSetOf<String>()
 
@@ -39,6 +39,8 @@ class StableNamesCollector : IrElementVisitorVoid {
     }
 
     override fun visitDeclaration(declaration: IrDeclaration) {
+        if (declaration !in usefulDeclarations) return
+
         super.visitDeclaration(declaration)
 
         if (declaration !is IrDeclarationWithName)

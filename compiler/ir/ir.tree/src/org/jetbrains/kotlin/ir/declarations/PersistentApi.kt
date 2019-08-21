@@ -32,8 +32,7 @@ interface StageController {
     abstract fun <T> withInitialIr(block: () -> T): T
 }
 
-class NoopController : StageController {
-    override val currentStage: Int = 0
+class NoopController(override val currentStage: Int = 0) : StageController {
 
     override val bodiesEnabled: Boolean
         get() = true

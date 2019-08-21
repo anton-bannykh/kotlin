@@ -74,14 +74,14 @@ fun NameTable<IrDeclaration>.dump(): String =
     }
 
 
-class NameTables(packages: List<IrPackageFragment>) {
+class NameTables(packages: List<IrPackageFragment>, val usefulDeclarations: Set<IrDeclaration>) {
     private val globalNames: NameTable<IrDeclaration>
     private val memberNames: NameTable<IrDeclaration>
     private val localNames = mutableMapOf<IrDeclaration, NameTable<IrDeclaration>>()
     private val loopNames = mutableMapOf<IrLoop, String>()
 
     init {
-        val stableNamesCollector = StableNamesCollector()
+        val stableNamesCollector = StableNamesCollector(usefulDeclarations)
         packages.forEach { it.acceptChildrenVoid(stableNamesCollector) }
 
         globalNames = NameTable(reserved = stableNamesCollector.staticNames)
