@@ -33,9 +33,9 @@ val dataCache = mutableMapOf<ModuleDescriptor, ContextData>()
 
 val intrinsicsCache = mutableMapOf<KlibModuleRef, JsIntrinsics>()
 
-val lazyLoad = true
+val lazyLoad = false
 
-val icOn = true
+val icOn = false
 
 fun compile(
     project: Project,
@@ -106,6 +106,8 @@ fun compile(
 
         println("#$testCnt: ${totalTime / testCnt}ms")
         println("main: ${mainTime / testCnt}ms")
+        println("dce: ${dceTime / testCnt}ms")
+        println("finishing: ${finishingTime / testCnt}ms")
         println("LLC: ${lazyLowerCalls / testCnt}; LLI: ${lazyLowerIteration / testCnt}; ALI: ${actualLoweringInvocations / testCnt}")
         println("LLCP: ${lazyLowerCalls * 100 / actualLoweringInvocations / 100.0}; LLIP: ${lazyLowerIteration * 100 / actualLoweringInvocations / 100.0}")
         println()
@@ -174,6 +176,9 @@ object DeserializerProxy : IrDeserializer {
 var testCnt = 0
 var totalTime = 0L
 var mainTime = 0L
+var dceTime = 0L
+var finishingTime = 0L
+var bodiesTouchedCnt = 0
 
 var lazyLowerCalls = 0L
 var lazyLowerIteration = 0L

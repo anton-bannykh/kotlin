@@ -751,7 +751,8 @@ class MutableController : StageController {
 
 //        jsPhases.invokeToplevel(phaseConfig, context, moduleFragment)
 
-        mainTime += System.currentTimeMillis() - start
+        val afterMain = System.currentTimeMillis()
+        mainTime += afterMain - start
 
         currentStage = perFilePhaseList.size + 1
 
@@ -773,6 +774,9 @@ class MutableController : StageController {
                 }
             }, null)
         }
+
+        val afterDce = System.currentTimeMillis()
+        dceTime += afterDce - afterMain
 
         while (true) {
             var changed = false
@@ -823,6 +827,8 @@ class MutableController : StageController {
             }
             if (!changed) break
         }
+
+        finishingTime += System.currentTimeMillis() - afterDce
 
 //        while (!loaded.isEmpty()) {
 //            val decl = loaded.pop()
