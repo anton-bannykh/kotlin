@@ -31,10 +31,14 @@ class IrBlockBodyImpl(
     IrBodyBase<IrBlockBodyImpl>(startOffset, endOffset, initializer),
     IrBlockBody {
 
-    constructor(startOffset: Int, endOffset: Int, statements: List<IrStatement>) : this(startOffset, endOffset, { this.statements.addAll(statements) })
+    constructor(startOffset: Int, endOffset: Int, statements: List<IrStatement>) : this(startOffset, endOffset) {
+        statementsField.addAll(statements)
+    }
 
-    override val statements: MutableList<IrStatement> = ArrayList()
-        get() = checkEnabled { field }
+    private var statementsField: MutableList<IrStatement> = ArrayList()
+
+    override val statements: MutableList<IrStatement>
+        get() = checkEnabled { statementsField }
 
     override fun <R, D> accept(visitor: IrElementVisitor<R, D>, data: D): R {
         return visitor.visitBlockBody(this, data)
