@@ -101,16 +101,9 @@ fun compile(
 
         val usefulDeclarations = stageController.invokeTopLevel(phaseConfig, moduleFragment, dependencyModules)
 
-        totalTime += System.currentTimeMillis() - start
+        val afterLowerings = System.currentTimeMillis()
+        totalTime += afterLowerings - start
         ++testCnt
-
-        println("#$testCnt: ${totalTime / testCnt}ms")
-        println("main: ${mainTime / testCnt}ms")
-        println("dce: ${dceTime / testCnt}ms")
-        println("finishing: ${finishingTime / testCnt}ms")
-        println("LLC: ${lazyLowerCalls / testCnt}; LLI: ${lazyLowerIteration / testCnt}; ALI: ${actualLoweringInvocations / testCnt}")
-        println("LLCP: ${lazyLowerCalls * 100 / actualLoweringInvocations / 100.0}; LLIP: ${lazyLowerIteration * 100 / actualLoweringInvocations / 100.0}")
-        println()
 
         stageController.bodiesEnabled = true
 
@@ -126,6 +119,18 @@ fun compile(
 
         // TODO traverse all IR
         val jsProgram = IrModuleToJsTransformer(context, dataMap, usefulDeclarations).generateModule(dependencyModules + moduleFragment)
+
+        ir2JsTime += System.currentTimeMillis() - afterLowerings
+
+
+        println("#$testCnt: ${totalTime / testCnt}ms")
+        println("main: ${mainTime / testCnt}ms")
+        println("dce: ${dceTime / testCnt}ms")
+        println("finishing: ${finishingTime / testCnt}ms")
+        println("ir2Js: ${ir2JsTime / testCnt}ms")
+        println("LLC: ${lazyLowerCalls / testCnt}; LLI: ${lazyLowerIteration / testCnt}; ALI: ${actualLoweringInvocations / testCnt}")
+        println("LLCP: ${lazyLowerCalls * 100 / actualLoweringInvocations / 100.0}; LLIP: ${lazyLowerIteration * 100 / actualLoweringInvocations / 100.0}")
+        println()
 
 
         dependencyModules.forEach {
@@ -179,6 +184,7 @@ var totalTime = 0L
 var mainTime = 0L
 var dceTime = 0L
 var finishingTime = 0L
+var ir2JsTime = 0L
 var bodiesTouchedCnt = 0
 
 var lazyLowerCalls = 0L
