@@ -143,13 +143,6 @@ private val copyInlineFunctionBody = makeJsModulePhase(
     prerequisite = setOf(removeInlineFunctionsLoweringPhase)
 )
 
-private val fillInlineFunctionBody = makeBodyLoweringPhase(
-    { context, _ -> FillInlineFunctionBody(context) },
-    name = "FillInlineFunctionBody",
-    description = "TODO",
-    prerequisite = setOf(removeInlineFunctionsLoweringPhase)
-)
-
 private val throwableSuccessorsLoweringPhase = makeJsModulePhase(
     { context, _ -> ThrowableSuccessorsLowering(context) },
     name = "ThrowableSuccessorsLowering",
@@ -488,7 +481,6 @@ private val perFilePhaseList = listOf(
     functionInliningPhase, // OK
     removeInlineFunctionsLoweringPhase, // OK
     copyInlineFunctionBody, // OK
-    fillInlineFunctionBody, // OK
     lateinitLoweringPhase, // OK
     tailrecLoweringPhase, // OK
     enumClassConstructorLoweringPhase, // OK
