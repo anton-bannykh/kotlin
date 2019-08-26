@@ -22,22 +22,25 @@ import org.jetbrains.kotlin.ir.expressions.IrExpressionBody
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformer
 import org.jetbrains.kotlin.ir.visitors.IrElementVisitor
 
-class IrExpressionBodyImpl(
+class IrExpressionBodyImpl private constructor(
     startOffset: Int,
     endOffset: Int,
-    initializer: () -> IrExpression
+    private var expressionField: IrExpression? = null,
+    initializer: (IrExpressionBodyImpl.() -> Unit)? = null
 ) :
-    IrBodyBase<IrExpression>(startOffset, endOffset, initializer),
+    IrBodyBase<IrExpressionBodyImpl>(startOffset, endOffset, initializer),
     IrExpressionBody {
 
-    constructor(expression: IrExpression) : this(expression.startOffset, expression.endOffset, { expression })
+    constructor(expression: IrExpression) : this(expression.startOffset, expression.endOffset, expression, null)
 
-    constructor(startOffset: Int, endOffset: Int, expression: IrExpression) : this(startOffset, endOffset, { expression })
+    constructor(startOffset: Int, endOffset: Int, expression: IrExpression) : this(startOffset, endOffset, expression, null)
+
+    constructor(startOffset: Int, endOffset: Int, initializer: IrExpressionBodyImpl.() -> Unit) : this(startOffset, endOffset, null, initializer)
 
     override var expression: IrExpression
-        get() = checkEnabled { bodyField!! }
+        get() = checkEnabled { expressionField!! }
         set(e) {
-            checkEnabled { bodyField = e }
+            checkEnabled { expressionField = e }
         }
 
     override fun <R, D> accept(visitor: IrElementVisitor<R, D>, data: D): R =

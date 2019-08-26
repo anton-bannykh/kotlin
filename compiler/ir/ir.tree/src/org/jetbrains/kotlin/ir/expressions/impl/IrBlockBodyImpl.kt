@@ -26,15 +26,15 @@ import java.util.*
 class IrBlockBodyImpl(
     startOffset: Int,
     endOffset: Int,
-    initializer: () -> MutableList<IrStatement> = { ArrayList() }
+    initializer: (IrBlockBodyImpl.() -> Unit)? = null
 ) :
-    IrBodyBase<MutableList<IrStatement>>(startOffset, endOffset, initializer),
+    IrBodyBase<IrBlockBodyImpl>(startOffset, endOffset, initializer),
     IrBlockBody {
 
-    constructor(startOffset: Int, endOffset: Int, statements: List<IrStatement>) : this(startOffset, endOffset, { statements.toMutableList() })
+    constructor(startOffset: Int, endOffset: Int, statements: List<IrStatement>) : this(startOffset, endOffset, { this.statements.addAll(statements) })
 
-    override val statements: MutableList<IrStatement>
-        get() = checkEnabled { bodyField!! }
+    override val statements: MutableList<IrStatement> = ArrayList()
+        get() = checkEnabled { field }
 
     override fun <R, D> accept(visitor: IrElementVisitor<R, D>, data: D): R {
         return visitor.visitBlockBody(this, data)
