@@ -87,7 +87,7 @@ class IrValueParameterImpl(
         get() = getCarrier().defaultValueField
         set(v) {
             if (defaultValue !== v) {
-                if (v is IrBodyBase) {
+                if (v is IrBodyBase<*>) {
                     v.container = this
                 }
                 setCarrier().defaultValueField = v

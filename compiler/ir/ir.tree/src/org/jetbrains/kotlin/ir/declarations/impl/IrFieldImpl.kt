@@ -82,7 +82,7 @@ class IrFieldImpl(
         get() = getCarrier().initializerField
         set(v) {
             if (initializer !== v) {
-                if (v is IrBodyBase) {
+                if (v is IrBodyBase<*>) {
                     v.container = this
                 }
                 setCarrier().initializerField = v

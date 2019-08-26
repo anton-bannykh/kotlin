@@ -47,7 +47,7 @@ class IrAnonymousInitializerImpl(
         get() = getCarrier().bodyField!!
         set(v) {
             if (getCarrier().bodyField !== v) {
-                if (v is IrBodyBase) {
+                if (v is IrBodyBase<*>) {
                     v.container = this
                 }
                 setCarrier().bodyField = v

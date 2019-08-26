@@ -23,7 +23,9 @@ interface StageController {
 
     fun lazyLower(file: IrFile) {}
 
-    fun lowerBody(body: IrBodyBase) {}
+    fun lowerBody(body: IrBodyBase<*>) {}
+
+    fun <T> withStage(stage: Int, fn: () -> T): T = fn()
 
     fun tryLoad(symbol: IrSymbol) {}
 

@@ -176,7 +176,7 @@ class NameTables(packages: List<IrPackageFragment>, val usefulDeclarations: Set<
         }
 
         override fun visitBody(body: IrBody) {
-            if (body is IrBodyBase && body.loweredUpTo < stageController.currentStage - 1) return
+            if (body is IrBodyBase<*> && body.loweredUpTo < stageController.currentStage - 1) return
 
             super.visitBody(body)
         }

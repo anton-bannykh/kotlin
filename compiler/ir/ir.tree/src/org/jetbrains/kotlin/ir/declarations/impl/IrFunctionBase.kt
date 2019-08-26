@@ -90,7 +90,7 @@ abstract class IrFunctionBase<T : FunctionBaseCarrier<T>>(
         get() = getCarrier().bodyField
         set(v) {
             if (body !== v) {
-                if (v is IrBodyBase) {
+                if (v is IrBodyBase<*>) {
                     v.container = this
                 }
                 setCarrier().bodyField = v

@@ -617,11 +617,14 @@ class MutableController : StageController {
     override var currentStage: Int = 0
         private set
 
-    private fun <T> withStage(stage: Int, fn: () -> T): T {
+    override fun <T> withStage(stage: Int, fn: () -> T): T {
         val previousStage = currentStage
         currentStage = stage
-        val result = fn()
-        currentStage = previousStage
+        val result = try {
+            fn()
+        } finally {
+            currentStage = previousStage
+        }
         return result
     }
 
@@ -766,7 +769,7 @@ class MutableController : StageController {
                 }
 
                 override fun visitBody(body: IrBody) {
-                    if (body is IrBodyBase && body.loweredUpTo + 1 < currentStage) {
+                    if (body is IrBodyBase<*> && body.loweredUpTo + 1 < currentStage) {
                         withBodies {
                             lowerBody(body)
                         }
@@ -860,7 +863,7 @@ class MutableController : StageController {
         lowerUpTo(file, currentStage)
     }
 
-    override fun lowerBody(body: IrBodyBase) {
+    override fun lowerBody(body: IrBodyBase<*>) {
         if (body.loweredUpTo + 1 < stageController.currentStage) {
             if (frozen) {
                 error("Frozen! Cannot lazy lower body")

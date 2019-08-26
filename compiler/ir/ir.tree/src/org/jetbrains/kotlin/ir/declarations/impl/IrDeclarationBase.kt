@@ -131,9 +131,10 @@ abstract class IrPersistingElementBase<T : Carrier<T>>(
     }
 }
 
-abstract class IrBodyBase(
+abstract class IrBodyBase<B>(
     startOffset: Int,
-    endOffset: Int
+    endOffset: Int,
+    initializer: () -> B
 ): IrPersistingElementBase<BodyCarrier>(startOffset, endOffset), IrBody, BodyCarrier {
     override var containerField: IrDeclaration? = null
 
@@ -145,8 +146,21 @@ abstract class IrBodyBase(
             }
         }
 
-    inline fun <T> checkEnabled(fn: () -> T): T {
+    private val createdOn = stageController.currentStage
+
+    protected var initializer: (() -> B)? = initializer
+
+    protected var bodyField: B? = null
+
+    protected fun <T> checkEnabled(fn: () -> T): T {
         if (!stageController.bodiesEnabled) error("Bodies disabled!")
+        initializer?.let {
+            // Uninitialized body shouldn't have been lowered yet, hence it was created on stage `loweredUpTo`
+            stageController.withStage(loweredUpTo) {
+                bodyField = it.invoke()
+                initializer = null
+            }
+        }
         if (loweredUpTo + 1 < stageController.currentStage) {
             stageController.lowerBody(this)
         }
