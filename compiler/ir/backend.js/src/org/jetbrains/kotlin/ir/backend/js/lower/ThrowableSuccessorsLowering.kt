@@ -37,10 +37,6 @@ import org.jetbrains.kotlin.name.Name
 
 data class DirectThrowableSuccessors(val klass: IrClass, val message: IrField, val cause: IrField)
 
-private var IrSimpleFunction.causeField by mapping(object : MappingKey<IrSimpleFunction, IrField> {})
-
-private var IrSimpleFunction.messageField by mapping(object : MappingKey<IrSimpleFunction, IrField> {})
-
 private var IrClass.pendingSuperUsages by mapping(object : MappingKey<IrClass, DirectThrowableSuccessors> {})
 
 class ThrowableSuccessorsLowering(val context: JsIrBackendContext) : DeclarationTransformer {
@@ -83,16 +79,12 @@ class ThrowableSuccessorsLowering(val context: JsIrBackendContext) : Declaration
 
                 val existedMessageAccessor = ownPropertyAccessor(declaration, messageGetter)
                 val newMessageAccessor = if (existedMessageAccessor.origin == IrDeclarationOrigin.FAKE_OVERRIDE) {
-                    createPropertyAccessor(existedMessageAccessor, messageField).also {
-                        it.messageField = messageField
-                    }
+                    createPropertyAccessor(existedMessageAccessor, messageField)
                 } else existedMessageAccessor
 
                 val existedCauseAccessor = ownPropertyAccessor(declaration, causeGetter)
                 val newCauseAccessor = if (existedCauseAccessor.origin == IrDeclarationOrigin.FAKE_OVERRIDE) {
-                    createPropertyAccessor(existedCauseAccessor, causeField).also {
-                        it.causeField = causeField
-                    }
+                    createPropertyAccessor(existedCauseAccessor, causeField)
                 } else existedCauseAccessor
 
 
@@ -139,11 +131,12 @@ class ThrowableSuccessorsLowering(val context: JsIrBackendContext) : Declaration
                 dispatchReceiverParameter = fakeAccessor.dispatchReceiverParameter?.copyTo(this)
             }
 
-//            val thisReceiver = JsIrBuilder.buildGetValue(function.dispatchReceiverParameter!!.symbol)
-//            val returnValue = JsIrBuilder.buildGetField(field.symbol, thisReceiver, type = field.type)
-//            val returnStatement = JsIrBuilder.buildReturn(function.symbol, returnValue, nothingType)
-//            function.body = JsIrBuilder.buildBlockBody(listOf(returnStatement))
-            function.body = IrBlockBodyImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET)
+            function.body = IrBlockBodyImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET) {
+                val thisReceiver = JsIrBuilder.buildGetValue(function.dispatchReceiverParameter!!.symbol)
+                val returnValue = JsIrBuilder.buildGetField(field.symbol, thisReceiver, type = field.type)
+                val returnStatement = JsIrBuilder.buildReturn(function.symbol, returnValue, nothingType)
+                statements += returnStatement
+            }
 
             return function
         }
@@ -196,23 +189,6 @@ class ThrowableSuccessorsBodyLowering(val context: JsIrBackendContext) : BodyLow
     private val newThrowableFunction = context.newThrowableSymbol
 
     override fun lower(irBody: IrBody, container: IrDeclaration) {
-        (container as? IrSimpleFunction)?.let { function ->
-            container.messageField?.let { field ->
-                val thisReceiver = JsIrBuilder.buildGetValue(function.dispatchReceiverParameter!!.symbol)
-                val returnValue = JsIrBuilder.buildGetField(field.symbol, thisReceiver, type = field.type)
-                val returnStatement = JsIrBuilder.buildReturn(function.symbol, returnValue, nothingType)
-                (function.body as IrBlockBody).statements += returnStatement
-            }
-
-            container.causeField?.let { field ->
-                val thisReceiver = JsIrBuilder.buildGetValue(function.dispatchReceiverParameter!!.symbol)
-                val returnValue = JsIrBuilder.buildGetField(field.symbol, thisReceiver, type = field.type)
-                val returnStatement = JsIrBuilder.buildReturn(function.symbol, returnValue, nothingType)
-                (function.body as IrBlockBody).statements += returnStatement
-            }
-        }
-
-
         var parent = container.parent
         while (parent is IrDeclaration) {
             if (parent is IrClass) {
