@@ -385,14 +385,6 @@ private val secondaryConstructorLoweringPhase = makeJsModulePhase(
     prerequisite = setOf(innerClassesDeclarationLoweringPhase)
 )
 
-private val secondaryConstructorBodyLoweringPhase = makeBodyLoweringPhase(
-    { context, _ -> SecondaryConstructorBodyLowering(context) },
-    name = "SecondaryConstructorLoweringPhase",
-    description = "Generate static functions for each secondary constructor",
-    prerequisite = setOf(innerClassesDeclarationLoweringPhase, secondaryConstructorLoweringPhase)
-)
-
-
 private val secondaryFactoryInjectorLoweringPhase = makeBodyLoweringPhase(
     { context, _ -> SecondaryFactoryInjectorLowering(context) },
     name = "SecondaryFactoryInjectorLoweringPhase",
@@ -527,7 +519,6 @@ private val perFilePhaseList = listOf(
     typeOperatorLoweringPhase, // OK
 
     secondaryConstructorLoweringPhase, // OK
-    secondaryConstructorBodyLoweringPhase, // OK
     secondaryFactoryInjectorLoweringPhase, // OK
 
     classReferenceLoweringPhase, // OK

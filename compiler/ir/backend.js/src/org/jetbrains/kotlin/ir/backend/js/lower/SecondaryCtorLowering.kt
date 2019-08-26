@@ -36,9 +36,6 @@ import org.jetbrains.kotlin.ir.visitors.transformChildrenVoid
 
 data class ConstructorPair(val delegate: IrSimpleFunction, val stub: IrSimpleFunction)
 
-private var IrSimpleFunction.delegateToConstructor by mapping(object : MappingKey<IrSimpleFunction, IrConstructor>{})
-private var IrSimpleFunction.stubToConstructor by mapping(object : MappingKey<IrSimpleFunction, IrConstructor>{})
-
 var IrConstructor.constructorPair by mapping(object : MappingKey<IrConstructor, ConstructorPair> {})
 
 class SecondaryConstructorLowering(val context: JsIrBackendContext) : ClassLoweringPass {
@@ -58,59 +55,67 @@ class SecondaryConstructorLowering(val context: JsIrBackendContext) : ClassLower
             buildConstructorStubDeclarations(constructor, irClass)
         }
 
-        // TODO old constructor is removed. Still needed though.
-
-        stubs.delegate.delegateToConstructor = constructor
-        stubs.stub.stubToConstructor = constructor
+        generateStubsBody(constructor, irClass, stubs)
 
         return listOf(stubs.delegate, stubs.stub)
     }
-}
 
-class SecondaryConstructorBodyLowering(val context: JsIrBackendContext) : BodyLoweringPass {
+    private fun generateStubsBody(constructor: IrConstructor, irClass: IrClass, stubs: ConstructorPair) {
+        // We should split secondary constructor into two functions,
+        //   *  Initializer which contains constructor's body and takes just created object as implicit param `$this`
+        //   **   This function is also delegation constructor
+        //   *  Creation function which has same signature with original constructor,
+        //      creates new object via `Object.create` builtIn and passes it to corresponding `Init` function
+        // In other words:
+        // Foo::constructor(...) {
+        //   body
+        // }
+        // =>
+        // Foo_init_$Init$(..., $this) {
+        //   body[ this = $this ]
+        //   return $this
+        // }
+        // Foo_init_$Create$(...) {
+        //   val t = Object.create(Foo.prototype);
+        //   return Foo_init_$Init$(..., t)
+        // }
+        generateInitBody(constructor, irClass, stubs.delegate)
+        generateFactoryBody(constructor, irClass, stubs.stub, stubs.delegate)
+    }
 
-    override fun lower(irBody: IrBody, container: IrDeclaration) {
-        if (container is IrSimpleFunction) {
-            container.delegateToConstructor?.let { constructor ->
-                fillInitBody(constructor, container.parentAsClass, container)
+    private fun generateFactoryBody(constructor: IrConstructor, irClass: IrClass, stub: IrSimpleFunction, delegate: IrSimpleFunction) {
+        stub.body = IrBlockBodyImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET) {
+            val type = irClass.defaultType
+            val createFunctionIntrinsic = context.intrinsics.jsObjectCreate
+            val irCreateCall = JsIrBuilder.buildCall(createFunctionIntrinsic.symbol, type, listOf(type))
+            val irDelegateCall = JsIrBuilder.buildCall(delegate.symbol, type).also { call ->
+                for (i in 0 until stub.typeParameters.size) {
+                    call.putTypeArgument(i, stub.typeParameters[i].toIrType())
+                }
+
+                for (i in 0 until stub.valueParameters.size) {
+                    call.putValueArgument(i, JsIrBuilder.buildGetValue(stub.valueParameters[i].symbol))
+                }
+
+                call.putValueArgument(constructor.valueParameters.size, irCreateCall)
             }
-            container.stubToConstructor?.let { constructor ->
-                fillFactoryBody(constructor, container.parentAsClass, container, constructor.constructorPair!!.delegate)
-            }
+            val irReturn = JsIrBuilder.buildReturn(stub.symbol, irDelegateCall, context.irBuiltIns.nothingType)
+
+            statements += irReturn
         }
     }
 
-    private fun fillFactoryBody(constructor: IrConstructor, irClass: IrClass, stub: IrSimpleFunction, delegate: IrSimpleFunction) {
-        val type = irClass.defaultType
-        val createFunctionIntrinsic = context.intrinsics.jsObjectCreate
-        val irCreateCall = JsIrBuilder.buildCall(createFunctionIntrinsic.symbol, type, listOf(type))
-        val irDelegateCall = JsIrBuilder.buildCall(delegate.symbol, type).also { call ->
-            for (i in 0 until stub.typeParameters.size) {
-                call.putTypeArgument(i, stub.typeParameters[i].toIrType())
-            }
-
-            for (i in 0 until stub.valueParameters.size) {
-                call.putValueArgument(i, JsIrBuilder.buildGetValue(stub.valueParameters[i].symbol))
-            }
-
-            call.putValueArgument(constructor.valueParameters.size, irCreateCall)
-        }
-        val irReturn = JsIrBuilder.buildReturn(stub.symbol, irDelegateCall, context.irBuiltIns.nothingType)
-
-        (stub.body as IrBlockBody).statements += irReturn
-    }
-
-    private fun fillInitBody(constructor: IrConstructor, irClass: IrClass, delegate: IrSimpleFunction) {
+    private fun generateInitBody(constructor: IrConstructor, irClass: IrClass, delegate: IrSimpleFunction) {
         val thisParam = delegate.valueParameters.last()
         val oldThisReceiver = irClass.thisReceiver!!
-        val retStmt = JsIrBuilder.buildReturn(delegate.symbol, JsIrBuilder.buildGetValue(thisParam.symbol), context.irBuiltIns.nothingType)
-        val statements = (constructor.body!!.deepCopyWithSymbols(delegate) as IrStatementContainer).statements
-
+        val constructorBody = constructor.body!!
         val oldValueParameters = constructor.valueParameters + oldThisReceiver
 
         // TODO: replace parameters as well
-        (delegate.body as IrBlockBody).statements += (statements + retStmt).also {
-            it.forEach { s -> s.transformChildrenVoid(ThisUsageReplaceTransformer(delegate.symbol, oldValueParameters.zip(delegate.valueParameters).toMap())) }
+        delegate.body = IrBlockBodyImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET) {
+            statements += (constructorBody.deepCopyWithSymbols(delegate) as IrStatementContainer).statements
+            statements += JsIrBuilder.buildReturn(delegate.symbol, JsIrBuilder.buildGetValue(thisParam.symbol), context.irBuiltIns.nothingType)
+            transformChildrenVoid(ThisUsageReplaceTransformer(delegate.symbol, oldValueParameters.zip(delegate.valueParameters).toMap()))
         }
     }
 
@@ -154,7 +159,6 @@ private fun buildInitDeclaration(constructor: IrConstructor, irClass: IrClass): 
         it.copyTypeParametersFrom(constructor.parentAsClass)
         constructor.valueParameters.mapTo(it.valueParameters) { p -> p.copyTo(it) }
         it.valueParameters += JsIrBuilder.buildValueParameter("\$this", constructor.valueParameters.size, type).apply { parent = it }
-        it.body = IrBlockBodyImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET)
     }
 }
 
@@ -174,28 +178,9 @@ private fun buildFactoryDeclaration(constructor: IrConstructor, irClass: IrClass
     ).also {
         it.copyTypeParametersFrom(constructor.parentAsClass)
         it.valueParameters += constructor.valueParameters.map { p -> p.copyTo(it) }
-        it.body = IrBlockBodyImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET)
     }
 }
 
-// We should split secondary constructor into two functions,
-//   *  Initializer which contains constructor's body and takes just created object as implicit param `$this`
-//   **   This function is also delegation constructor
-//   *  Creation function which has same signature with original constructor,
-//      creates new object via `Object.create` builtIn and passes it to corresponding `Init` function
-// In other words:
-// Foo::constructor(...) {
-//   body
-// }
-// =>
-// Foo_init_$Init$(..., $this) {
-//   body[ this = $this ]
-//   return $this
-// }
-// Foo_init_$Create$(...) {
-//   val t = Object.create(Foo.prototype);
-//   return Foo_init_$Init$(..., t)
-// }
 private fun buildConstructorStubDeclarations(constructor: IrConstructor, klass: IrClass) =
     ConstructorPair(buildInitDeclaration(constructor, klass), buildFactoryDeclaration(constructor, klass))
 
