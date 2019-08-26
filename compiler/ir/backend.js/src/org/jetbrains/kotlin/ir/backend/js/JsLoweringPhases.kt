@@ -422,14 +422,6 @@ private val inlineClassDeclarationsLoweringPhase = makeJsModulePhase(
     description = "Handle inline classes declarations"
 )
 
-private val inlineClassDeclarationBodyLoweringPhase = makeBodyLoweringPhase(
-    { context, _ ->
-        InlineClassLowering(context).inlineClassDeclarationBodyLowering
-    },
-    name = "InlineClassDeclarationBodyLowering",
-    description = "Handle inline classes declaration bodies"
-)
-
 private val inlineClassUsageLoweringPhase = makeBodyLoweringPhase(
     { context, _ ->
         InlineClassLowering(context).inlineClassUsageLowering
@@ -557,7 +549,6 @@ private val perFilePhaseList = listOf(
     classReferenceLoweringPhase, // OK
 
     inlineClassDeclarationsLoweringPhase, // OK
-    inlineClassDeclarationBodyLoweringPhase, // OK
     inlineClassUsageLoweringPhase, // OK
 
     autoboxingTransformerPhase, // OK
