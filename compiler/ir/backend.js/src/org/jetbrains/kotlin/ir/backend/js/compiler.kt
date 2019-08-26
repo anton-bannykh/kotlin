@@ -35,7 +35,7 @@ val intrinsicsCache = mutableMapOf<KlibModuleRef, JsIntrinsics>()
 
 val lazyLoad = false
 
-val icOn = false
+val icOn = true
 
 fun compile(
     project: Project,

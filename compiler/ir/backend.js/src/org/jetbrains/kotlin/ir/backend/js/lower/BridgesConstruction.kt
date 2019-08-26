@@ -5,7 +5,6 @@
 
 package org.jetbrains.kotlin.ir.backend.js.lower
 
-import org.jetbrains.kotlin.backend.common.BodyLoweringPass
 import org.jetbrains.kotlin.backend.common.ClassLoweringPass
 import org.jetbrains.kotlin.backend.common.bridges.FunctionHandle
 import org.jetbrains.kotlin.backend.common.bridges.generateBridges
@@ -17,26 +16,20 @@ import org.jetbrains.kotlin.backend.common.lower.createIrBuilder
 import org.jetbrains.kotlin.backend.common.lower.irBlockBody
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
-import org.jetbrains.kotlin.ir.backend.js.ContextData
 import org.jetbrains.kotlin.ir.backend.js.JsIrBackendContext
 import org.jetbrains.kotlin.ir.backend.js.JsLoweredDeclarationOrigin
 import org.jetbrains.kotlin.ir.backend.js.ir.JsIrBuilder
-import org.jetbrains.kotlin.ir.backend.js.mapping
 import org.jetbrains.kotlin.ir.backend.js.utils.asString
 import org.jetbrains.kotlin.ir.backend.js.utils.getJsName
 import org.jetbrains.kotlin.ir.builders.*
 import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.declarations.impl.IrValueParameterImpl
-import org.jetbrains.kotlin.ir.declarations.impl.MappingKey
-import org.jetbrains.kotlin.ir.expressions.IrBlockBody
-import org.jetbrains.kotlin.ir.expressions.IrBody
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.impl.IrBlockBodyImpl
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.classifierOrNull
 import org.jetbrains.kotlin.ir.types.isUnit
 import org.jetbrains.kotlin.ir.util.*
-import org.jetbrains.kotlin.resolve.DescriptorUtils
 
 // Constructs bridges for inherited generic functions
 //
@@ -96,6 +89,12 @@ class BridgesConstruction(val context: JsIrBackendContext) : ClassLoweringPass {
         }
     }
 
+    private val unitValue = JsIrBuilder.buildGetObjectValue(context.irBuiltIns.unitType, context.irBuiltIns.unitClass)
+
+    // TODO: get rid of Unit check
+    private fun IrBlockBodyBuilder.irCastIfNeeded(argument: IrExpression, type: IrType): IrExpression =
+        if (argument.type.classifierOrNull == type.classifierOrNull) argument else irAs(argument, type)
+
     // Ported from from jvm.lower.BridgeLowering
     private fun createBridge(
         function: IrSimpleFunction,
@@ -133,34 +132,10 @@ class BridgesConstruction(val context: JsIrBackendContext) : ClassLoweringPass {
             annotations += bridge.annotations
             overriddenSymbols.addAll(delegateTo.overriddenSymbols) // ??
             overriddenSymbols.add(bridge.symbol)
-
-            body = IrBlockBodyImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET)
         }
 
-        irFunction.bridgeInfo = ContextData.BridgeInfo(function, bridge, delegateTo)
-
-        return irFunction
-    }
-}
-
-private var IrSimpleFunction.bridgeInfo by mapping(object : MappingKey<IrSimpleFunction, ContextData.BridgeInfo>{})
-
-class BridgesBodyConstruction(val context: JsIrBackendContext) : BodyLoweringPass {
-
-    private val unitValue = JsIrBuilder.buildGetObjectValue(context.irBuiltIns.unitType, context.irBuiltIns.unitClass)
-
-    // TODO: get rid of Unit check
-    private fun IrBlockBodyBuilder.irCastIfNeeded(argument: IrExpression, type: IrType): IrExpression =
-        if (argument.type.classifierOrNull == type.classifierOrNull) argument else irAs(argument, type)
-
-
-    override fun lower(irBody: IrBody, container: IrDeclaration) {
-        if (container !is IrSimpleFunction) return
-
-        val irFunction = container
-
-        container.bridgeInfo?.let { (function, bridge, delegateTo) ->
-            (container.body as IrBlockBody).statements += context.createIrBuilder(irFunction.symbol).irBlockBody(irFunction) {
+        irFunction.body = IrBlockBodyImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET) {
+            statements += context.createIrBuilder(irFunction.symbol).irBlockBody(irFunction) {
                 val call = irCall(delegateTo.symbol)
                 call.dispatchReceiver = irGet(irFunction.dispatchReceiverParameter!!)
                 irFunction.extensionReceiverParameter?.let {
@@ -188,6 +163,8 @@ class BridgesBodyConstruction(val context: JsIrBackendContext) : BodyLoweringPas
                 +irReturn(returnValue)
             }.statements
         }
+
+        return irFunction
     }
 }
 
