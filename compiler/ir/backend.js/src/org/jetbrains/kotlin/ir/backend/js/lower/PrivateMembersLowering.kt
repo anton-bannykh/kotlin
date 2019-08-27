@@ -30,7 +30,6 @@ import org.jetbrains.kotlin.name.Name
 val STATIC_THIS_PARAMETER = object : IrDeclarationOriginImpl("STATIC_THIS_PARAMETER") {}
 
 private var IrFunction.correspondingStatic by mapping(object : MappingKey<IrFunction, IrSimpleFunction> {})
-private var IrSimpleFunction.correspondingMember by mapping(object : MappingKey<IrSimpleFunction, IrFunction> {})
 
 class PrivateMembersLowering(val context: JsIrBackendContext) : ClassLoweringPass {
 
@@ -95,7 +94,6 @@ class PrivateMembersLowering(val context: JsIrBackendContext) : ClassLoweringPas
         }
 
         function.correspondingStatic = staticFunction
-        staticFunction.correspondingMember = function
 
         var parameterMapping: Map<IrValueParameter, IrValueParameter>? = null
 
