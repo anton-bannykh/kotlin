@@ -30,7 +30,7 @@ import org.jetbrains.kotlin.name.Name
 val STATIC_THIS_PARAMETER = object : IrDeclarationOriginImpl("STATIC_THIS_PARAMETER") {}
 
 private var IrFunction.correspondingStatic by mapping(object : MappingKey<IrFunction, IrSimpleFunction> {})
-private var IrSimpleFunction.correspondingMember by mapping(object : MappingKey<IrSimpleFunction, IrFunction>{})
+private var IrSimpleFunction.correspondingMember by mapping(object : MappingKey<IrSimpleFunction, IrFunction> {})
 
 class PrivateMembersLowering(val context: JsIrBackendContext) : ClassLoweringPass {
 
@@ -97,10 +97,28 @@ class PrivateMembersLowering(val context: JsIrBackendContext) : ClassLoweringPas
         function.correspondingStatic = staticFunction
         staticFunction.correspondingMember = function
 
+        var parameterMapping: Map<IrValueParameter, IrValueParameter>? = null
+
+        val parameterTransformer = object : IrElementTransformerVoid() {
+            override fun visitGetValue(expression: IrGetValue) = parameterMapping!![expression.symbol.owner]?.let {
+                expression.run { IrGetValueImpl(startOffset, endOffset, type, it.symbol, origin) }
+            } ?: expression
+        }
+
+        fun IrBody.copyWithParameters(): IrBody {
+            return deepCopyWithSymbols(staticFunction).also {
+                it.transform(parameterTransformer, null)
+            }
+        }
+
         function.body?.let {
             staticFunction.body = when (it) {
-                is IrBlockBody -> IrBlockBodyImpl(it.startOffset, it.endOffset)
-                is IrExpressionBody -> IrExpressionBodyImpl(IrErrorExpressionImpl(it.startOffset, it.endOffset, function.returnType, "Body copy stub"))
+                is IrBlockBody -> IrBlockBodyImpl(it.startOffset, it.endOffset) {
+                    statements += (it.copyWithParameters() as IrBlockBody).statements
+                }
+                is IrExpressionBody -> IrExpressionBodyImpl(it.startOffset, it.endOffset) {
+                    expression = (it.copyWithParameters() as IrExpressionBody).expression
+                }
                 is IrSyntheticBody -> it
                 else -> error("Unexpected body kind: ${it.javaClass}")
             }
@@ -108,47 +126,29 @@ class PrivateMembersLowering(val context: JsIrBackendContext) : ClassLoweringPas
 
         staticFunction.valueParameters += function.valueParameters.map {
             // TODO better way to avoid copying default value
-            it.copyTo(staticFunction, index = it.index + 1, defaultValue = null).apply { defaultValue = it.defaultValue }
+            it.copyTo(staticFunction, index = it.index + 1, defaultValue = null).apply {
+                it.defaultValue?.let { originalDefault ->
+                    defaultValue = IrExpressionBodyImpl(it.startOffset, it.endOffset) {
+                        expression = (originalDefault.copyWithParameters() as IrExpressionBody).expression
+                    }
+                }
+            }
         }
+
+        val oldParameters =
+            listOfNotNull(function.extensionReceiverParameter, function.dispatchReceiverParameter) + function.valueParameters
+        val newParameters = listOfNotNull(staticFunction.extensionReceiverParameter) + staticFunction.valueParameters
+        assert(oldParameters.size == newParameters.size)
+
+        parameterMapping = oldParameters.zip(newParameters).toMap()
 
         return staticFunction
     }
 }
 
-class PrivateMemberBodiesLowering(val context: JsIrBackendContext): BodyLoweringPass {
+class PrivateMemberBodiesLowering(val context: JsIrBackendContext) : BodyLoweringPass {
 
-    override fun lower(irBody: IrBody, staticFunction: IrDeclaration) {
-
-        if (staticFunction is IrSimpleFunction) {
-            staticFunction.correspondingMember?.let { function ->
-
-                staticFunction.valueParameters.forEach {
-                    it.defaultValue?.patchDeclarationParents(staticFunction)
-                }
-
-                val oldParameters =
-                    listOfNotNull(function.extensionReceiverParameter, function.dispatchReceiverParameter) + function.valueParameters
-                val newParameters = listOfNotNull(staticFunction.extensionReceiverParameter) + staticFunction.valueParameters
-                assert(oldParameters.size == newParameters.size)
-
-                val parameterMapping = oldParameters.zip(newParameters).toMap()
-
-                function.body?.deepCopyWithSymbols(staticFunction)?.let { bodyCopy ->
-                    when (bodyCopy) {
-                        is IrBlockBody -> (irBody as IrBlockBodyImpl).statements.addAll(bodyCopy.statements)
-                        is IrExpressionBody -> (irBody as IrExpressionBody).expression = bodyCopy.expression
-                        else -> Unit
-                    }
-                }
-
-                staticFunction.transform(object : IrElementTransformerVoid() {
-                    override fun visitGetValue(expression: IrGetValue) = parameterMapping[expression.symbol.owner]?.let {
-                        expression.run { IrGetValueImpl(startOffset, endOffset, type, it.symbol, origin) }
-                    } ?: expression
-                }, null)
-            }
-        }
-
+    override fun lower(irBody: IrBody, container: IrDeclaration) {
         irBody.transform(object : IrElementTransformerVoid() {
             override fun visitCall(expression: IrCall): IrExpression {
                 super.visitCall(expression)
