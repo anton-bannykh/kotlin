@@ -9,7 +9,7 @@ import org.jetbrains.kotlin.backend.common.BodyLoweringPass
 import org.jetbrains.kotlin.backend.common.ir.isOverridableOrOverrides
 import org.jetbrains.kotlin.ir.backend.js.JsIrBackendContext
 import org.jetbrains.kotlin.ir.backend.js.lower.common.DEFAULT_DISPATCH_CALL
-import org.jetbrains.kotlin.ir.backend.js.lower.common.DefaultArgumentDispatchFunctionBodyLowering
+import org.jetbrains.kotlin.ir.backend.js.lower.common.DefaultArgumentStubGenerator
 import org.jetbrains.kotlin.ir.backend.js.lower.common.originalFunction
 import org.jetbrains.kotlin.ir.builders.IrBlockBodyBuilder
 import org.jetbrains.kotlin.ir.builders.irCall
@@ -24,7 +24,7 @@ import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
 import org.jetbrains.kotlin.ir.visitors.transformChildrenVoid
 import org.jetbrains.kotlin.name.Name
 
-class JsDefaultArgumentStubGenerator(context: JsIrBackendContext) : DefaultArgumentDispatchFunctionBodyLowering(context) {
+class JsDefaultArgumentStubGenerator(context: JsIrBackendContext) : DefaultArgumentStubGenerator(context) {
 
     override fun needSpecialDispatch(irFunction: IrSimpleFunction) = irFunction.isOverridableOrOverrides
 

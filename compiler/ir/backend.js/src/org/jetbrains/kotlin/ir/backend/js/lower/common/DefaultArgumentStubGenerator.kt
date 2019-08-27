@@ -38,9 +38,9 @@ import org.jetbrains.kotlin.name.Name
 
 // TODO: fix expect/actual default parameters
 
-private object DefaultArgumentStubGeneratorKey: MappingKey<IrFunction, IrFunction>
+private object DefaultArgumentStubGeneratorKey : MappingKey<IrFunction, IrFunction>
 
-private object DefaultArgumentStubGeneratorReverseKey: MappingKey<IrFunction, IrFunction>
+private object DefaultArgumentStubGeneratorReverseKey : MappingKey<IrFunction, IrFunction>
 
 var IrFunction.originalFunction by mapping(DefaultArgumentStubGeneratorKey)
 
@@ -80,6 +80,9 @@ open class DefaultArgumentStubGenerator(
 
         log { "$irFunction -> $newIrFunction" }
 
+        newIrFunction.body = createNewFunctionBody(newIrFunction, irFunction)
+
+        irFunction.annotations.mapTo(newIrFunction.annotations) { it.deepCopyWithSymbols() }
         // Remove default argument initializers.
 //        irFunction.valueParameters.forEach {
 //            if (it.defaultValue != null) {
@@ -89,27 +92,14 @@ open class DefaultArgumentStubGenerator(
         return listOf(irFunction, newIrFunction)
     }
 
-    private fun log(msg: () -> String) = context.log { "DEFAULT-REPLACER: ${msg()}" }
-}
-
-open class DefaultArgumentDispatchFunctionBodyLowering(open val context: CommonBackendContext): BodyLoweringPass {
-
     private val symbols get() = context.ir.symbols
 
-    override fun lower(irBody: IrBody, newIrFunction: IrDeclaration) {
-        if (newIrFunction !is IrFunction) return
-
-        newIrFunction.originalFunction?.let { irFunction ->
-
-            irFunction.annotations.mapTo(newIrFunction.annotations) { it.deepCopyWithSymbols() }
-
-            val bodies = irFunction.valueParameters.mapNotNull { it.defaultValue }
-
-            if (bodies.isEmpty()) return@let // Fake override
+    private fun createNewFunctionBody(newIrFunction: IrFunction, irFunction: IrFunction): IrBlockBody {
+        return IrBlockBodyImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET) {
 
             val builder = context.createIrBuilder(newIrFunction.symbol)
 
-            (newIrFunction.body as IrBlockBody).statements += builder.irBlockBody(newIrFunction) {
+            statements += builder.irBlockBody(newIrFunction) {
                 val params = mutableListOf<IrVariable>()
                 val variables = mutableMapOf<IrValueDeclaration, IrValueDeclaration>()
 
