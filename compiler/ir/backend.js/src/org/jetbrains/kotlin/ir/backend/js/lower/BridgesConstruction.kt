@@ -6,6 +6,7 @@
 package org.jetbrains.kotlin.ir.backend.js.lower
 
 import org.jetbrains.kotlin.backend.common.ClassLoweringPass
+import org.jetbrains.kotlin.backend.common.DeclarationTransformer
 import org.jetbrains.kotlin.backend.common.bridges.FunctionHandle
 import org.jetbrains.kotlin.backend.common.bridges.generateBridges
 import org.jetbrains.kotlin.backend.common.ir.copyTo
@@ -50,26 +51,28 @@ import org.jetbrains.kotlin.ir.util.*
 //            fun foo(t: Any?) = foo(t as Int)  // Constructed bridge
 //          }
 //
-class BridgesConstruction(val context: JsIrBackendContext) : ClassLoweringPass {
+class BridgesConstruction(val context: JsIrBackendContext) : DeclarationTransformer {
 
-    override fun lower(irClass: IrClass) {
-        irClass.declarations
-            .asSequence()
-            .filterIsInstance<IrSimpleFunction>()
-            .filter { !it.isStaticMethodOfClass }
-            .toList()
-            .forEach { generateBridges(it, irClass) }
+    override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
+        if (declaration !is IrSimpleFunction || declaration.isStaticMethodOfClass || declaration.parent !is IrClass) return null
+
+
+        return generateBridges(declaration)?.let { listOf(declaration) + it }
     }
 
-    private fun generateBridges(function: IrSimpleFunction, irClass: IrClass) {
+    private fun generateBridges(function: IrSimpleFunction): List<IrDeclaration>? {
         // equals(Any?), hashCode(), toString() never need bridges
         if (function.isMethodOfAny())
-            return
+            return null
 
         val bridgesToGenerate = generateBridges(
             function = IrBasedFunctionHandle(function),
             signature = { FunctionAndSignature(it.function) }
         )
+
+        if (bridgesToGenerate.isEmpty()) return null
+
+        val result = mutableListOf<IrDeclaration>()
 
         for ((from, to) in bridgesToGenerate) {
             if (!from.function.parentAsClass.isInterface &&
@@ -85,8 +88,10 @@ class BridgesConstruction(val context: JsIrBackendContext) : ClassLoweringPass {
                 continue
             }
 
-            irClass.declarations.add(createBridge(function, from.function, to.function))
+            result += createBridge(function, from.function, to.function)
         }
+
+        return result
     }
 
     private val unitValue = JsIrBuilder.buildGetObjectValue(context.irBuiltIns.unitType, context.irBuiltIns.unitClass)

@@ -359,7 +359,7 @@ private val multipleCatchesLoweringPhase = makeBodyLoweringPhase(
 )
 
 private val bridgesConstructionPhase = makeJsModulePhase(
-    { context, _ -> BridgesConstruction(context).toDeclarationTransformer() },
+    { context, _ -> BridgesConstruction(context).runPostfix() },
     name = "BridgesConstruction",
     description = "Generate bridges",
     prerequisite = setOf(suspendFunctionsLoweringPhase)
