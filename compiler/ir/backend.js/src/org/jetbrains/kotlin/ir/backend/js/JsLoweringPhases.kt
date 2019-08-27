@@ -110,12 +110,6 @@ private val expectDeclarationsRemovingPhase = makeJsModulePhase(
     description = "Remove expect declaration from module fragment"
 )
 
-private val expectDeclarationsBodyRemappingPhase = makeBodyLoweringPhase(
-    { context, _ -> ExpectDeclarationDefaultValueRemapping(context) },
-    name = "ExpectDeclarationsBodyRemapping",
-    description = "Remove expect declaration from module fragment"
-)
-
 private val lateinitLoweringPhase = makeBodyLoweringPhase(
     { context, _ -> LateinitLowering(context) },
     name = "LateinitLowering",
@@ -468,7 +462,6 @@ private val staticMembersLoweringPhase = makeJsModulePhase(
 
 private val perFilePhaseList = listOf(
     expectDeclarationsRemovingPhase, // OK
-    expectDeclarationsBodyRemappingPhase, // OK
     moveBodilessDeclarationsToSeparatePlacePhase, // Needs to detect @JsModule and @JsQualifier. TODO: should become obsolete
     functionInliningPhase, // OK
     removeInlineFunctionsLoweringPhase, // OK
