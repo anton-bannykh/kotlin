@@ -26,10 +26,7 @@ import org.jetbrains.kotlin.ir.declarations.impl.IrConstructorImpl
 import org.jetbrains.kotlin.ir.declarations.impl.IrFieldImpl
 import org.jetbrains.kotlin.ir.declarations.impl.MappingKey
 import org.jetbrains.kotlin.ir.expressions.*
-import org.jetbrains.kotlin.ir.expressions.impl.IrBlockBodyImpl
-import org.jetbrains.kotlin.ir.expressions.impl.IrCallImpl
-import org.jetbrains.kotlin.ir.expressions.impl.IrInstanceInitializerCallImpl
-import org.jetbrains.kotlin.ir.expressions.impl.IrVarargImpl
+import org.jetbrains.kotlin.ir.expressions.impl.*
 import org.jetbrains.kotlin.ir.symbols.impl.IrConstructorSymbolImpl
 import org.jetbrains.kotlin.ir.symbols.impl.IrFieldSymbolImpl
 import org.jetbrains.kotlin.ir.types.IrType
@@ -152,7 +149,24 @@ class EnumClassConstructorTransformer(val context: JsIrBackendContext, private v
             valueParameters += JsIrBuilder.buildValueParameter("name", 0, context.irBuiltIns.stringType).also { it.parent = this }
             valueParameters += JsIrBuilder.buildValueParameter("ordinal", 1, context.irBuiltIns.intType).also { it.parent = this }
             copyParameterDeclarationsFrom(enumConstructor, false)
-            body = enumConstructor.body
+
+            val newConstructor = this
+
+            enumConstructor.body?.let { oldBody ->
+                body = IrBlockBodyImpl(oldBody.startOffset, oldBody.endOffset) {
+                    statements += (oldBody as IrBlockBody).statements
+
+                    context.fixReferencesToConstructorParameters(irClass, this)
+
+                    acceptVoid(PatchDeclarationParentsVisitor(irClass))
+
+                    // Make sure InstanceInitializer exists
+                    insertInstanceInitializer(irClass, newConstructor)
+
+                    // Pass these parameters to delegating constructor calls
+                    lowerEnumConstructorsBody(newConstructor)
+                }
+            }
 
             enumConstructor.newConstructor = this
             this.originalConstructor = enumConstructor
@@ -164,58 +178,14 @@ class EnumClassConstructorTransformer(val context: JsIrBackendContext, private v
                 val new = newParameters.single { it.name == old.name }
                 old.valueParameter = new
                 new.valueDeclaration = old
-            }
-        }
-    }
-}
 
-
-class EnumClassConstructorBodyTransformer(val context: JsIrBackendContext) : BodyLoweringPass {
-    override fun lower(irBody: IrBody, container: IrDeclaration) {
-
-        if (container is IrValueParameter) {
-            ((container.parent as? IrFunction)?.parent as? IrClass)?.let { irClass ->
-                if (container.valueDeclaration != null) {
-                    container.defaultValue?.let { value ->
-                        value.patchDeclarationParents(container.parent)
-                        fixReferencesToConstructorParameters(irClass, value)
+                old.defaultValue?.let { default ->
+                    new.defaultValue = IrExpressionBodyImpl(default.startOffset, default.endOffset) {
+                        expression = default.expression
+                        expression.patchDeclarationParents(newConstructor)
+                        context.fixReferencesToConstructorParameters(irClass, this)
                     }
                 }
-            }
-        }
-
-        (container.parent as? IrClass)?.let { irClass ->
-
-            // TODO Don't apply to everything
-            // The first step creates a new `IrConstructor` with new `IrValueParameter`s so references to old `IrValueParameter`s must be replaced with new ones.
-            irBody?.let { fixReferencesToConstructorParameters(irClass, it) }
-
-            if (container is IrConstructor) {
-
-                if (irClass.isEnumClass) {
-                    container.originalConstructor?.let {
-                        container.acceptVoid(PatchDeclarationParentsVisitor(irClass))
-
-                        // Make sure InstanceInitializer exists
-                        insertInstanceInitializer(irClass, container)
-
-                        // Pass these parameters to delegating constructor calls
-                        lowerEnumConstructorsBody(container)
-                    }
-                }
-
-                irClass.correspondingEntry?.let { enumEntry ->
-                    // Lower `IrEnumConstructorCall`s inside of enum entry class constructors to corresponding `IrDelegatingConstructorCall`s.
-                    // Add `name` and `ordinal` parameters.
-                    lowerEnumEntryClassConstructors(irClass, enumEntry, container)
-                }
-            }
-
-            if (container is IrEnumEntry) {
-                // Lower `IrEnumConstructorCall`s to corresponding `IrCall`s.
-                // Add `name` and `ordinal` constant parameters only for calls to the "enum class" constructors ("enum entry class" constructors
-                // already delegate these parameters)
-                lowerEnumEntryInitializerExpression(irClass, container)
             }
         }
     }
@@ -269,19 +239,47 @@ class EnumClassConstructorBodyTransformer(val context: JsIrBackendContext) : Bod
             }
         }
     }
+}
 
-    private fun fixReferencesToConstructorParameters(irClass: IrClass, body: IrBody) {
-        body.transformChildrenVoid(object : IrElementTransformerVoid() {
-            private val builder = context.createIrBuilder(irClass.symbol)
+// The first step creates a new `IrConstructor` with new `IrValueParameter`s so references to old `IrValueParameter`s must be replaced with new ones.
+private fun JsIrBackendContext.fixReferencesToConstructorParameters(irClass: IrClass, body: IrBody) {
+    body.transformChildrenVoid(object : IrElementTransformerVoid() {
+        private val builder = createIrBuilder(irClass.symbol)
 
-            override fun visitGetValue(expression: IrGetValue): IrExpression {
-                expression.symbol.owner.valueParameter?.let {
-                    return builder.irGet(it)
-                }
-
-                return super.visitGetValue(expression)
+        override fun visitGetValue(expression: IrGetValue): IrExpression {
+            expression.symbol.owner.valueParameter?.let {
+                return builder.irGet(it)
             }
-        })
+
+            return super.visitGetValue(expression)
+        }
+    })
+}
+
+class EnumClassConstructorBodyTransformer(val context: JsIrBackendContext) : BodyLoweringPass {
+    override fun lower(irBody: IrBody, container: IrDeclaration) {
+
+        (container.parent as? IrClass)?.let { irClass ->
+
+            // TODO Don't apply to everything
+            irBody?.let { context.fixReferencesToConstructorParameters(irClass, it) }
+
+            if (container is IrConstructor) {
+
+                irClass.correspondingEntry?.let { enumEntry ->
+                    // Lower `IrEnumConstructorCall`s inside of enum entry class constructors to corresponding `IrDelegatingConstructorCall`s.
+                    // Add `name` and `ordinal` parameters.
+                    lowerEnumEntryClassConstructors(irClass, enumEntry, container)
+                }
+            }
+
+            if (container is IrEnumEntry) {
+                // Lower `IrEnumConstructorCall`s to corresponding `IrCall`s.
+                // Add `name` and `ordinal` constant parameters only for calls to the "enum class" constructors ("enum entry class" constructors
+                // already delegate these parameters)
+                lowerEnumEntryInitializerExpression(irClass, container)
+            }
+        }
     }
 
 
