@@ -182,13 +182,6 @@ private val enumClassLoweringPhase = makeJsModulePhase(
     prerequisite = setOf(enumClassConstructorLoweringPhase)
 )
 
-private val enumClassBodyLoweringPhase = makeBodyLoweringPhase(
-    { context, _ -> EnumClassBodyTransformer(context) },
-    name = "EnumClassBodyLowering",
-    description = "Transform Enum Class into regular Class",
-    prerequisite = setOf(enumClassLoweringPhase)
-)
-
 private val enumUsageLoweringPhase = makeBodyLoweringPhase(
     { context, _ -> EnumUsageLowering(context) },
     name = "EnumUsageLowering",
@@ -480,7 +473,6 @@ private val perFilePhaseList = listOf(
     removeAnonymousInitializers, // OK
     // Common prefix ends
     enumClassLoweringPhase, // OK
-    enumClassBodyLoweringPhase, // OK
     enumUsageLoweringPhase, // OK
     enumEntryRemovalLoweringPhase, // OK
 
