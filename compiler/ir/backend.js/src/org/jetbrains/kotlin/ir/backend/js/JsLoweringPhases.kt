@@ -320,7 +320,7 @@ private val varargLoweringPhase = makeBodyLoweringPhase(
 )
 
 private val propertiesLoweringPhase = makeJsModulePhase(
-    { context, _ -> PropertiesLowering(context, skipExternalProperties = true) },
+    { context, _ -> PropertiesLowering(context, skipExternalProperties = true).runPostfix() },
     name = "PropertiesLowering",
     description = "Move fields and accessors out from its property"
 )
