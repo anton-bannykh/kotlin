@@ -505,13 +505,9 @@ class EnumClassTransformer(val context: JsIrBackendContext, private val irClass:
 // Should be applied recursively
 class EnumClassRemoveEntriesLowering(val context: JsIrBackendContext) : DeclarationTransformer {
     override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
-        if (declaration is IrClass && declaration.isEnumClass &&
-            !declaration.descriptor.isExpect && !declaration.isEffectivelyExternal()
-        ) {
-            // Remove IrEnumEntry nodes from class declarations. Replace them with corresponding class declarations (if they have them).
-            declaration.transformDeclarationsFlat {
-                listOfNotNull(if (it is IrEnumEntry) it.correspondingClass else it)
-            }
+        // Remove IrEnumEntry nodes from class declarations. Replace them with corresponding class declarations (if they have them).
+        if (declaration is IrEnumEntry && !declaration.descriptor.isExpect && !declaration.isEffectivelyExternal()) {
+            return listOfNotNull(declaration.correspondingClass)
         }
 
         return null
