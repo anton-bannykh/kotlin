@@ -81,46 +81,30 @@ private fun createEntryAccessorName(enumName: String, enumEntry: IrEnumEntry) =
 
 private fun IrEnumEntry.getType(irClass: IrClass) = (correspondingClass ?: irClass).defaultType
 
-// Should be applied recursively
-class EnumClassConstructorLowering(val context: JsIrBackendContext) : DeclarationTransformer {
-
-    override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
-        return if (declaration is IrClass && declaration.isEnumClass &&
-            !declaration.descriptor.isExpect && !declaration.isEffectivelyExternal()
-        ) {
-            EnumClassConstructorTransformer(context, declaration).transform()
-        } else null
-    }
-}
-
 private var IrConstructor.newConstructor by mapping(object : MappingKey<IrConstructor, IrConstructor>{})
 private var IrClass.correspondingEntry by mapping(object : MappingKey<IrClass, IrEnumEntry>{})
 private var IrValueDeclaration.valueParameter by mapping(object : MappingKey<IrValueDeclaration, IrValueParameter>{})
 
-class EnumClassConstructorTransformer(val context: JsIrBackendContext, private val irClass: IrClass) {
+// Should be applied recursively
+class EnumClassConstructorLowering(val context: JsIrBackendContext) : DeclarationTransformer {
 
-    fun transform(): List<IrDeclaration> {
-        // Add `name` and `ordinal` parameters to enum class constructors
-        lowerEnumConstructorsSignature()
+    override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
+        (declaration.parent as? IrClass)?.let { irClass ->
+            if (!irClass.isEnumClass || irClass.descriptor.isExpect || irClass.isEffectivelyExternal()) return null
 
-        return listOf(irClass)
-    }
-
-    private fun lowerEnumConstructorsSignature() {
-        irClass.declarations.transform { declaration ->
             if (declaration is IrConstructor) {
-                transformEnumConstructor(declaration, irClass)
-            } else
-                declaration
-        }
+                // Add `name` and `ordinal` parameters to enum class constructors
+                return listOf(transformEnumConstructor(declaration, irClass))
+            }
 
-        irClass.declarations.forEach {
-            if (it is IrEnumEntry) {
-                it.correspondingClass?.let { klass ->
-                    klass.correspondingEntry = it
+            if (declaration is IrEnumEntry) {
+                declaration.correspondingClass?.let { klass ->
+                    klass.correspondingEntry = declaration
                 }
             }
         }
+
+        return null
     }
 
     private fun transformEnumConstructor(enumConstructor: IrConstructor, enumClass: IrClass): IrConstructor {
@@ -151,12 +135,12 @@ class EnumClassConstructorTransformer(val context: JsIrBackendContext, private v
                 body = IrBlockBodyImpl(oldBody.startOffset, oldBody.endOffset) {
                     statements += (oldBody as IrBlockBody).statements
 
-                    context.fixReferencesToConstructorParameters(irClass, this)
+                    context.fixReferencesToConstructorParameters(enumClass, this)
 
-                    acceptVoid(PatchDeclarationParentsVisitor(irClass))
+                    acceptVoid(PatchDeclarationParentsVisitor(enumClass))
 
                     // Make sure InstanceInitializer exists
-                    insertInstanceInitializer(irClass, newConstructor)
+                    insertInstanceInitializer(enumClass, newConstructor)
 
                     // Pass these parameters to delegating constructor calls
                     lowerEnumConstructorsBody(newConstructor)
@@ -176,7 +160,7 @@ class EnumClassConstructorTransformer(val context: JsIrBackendContext, private v
                     new.defaultValue = IrExpressionBodyImpl(default.startOffset, default.endOffset) {
                         expression = default.expression
                         expression.patchDeclarationParents(newConstructor)
-                        context.fixReferencesToConstructorParameters(irClass, this)
+                        context.fixReferencesToConstructorParameters(enumClass, this)
                     }
                 }
             }
