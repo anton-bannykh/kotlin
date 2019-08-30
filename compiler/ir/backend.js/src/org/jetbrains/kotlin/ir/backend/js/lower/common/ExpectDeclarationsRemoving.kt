@@ -47,6 +47,8 @@ class ExpectDeclarationsRemoving(val context: BackendContext) : DeclarationTrans
 
             val function = declaration.parent as IrFunction
 
+            if (!function.descriptor.isActual) return null
+
             val index = declaration.index
             assert(function.valueParameters[index] == declaration)
 

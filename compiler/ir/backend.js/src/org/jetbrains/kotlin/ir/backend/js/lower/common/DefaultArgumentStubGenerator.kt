@@ -400,7 +400,9 @@ open class DefaultParameterInjector(
 
 class DefaultParameterCleaner constructor(val context: CommonBackendContext) : DeclarationTransformer {
     override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
-        (declaration as? IrFunction)?.valueParameters?.forEach { it.defaultValue = null }
+        if (declaration is IrValueParameter) {
+            declaration.defaultValue = null
+        }
         return null
     }
 }

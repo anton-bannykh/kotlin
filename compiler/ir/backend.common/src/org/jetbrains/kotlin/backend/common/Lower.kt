@@ -147,6 +147,10 @@ fun DeclarationTransformer.runPostfix(): DeclarationTransformer {
                     // Stop
                 }
 
+                override fun visitFunction(declaration: IrFunction) {
+                    declaration.valueParameters.transformFlat { this@runPostfix.transformFlat(it)?.map { it as IrValueParameter } }
+                }
+
                 override fun visitClass(declaration: IrClass) {
                     declaration.acceptChildrenVoid(this)
                     declaration.declarations.transformFlat(this@runPostfix::transformFlat)
