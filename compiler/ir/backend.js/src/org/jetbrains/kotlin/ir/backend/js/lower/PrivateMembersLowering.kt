@@ -7,6 +7,7 @@ package org.jetbrains.kotlin.ir.backend.js.lower
 
 import org.jetbrains.kotlin.backend.common.BodyLoweringPass
 import org.jetbrains.kotlin.backend.common.ClassLoweringPass
+import org.jetbrains.kotlin.backend.common.DeclarationTransformer
 import org.jetbrains.kotlin.backend.common.descriptors.WrappedSimpleFunctionDescriptor
 import org.jetbrains.kotlin.backend.common.descriptors.WrappedValueParameterDescriptor
 import org.jetbrains.kotlin.backend.common.ir.copyTo
@@ -31,21 +32,18 @@ val STATIC_THIS_PARAMETER = object : IrDeclarationOriginImpl("STATIC_THIS_PARAME
 
 private var IrFunction.correspondingStatic by mapping(object : MappingKey<IrFunction, IrSimpleFunction> {})
 
-class PrivateMembersLowering(val context: JsIrBackendContext) : ClassLoweringPass {
+class PrivateMembersLowering(val context: JsIrBackendContext) : DeclarationTransformer {
 
-    override fun lower(irClass: IrClass) {
-
-        irClass.declarations.transformFlat {
-            when (it) {
-                is IrSimpleFunction -> transformMemberToStaticFunction(it)?.let { staticFunction ->
-                    listOf(staticFunction)
-                }
-                is IrProperty -> listOf(it.apply {
-                    getter = getter?.let { g -> transformAccessor(g) }
-                    setter = setter?.let { s -> transformAccessor(s) }
-                })
-                else -> null
+    override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
+        return when (declaration) {
+            is IrSimpleFunction -> transformMemberToStaticFunction(declaration)?.let { staticFunction ->
+                listOf(staticFunction)
             }
+            is IrProperty -> listOf(declaration.apply {
+                getter = getter?.let { g -> transformAccessor(g) }
+                setter = setter?.let { s -> transformAccessor(s) }
+            })
+            else -> null
         }
     }
 

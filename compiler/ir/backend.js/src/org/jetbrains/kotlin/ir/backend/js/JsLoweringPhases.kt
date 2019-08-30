@@ -264,7 +264,7 @@ private val suspendLambdasRemovingPhase = makeJsModulePhase(
 
 
 private val privateMembersLoweringPhase = makeJsModulePhase(
-    { context, _ -> PrivateMembersLowering(context).toDeclarationTransformer() },
+    { context, _ -> PrivateMembersLowering(context).runPostfix() },
     name = "PrivateMembersLowering",
     description = "Extract private members from classes"
 )
