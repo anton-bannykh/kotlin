@@ -50,7 +50,7 @@ class MoveBodilessDeclarationsToSeparatePlaceLowering(private val context: JsIrB
         declaration is IrClass && declaration.fqNameWhenAvailable in BODILESS_BUILTIN_CLASSES
 
     override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
-        val irFile = declaration.parent as? IrFile ?: error("Only top-level declarations within an IrFile are allowed for this lowering")
+        val irFile = declaration.parent as? IrFile ?: return null
 
         if (irFile.getJsModule() != null || irFile.getJsQualifier() != null) {
             val newFile = data.packageLevelJsModules.getOrPut(irFile) {
