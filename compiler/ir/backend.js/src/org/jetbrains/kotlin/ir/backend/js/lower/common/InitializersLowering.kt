@@ -5,17 +5,13 @@
 
 package org.jetbrains.kotlin.ir.backend.js.lower.common
 
-import org.jetbrains.kotlin.backend.common.BodyLoweringPass
-import org.jetbrains.kotlin.backend.common.ClassLoweringPass
-import org.jetbrains.kotlin.backend.common.CommonBackendContext
-import org.jetbrains.kotlin.backend.common.deepCopyWithWrappedDescriptors
+import org.jetbrains.kotlin.backend.common.*
 import org.jetbrains.kotlin.backend.common.descriptors.WrappedSimpleFunctionDescriptor
 import org.jetbrains.kotlin.backend.common.ir.SetDeclarationsParentVisitor
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
-import org.jetbrains.kotlin.ir.backend.js.JsIrBackendContext
 import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.declarations.impl.IrFunctionImpl
 import org.jetbrains.kotlin.ir.expressions.*
@@ -171,9 +167,15 @@ class InitializersBodyLowering(
     }
 }
 
-class RemoveAnonymousInitializers(val context: CommonBackendContext) : ClassLoweringPass {
-    override fun lower(irClass: IrClass) {
-        irClass.declarations.removeAll { it is IrAnonymousInitializer }
-        irClass.declarations.filterIsInstance<IrField>().forEach { it.initializer = null }
+class RemoveAnonymousInitializers(val context: CommonBackendContext) : DeclarationTransformer {
+
+    override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
+        if (declaration is IrAnonymousInitializer) return emptyList()
+
+        if (declaration is IrField && declaration.parent is IrClass) {
+            declaration.initializer = null
+        }
+
+        return null
     }
 }

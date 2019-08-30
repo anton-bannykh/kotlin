@@ -333,7 +333,7 @@ private val initializersLoweringPhase = makeBodyLoweringPhase(
 )
 
 private val removeAnonymousInitializers = makeJsModulePhase(
-    { context, _ -> RemoveAnonymousInitializers(context).toDeclarationTransformer() },
+    { context, _ -> RemoveAnonymousInitializers(context).runPostfix() },
     name = "InitializersLowering",
     description = "Merge init block and field initializers into [primary] constructor",
     prerequisite = setOf(initializersLoweringPhase)
