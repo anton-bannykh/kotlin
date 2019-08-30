@@ -360,7 +360,7 @@ private val typeOperatorLoweringPhase = makeBodyLoweringPhase(
 )
 
 private val secondaryConstructorLoweringPhase = makeJsModulePhase(
-    { context, _ -> SecondaryConstructorLowering(context).toDeclarationTransformer() },
+    { context, _ -> SecondaryConstructorLowering(context).runPostfix() },
     name = "SecondaryConstructorLoweringPhase",
     description = "Generate static functions for each secondary constructor",
     prerequisite = setOf(innerClassesDeclarationLoweringPhase)

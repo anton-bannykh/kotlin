@@ -6,7 +6,7 @@
 package org.jetbrains.kotlin.ir.backend.js.lower
 
 import org.jetbrains.kotlin.backend.common.BodyLoweringPass
-import org.jetbrains.kotlin.backend.common.ClassLoweringPass
+import org.jetbrains.kotlin.backend.common.DeclarationTransformer
 import org.jetbrains.kotlin.backend.common.ir.copyTo
 import org.jetbrains.kotlin.backend.common.ir.copyTypeParametersFrom
 import org.jetbrains.kotlin.descriptors.Modality
@@ -38,16 +38,19 @@ data class ConstructorPair(val delegate: IrSimpleFunction, val stub: IrSimpleFun
 
 var IrConstructor.constructorPair by mapping(object : MappingKey<IrConstructor, ConstructorPair> {})
 
-class SecondaryConstructorLowering(val context: JsIrBackendContext) : ClassLoweringPass {
+class SecondaryConstructorLowering(val context: JsIrBackendContext) : DeclarationTransformer {
 
-    override fun lower(irClass: IrClass) {
-        if (irClass.isInline) return
+    override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
 
-        irClass.declarations.transformFlat {
-            if (it is IrConstructor) {
-                if (it.isPrimary) null else transformConstructor(it, irClass)
-            } else null
+        if (declaration is IrConstructor && !declaration.isPrimary) {
+            val irClass = declaration.parentAsClass
+
+            if (irClass.isInline) return null
+
+            return transformConstructor(declaration, irClass)
         }
+
+        return null
     }
 
     private fun transformConstructor(constructor: IrConstructor, irClass: IrClass): List<IrSimpleFunction> {
