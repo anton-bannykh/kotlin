@@ -36,58 +36,39 @@ class ExpectDeclarationsRemoving(val context: BackendContext) : DeclarationTrans
         // All declarations with `isExpect == true` are nested into a top-level declaration with `isExpect == true`.
         val descriptor = declaration.descriptor
         if (descriptor is MemberDescriptor && descriptor.isExpect) {
-            copyDefaultArgumentsFromExpectToActual(declaration)
             return emptyList()
-        } else {
-            return null
         }
-    }
 
-    private fun copyDefaultArgumentsFromExpectToActual(declaration: IrDeclaration) {
-        declaration.acceptVoid(object : IrElementVisitorVoid {
-            override fun visitElement(element: IrElement) {
-                element.acceptChildrenVoid(this)
-            }
+        if (declaration is IrValueParameter) {
+            // Keep actual default value if present. They are generally not allowed but can be suppressed with
+            // @Suppress("ACTUAL_FUNCTION_WITH_DEFAULT_ARGUMENTS")
+            if (declaration.defaultValue != null)
+                return null
 
-            override fun visitBody(body: IrBody) {
-                // Stop
-            }
+            val function = declaration.parent as IrFunction
 
-            override fun visitValueParameter(declaration: IrValueParameter) {
-                super.visitValueParameter(declaration)
+            val index = declaration.index
+            assert(function.valueParameters[index] == declaration)
 
-                val defaultValue = declaration.defaultValue ?: return
-                val function = declaration.parent as IrFunction
+            val expectParameter = function.findExpectForActual().valueParameters[index]
 
-                val index = declaration.index
-                assert(function.valueParameters[index] == declaration)
+            val defaultValue = expectParameter.defaultValue ?: return null
 
-                if (function is IrConstructor &&
-                    ExpectedActualDeclarationChecker.isOptionalAnnotationClass(
-                        function.descriptor.constructedClass
-                    )
-                ) {
-                    return
-                }
-
-                val actualParameter = function.findActualForExpected().valueParameters[index]
-
-                // Keep actual default value if present. They are generally not allowed but can be suppressed with
-                // @Suppress("ACTUAL_FUNCTION_WITH_DEFAULT_ARGUMENTS")
-                if (actualParameter.defaultValue != null)
-                    return
-
-                defaultValue.expression.let { originalDefault ->
-                    actualParameter.defaultValue = IrExpressionBodyImpl(originalDefault.startOffset, originalDefault.endOffset) {
-                        expression = originalDefault.remapExpectValueSymbols()
-                    }
+            defaultValue.expression.let { originalDefault ->
+                declaration.defaultValue = IrExpressionBodyImpl(originalDefault.startOffset, originalDefault.endOffset) {
+                    expression = originalDefault.remapExpectValueSymbols()
                 }
             }
-        })
+        }
+
+        return null
     }
 
     private fun IrFunction.findActualForExpected(): IrFunction =
         context.ir.symbols.externalSymbolTable.referenceFunction(descriptor.findActualForExpect()).owner
+
+    private fun IrFunction.findExpectForActual(): IrFunction =
+        context.ir.symbols.externalSymbolTable.referenceFunction(descriptor.findExpectForActual()).owner
 
     private fun IrClass.findActualForExpected(): IrClass =
         context.ir.symbols.externalSymbolTable.referenceClass(descriptor.findActualForExpect()).owner
@@ -99,6 +80,15 @@ class ExpectDeclarationsRemoving(val context: BackendContext) : DeclarationTrans
 
         findCompatibleActualForExpected(descriptor.module).singleOrNull() ?: error(descriptor)
     } as T
+
+    private inline fun <reified T : MemberDescriptor> T.findExpectForActual() = with(ExpectedActualResolver) {
+        val descriptor = this@findExpectForActual
+
+        if (!descriptor.isActual) null else {
+            findCompatibleExpectedForActual(descriptor.module).singleOrNull()
+        }
+    } as T
+
 
     private fun IrExpression.remapExpectValueSymbols(): IrExpression {
         return this.transform(object : IrElementTransformerVoid() {
