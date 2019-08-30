@@ -7,7 +7,7 @@ package org.jetbrains.kotlin.ir.backend.js.lower.common
 
 import org.jetbrains.kotlin.backend.common.BackendContext
 import org.jetbrains.kotlin.backend.common.BodyLoweringPass
-import org.jetbrains.kotlin.backend.common.ClassLoweringPass
+import org.jetbrains.kotlin.backend.common.DeclarationTransformer
 import org.jetbrains.kotlin.backend.common.lower.VariableRemapper
 import org.jetbrains.kotlin.backend.common.lower.createIrBuilder
 import org.jetbrains.kotlin.ir.IrStatement
@@ -25,28 +25,30 @@ import org.jetbrains.kotlin.ir.util.*
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
 import org.jetbrains.kotlin.ir.visitors.transformChildrenVoid
 
-class InnerClassesDeclarationLowering(val context: BackendContext, val data: ContextData) : ClassLoweringPass {
-    override fun lower(irClass: IrClass) {
-        if (!irClass.isInner) return
+class InnerClassesDeclarationLowering(val context: BackendContext, val data: ContextData) : DeclarationTransformer {
+    override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
 
-        irClass.declarations += data.declarationFactory.getOuterThisField(irClass)
+        if (declaration is IrClass && declaration.isInner) {
+            declaration.declarations += data.declarationFactory.getOuterThisField(declaration)
+        } else if (declaration is IrConstructor) {
+            val oldConstructor = declaration
+            val irClass = oldConstructor.parent as? IrClass ?: return null
+            if (!irClass.isInner) return null
 
-        // TODO This lowering removes an old constructor, while it is still referenced
-        irClass.transformDeclarationsFlat { irMember ->
-            (irMember as? IrConstructor)?.let { oldConstructor ->
-                val newConstructor = data.declarationFactory.getInnerClassConstructorWithOuterThisParameter(oldConstructor)
-                createNewConstructorBody(irClass, newConstructor, oldConstructor)
-                oldConstructor.valueParameters.forEach { param ->
-                    param.defaultValue?.expression?.let { oldDefault ->
-                        newConstructor.valueParameters[param.index + 1].defaultValue =
-                            IrExpressionBodyImpl(oldDefault.startOffset, oldDefault.endOffset) {
-                                expression = oldDefault.deepCopyWithSymbols(newConstructor)
-                            }
-                    }
+            val newConstructor = data.declarationFactory.getInnerClassConstructorWithOuterThisParameter(oldConstructor)
+            createNewConstructorBody(irClass, newConstructor, oldConstructor)
+            oldConstructor.valueParameters.forEach { param ->
+                param.defaultValue?.expression?.let { oldDefault ->
+                    newConstructor.valueParameters[param.index + 1].defaultValue =
+                        IrExpressionBodyImpl(oldDefault.startOffset, oldDefault.endOffset) {
+                            expression = oldDefault.deepCopyWithSymbols(newConstructor)
+                        }
                 }
-                listOf(newConstructor)
             }
+            return listOf(newConstructor)
         }
+
+        return null
     }
 
     fun createNewConstructorBody(irClass: IrClass, newConstructor: IrConstructor, oldConstructor: IrConstructor) {

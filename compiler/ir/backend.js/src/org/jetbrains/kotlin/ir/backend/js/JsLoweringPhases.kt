@@ -230,7 +230,7 @@ private val localClassExtractionPhase = makeBodyLoweringPhase(
 )
 
 private val innerClassesDeclarationLoweringPhase = makeJsModulePhase(
-    { context, data -> InnerClassesDeclarationLowering(context, data).toDeclarationTransformer() },
+    { context, data -> InnerClassesDeclarationLowering(context, data).runPostfix() },
     name = "InnerClassesDeclarationLowering",
     description = "Capture outer this reference to inner class"
 )
