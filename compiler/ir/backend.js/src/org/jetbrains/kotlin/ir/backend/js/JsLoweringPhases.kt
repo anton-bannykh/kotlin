@@ -442,7 +442,7 @@ private val callsLoweringPhase = makeBodyLoweringPhase(
 //)
 
 private val staticMembersLoweringPhase = makeJsModulePhase(
-    { context, _ -> StaticMembersLowering(context) },
+    { context, _ -> StaticMembersLowering(context).runPostfix() },
     name = "StaticMembersLowering",
     description = "Move static member declarations to top-level"
 )
