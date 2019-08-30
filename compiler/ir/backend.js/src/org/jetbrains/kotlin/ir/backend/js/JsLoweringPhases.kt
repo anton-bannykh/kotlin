@@ -375,7 +375,7 @@ private val secondaryFactoryInjectorLoweringPhase = makeBodyLoweringPhase(
 
 private val inlineClassDeclarationsLoweringPhase = makeJsModulePhase(
     { context, _ ->
-        InlineClassLowering(context).inlineClassDeclarationLowering.toDeclarationTransformer()
+        InlineClassLowering(context).inlineClassDeclarationLowering.runPostfix()
     },
     name = "InlineClassDeclarationsLowering",
     description = "Handle inline classes declarations"

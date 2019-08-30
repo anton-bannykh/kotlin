@@ -6,7 +6,7 @@
 package org.jetbrains.kotlin.ir.backend.js.lower.common
 
 import org.jetbrains.kotlin.backend.common.BodyLoweringPass
-import org.jetbrains.kotlin.backend.common.ClassLoweringPass
+import org.jetbrains.kotlin.backend.common.DeclarationTransformer
 import org.jetbrains.kotlin.backend.common.descriptors.WrappedSimpleFunctionDescriptor
 import org.jetbrains.kotlin.backend.common.ir.copyTo
 import org.jetbrains.kotlin.backend.common.ir.copyTypeParametersFrom
@@ -39,20 +39,16 @@ private var IrFunction.transformedFunction by mapping(object : MappingKey<IrFunc
 
 // TODO: Support incremental compilation
 class InlineClassLowering(val context: JsIrBackendContext) {
-    val inlineClassDeclarationLowering = object : ClassLoweringPass {
-        override fun lower(irClass: IrClass) {
-            if (!irClass.isInline) return
+    val inlineClassDeclarationLowering = object : DeclarationTransformer {
+        override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
 
-            // TODO removes declarations, which are used later on
-            irClass.transformDeclarationsFlat { declaration ->
-                when (declaration) {
-                    is IrConstructor -> transformConstructor(declaration)
-                    is IrSimpleFunction -> transformMethodFlat(declaration)
-                    is IrProperty -> listOf(declaration)  // Getters and setters should be flattened
-                    is IrField -> listOf(declaration)
-                    is IrClass -> listOf(declaration)
-                    else -> error("Unexpected declaration: $declaration")
-                }
+            val irClass = declaration.parent as? IrClass ?: return null
+            if (!irClass.isInline) return null
+
+            return when (declaration) {
+                is IrConstructor -> transformConstructor(declaration)
+                is IrSimpleFunction -> transformMethodFlat(declaration)
+                else -> null
             }
         }
 
