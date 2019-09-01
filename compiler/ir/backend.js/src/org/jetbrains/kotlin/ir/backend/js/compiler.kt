@@ -195,18 +195,15 @@ var actualLoweringInvocations = 0L
 fun usefulDeclarations(module: IrModuleFragment, context: JsIrBackendContext, controller: MutableController): Set<IrDeclaration> {
     val queue = ArrayDeque<IrDeclaration>()
     val result = Sets.newIdentityHashSet<IrDeclaration>()
-    val descendants = Maps.newIdentityHashMap<IrClass, MutableList<IrClass>>()
+    val constructedClasses = Sets.newIdentityHashSet<IrClass>()
 
     fun IrDeclaration.enqueue() {
         if (this !in result) {
             result.add(this)
             queue.addLast(this)
-            if (this is IrClass) {
-                this.superTypes.forEach {
-                    (it.classifierOrNull as? IrClassSymbol)?.owner?.let { baseClass ->
-                        descendants.getOrPut(baseClass) { mutableListOf() }.add(this)
-                    }
-                }
+            if (this is IrConstructor) {
+                constructedClass.enqueue()
+                constructedClasses += constructedClass
             }
         }
     }
@@ -246,122 +243,100 @@ fun usefulDeclarations(module: IrModuleFragment, context: JsIrBackendContext, co
     }
 
     while (queue.isNotEmpty()) {
-        val declaration = queue.pollFirst()
+        while (queue.isNotEmpty()) {
+            val declaration = queue.pollFirst()
 
-        if (declaration is IrClass) {
-            declaration.superTypes.forEach {
-                (it.classifierOrNull as? IrClassSymbol)?.owner?.enqueue()
+            if (declaration is IrClass) {
+                declaration.superTypes.forEach {
+                    (it.classifierOrNull as? IrClassSymbol)?.owner?.enqueue()
+                }
             }
-        }
 
-
-        // TODO overrides
-        if (declaration is IrSimpleFunction) {
-            declaration.correspondingPropertySymbol?.owner?.enqueue()
-            (declaration.parent as? IrClass)?.let { clazz ->
-                descendants[clazz]?.forEach { d ->
-                    d.declarations.forEach {
-                        if (it is IrOverridableDeclaration<*> && it.overriddenSymbols.contains(declaration.symbol)) {
-                            it.enqueue()
-                        }
+            if (declaration is IrSimpleFunction) {
+                if (declaration.origin == IrDeclarationOrigin.FAKE_OVERRIDE) {
+                    declaration.overriddenSymbols.forEach {
+                        it.owner.enqueue()
                     }
                 }
             }
 
-            if (declaration.origin == IrDeclarationOrigin.FAKE_OVERRIDE) {
-                declaration.overriddenSymbols.forEach {
-                    it.owner.enqueue()
+            val body = when (declaration) {
+                is IrFunction -> declaration.body
+                is IrField -> declaration.initializer
+                is IrVariable -> declaration.initializer
+                else -> null
+            }
+
+            if (body != null) {
+                controller.withBodies {
+                    body.acceptVoid(object : IrElementVisitorVoid {
+                        override fun visitElement(element: IrElement) {
+                            element.acceptChildrenVoid(this)
+                        }
+
+                        override fun visitFunctionAccess(expression: IrFunctionAccessExpression) {
+                            super.visitFunctionAccess(expression)
+
+                            expression.symbol.owner.enqueue()
+                        }
+
+                        override fun visitVariableAccess(expression: IrValueAccessExpression) {
+                            super.visitVariableAccess(expression)
+
+                            expression.symbol.owner.enqueue()
+                        }
+
+                        override fun visitFieldAccess(expression: IrFieldAccessExpression) {
+                            super.visitFieldAccess(expression)
+
+                            expression.symbol.owner.enqueue()
+                        }
+
+                        override fun visitCall(expression: IrCall) {
+                            super.visitCall(expression)
+
+                            expression.superQualifierSymbol?.owner?.enqueue()
+
+                            when (expression.symbol) {
+                                context.libraryIntrinsics.jsBoxIntrinsic -> {
+                                    val inlineClass = expression.getTypeArgument(0)!!.getInlinedClass()!!
+                                    val constructor = inlineClass.declarations.filterIsInstance<IrConstructor>().single { it.isPrimary }
+                                    constructor.enqueue()
+                                }
+                                context.libraryIntrinsics.jsClass -> {
+                                    (expression.getTypeArgument(0)?.classifierOrNull as? IrClassSymbol)?.owner?.enqueue()
+                                }
+                                context.intrinsics.jsObjectCreate.symbol -> {
+                                    val classToCreate = expression.getTypeArgument(0)!!.classifierOrFail.owner as IrClass
+                                    classToCreate.enqueue()
+                                    constructedClasses += classToCreate
+                                }
+                            }
+                        }
+
+                        override fun visitGetObjectValue(expression: IrGetObjectValue) {
+                            super.visitGetObjectValue(expression)
+
+                            expression.symbol.owner.let {
+                                constructedClasses += it
+                                it.constructors.find { it.isPrimary }?.enqueue()
+                            }
+                        }
+                    })
                 }
             }
         }
 
-        if (declaration is IrConstructor) {
-            declaration.constructedClass.let {
-                it.enqueue()
+        for (klass in constructedClasses) {
+            for (declaration in klass.declarations) {
+                if (declaration in result) continue
 
-                it.declarations.forEach {
-                    if (it is IrOverridableDeclaration<*> && it.overridesUsefulFunction()) {
-                        it.enqueue()
-                    }
-                    if (it is IrSimpleFunction && it.getJsNameOrKotlinName().asString() == "valueOf") {
-                        it.enqueue()
-                    }
+                if (declaration is IrOverridableDeclaration<*> && declaration.overridesUsefulFunction()) {
+                    declaration.enqueue()
                 }
-            }
-        }
-
-        val body = when (declaration) {
-            is IrFunction -> declaration.body
-            is IrField -> declaration.initializer
-            is IrVariable -> declaration.initializer
-            else -> null
-        }
-
-        if (body != null) {
-            controller.withBodies {
-                body.acceptVoid(object : IrElementVisitorVoid {
-                    override fun visitElement(element: IrElement) {
-                        element.acceptChildrenVoid(this)
-                    }
-
-                    override fun visitFunctionAccess(expression: IrFunctionAccessExpression) {
-                        super.visitFunctionAccess(expression)
-
-                        expression.symbol.owner.enqueue()
-                    }
-
-                    override fun visitCall(expression: IrCall) {
-                        super.visitCall(expression)
-
-                        expression.superQualifierSymbol?.owner?.enqueue()
-
-                        when (expression.symbol) {
-                            context.libraryIntrinsics.jsBoxIntrinsic -> {
-                                val inlineClass = expression.getTypeArgument(0)!!.getInlinedClass()!!
-                                val constructor = inlineClass.declarations.filterIsInstance<IrConstructor>().single { it.isPrimary }
-                                constructor.enqueue()
-                            }
-                            context.libraryIntrinsics.jsClass -> {
-                                (expression.getTypeArgument(0)?.classifierOrNull as? IrClassSymbol)?.owner?.enqueue()
-                            }
-                            context.intrinsics.jsObjectCreate.symbol -> {
-                                val classToCreate = expression.getTypeArgument(0)!!.classifierOrFail.owner as IrClass
-                                classToCreate.enqueue()
-                            }
-                        }
-                    }
-
-                    override fun visitFieldAccess(expression: IrFieldAccessExpression) {
-                        super.visitFieldAccess(expression)
-
-                        expression.symbol.owner.enqueue()
-                    }
-
-                    override fun visitDeclaration(declaration: IrDeclaration) {
-                        declaration.enqueue()
-                    }
-
-                    override fun visitInstanceInitializerCall(expression: IrInstanceInitializerCall) {
-                        super.visitInstanceInitializerCall(expression)
-
-                        expression.classSymbol.owner.enqueue()
-                    }
-
-                    override fun visitGetObjectValue(expression: IrGetObjectValue) {
-                        super.visitGetObjectValue(expression)
-
-                        expression.symbol.owner.let {
-                            it.enqueue()
-                            it.constructors.find { it.isPrimary }?.enqueue()
-                        }
-                    }
-
-                    override fun visitVariableAccess(expression: IrValueAccessExpression) {
-                        super.visitVariableAccess(expression)
-
-                        expression.symbol.owner.enqueue()
-                    }
-                })
+                if (declaration is IrSimpleFunction && declaration.getJsNameOrKotlinName().asString() == "valueOf") {
+                    declaration.enqueue()
+                }
             }
         }
     }
