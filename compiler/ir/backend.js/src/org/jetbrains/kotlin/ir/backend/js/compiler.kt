@@ -228,11 +228,7 @@ fun usefulDeclarations(module: IrModuleFragment, context: JsIrBackendContext, co
         }
     }
 
-    // TODO remove
-    // The PrimitiveCompanionLowering doesn't rewrite the calls
-    context.primitiveCompanionObjects.values.forEach {
-        it.owner.declarations.forEach { it.enqueue() }
-    }
+    context.irBuiltIns.anyClass.owner.declarations.forEach { it.enqueue() }
 
     // TODO Why? Seems like native exception constructors read message field
     context.throwableClass.owner.declarations.filterIsInstance<IrSimpleFunction>().filter { it.name.asString() == "<get-message>" }.forEach { it.enqueue() }
@@ -290,11 +286,6 @@ fun usefulDeclarations(module: IrModuleFragment, context: JsIrBackendContext, co
 
         if (declaration is IrConstructor) {
             declaration.constructedClass.enqueue()
-        }
-
-        if (declaration is IrConstructor && declaration.isPrimary &&
-            (declaration.parent as? IrClass)?.name?.asString() == "IntProgression") {
-            println("!!!")
         }
 
         val body = when (declaration) {

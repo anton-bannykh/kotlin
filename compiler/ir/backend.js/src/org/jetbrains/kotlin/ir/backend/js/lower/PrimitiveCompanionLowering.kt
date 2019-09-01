@@ -12,14 +12,18 @@ import org.jetbrains.kotlin.ir.backend.js.JsIrBackendContext
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrFile
-import org.jetbrains.kotlin.ir.expressions.IrBody
-import org.jetbrains.kotlin.ir.expressions.IrExpression
-import org.jetbrains.kotlin.ir.expressions.IrGetObjectValue
+import org.jetbrains.kotlin.ir.declarations.IrFunction
+import org.jetbrains.kotlin.ir.expressions.*
+import org.jetbrains.kotlin.ir.expressions.impl.IrCallImpl
 import org.jetbrains.kotlin.ir.expressions.impl.IrGetObjectValueImpl
+import org.jetbrains.kotlin.ir.expressions.impl.IrGetterCallImpl
+import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.types.isPrimitiveType
 import org.jetbrains.kotlin.ir.types.isString
 import org.jetbrains.kotlin.ir.util.defaultType
+import org.jetbrains.kotlin.ir.util.name
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
+import org.jetbrains.kotlin.ir.visitors.acceptChildrenVoid
 import org.jetbrains.kotlin.ir.visitors.transformChildrenVoid
 
 class PrimitiveCompanionLowering(val context: JsIrBackendContext) : BodyLoweringPass {
@@ -28,12 +32,33 @@ class PrimitiveCompanionLowering(val context: JsIrBackendContext) : BodyLowering
             override fun visitGetObjectValue(expression: IrGetObjectValue): IrExpression {
                 val symbol = expression.symbol
                 if (!symbol.isBound) return expression
-                val declaration = symbol.owner
-                if (!declaration.isCompanion) return expression
-                val parent = declaration.parent as? IrClass ?: return expression
-                if (!parent.defaultType.isPrimitiveType() && !parent.defaultType.isString()) return expression
-                val actualCompanion = context.primitiveCompanionObjects[parent.name] ?: return expression
+
+                val actualCompanion = symbol.owner.getActualCompanion() ?: return expression
                 return expression.run { IrGetObjectValueImpl(startOffset, endOffset, actualCompanion.owner.defaultType, actualCompanion) }
+            }
+
+            private fun IrClass.getActualCompanion(): IrClassSymbol? {
+                if (!isCompanion) return null
+                val parent = parent as? IrClass ?: return null
+                if (!parent.defaultType.isPrimitiveType() && !parent.defaultType.isString()) return null
+                val actualCompanion = context.primitiveCompanionObjects[parent.name] ?: return null
+                return actualCompanion
+            }
+
+            override fun visitCall(expression: IrCall): IrExpression {
+                expression.transformChildrenVoid(this)
+
+                val member = expression.symbol.owner
+
+                val actualCompanion = (member.parent as? IrClass)?.getActualCompanion() ?: return expression
+
+                val actualMember = actualCompanion.owner.declarations
+                    .filterIsInstance<IrFunction>()
+                    .single { it.name == member.name }
+
+                return IrCallImpl(expression.startOffset, expression.endOffset, expression.type, actualMember.symbol).apply {
+                    dispatchReceiver = expression.dispatchReceiver
+                }
             }
         })
     }
