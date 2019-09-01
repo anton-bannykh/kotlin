@@ -30,10 +30,12 @@ class MappingDelegate<K : IrDeclaration, V>(
         get() = (this as HasUserdata).userdata as MutableMap<MappingKey<K, V>, V>
 
     operator fun getValue(thisRef: K, desc: KProperty<*>): V? {
+        stageController.lazyLower(thisRef)
         return thisRef.map[key] as V?
     }
 
     operator fun setValue(thisRef: K, desc: KProperty<*>, value: V?) {
+        stageController.lazyLower(thisRef)
         if (value == null) {
             thisRef.map.remove(key)
         } else {
