@@ -251,15 +251,6 @@ fun usefulDeclarations(module: IrModuleFragment, context: JsIrBackendContext, co
             declaration.superTypes.forEach {
                 (it.classifierOrNull as? IrClassSymbol)?.owner?.enqueue()
             }
-            declaration.declarations.filter { it is IrConstructor && it.isPrimary }.forEach { it.enqueue() }
-            declaration.declarations.forEach {
-                if (it is IrOverridableDeclaration<*> && it.overridesUsefulFunction()) {
-                    it.enqueue()
-                }
-                if (it is IrSimpleFunction && it.getJsNameOrKotlinName().asString() == "valueOf") {
-                    it.enqueue()
-                }
-            }
         }
 
         (declaration.parent as? IrClass)?.enqueue()
@@ -285,7 +276,18 @@ fun usefulDeclarations(module: IrModuleFragment, context: JsIrBackendContext, co
         }
 
         if (declaration is IrConstructor) {
-            declaration.constructedClass.enqueue()
+            declaration.constructedClass.let {
+                it.enqueue()
+
+                it.declarations.forEach {
+                    if (it is IrOverridableDeclaration<*> && it.overridesUsefulFunction()) {
+                        it.enqueue()
+                    }
+                    if (it is IrSimpleFunction && it.getJsNameOrKotlinName().asString() == "valueOf") {
+                        it.enqueue()
+                    }
+                }
+            }
         }
 
         val body = when (declaration) {
@@ -342,7 +344,10 @@ fun usefulDeclarations(module: IrModuleFragment, context: JsIrBackendContext, co
                     override fun visitGetObjectValue(expression: IrGetObjectValue) {
                         super.visitGetObjectValue(expression)
 
-                        expression.symbol.owner.enqueue()
+                        expression.symbol.owner.let {
+                            it.enqueue()
+                            it.constructors.find { it.isPrimary }?.enqueue()
+                        }
                     }
 
                     override fun visitVariableAccess(expression: IrValueAccessExpression) {

@@ -200,7 +200,7 @@ class JsClassGenerator(private val irClass: IrClass, val context: JsGenerationCo
     }
 
     private fun maybeGeneratePrimaryConstructor() {
-        if (!irClass.declarations.any { it is IrConstructor }) {
+        if (!irClass.declarations.any { it is IrConstructor && it in context.staticContext.usefulDeclarations }) {
             val func = JsFunction(JsFunctionScope(context.currentScope, "Ctor for ${irClass.name}"), JsBlock(), "Ctor for ${irClass.name}")
             func.name = className
             classBlock.statements += func.makeStmt()
