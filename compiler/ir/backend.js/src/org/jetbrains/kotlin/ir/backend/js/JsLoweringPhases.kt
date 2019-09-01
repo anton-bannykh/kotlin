@@ -862,9 +862,16 @@ class MutableController : StageController {
 
     val loaded = ArrayDeque<IrDeclaration>()
 
+    var freezeLoading = false
+
     override fun tryLoad(symbol: IrSymbol) {
         if (frozen) {
             error("Cannot load after freeze")
+        }
+
+        // Cannot throw due to LazyIr
+        if (freezeLoading) {
+            return
         }
 
         dependencyGenerator?.let { generator ->

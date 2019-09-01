@@ -126,17 +126,15 @@ class JsIntrinsics(private val irBuiltIns: IrBuiltIns) {
         )
     )
 
-    val primitiveToSizeConstructor by lazy {
+    val primitiveToSizeConstructor =
         primitiveToTypedArrayMap.entries.associate { (type, name) ->
             type to unOp("${name.toLowerCase()}Array")
         }
-    }
 
-    val primitiveToLiteralConstructor by lazy {
+    val primitiveToLiteralConstructor =
         primitiveToTypedArrayMap.entries.associate { (type, name) ->
             type to unOp("${name.toLowerCase()}ArrayOf")
         }
-    }
 
 
     // TODO: unify how we create intrinsic symbols
