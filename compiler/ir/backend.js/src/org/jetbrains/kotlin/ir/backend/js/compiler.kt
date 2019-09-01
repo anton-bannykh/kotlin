@@ -19,6 +19,7 @@ import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
+import org.jetbrains.kotlin.ir.types.classifierOrFail
 import org.jetbrains.kotlin.ir.types.classifierOrNull
 import org.jetbrains.kotlin.ir.util.*
 import org.jetbrains.kotlin.ir.visitors.IrElementVisitorVoid
@@ -253,7 +254,6 @@ fun usefulDeclarations(module: IrModuleFragment, context: JsIrBackendContext, co
             }
         }
 
-        (declaration.parent as? IrClass)?.enqueue()
 
         // TODO overrides
         if (declaration is IrSimpleFunction) {
@@ -313,6 +313,8 @@ fun usefulDeclarations(module: IrModuleFragment, context: JsIrBackendContext, co
                     override fun visitCall(expression: IrCall) {
                         super.visitCall(expression)
 
+                        expression.superQualifierSymbol?.owner?.enqueue()
+
                         when (expression.symbol) {
                             context.libraryIntrinsics.jsBoxIntrinsic -> {
                                 val inlineClass = expression.getTypeArgument(0)!!.getInlinedClass()!!
@@ -321,6 +323,10 @@ fun usefulDeclarations(module: IrModuleFragment, context: JsIrBackendContext, co
                             }
                             context.libraryIntrinsics.jsClass -> {
                                 (expression.getTypeArgument(0)?.classifierOrNull as? IrClassSymbol)?.owner?.enqueue()
+                            }
+                            context.intrinsics.jsObjectCreate.symbol -> {
+                                val classToCreate = expression.getTypeArgument(0)!!.classifierOrFail.owner as IrClass
+                                classToCreate.enqueue()
                             }
                         }
                     }
