@@ -138,7 +138,7 @@ private val copyInlineFunctionBody = makeJsModulePhase(
 )
 
 private val throwableSuccessorsLoweringPhase = makeJsModulePhase(
-    { context, _ -> ThrowableSuccessorsLowering(context) },
+    { context, _ -> ThrowableSuccessorsLowering(context).runPostfix() },
     name = "ThrowableSuccessorsLowering",
     description = "Link kotlin.Throwable and JavaScript Error together to provide proper interop between language and platform exceptions"
 )

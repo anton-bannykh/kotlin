@@ -48,6 +48,8 @@ fun <V : Any> KMutableProperty0<V?>.getOrPut(fn: () -> V) = this.get() ?: fn().a
 
 fun <K : IrDeclaration, V> mapping(key: MappingKey<K, V>) = MappingDelegate(key)
 
+inline fun <K : IrDeclaration, V> mapping() = MappingDelegate(object : MappingKey<K, V> {})
+
 class ContextData(
     val irModuleFragment: IrModuleFragment
 ) {

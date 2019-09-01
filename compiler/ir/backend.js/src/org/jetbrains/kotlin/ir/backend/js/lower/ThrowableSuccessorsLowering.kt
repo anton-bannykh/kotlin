@@ -27,17 +27,14 @@ import org.jetbrains.kotlin.ir.symbols.impl.IrFieldSymbolImpl
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.makeNotNull
 import org.jetbrains.kotlin.ir.types.makeNullable
-import org.jetbrains.kotlin.ir.util.defaultType
-import org.jetbrains.kotlin.ir.util.isThrowable
-import org.jetbrains.kotlin.ir.util.isThrowableTypeOrSubtype
-import org.jetbrains.kotlin.ir.util.transformFlat
+import org.jetbrains.kotlin.ir.util.*
 import org.jetbrains.kotlin.ir.visitors.*
 import org.jetbrains.kotlin.name.Name
 
 
 data class DirectThrowableSuccessors(val klass: IrClass, val message: IrField, val cause: IrField)
 
-private var IrClass.pendingSuperUsages by mapping(object : MappingKey<IrClass, DirectThrowableSuccessors> {})
+private var IrSimpleFunction.correspondingField: IrField? by mapping()
 
 class ThrowableSuccessorsLowering(val context: JsIrBackendContext) : DeclarationTransformer {
     private val nothingType get() = context.irBuiltIns.nothingType
@@ -59,95 +56,81 @@ class ThrowableSuccessorsLowering(val context: JsIrBackendContext) : Declaration
     }
 
     override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
-        declaration.accept(ThrowableAccessorCreationVisitor(), null)
+        if (declaration is IrSimpleFunction) {
+            (declaration.parent as? IrClass)?.let { irClass ->
+                if (isDirectChildOfThrowable(irClass)) {
+                    return declaration.processGetter(messageGetter, messagePropertyName, stringType)
+                        ?: declaration.processGetter(causeGetter, causePropertyName, throwableType)
+                }
+            }
+        }
 
         return null
     }
 
-    inner class ThrowableAccessorCreationVisitor : IrElementVisitorVoid {
-        override fun visitElement(element: IrElement) = element.acceptChildrenVoid(this)
+    private fun IrSimpleFunction.processGetter(superGetter: IrFunctionSymbol, propertyName: Name, type: IrType): List<IrDeclaration>? {
+        if (overriddenSymbols.any { s -> s == superGetter }) {
+            val messageField = createBackingField(parentAsClass, propertyName, type)
 
-        override fun visitBody(body: IrBody) {
-            // Stop
+            val newMessageAccessor = if (origin == IrDeclarationOrigin.FAKE_OVERRIDE) {
+                createPropertyAccessor(this, messageField)
+            } else this
+
+            newMessageAccessor.correspondingField = messageField
+
+            return listOf(newMessageAccessor)
         }
-
-        override fun visitClass(declaration: IrClass) {
-
-            if (isDirectChildOfThrowable(declaration)) {
-                val messageField = createBackingField(declaration, messagePropertyName, stringType)
-                val causeField = createBackingField(declaration, causePropertyName, throwableType)
-
-                val existedMessageAccessor = ownPropertyAccessor(declaration, messageGetter)
-                val newMessageAccessor = if (existedMessageAccessor.origin == IrDeclarationOrigin.FAKE_OVERRIDE) {
-                    createPropertyAccessor(existedMessageAccessor, messageField)
-                } else existedMessageAccessor
-
-                val existedCauseAccessor = ownPropertyAccessor(declaration, causeGetter)
-                val newCauseAccessor = if (existedCauseAccessor.origin == IrDeclarationOrigin.FAKE_OVERRIDE) {
-                    createPropertyAccessor(existedCauseAccessor, causeField)
-                } else existedCauseAccessor
-
-
-                declaration.declarations.transformFlat {
-                    when (it) {
-                        existedMessageAccessor -> listOf(newMessageAccessor)
-                        existedCauseAccessor -> listOf(newCauseAccessor)
-                        else -> null
-                    }
-                }
-
-                declaration.pendingSuperUsages = DirectThrowableSuccessors(declaration, messageField, causeField)
-            }
-        }
-
-        private fun createBackingField(declaration: IrClass, name: Name, type: IrType): IrField {
-            val fieldDescriptor = WrappedFieldDescriptor()
-            val fieldSymbol = IrFieldSymbolImpl(fieldDescriptor)
-            val fieldDeclaration = IrFieldImpl(
-                UNDEFINED_OFFSET,
-                UNDEFINED_OFFSET,
-                JsIrBuilder.SYNTHESIZED_DECLARATION,
-                fieldSymbol,
-                name,
-                type,
-                Visibilities.PRIVATE,
-                true,
-                false,
-                false
-            ).apply {
-                parent = declaration
-                fieldDescriptor.bind(this)
-            }
-
-            declaration.declarations += fieldDeclaration
-            return fieldDeclaration
-        }
-
-        private fun createPropertyAccessor(fakeAccessor: IrSimpleFunction, field: IrField): IrSimpleFunction {
-            val name = fakeAccessor.name
-            val function = JsIrBuilder.buildFunction(name, fakeAccessor.returnType, fakeAccessor.parent).apply {
-                overriddenSymbols += fakeAccessor.overriddenSymbols
-                correspondingProperty = fakeAccessor.correspondingProperty
-                dispatchReceiverParameter = fakeAccessor.dispatchReceiverParameter?.copyTo(this)
-            }
-
-            function.body = IrBlockBodyImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET) {
-                val thisReceiver = JsIrBuilder.buildGetValue(function.dispatchReceiverParameter!!.symbol)
-                val returnValue = JsIrBuilder.buildGetField(field.symbol, thisReceiver, type = field.type)
-                val returnStatement = JsIrBuilder.buildReturn(function.symbol, returnValue, nothingType)
-                statements += returnStatement
-            }
-
-            return function
-        }
+        return null
     }
 
-    private fun isDirectChildOfThrowable(irClass: IrClass) = irClass.superTypes.any { it.isThrowable() }
-    private fun ownPropertyAccessor(irClass: IrClass, irBase: IrFunctionSymbol) =
-        irClass.declarations.filterIsInstance<IrProperty>().mapNotNull { it.getter }
-            .singleOrNull { it.overriddenSymbols.any { s -> s == irBase } }
-            ?: irClass.declarations.filterIsInstance<IrSimpleFunction>().single { it.overriddenSymbols.any { s -> s == irBase } }
+    // TODO Don't add it to the declaration list manually
+    private fun createBackingField(declaration: IrClass, name: Name, type: IrType): IrField {
+        val fieldDescriptor = WrappedFieldDescriptor()
+        val fieldSymbol = IrFieldSymbolImpl(fieldDescriptor)
+        val fieldDeclaration = IrFieldImpl(
+            UNDEFINED_OFFSET,
+            UNDEFINED_OFFSET,
+            JsIrBuilder.SYNTHESIZED_DECLARATION,
+            fieldSymbol,
+            name,
+            type,
+            Visibilities.PRIVATE,
+            true,
+            false,
+            false
+        ).apply {
+            parent = declaration
+            fieldDescriptor.bind(this)
+        }
+
+        declaration.declarations += fieldDeclaration
+        return fieldDeclaration
+    }
+
+    private fun createPropertyAccessor(fakeAccessor: IrSimpleFunction, field: IrField): IrSimpleFunction {
+        val name = fakeAccessor.name
+        val function = JsIrBuilder.buildFunction(name, fakeAccessor.returnType, fakeAccessor.parent).apply {
+            overriddenSymbols += fakeAccessor.overriddenSymbols
+            correspondingProperty = fakeAccessor.correspondingProperty
+            dispatchReceiverParameter = fakeAccessor.dispatchReceiverParameter?.copyTo(this)
+        }
+
+        function.body = IrBlockBodyImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET) {
+            val thisReceiver = JsIrBuilder.buildGetValue(function.dispatchReceiverParameter!!.symbol)
+            val returnValue = JsIrBuilder.buildGetField(field.symbol, thisReceiver, type = field.type)
+            val returnStatement = JsIrBuilder.buildReturn(function.symbol, returnValue, nothingType)
+            statements += returnStatement
+        }
+
+        return function
+    }
 }
+
+private fun isDirectChildOfThrowable(irClass: IrClass) = irClass.superTypes.any { it.isThrowable() }
+private fun ownPropertyAccessor(irClass: IrClass, irBase: IrFunctionSymbol) =
+    irClass.declarations.filterIsInstance<IrProperty>().mapNotNull { it.getter }
+        .singleOrNull { it.overriddenSymbols.any { s -> s == irBase } }
+        ?: irClass.declarations.filterIsInstance<IrSimpleFunction>().single { it.overriddenSymbols.any { s -> s == irBase } }
 
 class ThrowableSuccessorsBodyLowering(val context: JsIrBackendContext) : BodyLoweringPass {
 
@@ -192,8 +175,11 @@ class ThrowableSuccessorsBodyLowering(val context: JsIrBackendContext) : BodyLow
         var parent = container.parent
         while (parent is IrDeclaration) {
             if (parent is IrClass) {
-                parent.pendingSuperUsages?.let {
-                    irBody.transformChildren(ThrowableDirectSuccessorTransformer(it), it.klass)
+                if (isDirectChildOfThrowable(parent)) {
+                    val messageField = ownPropertyAccessor(parent, messageGetter).correspondingField!!
+                    val causeField = ownPropertyAccessor(parent, causeGetter).correspondingField!!
+                    val transformer = ThrowableDirectSuccessorTransformer(DirectThrowableSuccessors(parent, messageField, causeField))
+                    irBody.transformChildren(transformer, parent)
                 }
             }
             parent = parent.parent
