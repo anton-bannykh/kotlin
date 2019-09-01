@@ -5,7 +5,6 @@
 
 package org.jetbrains.kotlin.ir.backend.js
 
-import com.google.common.collect.Maps
 import com.google.common.collect.Sets
 import com.intellij.openapi.project.Project
 import org.jetbrains.kotlin.backend.common.phaser.PhaseConfig
@@ -19,6 +18,7 @@ import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
+import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.types.classifierOrFail
 import org.jetbrains.kotlin.ir.types.classifierOrNull
 import org.jetbrains.kotlin.ir.util.*
@@ -226,7 +226,10 @@ fun usefulDeclarations(module: IrModuleFragment, context: JsIrBackendContext, co
         }
     }
 
-    context.irBuiltIns.anyClass.owner.declarations.forEach { it.enqueue() }
+//    context.irBuiltIns.anyClass.owner.declarations.forEach { it.enqueue() }
+
+    val toStringMethod = context.irBuiltIns.anyClass.owner.declarations.single { it.name.asString() == "toString" }
+    val equalsMethod = context.irBuiltIns.anyClass.owner.declarations.single { it.name.asString() == "equals" }
 
     // TODO Why? Seems like native exception constructors read message field
     context.throwableClass.owner.declarations.filterIsInstance<IrSimpleFunction>().filter { it.name.asString() == "<get-message>" }.forEach { it.enqueue() }
@@ -311,6 +314,14 @@ fun usefulDeclarations(module: IrModuleFragment, context: JsIrBackendContext, co
                                     classToCreate.enqueue()
                                     constructedClasses += classToCreate
                                 }
+                                context.libraryIntrinsics.jsEquals -> {
+                                    equalsMethod.enqueue()
+                                }
+                                context.intrinsics.jsPlus -> {
+                                    if (expression.getValueArgument(0)?.type?.classOrNull == context.irBuiltIns.stringClass) {
+                                        toStringMethod.enqueue()
+                                    }
+                                }
                             }
                         }
 
@@ -321,6 +332,12 @@ fun usefulDeclarations(module: IrModuleFragment, context: JsIrBackendContext, co
                                 constructedClasses += it
                                 it.constructors.find { it.isPrimary }?.enqueue()
                             }
+                        }
+
+                        override fun visitStringConcatenation(expression: IrStringConcatenation) {
+                            super.visitStringConcatenation(expression)
+
+                            toStringMethod.enqueue()
                         }
                     })
                 }
