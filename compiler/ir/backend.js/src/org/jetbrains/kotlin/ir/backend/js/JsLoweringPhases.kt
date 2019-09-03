@@ -41,18 +41,12 @@ private fun validationCallback(context: JsIrBackendContext, module: IrElement) {
 sealed class Lowering
 
 class DeclarationLowering(private val factory: (JsIrBackendContext) -> DeclarationTransformer) : Lowering() {
-
     fun declarationTransformer(context: JsIrBackendContext): DeclarationTransformer {
-        return factory(context).runPostfix()
-    }
-
-    fun nonRecursiveDeclarationTransformer(context: JsIrBackendContext): DeclarationTransformer {
         return factory(context)
     }
 }
 
 class BodyLowering(private val factory: (JsIrBackendContext) -> BodyLoweringPass) : Lowering() {
-
     fun bodyLowering(context: JsIrBackendContext): BodyLoweringPass {
         return factory(context)
     }
@@ -649,7 +643,7 @@ class MutableController : StageController {
                         val lowering = perFilePhaseList[i - 1]
 
                         if (lowering is DeclarationLowering) {
-                            val result = withoutBodies { lowering.declarationTransformer(context).transformFlat(topLevelDeclaration) }
+                            val result = withoutBodies { lowering.declarationTransformer(context).runPostfix().transformFlat(topLevelDeclaration) }
 
                             actualLoweringInvocations++
 
