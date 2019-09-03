@@ -125,10 +125,4 @@ class ContextData(
 
     val sharedVariablesManager = JsSharedVariablesManager(irModuleFragment.irBuiltins, implicitDeclarationFile)
     val declarationFactory = JsDeclarationFactory()
-
-    data class BridgeInfo(
-        val function: IrSimpleFunction,
-        val bridge: IrSimpleFunction,
-        val delegateTo: IrSimpleFunction
-    )
 }

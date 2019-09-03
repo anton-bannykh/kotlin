@@ -45,7 +45,7 @@ class ExpectDeclarationsRemoving(val context: BackendContext) : DeclarationTrans
             if (declaration.defaultValue != null)
                 return null
 
-            val function = declaration.parent as IrFunction
+            val function = declaration.parent as? IrFunction ?: return null
 
             if (!function.descriptor.isActual) return null
 
