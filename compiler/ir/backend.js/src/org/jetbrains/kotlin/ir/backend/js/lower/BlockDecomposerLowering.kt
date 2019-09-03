@@ -57,9 +57,6 @@ class CreateIrFieldInitializerFunction(val context: JsIrBackendContext) : Declar
                 listOf(declaration)
             }
             else -> listOf(declaration)
-        }.also { result ->
-            // TODO WTF? This masks erronous behaviour by some other lowering.
-            result.forEach { it.patchDeclarationParents(it.parent, true) }
         }
     }
 
