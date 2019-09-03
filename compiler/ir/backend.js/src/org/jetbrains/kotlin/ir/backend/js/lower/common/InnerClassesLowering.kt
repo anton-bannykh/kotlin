@@ -12,6 +12,7 @@ import org.jetbrains.kotlin.backend.common.lower.VariableRemapper
 import org.jetbrains.kotlin.backend.common.lower.createIrBuilder
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.backend.js.ContextData
+import org.jetbrains.kotlin.ir.backend.js.JsIrBackendContext
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irSetField
 import org.jetbrains.kotlin.ir.declarations.*
@@ -25,18 +26,20 @@ import org.jetbrains.kotlin.ir.util.*
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
 import org.jetbrains.kotlin.ir.visitors.transformChildrenVoid
 
-class InnerClassesDeclarationLowering(val context: BackendContext, val data: ContextData) : DeclarationTransformer {
+class InnerClassesDeclarationLowering(val context: JsIrBackendContext) : DeclarationTransformer {
     override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
 
         if (declaration is IrClass && declaration.isInner) {
+            val data = context.getContextData(declaration)
             declaration.declarations += data.declarationFactory.getOuterThisField(declaration)
         } else if (declaration is IrConstructor) {
             val oldConstructor = declaration
             val irClass = oldConstructor.parent as? IrClass ?: return null
             if (!irClass.isInner) return null
 
+            val data = context.getContextData(declaration)
             val newConstructor = data.declarationFactory.getInnerClassConstructorWithOuterThisParameter(oldConstructor)
-            createNewConstructorBody(irClass, newConstructor, oldConstructor)
+            createNewConstructorBody(irClass, newConstructor, oldConstructor, data)
             oldConstructor.valueParameters.forEach { param ->
                 param.defaultValue?.expression?.let { oldDefault ->
                     newConstructor.valueParameters[param.index + 1].defaultValue =
@@ -51,7 +54,7 @@ class InnerClassesDeclarationLowering(val context: BackendContext, val data: Con
         return null
     }
 
-    fun createNewConstructorBody(irClass: IrClass, newConstructor: IrConstructor, oldConstructor: IrConstructor) {
+    fun createNewConstructorBody(irClass: IrClass, newConstructor: IrConstructor, oldConstructor: IrConstructor, data: ContextData) {
         val parentThisField = data.declarationFactory.getOuterThisField(irClass)
 
         oldConstructor.body?.let { oldConstructorBody ->

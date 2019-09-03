@@ -44,13 +44,15 @@ private val BODILESS_BUILTIN_CLASSES = listOf(
 ).map { FqName(it) }.toSet()
 
 
-class MoveBodilessDeclarationsToSeparatePlaceLowering(private val context: JsIrBackendContext, private val data: ContextData) : DeclarationTransformer {
+class MoveBodilessDeclarationsToSeparatePlaceLowering(private val context: JsIrBackendContext) : DeclarationTransformer {
 
     fun isBuiltInClass(declaration: IrDeclaration): Boolean =
         declaration is IrClass && declaration.fqNameWhenAvailable in BODILESS_BUILTIN_CLASSES
 
     override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
         val irFile = declaration.parent as? IrFile ?: return null
+
+        val data = context.getContextData(declaration)
 
         if (irFile.getJsModule() != null || irFile.getJsQualifier() != null) {
             val newFile = data.packageLevelJsModules.getOrPut(irFile) {

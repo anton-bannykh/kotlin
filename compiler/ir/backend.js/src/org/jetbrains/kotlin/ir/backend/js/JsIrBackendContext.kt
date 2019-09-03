@@ -39,6 +39,7 @@ import org.jetbrains.kotlin.ir.util.getPropertySetter
 import org.jetbrains.kotlin.ir.util.kotlinPackageFqn
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
+import org.jetbrains.kotlin.resolve.descriptorUtil.module
 import org.jetbrains.kotlin.resolve.scopes.MemberScope
 import org.jetbrains.kotlin.types.Variance
 
@@ -49,11 +50,16 @@ class JsIrBackendContext(
     val symbolTable: SymbolTable,
     irModuleFragment: IrModuleFragment,
     override val configuration: CompilerConfiguration,
-    val stageController: MutableController
+    val stageController: MutableController,
+    private val dataMap: Map<ModuleDescriptor, ContextData>
 ) : CommonBackendContext {
 
     init {
         stageController.context = this
+    }
+
+    fun getContextData(declaration: IrDeclaration): ContextData {
+        return dataMap[declaration.descriptor.module]!!
     }
 
     override val builtIns = module.builtIns

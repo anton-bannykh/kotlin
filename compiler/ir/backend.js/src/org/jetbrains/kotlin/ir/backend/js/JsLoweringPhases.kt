@@ -38,26 +38,20 @@ private fun validationCallback(context: JsIrBackendContext, module: IrElement) {
     module.accept(CheckDeclarationParentsVisitor, null)
 }
 
-sealed class Lowering {
-    abstract fun declarationTransformer(context: JsIrBackendContext, data: ContextData): DeclarationTransformer
-}
+sealed class Lowering
 
-class DeclarationLowering(private val factory: (JsIrBackendContext, ContextData) -> DeclarationTransformer) : Lowering() {
+class DeclarationLowering(private val factory: (JsIrBackendContext) -> DeclarationTransformer) : Lowering() {
 
-    override fun declarationTransformer(context: JsIrBackendContext, data: ContextData): DeclarationTransformer {
-        return factory(context, data).runPostfix()
+    fun declarationTransformer(context: JsIrBackendContext): DeclarationTransformer {
+        return factory(context).runPostfix()
     }
 
-    fun nonRecursiveDeclarationTransformer(context: JsIrBackendContext, data: ContextData): DeclarationTransformer {
-        return factory(context, data)
+    fun nonRecursiveDeclarationTransformer(context: JsIrBackendContext): DeclarationTransformer {
+        return factory(context)
     }
 }
 
 class BodyLowering(private val factory: (JsIrBackendContext, ContextData) -> BodyLoweringPass) : Lowering() {
-
-    override fun declarationTransformer(context: JsIrBackendContext, data: ContextData): DeclarationTransformer {
-        return factory(context, data).toDeclarationTransformer()
-    }
 
     fun bodyLowering(context: JsIrBackendContext, data: ContextData): BodyLoweringPass {
         return factory(context, data)
@@ -65,7 +59,7 @@ class BodyLowering(private val factory: (JsIrBackendContext, ContextData) -> Bod
 }
 
 private fun makeJsModulePhase(
-    lowering: (JsIrBackendContext, ContextData) -> DeclarationTransformer,
+    lowering: (JsIrBackendContext) -> DeclarationTransformer,
     name: String,
     description: String,
     prerequisite: Set<Any?> = emptySet()
@@ -103,13 +97,13 @@ private fun makeCustomJsModulePhase(
 )
 
 private val moveBodilessDeclarationsToSeparatePlacePhase = makeJsModulePhase(
-    { context, data -> MoveBodilessDeclarationsToSeparatePlaceLowering(context, data) },
+    { context -> MoveBodilessDeclarationsToSeparatePlaceLowering(context) },
     name = "MoveBodilessDeclarationsToSeparatePlace",
     description = "Move `external` and `built-in` declarations into separate place to make the following lowerings do not care about them"
 )
 
 private val expectDeclarationsRemovingPhase = makeJsModulePhase(
-    { context, _ -> ExpectDeclarationsRemoving(context) },
+    { context -> ExpectDeclarationsRemoving(context) },
     name = "ExpectDeclarationsRemoving",
     description = "Remove expect declaration from module fragment"
 )
@@ -128,21 +122,21 @@ private val functionInliningPhase = makeBodyLoweringPhase(
 )
 
 private val removeInlineFunctionsLoweringPhase = makeJsModulePhase(
-    { context, _ -> RemoveInlineFunctionsLowering(context) },
+    { context -> RemoveInlineFunctionsLowering(context) },
     name = "RemoveInlineFunctionsLowering",
     description = "Remove Inline functions with reified parameters from context",
     prerequisite = setOf(functionInliningPhase)
 )
 
 private val copyInlineFunctionBody = makeJsModulePhase(
-    { context, _ -> CopyInlineFunctionBody(context) },
+    { context -> CopyInlineFunctionBody(context) },
     name = "CopyInlineFunctionBody",
     description = "Copy inline function body, so that the original version is saved in the history",
     prerequisite = setOf(removeInlineFunctionsLoweringPhase)
 )
 
 private val throwableSuccessorsLoweringPhase = makeJsModulePhase(
-    { context, _ -> ThrowableSuccessorsLowering(context) },
+    { context -> ThrowableSuccessorsLowering(context) },
     name = "ThrowableSuccessorsLowering",
     description = "Link kotlin.Throwable and JavaScript Error together to provide proper interop between language and platform exceptions"
 )
@@ -167,7 +161,7 @@ private val unitMaterializationLoweringPhase = makeBodyLoweringPhase(
 )
 
 private val enumClassConstructorLoweringPhase = makeJsModulePhase(
-    { context, _ -> EnumClassConstructorLowering(context) },
+    { context -> EnumClassConstructorLowering(context) },
     name = "EnumClassConstructorLowering",
     description = "Transform Enum Class into regular Class"
 )
@@ -180,28 +174,28 @@ private val enumClassConstructorBodyLoweringPhase = makeBodyLoweringPhase(
 
 
 private val enumEntryInstancesLoweringPhase = makeJsModulePhase(
-    { context, _ -> EnumEntryInstancesLowering(context) },
+    { context -> EnumEntryInstancesLowering(context) },
     name = "EnumEntryInstancesLowering",
     description = "Create instance variable for each enum entry initialized with `null`",
     prerequisite = setOf(enumClassConstructorLoweringPhase)
 )
 
 private val enumClassCreateInitializerLoweringPhase = makeJsModulePhase(
-    { context, _ -> EnumClassCreateInitializerLowering(context) },
+    { context -> EnumClassCreateInitializerLowering(context) },
     name = "EnumClassCreateInitializerLowering",
     description = "Create initializer for enum entries",
     prerequisite = setOf(enumClassConstructorLoweringPhase)
 )
 
 private val enumEntryCreateGetInstancesFunsLoweringPhase = makeJsModulePhase(
-    { context, _ -> EnumEntryCreateGetInstancesFunsLowering(context) },
+    { context -> EnumEntryCreateGetInstancesFunsLowering(context) },
     name = "EnumEntryCreateGetInstancesFunsLowering",
     description = "Create enumEntry_getInstance functions",
     prerequisite = setOf(enumClassConstructorLoweringPhase)
 )
 
 private val enumSyntheticFunsLoweringPhase = makeJsModulePhase(
-    { context, _ -> EnumSyntheticFunctionsLowering(context) },
+    { context -> EnumSyntheticFunctionsLowering(context) },
     name = "EnumSyntheticFunctionsLowering",
     description = "Implement `valueOf` and `values`",
     prerequisite = setOf(enumClassConstructorLoweringPhase)
@@ -215,7 +209,7 @@ private val enumUsageLoweringPhase = makeBodyLoweringPhase(
 )
 
 private val enumEntryRemovalLoweringPhase = makeJsModulePhase(
-    { context, _ -> EnumClassRemoveEntriesLowering(context) },
+    { context -> EnumClassRemoveEntriesLowering(context) },
     name = "EnumEntryRemovalLowering",
     description = "Replace enum entry with corresponding class",
     prerequisite = setOf(enumUsageLoweringPhase)
@@ -255,7 +249,7 @@ private val localClassExtractionPhase = makeBodyLoweringPhase(
 )
 
 private val innerClassesDeclarationLoweringPhase = makeJsModulePhase(
-    { context, data -> InnerClassesDeclarationLowering(context, data) },
+    { context -> InnerClassesDeclarationLowering(context) },
     name = "InnerClassesDeclarationLowering",
     description = "Capture outer this reference to inner class"
 )
@@ -281,7 +275,7 @@ private val suspendFunctionsLoweringPhase = makeBodyLoweringPhase(
 )
 
 private val suspendLambdasRemovingPhase = makeJsModulePhase(
-    { context, _ -> RemoveSuspendLambdas() },
+    { context -> RemoveSuspendLambdas() },
     name = "SuspendLambdasRemovalLowering",
     description = "Remove suspend lambdas as they are unused",
     prerequisite = setOf(suspendFunctionsLoweringPhase)
@@ -289,7 +283,7 @@ private val suspendLambdasRemovingPhase = makeJsModulePhase(
 
 
 private val privateMembersLoweringPhase = makeJsModulePhase(
-    { context, _ -> PrivateMembersLowering(context) },
+    { context -> PrivateMembersLowering(context) },
     name = "PrivateMembersLowering",
     description = "Extract private members from classes"
 )
@@ -313,7 +307,7 @@ private val callableReferenceLoweringPhase = makeBodyLoweringPhase(
 )
 
 private val defaultArgumentStubGeneratorPhase = makeJsModulePhase(
-    { context, _ -> JsDefaultArgumentStubGenerator(context) },
+    { context -> JsDefaultArgumentStubGenerator(context) },
     name = "DefaultArgumentStubGenerator",
     description = "Generate synthetic stubs for functions with default parameter values"
 )
@@ -326,7 +320,7 @@ private val defaultParameterInjectorPhase = makeBodyLoweringPhase(
 )
 
 private val defaultParameterCleanerPhase = makeJsModulePhase(
-    { context, _ -> DefaultParameterCleaner(context) },
+    { context -> DefaultParameterCleaner(context) },
     name = "DefaultParameterCleaner",
     description = "Clean default parameters up"
 )
@@ -345,7 +339,7 @@ private val varargLoweringPhase = makeBodyLoweringPhase(
 )
 
 private val propertiesLoweringPhase = makeJsModulePhase(
-    { context, _ -> PropertiesLowering(context, skipExternalProperties = true) },
+    { context -> PropertiesLowering(context, skipExternalProperties = true) },
     name = "PropertiesLowering",
     description = "Move fields and accessors out from its property"
 )
@@ -358,7 +352,7 @@ private val initializersLoweringPhase = makeBodyLoweringPhase(
 )
 
 private val removeAnonymousInitializers = makeJsModulePhase(
-    { context, _ -> RemoveAnonymousInitializers(context) },
+    { context -> RemoveAnonymousInitializers(context) },
     name = "InitializersLowering",
     description = "Merge init block and field initializers into [primary] constructor",
     prerequisite = setOf(initializersLoweringPhase)
@@ -371,7 +365,7 @@ private val multipleCatchesLoweringPhase = makeBodyLoweringPhase(
 )
 
 private val bridgesConstructionPhase = makeJsModulePhase(
-    { context, _ -> BridgesConstruction(context) },
+    { context -> BridgesConstruction(context) },
     name = "BridgesConstruction",
     description = "Generate bridges",
     prerequisite = setOf(suspendFunctionsLoweringPhase)
@@ -385,7 +379,7 @@ private val typeOperatorLoweringPhase = makeBodyLoweringPhase(
 )
 
 private val secondaryConstructorLoweringPhase = makeJsModulePhase(
-    { context, _ -> SecondaryConstructorLowering(context) },
+    { context -> SecondaryConstructorLowering(context) },
     name = "SecondaryConstructorLoweringPhase",
     description = "Generate static functions for each secondary constructor",
     prerequisite = setOf(innerClassesDeclarationLoweringPhase)
@@ -399,9 +393,7 @@ private val secondaryFactoryInjectorLoweringPhase = makeBodyLoweringPhase(
 )
 
 private val inlineClassDeclarationsLoweringPhase = makeJsModulePhase(
-    { context, _ ->
-        InlineClassLowering(context).inlineClassDeclarationLowering
-    },
+    { context -> InlineClassLowering(context).inlineClassDeclarationLowering },
     name = "InlineClassDeclarationsLowering",
     description = "Handle inline classes declarations"
 )
@@ -422,7 +414,7 @@ private val autoboxingTransformerPhase = makeBodyLoweringPhase(
 )
 
 private val fieldInitializerCreationPhase = makeJsModulePhase(
-    { context, _ -> CreateIrFieldInitializerFunction(context) },
+    { context -> CreateIrFieldInitializerFunction(context) },
     name = "fieldInitializerCreationPhase",
     description = "Transform statement-like-expression nodes into pure-statement to make it easily transform into JS",
     prerequisite = setOf(typeOperatorLoweringPhase, suspendFunctionsLoweringPhase)
@@ -467,7 +459,7 @@ private val callsLoweringPhase = makeBodyLoweringPhase(
 //)
 
 private val staticMembersLoweringPhase = makeJsModulePhase(
-    { context, _ -> StaticMembersLowering(context) },
+    { context -> StaticMembersLowering(context) },
     name = "StaticMembersLowering",
     description = "Move static member declarations to top-level"
 )
@@ -656,13 +648,10 @@ class MutableController : StageController {
                             error("frozen! ${topLevelDeclaration.name.asString()} in ${fileBefore.fileEntry.name}")
                         }
 
-                        val module = fileBefore.symbol.descriptor.containingDeclaration
-                        val data = dataMap[module]!!
-
                         val lowering = perFilePhaseList[i - 1]
 
-                        if (lowering !is BodyLowering) {
-                            val result = withoutBodies { lowering.declarationTransformer(context, data).transformFlat(topLevelDeclaration) }
+                        if (lowering is DeclarationLowering) {
+                            val result = withoutBodies { lowering.declarationTransformer(context).transformFlat(topLevelDeclaration) }
 
                             actualLoweringInvocations++
 

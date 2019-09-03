@@ -67,7 +67,7 @@ fun compile(
         dependencyModules.forEach {
             dataMap[it.descriptor] = if (it.name.asString() == "<JS_IR_RUNTIME>") {
                 dataCache.getOrPut(it.descriptor) { ContextData(it) }
-            } else ContextData((it))
+            } else ContextData(it)
         }
 
         val jsIntrinsics = allDependencies.filter { it.moduleName == "JS_IR_RUNTIME" }.single().let { stdlib ->
@@ -90,7 +90,16 @@ fun compile(
         stageController.dependencyGenerator = dependencyGenerator
 
         val context =
-            JsIrBackendContext(moduleDescriptor, irBuiltIns, jsIntrinsics, symbolTable, moduleFragment, configuration, stageController)
+            JsIrBackendContext(
+                moduleDescriptor,
+                irBuiltIns,
+                jsIntrinsics,
+                symbolTable,
+                moduleFragment,
+                configuration,
+                stageController,
+                dataMap
+            )
 
         if (!lazyLoad) {
             dependencyGenerator.generateUnboundSymbolsAsDependencies()
@@ -228,14 +237,20 @@ fun usefulDeclarations(module: IrModuleFragment, context: JsIrBackendContext, co
 
 //    context.irBuiltIns.anyClass.owner.declarations.forEach { it.enqueue() }
 
-    val toStringMethod = context.irBuiltIns.anyClass.owner.declarations.single { it.name.asString() == "toString" }
-    val equalsMethod = context.irBuiltIns.anyClass.owner.declarations.single { it.name.asString() == "equals" }
+    val toStringMethod = stageController.withInitialIr { context.irBuiltIns.anyClass.owner.declarations.single { it.name.asString() == "toString" } }
+    val equalsMethod = stageController.withInitialIr { context.irBuiltIns.anyClass.owner.declarations.single { it.name.asString() == "equals" } }
 
     // TODO Why? Seems like native exception constructors read message field
-    context.throwableClass.owner.declarations.filterIsInstance<IrSimpleFunction>().filter { it.name.asString() == "<get-message>" }.forEach { it.enqueue() }
-    context.throwableClass.owner.declarations.filterIsInstance<IrProperty>().filter { it.name.asString() == "message" }.forEach { it.getter?.enqueue() }
-    context.throwableClass.owner.declarations.filterIsInstance<IrSimpleFunction>().filter { it.name.asString() == "<get-cause>" }.forEach { it.enqueue() }
-    context.throwableClass.owner.declarations.filterIsInstance<IrProperty>().filter { it.name.asString() == "cause" }.forEach { it.getter?.enqueue() }
+    stageController.withInitialIr {
+        context.throwableClass.owner.declarations.filterIsInstance<IrSimpleFunction>().filter { it.name.asString() == "<get-message>" }
+            .forEach { it.enqueue() }
+        context.throwableClass.owner.declarations.filterIsInstance<IrProperty>().filter { it.name.asString() == "message" }
+            .forEach { it.getter?.enqueue() }
+        context.throwableClass.owner.declarations.filterIsInstance<IrSimpleFunction>().filter { it.name.asString() == "<get-cause>" }
+            .forEach { it.enqueue() }
+        context.throwableClass.owner.declarations.filterIsInstance<IrProperty>().filter { it.name.asString() == "cause" }
+            .forEach { it.getter?.enqueue() }
+    }
 
     fun IrOverridableDeclaration<*>.overridesUsefulFunction(): Boolean {
         return this.overriddenSymbols.any {
