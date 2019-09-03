@@ -19,7 +19,6 @@ import org.jetbrains.kotlin.ir.backend.js.ir.JsIrBuilder
 import org.jetbrains.kotlin.ir.backend.js.mapping
 import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.declarations.impl.IrFieldImpl
-import org.jetbrains.kotlin.ir.declarations.impl.MappingKey
 import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.expressions.impl.*
 import org.jetbrains.kotlin.ir.symbols.IrFunctionSymbol
@@ -76,7 +75,7 @@ class ThrowableSuccessorsLowering(val context: JsIrBackendContext) : Declaration
                 createPropertyAccessor(this, messageField)
             } else this
 
-            newMessageAccessor.correspondingField = messageField
+            correspondingField = messageField
 
             return listOf(newMessageAccessor)
         }
@@ -128,9 +127,11 @@ class ThrowableSuccessorsLowering(val context: JsIrBackendContext) : Declaration
 
 private fun isDirectChildOfThrowable(irClass: IrClass) = irClass.superTypes.any { it.isThrowable() }
 private fun ownPropertyAccessor(irClass: IrClass, irBase: IrFunctionSymbol) =
-    irClass.declarations.filterIsInstance<IrProperty>().mapNotNull { it.getter }
-        .singleOrNull { it.overriddenSymbols.any { s -> s == irBase } }
-        ?: irClass.declarations.filterIsInstance<IrSimpleFunction>().single { it.overriddenSymbols.any { s -> s == irBase } }
+    stageController.withInitialIr {
+        irClass.declarations.filterIsInstance<IrProperty>().mapNotNull { it.getter }
+            .singleOrNull { it.overriddenSymbols.any { s -> s == irBase } }
+            ?: irClass.declarations.filterIsInstance<IrSimpleFunction>().single { it.overriddenSymbols.any { s -> s == irBase } }
+    }
 
 class ThrowableSuccessorsBodyLowering(val context: JsIrBackendContext) : BodyLoweringPass {
 
