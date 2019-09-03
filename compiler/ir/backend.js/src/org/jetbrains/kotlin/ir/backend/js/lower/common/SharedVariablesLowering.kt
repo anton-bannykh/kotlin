@@ -16,11 +16,11 @@
 
 package org.jetbrains.kotlin.ir.backend.js.lower.common
 
-import org.jetbrains.kotlin.backend.common.BackendContext
 import org.jetbrains.kotlin.backend.common.BodyLoweringPass
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.backend.js.ContextData
+import org.jetbrains.kotlin.ir.backend.js.JsIrBackendContext
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
 import org.jetbrains.kotlin.ir.declarations.IrFunction
@@ -34,14 +34,15 @@ import java.util.*
 
 object CoroutineIntrinsicLambdaOrigin : IrStatementOriginImpl("Coroutine intrinsic lambda")
 
-class SharedVariablesLowering(val context: BackendContext, val data: ContextData) : BodyLoweringPass {
+class SharedVariablesLowering(val context: JsIrBackendContext) : BodyLoweringPass {
     override fun lower(irBody: IrBody, container: IrDeclaration) {
         if (container is IrFunction) {
-            SharedVariablesTransformer(container).lowerSharedVariables()
+            val data = context.getContextData(container)
+            SharedVariablesTransformer(container, data).lowerSharedVariables()
         }
     }
 
-    private inner class SharedVariablesTransformer(val irFunction: IrFunction) {
+    private inner class SharedVariablesTransformer(val irFunction: IrFunction, val data: ContextData) {
         private val sharedVariables = HashSet<IrVariable>()
 
         fun lowerSharedVariables() {

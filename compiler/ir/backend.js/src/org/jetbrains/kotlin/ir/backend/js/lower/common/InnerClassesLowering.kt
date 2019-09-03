@@ -97,12 +97,14 @@ private fun ContextData.primaryConstructorParameterMap(loweredConstructor: IrCon
 }
 
 // TODO replace with declaration transformer, which creates lazy bodies
-class InnerClassesMemberBodyLowering(val context: BackendContext, val data: ContextData) : BodyLoweringPass {
+class InnerClassesMemberBodyLowering(val context: JsIrBackendContext) : BodyLoweringPass {
 
     override fun lower(irBody: IrBody, container: IrDeclaration) {
         val irClass = container.parent as? IrClass ?: return
 
         if (!irClass.isInner) return
+
+        val data = context.getContextData(irClass)
 
         if (container is IrField || container is IrAnonymousInitializer || container is IrValueParameter) {
             // TODO Property initializer references primary constructor value parameters. Doesn't feel right to be honest
@@ -113,7 +115,7 @@ class InnerClassesMemberBodyLowering(val context: BackendContext, val data: Cont
             }
         }
 
-        irBody.fixThisReference(container, irClass)
+        irBody.fixThisReference(container, irClass, data)
     }
 
     private val IrValueSymbol.classForImplicitThis: IrClass?
@@ -124,7 +126,7 @@ class InnerClassesMemberBodyLowering(val context: BackendContext, val data: Cont
         else
             null
 
-    private fun IrBody.fixThisReference(container: IrDeclaration, irClass: IrClass) {
+    private fun IrBody.fixThisReference(container: IrDeclaration, irClass: IrClass, data: ContextData) {
         transform(object : IrElementTransformerVoid() {
             private var enclosingConstructor: IrConstructor? = container as? IrConstructor
 
@@ -175,8 +177,9 @@ class InnerClassesMemberBodyLowering(val context: BackendContext, val data: Cont
     }
 }
 
-class InnerClassConstructorCallsLowering(val context: BackendContext, val data: ContextData) : BodyLoweringPass {
+class InnerClassConstructorCallsLowering(val context: JsIrBackendContext) : BodyLoweringPass {
     override fun lower(irBody: IrBody, container: IrDeclaration) {
+        val data = context.getContextData(container)
         irBody.transformChildrenVoid(object : IrElementTransformerVoid() {
             override fun visitCall(expression: IrCall): IrExpression {
                 expression.transformChildrenVoid(this)
