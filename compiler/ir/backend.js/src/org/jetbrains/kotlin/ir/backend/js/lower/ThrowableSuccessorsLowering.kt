@@ -161,12 +161,16 @@ class ThrowableSuccessorsBodyLowering(val context: JsIrBackendContext) : BodyLow
     private val causePropertyName = Name.identifier("cause")
 
     private val messageGetter by lazy {
-        throwableClass.owner.declarations.filterIsInstance<IrFunction>().atMostOne { it.name == Name.special("<get-message>") }?.symbol
-            ?: throwableClass.owner.declarations.filterIsInstance<IrProperty>().atMostOne { it.name == messagePropertyName }?.getter?.symbol!!
+        stageController.withInitialIr {
+            throwableClass.owner.declarations.filterIsInstance<IrFunction>().atMostOne { it.name == Name.special("<get-message>") }?.symbol
+                ?: throwableClass.owner.declarations.filterIsInstance<IrProperty>().atMostOne { it.name == messagePropertyName }?.getter?.symbol!!
+        }
     }
     private val causeGetter by lazy {
-        throwableClass.owner.declarations.filterIsInstance<IrFunction>().atMostOne { it.name == Name.special("<get-cause>") }?.symbol
-            ?: throwableClass.owner.declarations.filterIsInstance<IrProperty>().atMostOne { it.name == causePropertyName }?.getter?.symbol!!
+        stageController.withInitialIr {
+            throwableClass.owner.declarations.filterIsInstance<IrFunction>().atMostOne { it.name == Name.special("<get-cause>") }?.symbol
+                ?: throwableClass.owner.declarations.filterIsInstance<IrProperty>().atMostOne { it.name == causePropertyName }?.getter?.symbol!!
+        }
     }
 
     private val captureStackFunction = context.captureStackSymbol

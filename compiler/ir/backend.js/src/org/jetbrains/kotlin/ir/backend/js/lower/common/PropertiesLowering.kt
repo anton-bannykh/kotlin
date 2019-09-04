@@ -34,9 +34,30 @@ class PropertiesLowering(
 ) : DeclarationTransformer {
 
     override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
-        return if (declaration is IrProperty) {
-            lowerProperty(declaration, ClassKind.CLASS)
-        } else null
+        when (declaration) {
+            is IrSimpleFunction -> {
+                declaration.correspondingPropertySymbol?.owner?.let { property ->
+                    if (!skipExternalProperties || !property.isEffectivelyExternal()) {
+                        (declaration.parent as? IrDeclarationContainer)?.run { declarations += declaration }
+                    }
+                }
+            }
+            is IrField -> {
+                declaration.correspondingPropertySymbol?.owner?.let { property ->
+                    if (!skipExternalProperties || !property.isEffectivelyExternal()) {
+                        // TODO JVM magic
+                        (declaration.parent as? IrDeclarationContainer)?.run { declarations += declaration }
+                    }
+                }
+            }
+            is IrProperty -> {
+                if (!skipExternalProperties || !declaration.isEffectivelyExternal()) {
+                    return listOf()
+                }
+            }
+        }
+
+        return null
     }
 
     private fun lowerProperty(declaration: IrProperty, kind: ClassKind): List<IrDeclaration>? {
