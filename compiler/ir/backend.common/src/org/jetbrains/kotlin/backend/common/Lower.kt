@@ -151,8 +151,27 @@ fun DeclarationTransformer.runPostfix(): DeclarationTransformer {
                     declaration.valueParameters.transformFlat { this@runPostfix.transformFlat(it)?.map { it as IrValueParameter } }
                 }
 
+                override fun visitProperty(declaration: IrProperty) {
+                    fun IrDeclaration.transform() {
+                        val result = this@runPostfix.transformFlat(this)
+                        if (result != null) {
+                            (parent as? IrDeclarationContainer)?.let {
+                                it.declarations.remove(this)
+                                it.declarations += result
+                            }
+                        }
+                    }
+
+                    declaration.backingField?.transform()
+                    declaration.getter?.transform()
+                    declaration.setter?.transform()
+                }
+
                 override fun visitClass(declaration: IrClass) {
-                    declaration.acceptChildrenVoid(this)
+                    declaration.thisReceiver?.accept(this, null)
+                    declaration.typeParameters.forEach { it.accept(this, null) }
+                    ArrayList(declaration.declarations).forEach { it.accept(this, null) }
+
                     declaration.declarations.transformFlat(this@runPostfix::transformFlat)
                     declaration.advance()
                 }

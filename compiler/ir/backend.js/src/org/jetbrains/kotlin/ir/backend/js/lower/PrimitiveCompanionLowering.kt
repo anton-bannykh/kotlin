@@ -9,10 +9,7 @@ import org.jetbrains.kotlin.backend.common.BodyLoweringPass
 import org.jetbrains.kotlin.backend.common.DeclarationTransformer
 import org.jetbrains.kotlin.backend.common.FileLoweringPass
 import org.jetbrains.kotlin.ir.backend.js.JsIrBackendContext
-import org.jetbrains.kotlin.ir.declarations.IrClass
-import org.jetbrains.kotlin.ir.declarations.IrDeclaration
-import org.jetbrains.kotlin.ir.declarations.IrFile
-import org.jetbrains.kotlin.ir.declarations.IrFunction
+import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.expressions.impl.IrCallImpl
 import org.jetbrains.kotlin.ir.expressions.impl.IrGetObjectValueImpl
@@ -52,9 +49,11 @@ class PrimitiveCompanionLowering(val context: JsIrBackendContext) : BodyLowering
 
                 val actualCompanion = (member.parent as? IrClass)?.getActualCompanion() ?: return expression
 
-                val actualMember = actualCompanion.owner.declarations
-                    .filterIsInstance<IrFunction>()
-                    .single { it.name == member.name }
+                val actualMember = stageController.withInitialIr {
+                    actualCompanion.owner.declarations
+                        .filterIsInstance<IrProperty>()
+                        .single { it.getter?.name == member.name }
+                }.getter!!
 
                 return IrCallImpl(expression.startOffset, expression.endOffset, expression.type, actualMember.symbol).apply {
                     dispatchReceiver = expression.dispatchReceiver
