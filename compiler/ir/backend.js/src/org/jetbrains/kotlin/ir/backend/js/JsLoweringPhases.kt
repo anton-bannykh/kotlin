@@ -306,6 +306,12 @@ private val defaultArgumentStubGeneratorPhase = makeJsModulePhase(
     description = "Generate synthetic stubs for functions with default parameter values"
 )
 
+private val defaultParameterPatchOverridenSymbolsPhase = makeJsModulePhase(
+    { context -> DefaultParameterPatchOverridenSymbolsLowering(context) },
+    name = "DefaultParameterPatchOverridenSymbolsLowering",
+    description = "Restore overrides for dispatch functions"
+)
+
 private val defaultParameterInjectorPhase = makeBodyLoweringPhase(
     { context -> DefaultParameterInjector(context, skipExternalMethods = true) },
     name = "DefaultParameterInjector",
@@ -497,6 +503,7 @@ private val perFilePhaseList = listOf(
     callableReferenceLoweringPhase, // OK -- creates new declarations from bodies
 
     defaultArgumentStubGeneratorPhase, // Copies type parameter annotations
+    defaultParameterPatchOverridenSymbolsPhase, // Copies type parameter annotations
     defaultParameterInjectorPhase, // OK
     jsDefaultCallbackGeneratorPhase, // OK
     defaultParameterCleanerPhase, // OK

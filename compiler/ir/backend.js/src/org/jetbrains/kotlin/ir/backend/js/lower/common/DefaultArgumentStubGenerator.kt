@@ -70,13 +70,19 @@ open class DefaultArgumentStubGenerator(
 
         if (bodies.isEmpty()) {
             // Fake override
-            val newIrFunction = irFunction.generateDefaultsFunction(context, IrDeclarationOrigin.FAKE_OVERRIDE, skipInlineMethods, skipExternalMethods)
+            val newIrFunction =
+                irFunction.generateDefaultsFunction(context, IrDeclarationOrigin.FAKE_OVERRIDE, skipInlineMethods, skipExternalMethods)
 
             return listOf(irFunction, newIrFunction)
         }
 
         val newIrFunction =
-            irFunction.generateDefaultsFunction(context, IrDeclarationOrigin.FUNCTION_FOR_DEFAULT_PARAMETER, skipInlineMethods, skipExternalMethods)
+            irFunction.generateDefaultsFunction(
+                context,
+                IrDeclarationOrigin.FUNCTION_FOR_DEFAULT_PARAMETER,
+                skipInlineMethods,
+                skipExternalMethods
+            )
 
         log { "$irFunction -> $newIrFunction" }
 
@@ -407,6 +413,24 @@ class DefaultParameterCleaner constructor(val context: CommonBackendContext) : D
     }
 }
 
+class DefaultParameterPatchOverridenSymbolsLowering(val context: CommonBackendContext) : DeclarationTransformer {
+    override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
+        if (declaration is IrSimpleFunction) {
+            (declaration.originalFunction as? IrSimpleFunction)?.run {
+                if (origin == IrDeclarationOrigin.FAKE_OVERRIDE) {
+                    overriddenSymbols.forEach {
+                        it.owner.dispatchFunction?.let { defaultsBaseFun ->
+                            declaration.overriddenSymbols.add((defaultsBaseFun as IrSimpleFunction).symbol)
+                        }
+                    }
+                }
+            }
+        }
+
+        return null
+    }
+}
+
 // TODO this implementation is exponential
 private fun IrFunction.needsDefaultArgumentsLowering(skipInlineMethods: Boolean, skipExternalMethods: Boolean): Boolean {
     if (isInline && skipInlineMethods) return false
@@ -454,20 +478,20 @@ private fun IrFunction.generateDefaultsFunctionImpl(
 
     // TODO Should annotations be copied to dispatch function?
 
-    if (origin == IrDeclarationOrigin.FAKE_OVERRIDE) {
-        for (baseFunSymbol in (this as IrSimpleFunction).overriddenSymbols) {
-            val baseFun = baseFunSymbol.owner
-            if (baseFun.needsDefaultArgumentsLowering(skipInlineMethods, skipExternalMethods)) {
-                val baseOrigin = if (baseFun.valueParameters.any { it.defaultValue != null }) {
-                    IrDeclarationOrigin.FUNCTION_FOR_DEFAULT_PARAMETER
-                } else {
-                    IrDeclarationOrigin.FAKE_OVERRIDE
-                }
-                val defaultsBaseFun = baseFun.generateDefaultsFunction(context, baseOrigin, skipInlineMethods, skipExternalMethods)
-                (newFunction as IrSimpleFunction).overriddenSymbols.add((defaultsBaseFun as IrSimpleFunction).symbol)
-            }
-        }
-    }
+//    if (origin == IrDeclarationOrigin.FAKE_OVERRIDE) {
+//        for (baseFunSymbol in (this as IrSimpleFunction).overriddenSymbols) {
+//            val baseFun = baseFunSymbol.owner
+//            if (baseFun.needsDefaultArgumentsLowering(skipInlineMethods, skipExternalMethods)) {
+//                val baseOrigin = if (baseFun.valueParameters.any { it.defaultValue != null }) {
+//                    IrDeclarationOrigin.FUNCTION_FOR_DEFAULT_PARAMETER
+//                } else {
+//                    IrDeclarationOrigin.FAKE_OVERRIDE
+//                }
+//                val defaultsBaseFun = baseFun.generateDefaultsFunction(context, baseOrigin, skipInlineMethods, skipExternalMethods)
+//                (newFunction as IrSimpleFunction).overriddenSymbols.add((defaultsBaseFun as IrSimpleFunction).symbol)
+//            }
+//        }
+//    }
 
     newFunction.body = IrBlockBodyImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET)
 
