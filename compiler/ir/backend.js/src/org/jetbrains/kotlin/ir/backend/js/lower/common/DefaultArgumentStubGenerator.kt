@@ -407,6 +407,22 @@ class DefaultParameterCleaner constructor(val context: CommonBackendContext) : D
     }
 }
 
+class DefaultParameterPatchOverridenSymbolsLowering(val context: CommonBackendContext) : DeclarationTransformer {
+    override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
+        if (declaration is IrSimpleFunction) {
+            (declaration.originalFunction as? IrSimpleFunction)?.run {
+                overriddenSymbols.forEach {
+                    it.owner.dispatchFunction?.let { defaultsBaseFun ->
+                        declaration.overriddenSymbols.add((defaultsBaseFun as IrSimpleFunction).symbol)
+                    }
+                }
+            }
+        }
+
+        return null
+    }
+}
+
 // TODO this implementation is exponential
 private fun IrFunction.needsDefaultArgumentsLowering(skipInlineMethods: Boolean, skipExternalMethods: Boolean): Boolean {
     if (isInline && skipInlineMethods) return false
@@ -453,23 +469,6 @@ private fun IrFunction.generateDefaultsFunctionImpl(
     newFunction.valueParameters += newValueParameters
 
     // TODO Should annotations be copied to dispatch function?
-
-    if (origin == IrDeclarationOrigin.FAKE_OVERRIDE) {
-        for (baseFunSymbol in (this as IrSimpleFunction).overriddenSymbols) {
-            val baseFun = baseFunSymbol.owner
-            if (baseFun.needsDefaultArgumentsLowering(skipInlineMethods, skipExternalMethods)) {
-                val baseOrigin = if (baseFun.valueParameters.any { it.defaultValue != null }) {
-                    IrDeclarationOrigin.FUNCTION_FOR_DEFAULT_PARAMETER
-                } else {
-                    IrDeclarationOrigin.FAKE_OVERRIDE
-                }
-                val defaultsBaseFun = baseFun.generateDefaultsFunction(context, baseOrigin, skipInlineMethods, skipExternalMethods)
-                (newFunction as IrSimpleFunction).overriddenSymbols.add((defaultsBaseFun as IrSimpleFunction).symbol)
-            }
-        }
-    }
-
-    newFunction.body = IrBlockBodyImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET)
 
     return newFunction
 }
