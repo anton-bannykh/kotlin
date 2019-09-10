@@ -48,15 +48,15 @@ class CreateIrFieldInitializerFunction(val context: JsIrBackendContext) : Declar
                     }
 
                     listOf(initFunction, declaration)
-                } ?: listOf(declaration)
+                }
             }
             is IrFunction -> {
                 (declaration.body as? IrExpressionBody)?.apply {
                     declaration.body = toBlockBody(declaration)
                 }
-                listOf(declaration)
+                null
             }
-            else -> listOf(declaration)
+            else -> null
         }
     }
 

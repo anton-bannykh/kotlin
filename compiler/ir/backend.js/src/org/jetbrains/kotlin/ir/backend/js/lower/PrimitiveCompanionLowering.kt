@@ -53,7 +53,8 @@ class PrimitiveCompanionLowering(val context: JsIrBackendContext) : BodyLowering
                     actualCompanion.owner.declarations
                         .filterIsInstance<IrProperty>()
                         .single { it.getter?.name == member.name }
-                }.getter!!
+                        .getter!!
+                }
 
                 return IrCallImpl(expression.startOffset, expression.endOffset, expression.type, actualMember.symbol).apply {
                     dispatchReceiver = expression.dispatchReceiver

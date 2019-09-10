@@ -43,6 +43,8 @@ abstract class IrDeclarationBase<T : DeclarationCarrier<T>>(
             }
         }
 
+    var removedOn: Int = Int.MAX_VALUE
+
     override val annotations: SimpleList<IrCall> = DumbPersistentList()
 
     override val userdata: MutableMap<MappingKey<*, *>, *> = mutableMapOf()
@@ -72,6 +74,9 @@ abstract class IrPersistingElementBase<T : Carrier<T>>(
     var loweredUpTo = stageController.currentStage
 
     var mask = 1L shl stageController.currentStage
+
+    val createdOn: Int
+        get() = java.lang.Long.bitCount(java.lang.Long.lowestOneBit(mask) - 1)
 
     private var values: Array<Any?>? = null
 

@@ -18,6 +18,7 @@ import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.declarations.impl.IrBodyBase
 import org.jetbrains.kotlin.ir.declarations.impl.IrDeclarationBase
 import org.jetbrains.kotlin.ir.declarations.impl.IrFileImpl
+import org.jetbrains.kotlin.ir.declarations.impl.IrPropertyImpl
 import org.jetbrains.kotlin.ir.expressions.IrBody
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.util.*
@@ -38,15 +39,17 @@ private fun validationCallback(context: JsIrBackendContext, module: IrElement) {
     module.accept(CheckDeclarationParentsVisitor, null)
 }
 
-sealed class Lowering
+sealed class Lowering(val name: String)
 
-class DeclarationLowering(private val factory: (JsIrBackendContext) -> DeclarationTransformer) : Lowering() {
+class DeclarationLowering(name: String,
+                          private val factory: (JsIrBackendContext) -> DeclarationTransformer) : Lowering(name) {
     fun declarationTransformer(context: JsIrBackendContext): DeclarationTransformer {
         return factory(context)
     }
 }
 
-class BodyLowering(private val factory: (JsIrBackendContext) -> BodyLoweringPass) : Lowering() {
+class BodyLowering(name: String,
+                   private val factory: (JsIrBackendContext) -> BodyLoweringPass) : Lowering(name) {
     fun bodyLowering(context: JsIrBackendContext): BodyLoweringPass {
         return factory(context)
     }
@@ -57,14 +60,14 @@ private fun makeJsModulePhase(
     name: String,
     description: String,
     prerequisite: Set<Any?> = emptySet()
-) = DeclarationLowering(lowering)
+) = DeclarationLowering(name, lowering)
 
 private fun makeBodyLoweringPhase(
     lowering: (JsIrBackendContext) -> BodyLoweringPass,
     name: String,
     description: String,
     prerequisite: Set<Any?> = emptySet()
-) = BodyLowering(lowering)
+) = BodyLowering(name, lowering)
 
 private fun makeCustomJsModulePhase(
     op: (JsIrBackendContext, IrModuleFragment) -> Unit,
@@ -642,7 +645,9 @@ class MutableController : StageController {
                 if (topLevelDeclaration.loweredUpTo == i - 1 && topLevelDeclaration.parent is IrFile) {
                     val fileBefore = topLevelDeclaration.parent as IrFileImpl
 
-                    if (topLevelDeclaration in fileBefore.declarations) {
+                    val removedOn = (topLevelDeclaration as? IrDeclarationBase<*>)?.removedOn ?: Int.MAX_VALUE
+
+                    if (removedOn > i) {
                         if (frozen) {
                             error("frozen! ${topLevelDeclaration.name.asString()} in ${fileBefore.fileEntry.name}")
                         }
@@ -664,6 +669,10 @@ class MutableController : StageController {
                                 fileBefore.declarations.remove(topLevelDeclaration)
 
                                 fileBefore.declarations += result
+
+                                if (topLevelDeclaration is IrDeclarationBase<*> && topLevelDeclaration.parent == fileBefore && topLevelDeclaration !in result) {
+                                    topLevelDeclaration.removedOn = currentStage
+                                }
                             }
                         }
                     }
@@ -814,8 +823,19 @@ class MutableController : StageController {
         }
     }
 
+    private val IrDeclaration.correspondingProperty: IrProperty?
+        get() = when (this) {
+            is IrSimpleFunction -> correspondingPropertySymbol
+            is IrField -> correspondingPropertySymbol
+            else -> null
+        }?.owner?.let {
+            (it as? IrPropertyImpl)?.let {
+                if (currentStage >= it.removedOn) null else it
+            }
+        }
+
     private val IrDeclaration.topLevel: IrDeclaration
-        get() = parent.let {
+        get() = (correspondingProperty ?: parent).let {
             if (it is IrDeclaration) it.topLevel else this
         }
 

@@ -65,7 +65,7 @@ class MoveBodilessDeclarationsToSeparatePlaceLowering(private val context: JsIrB
 
             newFile.declarations += declaration
             // TODO this is WAT?
-//            declaration.parent = newFile
+            declaration.parent = newFile
 
             return emptyList()
         } else {

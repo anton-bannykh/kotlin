@@ -20,6 +20,7 @@ import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.declarations.impl.IrDeclarationBase
 import org.jetbrains.kotlin.ir.expressions.IrBody
+import org.jetbrains.kotlin.ir.util.isEffectivelyExternal
 import org.jetbrains.kotlin.ir.visitors.IrElementVisitor
 import org.jetbrains.kotlin.ir.visitors.IrElementVisitorVoid
 import org.jetbrains.kotlin.ir.visitors.acceptChildrenVoid
@@ -151,8 +152,31 @@ fun DeclarationTransformer.runPostfix(): DeclarationTransformer {
                     declaration.valueParameters.transformFlat { this@runPostfix.transformFlat(it)?.map { it as IrValueParameter } }
                 }
 
+                override fun visitProperty(declaration: IrProperty) {
+                    // TODO This is a hack to allow lowering a getter separately from the enclosing property
+
+                    if (declaration.isEffectivelyExternal()) return
+
+                    fun IrDeclaration.transform() {
+                        val result = this@runPostfix.transformFlat(this)
+                        if (result != null) {
+                            (parent as? IrDeclarationContainer)?.let {
+                                it.declarations.remove(this)
+                                it.declarations += result
+                            }
+                        }
+                    }
+
+                    declaration.backingField?.transform()
+                    declaration.getter?.transform()
+                    declaration.setter?.transform()
+                }
+
                 override fun visitClass(declaration: IrClass) {
-                    declaration.acceptChildrenVoid(this)
+                    declaration.thisReceiver?.accept(this, null)
+                    declaration.typeParameters.forEach { it.accept(this, null) }
+                    ArrayList(declaration.declarations).forEach { it.accept(this, null) }
+
                     declaration.declarations.transformFlat(this@runPostfix::transformFlat)
                     declaration.advance()
                 }
