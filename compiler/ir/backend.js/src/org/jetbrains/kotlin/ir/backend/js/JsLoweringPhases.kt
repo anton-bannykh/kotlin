@@ -596,10 +596,6 @@ class MutableController : StageController {
 
     lateinit var context: JsIrBackendContext
 
-    lateinit var dataMap: Map<ModuleDescriptor, ContextData>
-
-//    private val fileToModule = mutableMapOf<IrPackageFragment, ModuleDescriptor>()
-
     // TODO is this needed at all?
     private fun lowerUpTo(file: IrFile, stageNonInclusive: Int) {
         val loweredUpTo = (file as? IrFileImpl)?.loweredUpTo ?: 0
@@ -637,10 +633,6 @@ class MutableController : StageController {
                 if (topLevelDeclaration is IrDeclarationBase<*> && topLevelDeclaration.loweredUpTo < i - 1) {
                     error("WTF?")
                 }
-
-//                if (topLevelDeclaration is IrProperty && topLevelDeclaration.name.asString() == "coroutineContext") {
-//                    println("!!!")
-//                }
 
                 if (topLevelDeclaration.loweredUpTo == i - 1 && topLevelDeclaration.parent is IrFile) {
                     val fileBefore = topLevelDeclaration.parent as IrFileImpl
@@ -691,26 +683,14 @@ class MutableController : StageController {
 
     // TODO Special API to check only top level declarations are added?
     override fun <T> withInitialIr(block: () -> T): T {
-//        val generator = dependencyGenerator
-//        try {
-//            dependencyGenerator = null
         return withStage(0) {
             block()
         }
-//        } finally {
-//            dependencyGenerator = generator
-//        }
     }
 
     private var frozen = false
 
     fun invokeTopLevel(phaseConfig: PhaseConfig, moduleFragment: IrModuleFragment, dependencyModules: List<IrModuleFragment>): Set<IrDeclaration> {
-//        for (module in listOf(moduleFragment) + dependencyModules) {
-//            for (file in module.files) {
-//                fileToModule[file] = module.descriptor
-//            }
-//        }
-
         val start = System.currentTimeMillis()
 
 //        for (stage in 1..perFilePhaseList.size) {
@@ -789,11 +769,6 @@ class MutableController : StageController {
         finishingTime += System.currentTimeMillis() - afterDce
 
         return usefulDeclarations
-
-//        while (!loaded.isEmpty()) {
-//            val decl = loaded.pop()
-//            lazyLower(decl)
-//        }
     }
 
     fun invokeLowerings(file: IrFile) {

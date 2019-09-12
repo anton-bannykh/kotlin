@@ -76,8 +76,6 @@ fun compile(
             }
         }
 
-        stageController.dataMap = dataMap
-
         stageController.deserializer = deserializer
 
         val dependencyGenerator = ExternalDependenciesGenerator(
