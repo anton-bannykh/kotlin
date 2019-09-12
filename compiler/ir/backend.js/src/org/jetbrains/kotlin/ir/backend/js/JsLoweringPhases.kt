@@ -696,21 +696,13 @@ class MutableController : StageController {
 
     private var frozen = false
 
-    val IrDeclaration.isLocal: Boolean
-        get() {
-            // TODO ValueParameters?
-            return parent !is IrDeclarationContainer || (parent as? IrDeclaration)?.isLocal == true
-        }
-
     fun invokeTopLevel(phaseConfig: PhaseConfig, moduleFragment: IrModuleFragment, dependencyModules: List<IrModuleFragment>): Set<IrDeclaration> {
         val start = System.currentTimeMillis()
 
         for (stage in 1..perFilePhaseList.size) {
             currentStage = stage + 1
             for (declaration in ArrayList(allDeclarations)) {
-//                if (!declaration.isLocal) {
-                    lazyLower(declaration)
-//                }
+                lazyLower(declaration)
             }
         }
 
@@ -722,21 +714,21 @@ class MutableController : StageController {
         val usefulDeclarations = usefulDeclarations(moduleFragment, context, this)
 
         // Load bodies
-        for (decl in usefulDeclarations) {
-            decl.accept(object : IrElementVisitorVoid {
-                override fun visitElement(element: IrElement) {
-                    element.acceptChildren(this, null)
-                }
-
-                override fun visitBody(body: IrBody) {
-                    if (body is IrBodyBase<*> && body.loweredUpTo + 1 < currentStage) {
-                        withBodies {
-                            lowerBody(body)
-                        }
-                    }
-                }
-            }, null)
-        }
+//        for (decl in usefulDeclarations) {
+//            decl.accept(object : IrElementVisitorVoid {
+//                override fun visitElement(element: IrElement) {
+//                    element.acceptChildren(this, null)
+//                }
+//
+//                override fun visitBody(body: IrBody) {
+//                    if (body is IrBodyBase<*> && body.loweredUpTo + 1 < currentStage) {
+//                        withBodies {
+//                            lowerBody(body)
+//                        }
+//                    }
+//                }
+//            }, null)
+//        }
 
         val afterDce = System.currentTimeMillis()
         dceTime += afterDce - afterMain
