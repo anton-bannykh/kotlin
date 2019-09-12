@@ -699,12 +699,12 @@ class MutableController : StageController {
     fun invokeTopLevel(phaseConfig: PhaseConfig, moduleFragment: IrModuleFragment, dependencyModules: List<IrModuleFragment>): Set<IrDeclaration> {
         val start = System.currentTimeMillis()
 
-        for (stage in 1..perFilePhaseList.size) {
-            currentStage = stage + 1
-            for (declaration in ArrayList(allDeclarations)) {
-                lazyLower(declaration)
-            }
-        }
+//        for (stage in 1..perFilePhaseList.size) {
+//            currentStage = stage + 1
+//            for (declaration in ArrayList(allDeclarations)) {
+//                lazyLower(declaration)
+//            }
+//        }
 
         val afterMain = System.currentTimeMillis()
         mainTime += afterMain - start

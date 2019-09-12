@@ -215,31 +215,26 @@ fun usefulDeclarations(module: IrModuleFragment, context: JsIrBackendContext, co
         }
     }
 
-    for (file in module.files) {
-        for (declaration in file.declarations) {
-            declaration.acceptVoid(object : IrElementVisitorVoid {
-                override fun visitElement(element: IrElement) {
-                    element.acceptChildrenVoid(this)
-                }
-
-                override fun visitBody(body: IrBody) {
-                    // Skip
-                }
-
-                override fun visitDeclaration(declaration: IrDeclaration) {
-                    declaration.enqueue()
-                }
-            })
-        }
-    }
-
-//    context.irBuiltIns.anyClass.owner.declarations.forEach { it.enqueue() }
-
-    val toStringMethod = stageController.withInitialIr { context.irBuiltIns.anyClass.owner.declarations.single { it.name.asString() == "toString" } }
-    val equalsMethod = stageController.withInitialIr { context.irBuiltIns.anyClass.owner.declarations.single { it.name.asString() == "equals" } }
-
-    // TODO Why? Seems like native exception constructors read message field
     stageController.withInitialIr {
+        for (file in module.files) {
+            for (declaration in file.declarations) {
+                declaration.acceptVoid(object : IrElementVisitorVoid {
+                    override fun visitElement(element: IrElement) {
+                        element.acceptChildrenVoid(this)
+                    }
+
+                    override fun visitBody(body: IrBody) {
+                        // Skip
+                    }
+
+                    override fun visitDeclaration(declaration: IrDeclaration) {
+                        declaration.enqueue()
+                    }
+                })
+            }
+        }
+
+        // TODO Why? Seems like native exception constructors read message field
         context.throwableClass.owner.declarations.filterIsInstance<IrSimpleFunction>().filter { it.name.asString() == "<get-message>" }
             .forEach { it.enqueue() }
         context.throwableClass.owner.declarations.filterIsInstance<IrProperty>().filter { it.name.asString() == "message" }
@@ -248,7 +243,15 @@ fun usefulDeclarations(module: IrModuleFragment, context: JsIrBackendContext, co
             .forEach { it.enqueue() }
         context.throwableClass.owner.declarations.filterIsInstance<IrProperty>().filter { it.name.asString() == "cause" }
             .forEach { it.getter?.enqueue() }
+
     }
+
+//    context.irBuiltIns.anyClass.owner.declarations.forEach { it.enqueue() }
+
+    val toStringMethod =
+        stageController.withInitialIr { context.irBuiltIns.anyClass.owner.declarations.single { it.name.asString() == "toString" } }
+    val equalsMethod =
+        stageController.withInitialIr { context.irBuiltIns.anyClass.owner.declarations.single { it.name.asString() == "equals" } }
 
     fun IrOverridableDeclaration<*>.overridesUsefulFunction(): Boolean {
         return this.overriddenSymbols.any {
@@ -261,6 +264,8 @@ fun usefulDeclarations(module: IrModuleFragment, context: JsIrBackendContext, co
     while (queue.isNotEmpty()) {
         while (queue.isNotEmpty()) {
             val declaration = queue.pollFirst()
+
+            stageController.lazyLower(declaration)
 
             if (declaration is IrClass) {
                 declaration.superTypes.forEach {
