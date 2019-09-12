@@ -45,6 +45,10 @@ abstract class IrDeclarationBase<T : DeclarationCarrier<T>>(
 
     var removedOn: Int = Int.MAX_VALUE
 
+    init {
+        stageController.register(this)
+    }
+
     override val annotations: SimpleList<IrCall> = DumbPersistentList()
 
     override val userdata: MutableMap<MappingKey<*, *>, *> = mutableMapOf()

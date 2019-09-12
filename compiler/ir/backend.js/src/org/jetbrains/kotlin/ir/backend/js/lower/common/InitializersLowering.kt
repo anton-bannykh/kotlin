@@ -68,8 +68,17 @@ class InitializersBodyLowering(
 
 
     fun handleNonStatics(irClass: IrClass) =
-        irClass.declarations.filter {
-            (it is IrField && !it.isStatic) || (it is IrAnonymousInitializer && !it.isStatic)
+        stageController.withInitialIr {
+            irClass.declarations.mapNotNull { d ->
+                when (d) {
+                    is IrField -> if (!d.isStatic) d else null
+                    is IrProperty -> d.backingField?.let { f ->
+                        if (!f.isStatic) f else null
+                    }
+                    is IrAnonymousInitializer -> if (!d.isStatic) d else null
+                    else -> null
+                }
+            }
         }.mapNotNull { handleDeclaration(irClass, it) }
 
     fun handleStatics(irClass: IrClass) =

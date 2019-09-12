@@ -7,6 +7,7 @@ package org.jetbrains.kotlin.ir.declarations
 
 import com.google.common.collect.Maps
 import org.jetbrains.kotlin.ir.declarations.impl.IrBodyBase
+import org.jetbrains.kotlin.ir.declarations.impl.IrDeclarationBase
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.util.transformFlat
 import java.util.*
@@ -29,9 +30,11 @@ interface StageController {
 
     fun tryLoad(symbol: IrSymbol) {}
 
-    abstract val bodiesEnabled: Boolean
+    val bodiesEnabled: Boolean
 
-    abstract fun <T> withInitialIr(block: () -> T): T
+    fun <T> withInitialIr(block: () -> T): T
+
+    fun register(declaration: IrDeclarationBase<*>) {}
 }
 
 class NoopController(override val currentStage: Int = 0) : StageController {
@@ -202,6 +205,8 @@ interface SimpleList<T> : List<T> {
     fun transformFlat(transformation: (T) -> List<T>?)
 
     fun remove(element: T): Boolean
+
+    fun replace(element: T, replacement: Collection<T>)
 }
 
 inline fun <T, R> Iterable<T>.mapTo(to: SimpleList<in R>, fn: (T) -> R) = forEach { to.add(fn(it)) }
@@ -257,6 +262,12 @@ class SimpleMutableList<T>(private val list: MutableList<T>) : SimpleList<T>, Li
     }
 
     override fun remove(element: T): Boolean = list.remove(element)
+
+    override fun replace(element: T, replacement: Collection<T>) {
+        val index = list.indexOf(element)
+        list.removeAt(index)
+        list.addAll(index, replacement)
+    }
 }
 
 private class Wrapper<T>(
@@ -393,6 +404,20 @@ class DumbPersistentList<T>(
         }
 
         return false
+    }
+
+    override fun replace(element: T, replacement: Collection<T>) {
+        ensureLowered()
+        for (i in 0 until innerList.size) {
+            val e = innerList[i]
+            if (e.alive && e.value == element) {
+                e.remove()
+                innerList.addAll(i + 1, replacement.map { createWrapper(it) })
+                return
+            }
+        }
+        // TODO this is a hack for inconsistent parent/declarations
+        innerList.addAll(replacement.map { createWrapper(it) })
     }
 
     override val size: Int

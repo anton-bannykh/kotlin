@@ -5,9 +5,9 @@
 
 package org.jetbrains.kotlin.ir.backend.js
 
+import com.google.common.collect.Sets
 import org.jetbrains.kotlin.backend.common.*
 import org.jetbrains.kotlin.backend.common.phaser.*
-import org.jetbrains.kotlin.descriptors.ModuleDescriptor
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.backend.js.lower.*
 import org.jetbrains.kotlin.ir.backend.js.lower.calls.CallsLowering
@@ -688,20 +688,31 @@ class MutableController : StageController {
         }
     }
 
+    private val allDeclarations = Sets.newIdentityHashSet<IrDeclarationBase<*>>()
+
+    override fun register(declaration: IrDeclarationBase<*>) {
+        allDeclarations.add(declaration)
+    }
+
     private var frozen = false
+
+    val IrDeclaration.isLocal: Boolean
+        get() {
+            // TODO ValueParameters?
+            return parent !is IrDeclarationContainer || (parent as? IrDeclaration)?.isLocal == true
+        }
 
     fun invokeTopLevel(phaseConfig: PhaseConfig, moduleFragment: IrModuleFragment, dependencyModules: List<IrModuleFragment>): Set<IrDeclaration> {
         val start = System.currentTimeMillis()
 
-//        for (stage in 1..perFilePhaseList.size) {
-//            for (module in dependencyModules + moduleFragment) {
-//                for (file in module.files) {
-//                    lowerUpTo(file, stage + 1)
+        for (stage in 1..perFilePhaseList.size) {
+            currentStage = stage + 1
+            for (declaration in ArrayList(allDeclarations)) {
+//                if (!declaration.isLocal) {
+                    lazyLower(declaration)
 //                }
-//            }
-//        }
-
-        jsPhases.invokeToplevel(phaseConfig, context, moduleFragment)
+            }
+        }
 
         val afterMain = System.currentTimeMillis()
         mainTime += afterMain - start
@@ -794,7 +805,42 @@ class MutableController : StageController {
         // TODO other declarations
         if (declaration is IrDeclarationBase<*> && currentStage - 1 > declaration.loweredUpTo) {
             lazyLowerCalls++
-            lowerUpTo(declaration, currentStage)
+            val stageNonInclusive = currentStage
+
+            while (declaration.loweredUpTo + 1 < stageNonInclusive) {
+                val i = declaration.loweredUpTo + 1
+                val parentBefore = withStage(i) { declaration.parent }
+                if (parentBefore !is IrDeclarationContainer) {
+                    break
+                }
+                withStage(i) {
+                    val fileBefore = declaration.fileOrNull as? IrFileImpl
+                    // TODO a better way to skip declarations in external package fragments
+                    if (declaration.removedOn > i && fileBefore != null) {
+                        val lowering = perFilePhaseList[i - 1]
+                        if (lowering is DeclarationLowering) {
+
+                            val result = withoutBodies { lowering.declarationTransformer(context).transformFlat(declaration) }
+                            if (result != null) {
+                                result.forEach {
+                                    it.loweredUpTo = i
+                                    it.parent = parentBefore
+                                }
+
+                                if (parentBefore is IrDeclarationContainer) {
+
+                                    parentBefore.declarations.replace(declaration, result)
+
+                                    if (declaration.parent == parentBefore && declaration !in result) {
+                                        declaration.removedOn = currentStage
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    declaration.loweredUpTo = i
+                }
+            }
         }
     }
 

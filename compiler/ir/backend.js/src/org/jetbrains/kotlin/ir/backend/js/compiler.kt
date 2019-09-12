@@ -36,7 +36,7 @@ val intrinsicsCache = mutableMapOf<KlibModuleRef, JsIntrinsics>()
 
 val lazyLoad = false
 
-val icOn = true
+val icOn = false
 
 fun compile(
     project: Project,
@@ -137,7 +137,7 @@ fun compile(
         println("finishing: ${finishingTime / testCnt}ms")
         println("ir2Js: ${ir2JsTime / testCnt}ms")
         println("LLC: ${lazyLowerCalls / testCnt}; LLI: ${lazyLowerIteration / testCnt}; ALI: ${actualLoweringInvocations / testCnt}")
-        println("LLCP: ${lazyLowerCalls * 100 / actualLoweringInvocations / 100.0}; LLIP: ${lazyLowerIteration * 100 / actualLoweringInvocations / 100.0}")
+//        println("LLCP: ${lazyLowerCalls * 100 / actualLoweringInvocations / 100.0}; LLIP: ${lazyLowerIteration * 100 / actualLoweringInvocations / 100.0}")
         println()
 
 
@@ -358,7 +358,7 @@ fun usefulDeclarations(module: IrModuleFragment, context: JsIrBackendContext, co
         }
 
         for (klass in constructedClasses) {
-            for (declaration in klass.declarations) {
+            for (declaration in ArrayList(klass.declarations)) {
                 if (declaration in result) continue
 
                 if (declaration is IrOverridableDeclaration<*> && declaration.overridesUsefulFunction()) {
