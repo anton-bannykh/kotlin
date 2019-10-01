@@ -10,6 +10,7 @@ import org.jetbrains.kotlin.descriptors.Visibility
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
 import org.jetbrains.kotlin.ir.declarations.IrTypeAlias
 import org.jetbrains.kotlin.ir.declarations.IrTypeParameter
+import org.jetbrains.kotlin.ir.declarations.impl.carriers.TypeAliasCarrier
 import org.jetbrains.kotlin.ir.symbols.IrTypeAliasSymbol
 import org.jetbrains.kotlin.ir.symbols.impl.IrTypeAliasSymbolImpl
 import org.jetbrains.kotlin.ir.types.IrType
@@ -29,8 +30,9 @@ class IrTypeAliasImpl(
     override val isActual: Boolean,
     origin: IrDeclarationOrigin
 ) :
-    IrDeclarationBase(startOffset, endOffset, origin),
-    IrTypeAlias {
+    IrDeclarationBase<TypeAliasCarrier>(startOffset, endOffset, origin),
+    IrTypeAlias,
+    TypeAliasCarrier {
 
     init {
         symbol.bind(this)

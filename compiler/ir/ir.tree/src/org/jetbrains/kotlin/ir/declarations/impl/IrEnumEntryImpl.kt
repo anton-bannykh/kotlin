@@ -20,6 +20,7 @@ import org.jetbrains.kotlin.descriptors.ClassDescriptor
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
 import org.jetbrains.kotlin.ir.declarations.IrEnumEntry
+import org.jetbrains.kotlin.ir.declarations.impl.carriers.EnumEntryCarrier
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.symbols.IrEnumEntrySymbol
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformer
@@ -32,8 +33,9 @@ class IrEnumEntryImpl(
     origin: IrDeclarationOrigin,
     override val symbol: IrEnumEntrySymbol,
     override val name: Name
-) : IrDeclarationBase(startOffset, endOffset, origin),
-    IrEnumEntry {
+) : IrDeclarationBase<EnumEntryCarrier>(startOffset, endOffset, origin),
+    IrEnumEntry,
+    EnumEntryCarrier {
 
     constructor(
         startOffset: Int,
@@ -48,8 +50,29 @@ class IrEnumEntryImpl(
     }
 
     override val descriptor: ClassDescriptor get() = symbol.descriptor
-    override var correspondingClass: IrClass? = null
-    override var initializerExpression: IrExpression? = null
+
+    override var correspondingClassField: IrClass? = null
+
+    override var correspondingClass: IrClass?
+        get() = getCarrier().correspondingClassField
+        set(v) {
+            if (correspondingClass !== v) {
+                setCarrier().correspondingClassField = v
+            }
+        }
+
+    override var initializerExpressionField: IrExpression? = null
+
+    override var initializerExpression: IrExpression?
+        get() = getCarrier().initializerExpressionField
+        set(v) {
+            if (initializerExpression !== v) {
+                if (v is IrBodyBase<*>) {
+                    v.container = this
+                }
+                setCarrier().initializerExpressionField = v
+            }
+        }
 
     override fun <R, D> accept(visitor: IrElementVisitor<R, D>, data: D): R {
         return visitor.visitEnumEntry(this, data)
