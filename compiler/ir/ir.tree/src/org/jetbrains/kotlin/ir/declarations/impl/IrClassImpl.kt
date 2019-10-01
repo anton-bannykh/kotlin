@@ -21,6 +21,7 @@ import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.descriptors.Visibility
 import org.jetbrains.kotlin.ir.declarations.*
+import org.jetbrains.kotlin.ir.declarations.impl.carriers.ClassCarrier
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.util.transform
@@ -37,8 +38,8 @@ class IrClassImpl(
     override val symbol: IrClassSymbol,
     override val name: Name,
     override val kind: ClassKind,
-    override var visibility: Visibility,
-    override var modality: Modality,
+    visibility: Visibility,
+    override var modality: Modality, // TODO persist
     override val isCompanion: Boolean,
     override val isInner: Boolean,
     override val isData: Boolean,
@@ -46,8 +47,9 @@ class IrClassImpl(
     override val isInline: Boolean,
     override val isExpect: Boolean
 ) :
-    IrDeclarationBase(startOffset, endOffset, origin),
-    IrClass {
+    IrDeclarationBase<ClassCarrier>(startOffset, endOffset, origin),
+    IrClass,
+    ClassCarrier {
 
     constructor(
         startOffset: Int,
@@ -75,7 +77,25 @@ class IrClassImpl(
 
     override val descriptor: ClassDescriptor get() = symbol.descriptor
 
-    override var thisReceiver: IrValueParameter? = null
+    override var visibilityField: Visibility = visibility
+
+    override var visibility: Visibility
+        get() = getCarrier().visibilityField
+        set(v) {
+            if (visibility !== v) {
+                setCarrier().visibilityField = v
+            }
+        }
+
+    override var thisReceiverField: IrValueParameter? = null
+
+    override var thisReceiver: IrValueParameter?
+        get() = getCarrier().thisReceiverField
+        set(v) {
+            if (thisReceiver !== v) {
+                setCarrier().thisReceiverField = v
+            }
+        }
 
     override val declarations: MutableList<IrDeclaration> = ArrayList()
 
@@ -83,7 +103,15 @@ class IrClassImpl(
 
     override val superTypes: MutableList<IrType> = SmartList()
 
-    override var metadata: MetadataSource? = null
+    override var metadataField: MetadataSource? = null
+
+    override var metadata: MetadataSource?
+        get() = getCarrier().metadataField
+        set(v) {
+            if (metadata !== v) {
+                setCarrier().metadataField = v
+            }
+        }
 
     override var attributeOwnerId: IrAttributeContainer = this
 
