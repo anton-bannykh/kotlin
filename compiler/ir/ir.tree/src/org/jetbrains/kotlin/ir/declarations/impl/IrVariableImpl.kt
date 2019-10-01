@@ -19,6 +19,7 @@ package org.jetbrains.kotlin.ir.declarations.impl
 import org.jetbrains.kotlin.descriptors.VariableDescriptor
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
 import org.jetbrains.kotlin.ir.declarations.IrVariable
+import org.jetbrains.kotlin.ir.declarations.impl.carriers.VariableCarrier
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.symbols.IrVariableSymbol
 import org.jetbrains.kotlin.ir.symbols.impl.IrVariableSymbolImpl
@@ -27,6 +28,7 @@ import org.jetbrains.kotlin.ir.visitors.IrElementTransformer
 import org.jetbrains.kotlin.ir.visitors.IrElementVisitor
 import org.jetbrains.kotlin.name.Name
 
+// TODO remove persistency
 class IrVariableImpl(
     startOffset: Int,
     endOffset: Int,
@@ -38,8 +40,9 @@ class IrVariableImpl(
     override val isConst: Boolean,
     override val isLateinit: Boolean
 ) :
-    IrDeclarationBase(startOffset, endOffset, origin),
-    IrVariable {
+    IrDeclarationBase<VariableCarrier>(startOffset, endOffset, origin),
+    IrVariable,
+    VariableCarrier {
 
     constructor(
         startOffset: Int,
@@ -80,7 +83,15 @@ class IrVariableImpl(
 
     override val descriptor: VariableDescriptor get() = symbol.descriptor
 
-    override var initializer: IrExpression? = null
+    override var initializerField: IrExpression? = null
+
+    override var initializer: IrExpression?
+        get() = getCarrier().initializerField
+        set(v) {
+            if (initializer !== v) {
+                setCarrier().initializerField = v
+            }
+        }
 
     override fun <R, D> accept(visitor: IrElementVisitor<R, D>, data: D): R =
         visitor.visitVariable(this, data)
