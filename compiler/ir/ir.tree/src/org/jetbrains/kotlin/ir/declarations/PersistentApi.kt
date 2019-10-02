@@ -32,7 +32,7 @@ interface StageController {
     fun register(declaration: IrDeclarationBase<*>) {}
 }
 
-class NoopController(override val currentStage: Int = 0) : StageController {
+class NoopController(override var currentStage: Int = 0) : StageController {
 
     override val bodiesEnabled: Boolean
         get() = true

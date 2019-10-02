@@ -8,6 +8,7 @@ package org.jetbrains.kotlin.ir.backend.js
 import com.intellij.openapi.project.Project
 import org.jetbrains.kotlin.library.resolver.KotlinLibraryResolveResult
 import org.jetbrains.kotlin.backend.common.phaser.PhaseConfig
+import org.jetbrains.kotlin.backend.common.phaser.PhaserState
 import org.jetbrains.kotlin.backend.common.phaser.invokeToplevel
 import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.ir.backend.js.lower.moveBodilessDeclarationsToSeparatePlace
@@ -15,6 +16,8 @@ import org.jetbrains.kotlin.ir.backend.js.transformers.irToJs.IrModuleToJsTransf
 import org.jetbrains.kotlin.ir.backend.js.utils.JsMainFunctionDetector
 import org.jetbrains.kotlin.ir.backend.js.utils.NameTables
 import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
+import org.jetbrains.kotlin.ir.declarations.NoopController
+import org.jetbrains.kotlin.ir.declarations.stageController
 import org.jetbrains.kotlin.ir.util.ExternalDependenciesGenerator
 import org.jetbrains.kotlin.ir.util.patchDeclarationParents
 import org.jetbrains.kotlin.library.KotlinLibrary
@@ -46,6 +49,9 @@ fun compile(
     mainArguments: List<String>?,
     exportedDeclarations: Set<FqName> = emptySet()
 ): CompilerResult {
+    val controller = NoopController()
+    stageController = controller
+
     val (moduleFragment, dependencyModules, irBuiltIns, symbolTable, deserializer) =
         loadIr(project, files, configuration, allDependencies, friendDependencies)
 
@@ -80,9 +86,16 @@ fun compile(
 
     moveBodilessDeclarationsToSeparatePlace(context, moduleFragment)
 
-    jsPhases.invokeToplevel(phaseConfig, context, moduleFragment)
+    val phaserState = PhaserState<IrModuleFragment>()
+    phaseList.forEachIndexed { index, phase ->
+        controller.currentStage = index + 1
+        phase.invoke(phaseConfig, phaserState, context, moduleFragment)
+    }
+
+//    jsPhases.invokeToplevel(phaseConfig, context, moduleFragment)
 
     val transformer = IrModuleToJsTransformer(context, mainFunction, mainArguments)
+
     return transformer.generateModule(moduleFragment)
 }
 
