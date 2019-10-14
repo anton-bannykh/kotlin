@@ -95,8 +95,9 @@ fun compile(
 //    jsPhases.invokeToplevel(phaseConfig, context, moduleFragment)
 
     val transformer = IrModuleToJsTransformer(context, mainFunction, mainArguments)
+    val result = transformer.generateModule(moduleFragment)
 
-    return transformer.generateModule(moduleFragment)
+    return result
 }
 
 fun generateJsCode(
