@@ -149,7 +149,7 @@ private val localDeclarationsLoweringPhase = makeWasmModulePhase(
     prerequisite = setOf(sharedVariablesLoweringPhase, localDelegatedPropertiesLoweringPhase)
 )
 
-private val localClassExtractionPhase = makeWasmModulePhase(
+private val localClassExtractionPhase = makeWasmBodyLoweringPhase(
     ::LocalClassPopupLowering,
     name = "LocalClassExtractionPhase",
     description = "Move local declarations into nearest declaration container",

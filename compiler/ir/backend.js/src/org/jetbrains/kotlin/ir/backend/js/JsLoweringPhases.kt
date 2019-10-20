@@ -183,7 +183,7 @@ private val localDeclarationsLoweringPhase = makeJsModulePhase(
     prerequisite = setOf(sharedVariablesLoweringPhase, localDelegatedPropertiesLoweringPhase)
 )
 
-private val localClassExtractionPhase = makeJsModulePhase(
+private val localClassExtractionPhase = makeJsBodyLoweringPhase(
     ::LocalClassPopupLowering,
     name = "LocalClassExtractionPhase",
     description = "Move local declarations into nearest declaration container",
