@@ -18,7 +18,11 @@ package org.jetbrains.kotlin.backend.common
 
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.declarations.*
+import org.jetbrains.kotlin.ir.declarations.impl.IrDeclarationBase
 import org.jetbrains.kotlin.ir.expressions.IrBody
+import org.jetbrains.kotlin.ir.util.isEffectivelyExternal
+import org.jetbrains.kotlin.ir.util.transformFlat
+import org.jetbrains.kotlin.ir.visitors.IrElementVisitor
 import org.jetbrains.kotlin.ir.visitors.IrElementVisitorVoid
 import org.jetbrains.kotlin.ir.visitors.acceptChildrenVoid
 import org.jetbrains.kotlin.ir.visitors.acceptVoid
@@ -58,7 +62,7 @@ interface FunctionLoweringPass : FileLoweringPass {
 }
 
 interface BodyLoweringPass : FileLoweringPass {
-    fun lower(irBody: IrBody)
+    fun lower(irBody: IrBody, container: IrDeclaration)
 
     override fun lower(irFile: IrFile) = runOnFilePostfix(irFile)
 }
@@ -111,16 +115,20 @@ fun DeclarationContainerLoweringPass.runOnFilePostfix(irFile: IrFile) {
 }
 
 fun BodyLoweringPass.runOnFilePostfix(irFile: IrFile) {
-    irFile.acceptVoid(object : IrElementVisitorVoid {
-        override fun visitElement(element: IrElement) {
-            element.acceptChildrenVoid(this)
+    irFile.accept(object : IrElementVisitor<Unit, IrDeclaration?> {
+        override fun visitElement(element: IrElement, data: IrDeclaration?) {
+            element.acceptChildren(this, data)
         }
 
-        override fun visitBody(body: IrBody) {
-            body.acceptChildrenVoid(this)
-            lower(body)
+        override fun visitDeclaration(declaration: IrDeclaration, data: IrDeclaration?) {
+            declaration.acceptChildren(this, declaration)
         }
-    })
+
+        override fun visitBody(body: IrBody, data: IrDeclaration?) {
+            body.acceptChildren(this, data)
+            lower(body, data!!)
+        }
+    }, null)
 }
 
 fun FunctionLoweringPass.runOnFilePostfix(irFile: IrFile) {
@@ -134,4 +142,176 @@ fun FunctionLoweringPass.runOnFilePostfix(irFile: IrFile) {
             lower(declaration)
         }
     })
+}
+
+interface DeclarationTransformer {
+    fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>?
+}
+
+fun DeclarationTransformer.toFileLoweringPass(): FileLoweringPass {
+    return object : FileLoweringPass {
+        override fun lower(irFile: IrFile) {
+            irFile.declarations.transformFlat(this@toFileLoweringPass::transformFlat)
+        }
+    }
+}
+
+fun DeclarationTransformer.toDeclarationContainerLoweringPass(): DeclarationContainerLoweringPass {
+    return object : DeclarationContainerLoweringPass {
+        override fun lower(irDeclarationContainer: IrDeclarationContainer) {
+            irDeclarationContainer.declarations.transformFlat(this@toDeclarationContainerLoweringPass::transformFlat)
+        }
+    }
+}
+
+inline fun IrDeclaration.advance() {
+    (this as? IrDeclarationBase<*>)?.let {
+        it.loweredUpTo = stageController.currentStage
+    }
+}
+
+fun DeclarationTransformer.runPostfix(): DeclarationTransformer {
+    return object : DeclarationTransformer {
+        override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
+            declaration.acceptVoid(object : IrElementVisitorVoid {
+                override fun visitElement(element: IrElement) {
+                    element.acceptChildrenVoid(this)
+                }
+
+                override fun visitBody(body: IrBody) {
+                    // Stop
+                }
+
+                override fun visitFunction(declaration: IrFunction) {
+                    declaration.valueParameters.transformFlat { this@runPostfix.transformFlat(it)?.map { it as IrValueParameter } }
+                }
+
+                override fun visitProperty(declaration: IrProperty) {
+                    // TODO This is a hack to allow lowering a getter separately from the enclosing property
+
+                    if (declaration.isEffectivelyExternal()) return
+
+                    fun IrDeclaration.transform() {
+                        val result = this@runPostfix.transformFlat(this)
+                        if (result != null) {
+                            (parent as? IrDeclarationContainer)?.let {
+                                it.declarations.remove(this)
+                                it.declarations += result
+                            }
+                        }
+                    }
+
+                    declaration.backingField?.transform()
+                    declaration.getter?.transform()
+                    declaration.setter?.transform()
+                }
+
+                override fun visitClass(declaration: IrClass) {
+                    declaration.thisReceiver?.accept(this, null)
+                    declaration.typeParameters.forEach { it.accept(this, null) }
+                    ArrayList(declaration.declarations).forEach { it.accept(this, null) }
+
+                    declaration.declarations.transformFlat(this@runPostfix::transformFlat)
+                    declaration.advance()
+                }
+            })
+
+            return this@runPostfix.transformFlat(declaration).also {
+                declaration.advance()
+            }
+        }
+    }
+}
+
+fun ClassLoweringPass.toDeclarationTransformer(): DeclarationTransformer {
+    return object : DeclarationTransformer {
+        override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
+            declaration.acceptVoid(object : IrElementVisitorVoid {
+                override fun visitElement(element: IrElement) {
+                    element.acceptChildrenVoid(this)
+                }
+
+                override fun visitBody(body: IrBody) {
+                    // Stop
+                }
+
+                override fun visitClass(declaration: IrClass) {
+                    declaration.acceptChildrenVoid(this)
+                    this@toDeclarationTransformer.lower(declaration)
+                    declaration.advance()
+                }
+            })
+            declaration.advance()
+            return null
+        }
+    }
+}
+
+fun FunctionLoweringPass.toDeclarationTransformer(): DeclarationTransformer {
+    return object : DeclarationTransformer {
+        override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
+            declaration.acceptVoid(object : IrElementVisitorVoid {
+                override fun visitElement(element: IrElement) {
+                    element.acceptChildrenVoid(this)
+                }
+
+                override fun visitFunction(declaration: IrFunction) {
+                    declaration.acceptChildrenVoid(this)
+                    this@toDeclarationTransformer.lower(declaration)
+                }
+            })
+            return null
+        }
+    }
+}
+
+// TODO should it really be run recursively?
+fun BodyLoweringPass.toDeclarationTransformer(): DeclarationTransformer {
+    return object : DeclarationTransformer {
+        override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
+            declaration.accept(object : IrElementVisitorVoid {
+                override fun visitElement(element: IrElement) {
+                    element.acceptChildrenVoid(this)
+                }
+
+                override fun visitDeclaration(declaration: IrDeclaration) {
+                    declaration.acceptChildrenVoid(this)
+                    declaration.advance()
+                }
+
+                override fun visitAnonymousInitializer(declaration: IrAnonymousInitializer) {
+                    lower(declaration.body, declaration)
+                    declaration.advance()
+                }
+
+                override fun visitEnumEntry(declaration: IrEnumEntry) {
+                    declaration.initializerExpression?.let { lower(it, declaration) }
+                    declaration.correspondingClass?.accept(this, null)
+                    declaration.advance()
+                }
+
+                override fun visitField(declaration: IrField) {
+                    declaration.initializer?.let { lower(it, declaration) }
+                    declaration.advance()
+                }
+
+                override fun visitFunction(declaration: IrFunction) {
+                    declaration.valueParameters.forEach { visitValueParameter(it) }
+                    declaration.body?.let { lower(it, declaration) }
+                    declaration.advance()
+                }
+
+                override fun visitValueParameter(declaration: IrValueParameter) {
+                    declaration.defaultValue?.let { lower(it, declaration) }
+                    declaration.advance()
+                }
+
+                override fun visitBody(body: IrBody) {
+                    error("Missed a body")
+                }
+            }, null)
+            declaration.advance()
+            return null
+        }
+    }
 }

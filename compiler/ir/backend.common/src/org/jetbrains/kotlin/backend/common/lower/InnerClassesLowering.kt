@@ -116,9 +116,9 @@ val innerClassConstructorCallsPhase = makeIrFilePhase(
     description = "Handle constructor calls for inner classes"
 )
 
-class InnerClassConstructorCallsLowering(val context: BackendContext) : FileLoweringPass {
-    override fun lower(irFile: IrFile) {
-        irFile.transformChildrenVoid(object : IrElementTransformerVoid() {
+class InnerClassConstructorCallsLowering(val context: BackendContext) : BodyLoweringPass {
+    override fun lower(irBody: IrBody, container: IrDeclaration) {
+        irBody.transformChildrenVoid(object : IrElementTransformerVoid() {
             override fun visitConstructorCall(expression: IrConstructorCall): IrExpression {
                 expression.transformChildrenVoid(this)
 
