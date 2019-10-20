@@ -28,6 +28,19 @@ private fun makeJsModulePhase(
     prerequisite: Set<AnyNamedPhase> = emptySet()
 ) = makeIrModulePhase<JsIrBackendContext>(lowering, name, description, prerequisite, actions = setOf(validationAction, defaultDumper))
 
+private fun makeJsBodyLoweringPhase(
+    lowering: (JsIrBackendContext) -> BodyLoweringPass,
+    name: String,
+    description: String,
+    prerequisite: Set<AnyNamedPhase> = emptySet()
+) = makeJsModulePhase(
+    { context -> lowering(context).toDeclarationTransformer().toFileLoweringPass() },
+    name,
+    description,
+    prerequisite
+)
+
+
 private fun makeCustomJsModulePhase(
     op: (JsIrBackendContext, IrModuleFragment) -> Unit,
     description: String,
@@ -118,8 +131,8 @@ private val throwableSuccessorsLoweringPhase = makeJsModulePhase(
     description = "Link kotlin.Throwable and JavaScript Error together to provide proper interop between language and platform exceptions"
 )
 
-private val tailrecLoweringPhase = makeJsModulePhase(
-    { context: BackendContext -> TailrecLowering(context).toDeclarationTransformer().toFileLoweringPass() },
+private val tailrecLoweringPhase = makeJsBodyLoweringPhase(
+    ::TailrecLowering,
     name = "TailrecLowering",
     description = "Replace `tailrec` callsites with equivalent loop"
 )

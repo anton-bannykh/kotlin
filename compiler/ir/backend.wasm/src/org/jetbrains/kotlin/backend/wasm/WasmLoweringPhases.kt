@@ -27,6 +27,18 @@ private fun makeWasmModulePhase(
     prerequisite: Set<AnyNamedPhase> = emptySet()
 ) = makeIrModulePhase<WasmBackendContext>(lowering, name, description, prerequisite, actions = setOf(validationAction, defaultDumper))
 
+private fun makeWasmBodyLoweringPhase(
+    lowering: (WasmBackendContext) -> BodyLoweringPass,
+    name: String,
+    description: String,
+    prerequisite: Set<AnyNamedPhase> = emptySet()
+) = makeWasmModulePhase(
+    { context -> lowering(context).toDeclarationTransformer().toFileLoweringPass() },
+    name,
+    description,
+    prerequisite
+)
+
 private fun makeCustomWasmModulePhase(
     op: (WasmBackendContext, IrModuleFragment) -> Unit,
     description: String,
@@ -105,8 +117,8 @@ private val removeInlineFunctionsWithReifiedTypeParametersLoweringPhase = makeWa
     prerequisite = setOf(functionInliningPhase)
 )
 
-private val tailrecLoweringPhase = makeWasmModulePhase(
-    { context: BackendContext -> TailrecLowering(context).toDeclarationTransformer().toFileLoweringPass() },
+private val tailrecLoweringPhase = makeWasmBodyLoweringPhase(
+    ::TailrecLowering,
     name = "TailrecLowering",
     description = "Replace `tailrec` callsites with equivalent loop"
 )
