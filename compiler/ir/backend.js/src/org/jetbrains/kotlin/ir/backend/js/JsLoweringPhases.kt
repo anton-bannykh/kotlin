@@ -303,7 +303,7 @@ private val inlineClassLoweringPhase = makeCustomJsModulePhase(
     { context, module ->
         InlineClassLowering(context).run {
             inlineClassDeclarationLowering.runOnFilesPostfix(module)
-            inlineClassUsageLowering.lower(module)
+            inlineClassUsageLowering.toDeclarationTransformer().toFileLoweringPass().lower(module)
         }
     },
     name = "InlineClassLowering",
