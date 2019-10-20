@@ -119,7 +119,7 @@ private val throwableSuccessorsLoweringPhase = makeJsModulePhase(
 )
 
 private val tailrecLoweringPhase = makeJsModulePhase(
-    ::TailrecLowering,
+    { context: BackendContext -> TailrecLowering(context).toDeclarationTransformer().toFileLoweringPass() },
     name = "TailrecLowering",
     description = "Replace `tailrec` callsites with equivalent loop"
 )

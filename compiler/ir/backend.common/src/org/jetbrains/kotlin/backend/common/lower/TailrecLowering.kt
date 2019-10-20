@@ -29,7 +29,7 @@ import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
 import org.jetbrains.kotlin.ir.visitors.transformChildrenVoid
 
 val tailrecPhase = makeIrFilePhase(
-    ::TailrecLowering,
+    { context: BackendContext -> TailrecLowering(context).toDeclarationTransformer().toFileLoweringPass() },
     name = "Tailrec",
     description = "Handle tailrec calls"
 )
@@ -40,9 +40,11 @@ val tailrecPhase = makeIrFilePhase(
  * Note: it currently can't handle local functions and classes declared in default arguments.
  * See [deepCopyWithVariables].
  */
-class TailrecLowering(val context: BackendContext) : FunctionLoweringPass {
-    override fun lower(irFunction: IrFunction) {
-        lowerTailRecursionCalls(context, irFunction)
+class TailrecLowering(val context: BackendContext) : BodyLoweringPass {
+    override fun lower(irBody: IrBody, container: IrDeclaration) {
+        if (container is IrFunction) {
+            lowerTailRecursionCalls(context, container)
+        }
     }
 }
 

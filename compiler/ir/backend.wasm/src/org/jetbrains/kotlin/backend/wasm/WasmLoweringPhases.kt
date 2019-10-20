@@ -106,7 +106,7 @@ private val removeInlineFunctionsWithReifiedTypeParametersLoweringPhase = makeWa
 )
 
 private val tailrecLoweringPhase = makeWasmModulePhase(
-    ::TailrecLowering,
+    { context: BackendContext -> TailrecLowering(context).toDeclarationTransformer().toFileLoweringPass() },
     name = "TailrecLowering",
     description = "Replace `tailrec` callsites with equivalent loop"
 )
