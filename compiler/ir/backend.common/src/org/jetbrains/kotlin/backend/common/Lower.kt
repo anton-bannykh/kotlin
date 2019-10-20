@@ -279,6 +279,18 @@ fun BodyLoweringPass.toDeclarationTransformer(): DeclarationTransformer {
                     declaration.advance()
                 }
 
+                override fun visitClass(declaration: IrClass) {
+                    declaration.thisReceiver?.acceptVoid(this)
+                    ArrayList(declaration.typeParameters).forEach { it.acceptVoid(this) }
+                    ArrayList(declaration.declarations).forEach { it.acceptVoid(this) }
+
+                    declaration.advance()
+                }
+
+                override fun visitPackageFragment(declaration: IrPackageFragment) {
+                    ArrayList(declaration.declarations).forEach { it.acceptVoid(this) }
+                }
+
                 override fun visitAnonymousInitializer(declaration: IrAnonymousInitializer) {
                     lower(declaration.body, declaration)
                     declaration.advance()
