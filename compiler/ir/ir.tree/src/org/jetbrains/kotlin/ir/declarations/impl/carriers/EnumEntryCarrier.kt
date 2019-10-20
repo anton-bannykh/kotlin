@@ -13,7 +13,7 @@ import org.jetbrains.kotlin.ir.expressions.IrExpressionBody
 
 interface EnumEntryCarrier : DeclarationCarrier<EnumEntryCarrier> {
     var correspondingClassField: IrClass?
-    var initializerExpressionField: IrExpression?
+    var initializerExpressionField: IrExpressionBody?
 
     override fun eq(other: EnumEntryCarrier): Boolean {
         return parentField === other.parentField &&
@@ -36,5 +36,5 @@ class EnumEntryCarrierImpl(
     override var parentField: IrDeclarationParent?,
     override var originField: IrDeclarationOrigin,
     override var correspondingClassField: IrClass?,
-    override var initializerExpressionField: IrExpression?
+    override var initializerExpressionField: IrExpressionBody?
 ) : EnumEntryCarrier

@@ -22,6 +22,7 @@ import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
 import org.jetbrains.kotlin.ir.declarations.IrEnumEntry
 import org.jetbrains.kotlin.ir.declarations.impl.carriers.EnumEntryCarrier
 import org.jetbrains.kotlin.ir.expressions.IrExpression
+import org.jetbrains.kotlin.ir.expressions.IrExpressionBody
 import org.jetbrains.kotlin.ir.symbols.IrEnumEntrySymbol
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformer
 import org.jetbrains.kotlin.ir.visitors.IrElementVisitor
@@ -61,9 +62,9 @@ class IrEnumEntryImpl(
             }
         }
 
-    override var initializerExpressionField: IrExpression? = null
+    override var initializerExpressionField: IrExpressionBody? = null
 
-    override var initializerExpression: IrExpression?
+    override var initializerExpression: IrExpressionBody?
         get() = getCarrier().initializerExpressionField
         set(v) {
             if (initializerExpression !== v) {
