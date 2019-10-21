@@ -351,7 +351,7 @@ private val primitiveCompanionLoweringPhase = makeJsModulePhase(
     description = "Replace common companion object access with platform one"
 )
 
-private val constLoweringPhase = makeJsModulePhase(
+private val constLoweringPhase = makeJsBodyLoweringPhase(
     ::ConstLowering,
     name = "ConstLowering",
     description = "Wrap Long and Char constants into constructor invocation"
