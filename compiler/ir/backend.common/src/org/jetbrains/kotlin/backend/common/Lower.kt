@@ -115,20 +115,28 @@ fun DeclarationContainerLoweringPass.runOnFilePostfix(irFile: IrFile) {
 }
 
 fun BodyLoweringPass.runOnFilePostfix(irFile: IrFile) {
-    irFile.accept(object : IrElementVisitor<Unit, IrDeclaration?> {
-        override fun visitElement(element: IrElement, data: IrDeclaration?) {
-            element.acceptChildren(this, data)
-        }
+    ArrayList(irFile.declarations).forEach {
+        it.accept(object : IrElementVisitor<Unit, IrDeclaration?> {
+            override fun visitElement(element: IrElement, data: IrDeclaration?) {
+                element.acceptChildren(this, data)
+            }
 
-        override fun visitDeclaration(declaration: IrDeclaration, data: IrDeclaration?) {
-            declaration.acceptChildren(this, declaration)
-        }
+            override fun visitDeclaration(declaration: IrDeclaration, data: IrDeclaration?) {
+                declaration.acceptChildren(this, declaration)
+            }
 
-        override fun visitBody(body: IrBody, data: IrDeclaration?) {
-            body.acceptChildren(this, data)
-            lower(body, data!!)
-        }
-    }, null)
+            override fun visitClass(declaration: IrClass, data: IrDeclaration?) {
+                declaration.thisReceiver?.accept(this, declaration)
+                declaration.typeParameters.forEach { it.accept(this, declaration) }
+                ArrayList(declaration.declarations).forEach { it.accept(this, declaration) }
+            }
+
+            override fun visitBody(body: IrBody, data: IrDeclaration?) {
+                body.acceptChildren(this, data)
+                lower(body, data!!)
+            }
+        }, null)
+    }
 }
 
 fun FunctionLoweringPass.runOnFilePostfix(irFile: IrFile) {
