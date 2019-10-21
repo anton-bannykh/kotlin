@@ -5,6 +5,7 @@
 
 package org.jetbrains.kotlin.ir.backend.js.lower
 
+import org.jetbrains.kotlin.backend.common.BodyLoweringPass
 import org.jetbrains.kotlin.backend.common.FileLoweringPass
 import org.jetbrains.kotlin.backend.common.descriptors.WrappedTypeParameterDescriptor
 import org.jetbrains.kotlin.backend.common.descriptors.WrappedValueParameterDescriptor
@@ -30,6 +31,7 @@ import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.IrTypeProjection
 import org.jetbrains.kotlin.ir.types.impl.IrSimpleTypeImpl
 import org.jetbrains.kotlin.ir.types.makeNullable
+import org.jetbrains.kotlin.ir.util.file
 import org.jetbrains.kotlin.ir.util.isInlined
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
 import org.jetbrains.kotlin.ir.visitors.transformChildrenVoid
@@ -42,14 +44,15 @@ data class CallableReferenceKey(
 )
 
 // TODO: generate $metadata$ property and fill it with corresponding KFunction/KProperty interface
-class CallableReferenceLowering(val context: JsIrBackendContext) : FileLoweringPass {
+class CallableReferenceLowering(val context: JsIrBackendContext) : BodyLoweringPass {
     private val callableToFactoryFunction = context.callableReferencesCache
     private val newDeclarations = mutableListOf<IrDeclaration>()
-    private val implicitDeclarationFile = context.implicitDeclarationFile
+    private lateinit var implicitDeclarationFile: IrFile //= context.implicitDeclarationFile
 
-    override fun lower(irFile: IrFile) {
+    override fun lower(irBody: IrBody, container: IrDeclaration) {
         newDeclarations.clear()
-        irFile.transformChildrenVoid(CallableReferenceLowerTransformer())
+        implicitDeclarationFile = container.file // TODO
+        irBody.transformChildrenVoid(CallableReferenceLowerTransformer())
         implicitDeclarationFile.declarations += newDeclarations
     }
 
