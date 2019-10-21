@@ -5,8 +5,8 @@
 
 package org.jetbrains.kotlin.ir.backend.js.lower
 
+import org.jetbrains.kotlin.backend.common.BodyLoweringPass
 import org.jetbrains.kotlin.backend.common.ClassLoweringPass
-import org.jetbrains.kotlin.backend.common.FileLoweringPass
 import org.jetbrains.kotlin.backend.common.ir.copyTo
 import org.jetbrains.kotlin.backend.common.ir.copyTypeParametersFrom
 import org.jetbrains.kotlin.descriptors.Modality
@@ -182,9 +182,23 @@ private fun buildFactoryDeclaration(constructor: IrConstructor, irClass: IrClass
 private fun buildConstructorStubDeclarations(constructor: IrConstructor, klass: IrClass) =
     ConstructorPair(buildInitDeclaration(constructor, klass), buildFactoryDeclaration(constructor, klass))
 
-class SecondaryFactoryInjectorLowering(val context: JsIrBackendContext) : FileLoweringPass {
-    override fun lower(irFile: IrFile) {
-        irFile.accept(CallsiteRedirectionTransformer(context), null)
+class SecondaryFactoryInjectorLowering(val context: JsIrBackendContext) : BodyLoweringPass {
+
+    override fun lower(irBody: IrBody, container: IrDeclaration) {
+        // TODO Simplify? Is this needed at all?
+        var parentFunction: IrFunction? = container as? IrFunction
+        var declaration = container
+        while (parentFunction == null) {
+            val parent = declaration.parent
+
+            if (parent is IrFunction) {
+                parentFunction = parent
+            }
+
+            declaration = parent as? IrDeclaration ?: break
+        }
+
+        irBody.accept(CallsiteRedirectionTransformer(context), parentFunction)
     }
 }
 
