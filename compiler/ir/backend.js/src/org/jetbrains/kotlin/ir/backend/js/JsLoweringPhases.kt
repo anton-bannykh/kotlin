@@ -323,7 +323,7 @@ private val inlineClassLoweringPhase = makeCustomJsModulePhase(
     description = "Handle inline classes"
 )
 
-private val autoboxingTransformerPhase = makeJsModulePhase(
+private val autoboxingTransformerPhase = makeJsBodyLoweringPhase(
     ::AutoboxingTransformer,
     name = "AutoboxingTransformer",
     description = "Insert box/unbox intrinsics"
