@@ -5,18 +5,15 @@
 
 package org.jetbrains.kotlin.backend.common.lower
 
+import org.jetbrains.kotlin.backend.common.BodyLoweringPass
 import org.jetbrains.kotlin.backend.common.CommonBackendContext
-import org.jetbrains.kotlin.backend.common.FileLoweringPass
 import org.jetbrains.kotlin.backend.common.IrElementTransformerVoidWithContext
 import org.jetbrains.kotlin.ir.builders.irBoolean
 import org.jetbrains.kotlin.ir.builders.irBreak
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irSetVar
-import org.jetbrains.kotlin.ir.declarations.IrFile
-import org.jetbrains.kotlin.ir.expressions.IrContainerExpression
-import org.jetbrains.kotlin.ir.expressions.IrExpression
-import org.jetbrains.kotlin.ir.expressions.IrReturn
-import org.jetbrains.kotlin.ir.expressions.IrReturnableBlock
+import org.jetbrains.kotlin.ir.declarations.IrDeclaration
+import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.expressions.impl.IrBlockImpl
 import org.jetbrains.kotlin.ir.expressions.impl.IrCompositeImpl
 import org.jetbrains.kotlin.ir.expressions.impl.IrDoWhileLoopImpl
@@ -69,9 +66,9 @@ import org.jetbrains.kotlin.ir.symbols.IrReturnableBlockSymbol
  * }
  *
  */
-class ReturnableBlockLowering(val context: CommonBackendContext) : FileLoweringPass {
-    override fun lower(irFile: IrFile) {
-        irFile.transform(ReturnableBlockTransformer(context), null)
+class ReturnableBlockLowering(val context: CommonBackendContext) : BodyLoweringPass {
+    override fun lower(irBody: IrBody, container: IrDeclaration) {
+        container.transform(ReturnableBlockTransformer(context), null)
     }
 }
 
