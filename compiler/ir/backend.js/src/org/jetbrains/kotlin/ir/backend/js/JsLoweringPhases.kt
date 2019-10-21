@@ -251,7 +251,7 @@ private val jsDefaultCallbackGeneratorPhase = makeJsModulePhase(
     description = "Build binding for super calls with default parameters"
 )
 
-private val varargLoweringPhase = makeJsModulePhase(
+private val varargLoweringPhase = makeJsBodyLoweringPhase(
     ::VarargLowering,
     name = "VarargLowering",
     description = "Lower vararg arguments",
