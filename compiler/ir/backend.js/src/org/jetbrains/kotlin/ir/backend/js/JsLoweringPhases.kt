@@ -345,7 +345,7 @@ private val classReferenceLoweringPhase = makeJsModulePhase(
     description = "Handle class references"
 )
 
-private val primitiveCompanionLoweringPhase = makeJsModulePhase(
+private val primitiveCompanionLoweringPhase = makeJsBodyLoweringPhase(
     ::PrimitiveCompanionLowering,
     name = "PrimitiveCompanionLowering",
     description = "Replace common companion object access with platform one"
