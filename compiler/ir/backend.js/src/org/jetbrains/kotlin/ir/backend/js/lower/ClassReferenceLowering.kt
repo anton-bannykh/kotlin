@@ -5,15 +5,12 @@
 
 package org.jetbrains.kotlin.ir.backend.js.lower
 
-import org.jetbrains.kotlin.backend.common.FileLoweringPass
+import org.jetbrains.kotlin.backend.common.BodyLoweringPass
 import org.jetbrains.kotlin.ir.backend.js.JsIrBackendContext
 import org.jetbrains.kotlin.ir.backend.js.ir.JsIrBuilder
-import org.jetbrains.kotlin.ir.declarations.IrFile
+import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
-import org.jetbrains.kotlin.ir.expressions.IrCall
-import org.jetbrains.kotlin.ir.expressions.IrClassReference
-import org.jetbrains.kotlin.ir.expressions.IrExpression
-import org.jetbrains.kotlin.ir.expressions.IrGetClass
+import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.types.*
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.isFunction
@@ -22,7 +19,7 @@ import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
 import org.jetbrains.kotlin.ir.visitors.transformChildrenVoid
 import org.jetbrains.kotlin.name.Name
 
-class ClassReferenceLowering(val context: JsIrBackendContext) : FileLoweringPass {
+class ClassReferenceLowering(val context: JsIrBackendContext) : BodyLoweringPass {
     private val intrinsics = context.intrinsics
 
     private val primitiveClassesObject = context.primitiveClassesObject
@@ -124,8 +121,8 @@ class ClassReferenceLowering(val context: JsIrBackendContext) : FileLoweringPass
     private fun callJsClass(type: IrType) =
         JsIrBuilder.buildCall(intrinsics.jsClass, typeArguments = listOf(type))
 
-    override fun lower(irFile: IrFile) {
-        irFile.transformChildrenVoid(object : IrElementTransformerVoid() {
+    override fun lower(irBody: IrBody, container: IrDeclaration) {
+        irBody.transformChildrenVoid(object : IrElementTransformerVoid() {
             override fun visitGetClass(expression: IrGetClass) =
                 callGetKClassFromExpression(
                     returnType = expression.type,
