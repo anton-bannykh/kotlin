@@ -170,7 +170,7 @@ private val returnableBlockLoweringPhase = makeJsModulePhase(
     prerequisite = setOf(functionInliningPhase)
 )
 
-private val localDelegatedPropertiesLoweringPhase = makeJsModulePhase(
+private val localDelegatedPropertiesLoweringPhase = makeJsBodyLoweringPhase(
     { LocalDelegatedPropertiesLowering() },
     name = "LocalDelegatedPropertiesLowering",
     description = "Transform Local Delegated properties"
