@@ -357,7 +357,7 @@ private val constLoweringPhase = makeJsBodyLoweringPhase(
     description = "Wrap Long and Char constants into constructor invocation"
 )
 
-private val callsLoweringPhase = makeJsModulePhase(
+private val callsLoweringPhase = makeJsBodyLoweringPhase(
     ::CallsLowering,
     name = "CallsLowering",
     description = "Handle intrinsics"
