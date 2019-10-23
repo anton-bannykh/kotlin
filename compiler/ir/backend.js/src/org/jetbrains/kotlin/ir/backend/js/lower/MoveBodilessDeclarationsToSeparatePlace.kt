@@ -42,20 +42,6 @@ private val BODILESS_BUILTIN_CLASSES = listOf(
     "kotlin.Function"
 ).map { FqName(it) }.toSet()
 
-private class DescriptorlessExternalPackageFragmentSymbol : IrExternalPackageFragmentSymbol {
-    override val descriptor: PackageFragmentDescriptor
-        get() = error("Operation is unsupported")
-
-    private var _owner: IrExternalPackageFragment? = null
-    override val owner get() = _owner!!
-
-    override val isBound get() = _owner != null
-
-    override fun bind(owner: IrExternalPackageFragment) {
-        _owner = owner
-    }
-}
-
 private class DescriptorlessIrFileSymbol : IrFileSymbol {
     override fun bind(owner: IrFile) {
         _owner = owner
@@ -73,13 +59,6 @@ private class DescriptorlessIrFileSymbol : IrFileSymbol {
 
 
 fun moveBodilessDeclarationsToSeparatePlace(context: JsIrBackendContext, module: IrModuleFragment) {
-
-    val bodilessBuiltInsPackageFragment = IrExternalPackageFragmentImpl(
-        DescriptorlessExternalPackageFragmentSymbol(),
-        FqName("kotlin")
-    )
-
-    context.bodilessBuiltInsPackageFragment = bodilessBuiltInsPackageFragment
 
     fun isBuiltInClass(declaration: IrDeclaration): Boolean =
         declaration is IrClass && declaration.fqNameWhenAvailable in BODILESS_BUILTIN_CLASSES
@@ -120,7 +99,7 @@ fun moveBodilessDeclarationsToSeparatePlace(context: JsIrBackendContext, module:
 
             if (isBuiltInClass(d)) {
                 it.remove()
-                bodilessBuiltInsPackageFragment.addChild(d)
+                context.bodilessBuiltInsPackageFragment.addChild(d)
             } else if (d.isEffectivelyExternal()) {
                 if (d.getJsModule() != null)
                     context.declarationLevelJsModules.add(d)
