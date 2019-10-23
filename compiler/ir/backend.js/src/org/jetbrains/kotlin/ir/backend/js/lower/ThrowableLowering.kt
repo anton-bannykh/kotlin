@@ -5,28 +5,19 @@
 
 package org.jetbrains.kotlin.ir.backend.js.lower
 
-import org.jetbrains.kotlin.backend.common.FileLoweringPass
-import org.jetbrains.kotlin.backend.common.lower.callsSuper
-import org.jetbrains.kotlin.ir.IrStatement
+import org.jetbrains.kotlin.backend.common.BodyLoweringPass
 import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
 import org.jetbrains.kotlin.ir.backend.js.JsIrBackendContext
-import org.jetbrains.kotlin.ir.backend.js.ir.JsIrBuilder
-import org.jetbrains.kotlin.ir.declarations.IrClass
-import org.jetbrains.kotlin.ir.declarations.IrConstructor
-import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
-import org.jetbrains.kotlin.ir.declarations.IrFile
+import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.expressions.impl.*
 import org.jetbrains.kotlin.ir.types.isNullableString
-import org.jetbrains.kotlin.ir.types.isString
 import org.jetbrains.kotlin.ir.types.makeNotNull
-import org.jetbrains.kotlin.ir.util.defaultType
-import org.jetbrains.kotlin.ir.util.isThrowable
-import org.jetbrains.kotlin.ir.util.isThrowableTypeOrSubtype
+import org.jetbrains.kotlin.ir.util.*
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformer
 
 
-class ThrowableLowering(val context: JsIrBackendContext) : FileLoweringPass {
+class ThrowableLowering(val context: JsIrBackendContext) : BodyLoweringPass {
     private val nothingNType get() = context.irBuiltIns.nothingNType
 
     private val throwableConstructors = context.throwableConstructors
@@ -40,8 +31,10 @@ class ThrowableLowering(val context: JsIrBackendContext) : FileLoweringPass {
         val cause: IrExpression
     )
 
-    override fun lower(irFile: IrFile) {
-        irFile.transformChildren(Transformer(), irFile)
+    override fun lower(irBody: IrBody, container: IrDeclaration) {
+        container.classOrNull.let { enclosingClass ->
+            irBody.transformChildren(Transformer(), enclosingClass ?: container.file)
+        }
     }
 
     private fun IrFunctionAccessExpression.extractThrowableArguments(): ThrowableArguments =
