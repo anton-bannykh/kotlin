@@ -12,6 +12,7 @@ import org.jetbrains.kotlin.backend.common.phaser.*
 import org.jetbrains.kotlin.ir.backend.js.lower.*
 import org.jetbrains.kotlin.ir.backend.js.lower.calls.CallsLowering
 import org.jetbrains.kotlin.ir.backend.js.lower.coroutines.JsSuspendFunctionsLowering
+import org.jetbrains.kotlin.ir.backend.js.lower.inline.CopyInlineFunctionBodyLowering
 import org.jetbrains.kotlin.ir.backend.js.lower.inline.RemoveInlineFunctionsWithReifiedTypeParametersLowering
 import org.jetbrains.kotlin.ir.declarations.IrFile
 import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
@@ -125,6 +126,13 @@ private val removeInlineFunctionsWithReifiedTypeParametersLoweringPhase = makeJs
     { RemoveInlineFunctionsWithReifiedTypeParametersLowering() },
     name = "RemoveInlineFunctionsWithReifiedTypeParametersLowering",
     description = "Remove Inline functions with reified parameters from context",
+    prerequisite = setOf(functionInliningPhase)
+)
+
+private val copyInlineFunctionBodyLoweringPhase = makeJsModulePhase(
+    ::CopyInlineFunctionBodyLowering,
+    name = "CopyInlineFunctionBody",
+    description = "Copy inline function body",
     prerequisite = setOf(functionInliningPhase)
 )
 
@@ -453,6 +461,7 @@ val jsPhases = namedIrModulePhase(
             stripTypeAliasDeclarationsPhase then
             arrayConstructorPhase then
             functionInliningPhase then
+            copyInlineFunctionBodyLoweringPhase then
             createScriptFunctionsPhase then
             provisionalFunctionExpressionPhase then
             lateinitLoweringPhase then
