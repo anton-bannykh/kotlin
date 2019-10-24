@@ -65,6 +65,12 @@ private fun makeCustomJsModulePhase(
     }
 )
 
+private val moveBodilessDeclarationsToSeparatePlace = makeJsModulePhase(
+    ::MoveBodilessDeclarationsToSeparatePlaceLowering,
+    name = "MoveBodilessDeclarationsToSeparatePlaceLowering",
+    description = "Move bodiless declarations to a separate place"
+)
+
 private val validateIrBeforeLowering = makeCustomJsModulePhase(
     { context, module -> validationCallback(context, module) },
     name = "ValidateIrBeforeLowering",
@@ -385,6 +391,7 @@ private val objectUsageLoweringPhase = makeCustomJsModulePhase(
 )
 
 val phaseList = listOf(
+    moveBodilessDeclarationsToSeparatePlace,
     validateIrBeforeLowering,
     testGenerationPhase,
     expectDeclarationsRemovingPhase,
@@ -439,6 +446,7 @@ val jsPhases = namedIrModulePhase(
     name = "IrModuleLowering",
     description = "IR module lowering",
     lower = scriptRemoveReceiverLowering then
+            moveBodilessDeclarationsToSeparatePlace then
             validateIrBeforeLowering then
             testGenerationPhase then
             expectDeclarationsRemovingPhase then
