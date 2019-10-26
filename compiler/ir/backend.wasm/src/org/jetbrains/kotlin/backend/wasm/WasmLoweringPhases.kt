@@ -242,7 +242,7 @@ private val bridgesConstructionPhase = makeWasmModulePhase(
 private val inlineClassLoweringPhase = makeCustomWasmModulePhase(
     { context, module ->
         InlineClassLowering(context).run {
-            inlineClassDeclarationLowering.runOnFilesPostfix(module)
+            inlineClassDeclarationLowering.runPostfix().toFileLoweringPass().lower(module)
             inlineClassUsageLowering.toDeclarationTransformer().toFileLoweringPass().lower(module)
         }
     },

@@ -326,7 +326,7 @@ private val secondaryFactoryInjectorLoweringPhase = makeJsModulePhase(
 private val inlineClassLoweringPhase = makeCustomJsModulePhase(
     { context, module ->
         InlineClassLowering(context).run {
-            inlineClassDeclarationLowering.runOnFilesPostfix(module)
+            inlineClassDeclarationLowering.runPostfix().toFileLoweringPass().lower(module)
             inlineClassUsageLowering.toDeclarationTransformer().toFileLoweringPass().lower(module)
         }
     },
