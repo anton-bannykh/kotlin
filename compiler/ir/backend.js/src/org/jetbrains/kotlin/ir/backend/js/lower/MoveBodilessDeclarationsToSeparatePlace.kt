@@ -76,10 +76,6 @@ class MoveBodilessDeclarationsToSeparatePlaceLowering(private val context: JsIrB
     override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
         val irFile = declaration.parent as? IrFile ?: return null
 
-        if (irFile.fileEntry.name.endsWith("Throwable.kt")) {
-            println("dasd")
-        }
-
         val externalPackageFragment by lazy {
             context.externalPackageFragment.getOrPut(irFile.symbol) {
                 IrFileImpl(fileEntry = irFile.fileEntry, fqName = irFile.fqName, symbol = DescriptorlessIrFileSymbol()).also {
