@@ -81,9 +81,15 @@ private val expectDeclarationsRemovingPhase = makeWasmModulePhase(
     description = "Remove expect declaration from module fragment"
 )
 
-private val lateinitLoweringPhase = makeWasmModulePhase(
-    ::LateinitLowering,
-    name = "LateinitLowering",
+private val lateinitPropertiesLoweringPhase = makeWasmModulePhase(
+    ::LateinitPropertiesLowering,
+    name = "LateinitPropertiesLowering",
+    description = "Insert checks for lateinit field references"
+)
+
+private val lateinitBodyLoweringPhase = makeWasmModulePhase(
+    ::LateinitBodyLowering,
+    name = "LateinitBodyLowering",
     description = "Insert checks for lateinit field references"
 )
 
@@ -331,7 +337,8 @@ val wasmPhases = namedIrModulePhase<WasmBackendContext>(
             // arrayConstructorPhase then
 
             functionInliningPhase then
-            lateinitLoweringPhase then
+            lateinitPropertiesLoweringPhase then
+            lateinitBodyLoweringPhase then
             tailrecLoweringPhase then
 
             enumClassConstructorLoweringPhase then

@@ -90,9 +90,15 @@ private val expectDeclarationsRemovingPhase = makeJsModulePhase(
     description = "Remove expect declaration from module fragment"
 )
 
-private val lateinitLoweringPhase = makeJsModulePhase(
-    ::LateinitLowering,
-    name = "LateinitLowering",
+private val lateinitPropertiesLoweringPhase = makeJsModulePhase(
+    ::LateinitPropertiesLowering,
+    name = "LateinitPropertiesLowering",
+    description = "Insert checks for lateinit field references"
+)
+
+private val lateinitBodyLoweringPhase = makeJsModulePhase(
+    ::LateinitBodyLowering,
+    name = "LateinitBodyLowering",
     description = "Insert checks for lateinit field references"
 )
 
@@ -407,7 +413,8 @@ val phaseList = listOf(
     arrayConstructorPhase,
     functionInliningPhase,
     provisionalFunctionExpressionPhase,
-    lateinitLoweringPhase,
+    lateinitPropertiesLoweringPhase,
+    lateinitBodyLoweringPhase,
     tailrecLoweringPhase,
     enumClassConstructorLoweringPhase,
     sharedVariablesLoweringPhase,
@@ -464,7 +471,8 @@ val jsPhases = namedIrModulePhase(
             copyInlineFunctionBodyLoweringPhase then
             createScriptFunctionsPhase then
             provisionalFunctionExpressionPhase then
-            lateinitLoweringPhase then
+            lateinitPropertiesLoweringPhase then
+            lateinitBodyLoweringPhase then
             tailrecLoweringPhase then
             enumClassConstructorLoweringPhase then
             sharedVariablesLoweringPhase then

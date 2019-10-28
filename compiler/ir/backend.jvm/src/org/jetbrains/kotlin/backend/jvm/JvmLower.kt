@@ -74,9 +74,15 @@ private val expectDeclarationsRemovingPhase = makeIrModulePhase(
     description = "Remove expect declaration from module fragment"
 )
 
-private val lateinitPhase = makeIrFilePhase(
-    ::LateinitLowering,
-    name = "Lateinit",
+private val lateinitPropertiesPhase = makeIrFilePhase(
+    ::LateinitPropertiesLowering,
+    name = "LateinitProperties",
+    description = "Insert checks for lateinit field references"
+)
+
+private val lateinitBodiesPhase = makeIrFilePhase(
+    ::LateinitBodyLowering,
+    name = "LateinitBodies",
     description = "Insert checks for lateinit field references"
 )
 
@@ -190,7 +196,8 @@ private val jvmFilePhases =
         varargPhase then
         arrayConstructorPhase then
 
-        lateinitPhase then
+        lateinitPropertiesPhase then
+        lateinitBodiesPhase then
 
         moveOrCopyCompanionObjectFieldsPhase then
         inlineCallableReferenceToLambdaPhase then
