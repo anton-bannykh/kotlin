@@ -5,8 +5,9 @@
 
 package org.jetbrains.kotlin.backend.common.lower
 
-import org.jetbrains.kotlin.backend.common.FileLoweringPass
-import org.jetbrains.kotlin.ir.declarations.IrFile
+import org.jetbrains.kotlin.backend.common.BodyLoweringPass
+import org.jetbrains.kotlin.ir.declarations.IrDeclaration
+import org.jetbrains.kotlin.ir.expressions.IrBody
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.IrFunctionExpression
 import org.jetbrains.kotlin.ir.expressions.impl.IrBlockImpl
@@ -14,12 +15,10 @@ import org.jetbrains.kotlin.ir.expressions.impl.IrFunctionReferenceImpl
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
 import org.jetbrains.kotlin.ir.visitors.transformChildrenVoid
 
-class ProvisionalFunctionExpressionLowering :
-    IrElementTransformerVoid(),
-    FileLoweringPass {
+class ProvisionalFunctionExpressionLowering : BodyLoweringPass, IrElementTransformerVoid() {
 
-    override fun lower(irFile: IrFile) {
-        irFile.transformChildrenVoid(this)
+    override fun lower(irBody: IrBody, container: IrDeclaration) {
+        irBody.transformChildrenVoid(this)
     }
 
     override fun visitFunctionExpression(expression: IrFunctionExpression): IrExpression {
