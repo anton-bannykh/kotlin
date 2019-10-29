@@ -9,6 +9,7 @@ import org.jetbrains.kotlin.backend.common.*
 import org.jetbrains.kotlin.backend.common.lower.*
 import org.jetbrains.kotlin.backend.common.lower.inline.FunctionInlining
 import org.jetbrains.kotlin.backend.common.phaser.*
+import org.jetbrains.kotlin.ir.backend.js.ir.JsIrBuilder
 import org.jetbrains.kotlin.ir.backend.js.lower.*
 import org.jetbrains.kotlin.ir.backend.js.lower.calls.CallsLowering
 import org.jetbrains.kotlin.ir.backend.js.lower.coroutines.JsSuspendFunctionsLowering
@@ -353,14 +354,20 @@ private val autoboxingTransformerPhase = makeJsBodyLoweringPhase(
     description = "Insert box/unbox intrinsics"
 )
 
-private val blockDecomposerLoweringPhase = makeCustomJsModulePhase(
-    { context, module ->
-        JsBlockDecomposerLowering(context).lower(module)
-        module.patchDeclarationParents()
+private val createIrFieldInitializerFunction = makeJsModulePhase(
+    ::CreateIrFieldInitializerFunction,
+    name = "CreateIrFieldInitializerFunction",
+    description = "Create initializer function for the decomposed field initializer",
+    prerequisite = setOf(typeOperatorLoweringPhase, suspendFunctionsLoweringPhase)
+)
+
+private val blockDecomposerLoweringPhase = makeJsBodyLoweringPhase(
+    { context ->
+        BlockDecomposerLowering(context, { JsIrBuilder.buildCall(context.intrinsics.unreachable.symbol, context.irBuiltIns.nothingType) })
     },
     name = "BlockDecomposerLowering",
     description = "Transform statement-like-expression nodes into pure-statement to make it easily transform into JS",
-    prerequisite = setOf(typeOperatorLoweringPhase, suspendFunctionsLoweringPhase)
+    prerequisite = setOf(createIrFieldInitializerFunction)
 )
 
 private val classReferenceLoweringPhase = makeJsModulePhase(
@@ -456,6 +463,7 @@ val phaseList = listOf(
     classReferenceLoweringPhase,
     inlineClassLoweringPhase,
     autoboxingTransformerPhase,
+    createIrFieldInitializerFunction,
     blockDecomposerLoweringPhase,
     primitiveCompanionLoweringPhase,
     constLoweringPhase,
@@ -515,6 +523,7 @@ val jsPhases = namedIrModulePhase(
             classReferenceLoweringPhase then
             inlineClassLoweringPhase then
             autoboxingTransformerPhase then
+            createIrFieldInitializerFunction then
             blockDecomposerLoweringPhase then
             primitiveCompanionLoweringPhase then
             constLoweringPhase then

@@ -10,7 +10,6 @@ import org.jetbrains.kotlin.backend.common.lower.*
 import org.jetbrains.kotlin.backend.common.lower.inline.FunctionInlining
 import org.jetbrains.kotlin.backend.common.phaser.*
 import org.jetbrains.kotlin.backend.wasm.lower.BuiltInsLowering
-import org.jetbrains.kotlin.backend.wasm.lower.WasmBlockDecomposerLowering
 import org.jetbrains.kotlin.backend.wasm.lower.excludeDeclarationsFromCodegen
 import org.jetbrains.kotlin.ir.backend.js.JsLoweredDeclarationOrigin
 import org.jetbrains.kotlin.ir.backend.js.lower.*
@@ -270,10 +269,15 @@ private val inlineClassLoweringPhase = makeCustomWasmModulePhase(
 //    description = "Insert box/unbox intrinsics"
 //)
 
-private val blockDecomposerLoweringPhase = makeCustomWasmModulePhase(
-    { context, module ->
-        WasmBlockDecomposerLowering(context).lower(module)
-        module.patchDeclarationParents()
+private val createIrFieldInitializerFunction = makeWasmModulePhase(
+    ::CreateIrFieldInitializerFunction,
+    name = "CreateIrFieldInitializerFunction",
+    description = "Create initializer function for the decomposed field initializer"
+)
+
+private val blockDecomposerLoweringPhase = makeWasmBodyLoweringPhase(
+    { context ->
+        BlockDecomposerLowering(context, ::TODO)
     },
     name = "BlockDecomposerLowering",
     description = "Transform statement-like-expression nodes into pure-statement to make it easily transform into JS"
@@ -415,6 +419,7 @@ val wasmPhases = namedIrModulePhase<WasmBackendContext>(
 //            TODO: Commonize box/unbox intrinsics
 //            autoboxingTransformerPhase then
 
+            createIrFieldInitializerFunction then
             blockDecomposerLoweringPhase then
 
 //            TODO: Reimplement
