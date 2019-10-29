@@ -211,17 +211,25 @@ private val propertiesLoweringPhase = makeWasmModulePhase(
     description = "Move fields and accessors out from its property"
 )
 
-private val primaryConstructorLoweringPhase = makeWasmModulePhase(
-    ::PrimaryConstructorLowering,
-    name = "PrimaryConstructorLowering",
-    description = "Creates primary constructor if it doesn't exist"
+private val syntheticPrimaryConstructorLoweringPhase = makeWasmModulePhase(
+    ::SyntheticPrimaryConstructorLowering,
+    name = "SyntheticPrimaryConstructorLowering",
+    description = "Creates primary constructor if it doesn't exist",
+    prerequisite = setOf(enumClassConstructorLoweringPhase)
+)
+
+private val delegateToSyntheticPrimaryConstructorLoweringPhase = makeWasmModulePhase(
+    { DelegateToSyntheticPrimaryConstructor() },
+    name = "DelegateToSyntheticPrimaryConstructor",
+    description = "Delegate secondary constructors to the synthetic primary constructor if needed",
+    prerequisite = setOf(syntheticPrimaryConstructorLoweringPhase)
 )
 
 private val initializersLoweringPhase = makeCustomWasmModulePhase(
     { context, module -> InitializersLowering(context, JsLoweredDeclarationOrigin.CLASS_STATIC_INITIALIZER, false).lower(module) },
     name = "InitializersLowering",
     description = "Merge init block and field initializers into [primary] constructor",
-    prerequisite = setOf(primaryConstructorLoweringPhase)
+    prerequisite = setOf(delegateToSyntheticPrimaryConstructorLoweringPhase)
 )
 
 private val excludeDeclarationsFromCodegenPhase = makeCustomWasmModulePhase(
@@ -350,7 +358,8 @@ val wasmPhases = namedIrModulePhase<WasmBackendContext>(
             innerClassesLoweringPhase then
             innerClassConstructorCallsLoweringPhase then
             propertiesLoweringPhase then
-            primaryConstructorLoweringPhase then
+            syntheticPrimaryConstructorLoweringPhase then
+            delegateToSyntheticPrimaryConstructorLoweringPhase then
             initializersLoweringPhase then
             // Common prefix ends
 
