@@ -232,6 +232,12 @@ private val privateMembersLoweringPhase = makeJsModulePhase(
     description = "Extract private members from classes"
 )
 
+private val privateMembersBodyLoweringPhase = makeJsModulePhase(
+    ::PrivateMemberBodiesLowering,
+    name = "PrivateMembersBodyLowering",
+    description = "Redirect private member accesses to statics"
+)
+
 private val callableReferenceLoweringPhase = makeJsModulePhase(
     ::CallableReferenceLowering,
     name = "CallableReferenceLowering",
@@ -447,6 +453,7 @@ val phaseList = listOf(
     suspendFunctionsLoweringPhase,
     returnableBlockLoweringPhase,
     privateMembersLoweringPhase,
+    privateMembersBodyLoweringPhase,
     callableReferenceLoweringPhase,
     defaultArgumentStubGeneratorPhase,
     defaultParameterInjectorPhase,
@@ -507,6 +514,7 @@ val jsPhases = namedIrModulePhase(
             suspendFunctionsLoweringPhase then
             returnableBlockLoweringPhase then
             privateMembersLoweringPhase then
+            privateMembersBodyLoweringPhase then
             callableReferenceLoweringPhase then
             defaultArgumentStubGeneratorPhase then
             defaultParameterInjectorPhase then
