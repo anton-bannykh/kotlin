@@ -258,7 +258,8 @@ private val jvmFilePhases =
 
         enumClassPhase then
         objectClassPhase then
-        makeInitializersPhase(JvmLoweredDeclarationOrigin.CLASS_STATIC_INITIALIZER, true) then
+        makeStaticInitializersPhase(JvmLoweredDeclarationOrigin.CLASS_STATIC_INITIALIZER) then
+        makeInitializersPhase() then
         collectionStubMethodLowering then
         functionNVarargBridgePhase then
         bridgePhase then

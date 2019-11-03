@@ -308,12 +308,20 @@ private val delegateToSyntheticPrimaryConstructorLoweringPhase = makeJsModulePha
     prerequisite = setOf(syntheticPrimaryConstructorLoweringPhase)
 )
 
-private val initializersLoweringPhase = makeCustomJsModulePhase(
-    { context, module -> InitializersLowering(context, JsLoweredDeclarationOrigin.CLASS_STATIC_INITIALIZER, false).lower(module) },
+private val initializersLoweringPhase = makeJsModulePhase(
+    ::InitializersLowering,
     name = "InitializersLowering",
     description = "Merge init block and field initializers into [primary] constructor",
     prerequisite = setOf(enumClassConstructorLoweringPhase, delegateToSyntheticPrimaryConstructorLoweringPhase)
 )
+
+private val initializersCleanupLoweringPhase = makeJsModulePhase(
+    ::InitializersCleanup,
+    name = "InitializersCleanupLowering",
+    description = "Remove anonymousInitBlock and field initializers",
+    prerequisite = setOf(enumClassConstructorLoweringPhase, delegateToSyntheticPrimaryConstructorLoweringPhase)
+)
+
 
 private val multipleCatchesLoweringPhase = makeJsModulePhase(
     ::MultipleCatchesLowering,
@@ -454,6 +462,7 @@ val phaseList = listOf(
     syntheticPrimaryConstructorLoweringPhase,
     delegateToSyntheticPrimaryConstructorLoweringPhase,
     initializersLoweringPhase,
+    initializersCleanupLoweringPhase,
     // Common prefix ends
     enumClassLoweringPhase,
     enumUsageLoweringPhase,
@@ -516,6 +525,7 @@ val jsPhases = namedIrModulePhase(
             syntheticPrimaryConstructorLoweringPhase then
             delegateToSyntheticPrimaryConstructorLoweringPhase then
             initializersLoweringPhase then
+            initializersCleanupLoweringPhase then
             // Common prefix ends
             enumClassLoweringPhase then
             enumUsageLoweringPhase then

@@ -5,8 +5,7 @@
 
 package org.jetbrains.kotlin.backend.common.lower
 
-import org.jetbrains.kotlin.backend.common.ClassLoweringPass
-import org.jetbrains.kotlin.backend.common.CommonBackendContext
+import org.jetbrains.kotlin.backend.common.*
 import org.jetbrains.kotlin.backend.common.descriptors.WrappedSimpleFunctionDescriptor
 import org.jetbrains.kotlin.backend.common.ir.SetDeclarationsParentVisitor
 import org.jetbrains.kotlin.backend.common.phaser.makeIrFilePhase
@@ -17,24 +16,29 @@ import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
 import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.declarations.impl.IrFunctionImpl
-import org.jetbrains.kotlin.ir.expressions.IrBlock
-import org.jetbrains.kotlin.ir.expressions.IrExpression
-import org.jetbrains.kotlin.ir.expressions.IrInstanceInitializerCall
-import org.jetbrains.kotlin.ir.expressions.IrStatementOriginImpl
+import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.expressions.impl.IrBlockBodyImpl
 import org.jetbrains.kotlin.ir.expressions.impl.IrBlockImpl
 import org.jetbrains.kotlin.ir.expressions.impl.IrGetValueImpl
 import org.jetbrains.kotlin.ir.expressions.impl.IrSetFieldImpl
 import org.jetbrains.kotlin.ir.symbols.impl.IrSimpleFunctionSymbolImpl
 import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
+import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.patchDeclarationParents
 import org.jetbrains.kotlin.ir.visitors.*
 import org.jetbrains.kotlin.name.Name
 
-object SYNTHESIZED_INIT_BLOCK: IrStatementOriginImpl("SYNTHESIZED_INIT_BLOCK")
+object SYNTHESIZED_INIT_BLOCK : IrStatementOriginImpl("SYNTHESIZED_INIT_BLOCK")
 
-fun makeInitializersPhase(origin: IrDeclarationOrigin, clinitNeeded: Boolean)= makeIrFilePhase<CommonBackendContext>(
-    { context -> InitializersLowering(context, origin, clinitNeeded) },
+fun makeStaticInitializersPhase(origin: IrDeclarationOrigin) = makeIrFilePhase<CommonBackendContext>(
+    { context -> StaticInitializerCreationLowering(context, origin) },
+    name = "StaticInitializers",
+    description = "Handle static initializer statements",
+    stickyPostconditions = setOf(::checkNonAnonymousInitializers)
+)
+
+fun makeInitializersPhase() = makeIrFilePhase(
+    ::InitializersLowering,
     name = "Initializers",
     description = "Handle initializer statements",
     stickyPostconditions = setOf(::checkNonAnonymousInitializers)
@@ -52,29 +56,23 @@ fun checkNonAnonymousInitializers(irFile: IrFile) {
     })
 }
 
-class InitializersLowering(
+class StaticInitializerCreationLowering(
     val context: CommonBackendContext,
-    val declarationOrigin: IrDeclarationOrigin,
-    private val clinitNeeded: Boolean
-) : ClassLoweringPass {
-    override fun lower(irClass: IrClass) {
-        val instanceInitializerStatements = handleNonStatics(irClass)
-        transformInstanceInitializerCallsInConstructors(irClass, instanceInitializerStatements)
+    val declarationOrigin: IrDeclarationOrigin
+) : DeclarationTransformer {
+    override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
+        if (declaration is IrClass) {
+            val statics = staticsToHandle(declaration)
+            if (statics.isNotEmpty()) {
+                createStaticInitializationMethod(declaration, statics)
+            }
+        }
 
-        val staticInitializerStatements = handleStatics(irClass)
-        if (clinitNeeded && staticInitializerStatements.isNotEmpty())
-            createStaticInitializationMethod(irClass, staticInitializerStatements)
-        irClass.declarations.removeAll { it is IrAnonymousInitializer }
-        irClass.patchDeclarationParents(irClass.parent)
+        return null
     }
 
-    fun handleNonStatics(irClass: IrClass) =
-        irClass.declarations.filter {
-            (it is IrField && !it.isStatic) || (it is IrAnonymousInitializer && !it.isStatic)
-        }.mapNotNull { handleDeclaration(irClass, it) }
-
-    fun handleStatics(irClass: IrClass) =
-    // Hardcoded order of initializers
+    fun staticsToHandle(irClass: IrClass) =
+        // Hardcoded order of initializers
         (irClass.declarations.filter { it is IrField && it.origin == IrDeclarationOrigin.FIELD_FOR_ENUM_ENTRY } +
                 irClass.declarations.filter { it is IrField && it.origin == IrDeclarationOrigin.FIELD_FOR_ENUM_VALUES } +
                 irClass.declarations.filter { it is IrField && it.origin == IrDeclarationOrigin.FIELD_FOR_OBJECT_INSTANCE } +
@@ -85,60 +83,12 @@ class InitializersLowering(
                         IrDeclarationOrigin.FIELD_FOR_OBJECT_INSTANCE
                     )) || (it is IrAnonymousInitializer && it.isStatic)
                 })
-            .mapNotNull { handleDeclaration(irClass, it) }
 
-    fun handleDeclaration(irClass: IrClass, declaration: IrDeclaration): IrStatement? = when(declaration) {
-        is IrField -> handleField(irClass, declaration)
-        is IrAnonymousInitializer -> handleAnonymousInitializer(declaration)
-        else -> null
-    }
-
-    fun handleField(irClass: IrClass, declaration: IrField): IrStatement? {
-        val irFieldInitializer = declaration.initializer?.expression ?: return null
-
-        val receiver =
-            if (!declaration.isStatic) // TODO isStaticField
-                IrGetValueImpl(
-                    irFieldInitializer.startOffset, irFieldInitializer.endOffset,
-                    irClass.thisReceiver!!.type, irClass.thisReceiver!!.symbol
-                )
-            else null
-        return IrSetFieldImpl(
-            irFieldInitializer.startOffset, irFieldInitializer.endOffset,
-            declaration.symbol,
-            receiver,
-            irFieldInitializer,
-            context.irBuiltIns.unitType,
-            null, null
-        )
-    }
-
-
-    fun handleAnonymousInitializer(declaration: IrAnonymousInitializer): IrStatement = IrBlockImpl(
-        declaration.startOffset, declaration.endOffset,
-        context.irBuiltIns.unitType,
-        SYNTHESIZED_INIT_BLOCK,
-        declaration.body.statements
-    )
-
-    fun transformInstanceInitializerCallsInConstructors(irClass: IrClass, instanceInitializerStatements: List<IrStatement>) {
-        irClass.transformChildrenVoid(object : IrElementTransformerVoid() {
-            override fun visitInstanceInitializerCall(expression: IrInstanceInitializerCall): IrExpression {
-                val copiedBlock =
-                    IrBlockImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET, context.irBuiltIns.unitType, null, instanceInitializerStatements).copy(
-                        irClass
-                    ) as IrBlock
-                return IrBlockImpl(irClass.startOffset, irClass.endOffset, context.irBuiltIns.unitType, null, copiedBlock.statements)
-            }
-        })
-    }
-
-    fun createStaticInitializationMethod(irClass: IrClass, staticInitializerStatements: List<IrStatement>) {
+    fun createStaticInitializationMethod(irClass: IrClass, statics: List<IrDeclaration>) {
         // TODO: mark as synthesized
         val staticInitializerDescriptor = WrappedSimpleFunctionDescriptor()
         val staticInitializer = IrFunctionImpl(
-            irClass.startOffset,
-            irClass.endOffset,
+            irClass.startOffset, irClass.endOffset,
             declarationOrigin,
             IrSimpleFunctionSymbolImpl(staticInitializerDescriptor),
             clinitName,
@@ -151,13 +101,16 @@ class InitializersLowering(
             isSuspend = false,
             isExpect = false,
             isFakeOverride = false
-        ).apply {
-            staticInitializerDescriptor.bind(this)
-            body = IrBlockBodyImpl(irClass.startOffset, irClass.endOffset,
-                                   staticInitializerStatements.map { it.copy(irClass) })
-            accept(SetDeclarationsParentVisitor, this)
+        ).also { initializer ->
+            staticInitializerDescriptor.bind(initializer)
+
+            initializer.body = IrBlockBodyImpl(irClass.startOffset, irClass.endOffset) {
+                statements += statics.mapNotNull { context.handleDeclaration(irClass, it) }.map { it.copy(irClass) }
+                acceptChildren(SetDeclarationsParentVisitor, initializer)
+            }
+
             // Should come after SetDeclarationParentVisitor, because it sets staticInitializer's own parent to itself.
-            parent = irClass
+            initializer.parent = irClass
         }
         irClass.declarations.add(staticInitializer)
     }
@@ -166,6 +119,94 @@ class InitializersLowering(
         val clinitName = Name.special("<clinit>")
 
         fun IrStatement.copy(containingDeclaration: IrDeclarationParent) = deepCopyWithSymbols(containingDeclaration)
+    }
+}
+
+private fun CommonBackendContext.handleDeclaration(irClass: IrClass, declaration: IrDeclaration): IrStatement? = when (declaration) {
+    is IrField -> handleField(irClass, declaration)
+    is IrAnonymousInitializer -> handleAnonymousInitializer(declaration)
+    else -> null
+}
+
+private fun CommonBackendContext.handleField(irClass: IrClass, declaration: IrField): IrStatement? {
+    val irFieldInitializer = declaration.initializer?.expression ?: return null
+
+    val receiver =
+        if (!declaration.isStatic) // TODO isStaticField
+            IrGetValueImpl(
+                irFieldInitializer.startOffset, irFieldInitializer.endOffset,
+                irClass.thisReceiver!!.type, irClass.thisReceiver!!.symbol
+            )
+        else null
+    return IrSetFieldImpl(
+        irFieldInitializer.startOffset, irFieldInitializer.endOffset,
+        declaration.symbol,
+        receiver,
+        irFieldInitializer,
+        irBuiltIns.unitType,
+        null, null
+    )
+}
+
+private fun CommonBackendContext.handleAnonymousInitializer(declaration: IrAnonymousInitializer): IrStatement = IrBlockImpl(
+    declaration.startOffset, declaration.endOffset,
+    irBuiltIns.unitType,
+    SYNTHESIZED_INIT_BLOCK,
+    declaration.body.statements
+)
+
+class InitializersLowering(
+    val context: CommonBackendContext
+) : BodyLoweringPass {
+
+    override fun lower(irBody: IrBody, container: IrDeclaration) {
+
+        if (container !is IrConstructor) return
+
+        val irClass = container.parentAsClass
+
+        val nonStatics = nonStaticsToHandle(irClass)
+        if (nonStatics.isNotEmpty()) {
+            val instanceInitializerStatements = nonStatics.mapNotNull { context.handleDeclaration(irClass, it) }
+            irBody.transformInstanceInitializerCallsInConstructors(irClass, container, instanceInitializerStatements)
+        }
+    }
+
+    fun nonStaticsToHandle(irClass: IrClass) =
+        irClass.declarations.filter {
+            (it is IrField && !it.isStatic) || (it is IrAnonymousInitializer && !it.isStatic)
+        }
+
+    fun IrBody.transformInstanceInitializerCallsInConstructors(irClass: IrClass, constructor: IrConstructor, instanceInitializerStatements: List<IrStatement>) {
+        transformChildrenVoid(object : IrElementTransformerVoid() {
+            override fun visitInstanceInitializerCall(expression: IrInstanceInitializerCall): IrExpression {
+                val copiedBlock =
+                    IrBlockImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET, context.irBuiltIns.unitType, null, instanceInitializerStatements).copy(
+                        irClass
+                    ) as IrBlock
+
+                copiedBlock.patchDeclarationParents(constructor)
+
+                return IrBlockImpl(irClass.startOffset, irClass.endOffset, context.irBuiltIns.unitType, null, copiedBlock.statements)
+            }
+        })
+    }
+
+    companion object {
         fun IrExpression.copy(containingDeclaration: IrDeclarationParent) = deepCopyWithSymbols(containingDeclaration)
+    }
+}
+
+// Remove anonymous initializers and set field initializers to `null`
+class InitializersCleanup(val context: CommonBackendContext) : DeclarationTransformer {
+
+    override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
+        if (declaration is IrAnonymousInitializer) return emptyList()
+
+        if (declaration is IrField && declaration.parent is IrClass) {
+            declaration.initializer = null
+        }
+
+        return null
     }
 }

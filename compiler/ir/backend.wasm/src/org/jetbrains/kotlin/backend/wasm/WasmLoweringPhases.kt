@@ -230,10 +230,17 @@ private val delegateToSyntheticPrimaryConstructorLoweringPhase = makeWasmModuleP
     prerequisite = setOf(syntheticPrimaryConstructorLoweringPhase)
 )
 
-private val initializersLoweringPhase = makeCustomWasmModulePhase(
-    { context, module -> InitializersLowering(context, JsLoweredDeclarationOrigin.CLASS_STATIC_INITIALIZER, false).lower(module) },
+private val initializersLoweringPhase = makeWasmModulePhase(
+    ::InitializersLowering,
     name = "InitializersLowering",
     description = "Merge init block and field initializers into [primary] constructor",
+    prerequisite = setOf(delegateToSyntheticPrimaryConstructorLoweringPhase)
+)
+
+private val initializersCleanupLoweringPhase = makeWasmModulePhase(
+    ::InitializersCleanup,
+    name = "InitializersCleanupLowering",
+    description = "Remove anonymousInitBlock and field initializers",
     prerequisite = setOf(delegateToSyntheticPrimaryConstructorLoweringPhase)
 )
 
@@ -372,6 +379,7 @@ val wasmPhases = namedIrModulePhase<WasmBackendContext>(
             syntheticPrimaryConstructorLoweringPhase then
             delegateToSyntheticPrimaryConstructorLoweringPhase then
             initializersLoweringPhase then
+            initializersCleanupLoweringPhase then
             // Common prefix ends
 
             builtInsLoweringPhase then
