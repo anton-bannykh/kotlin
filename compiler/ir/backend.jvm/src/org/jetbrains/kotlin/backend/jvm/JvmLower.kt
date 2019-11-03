@@ -164,6 +164,13 @@ private val innerClassesPhase = makeIrFilePhase(
     prerequisite = setOf(localDeclarationsPhase)
 )
 
+private val innerClassesMemberBodyLoweringPhase = makeIrFilePhase(
+    ::InnerClassesMemberBodyLowering,
+    name = "InnerClasses",
+    description = "Add 'outer this' fields to inner classes",
+    prerequisite = setOf(localDeclarationsPhase)
+)
+
 private val returnableBlocksPhase = makeIrFilePhase(
     ::ReturnableBlockLowering,
     name = "ReturnableBlock",
@@ -244,6 +251,7 @@ private val jvmFilePhases =
         addContinuationPhase then
 
         innerClassesPhase then
+        innerClassesMemberBodyLoweringPhase then
         innerClassConstructorCallsPhase then
 
         makePatchParentsPhase(2) then

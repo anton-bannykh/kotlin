@@ -17,14 +17,83 @@ import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
 import org.jetbrains.kotlin.ir.symbols.IrValueParameterSymbol
 import org.jetbrains.kotlin.ir.symbols.IrValueSymbol
 import org.jetbrains.kotlin.ir.types.classOrNull
-import org.jetbrains.kotlin.ir.util.dump
-import org.jetbrains.kotlin.ir.util.parentAsClass
-import org.jetbrains.kotlin.ir.util.patchDeclarationParents
-import org.jetbrains.kotlin.ir.util.transformDeclarationsFlat
+import org.jetbrains.kotlin.ir.util.*
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
 import org.jetbrains.kotlin.ir.visitors.transformChildrenVoid
 
-class InnerClassesLowering(val context: BackendContext) : ClassLoweringPass {
+class InnerClassesLowering(val context: BackendContext) : DeclarationTransformer {
+
+    override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
+
+        if (declaration is IrClass && declaration.isInner) {
+            declaration.declarations += context.declarationFactory.getOuterThisField(declaration)
+        } else if (declaration is IrConstructor) {
+            val irClass = declaration.parentAsClass
+            if (!irClass.isInner) return null
+
+            val newConstructor = lowerConstructor(declaration)
+            val oldConstructorParameterToNew = context.primaryConstructorParameterMap(newConstructor)
+            for ((oldParam, newParam) in oldConstructorParameterToNew.entries) {
+                newParam.defaultValue = oldParam.defaultValue?.let { oldDefault ->
+                    IrExpressionBodyImpl(oldDefault.startOffset, oldDefault.endOffset) {
+                        expression = oldDefault.expression.deepCopyWithSymbols(newConstructor)
+                    }
+                }
+            }
+
+            return listOf(newConstructor)
+        }
+
+        return null
+    }
+
+    private fun lowerConstructor(irConstructor: IrConstructor): IrConstructor {
+        val loweredConstructor = context.declarationFactory.getInnerClassConstructorWithOuterThisParameter(irConstructor)
+        val outerThisParameter = loweredConstructor.valueParameters[0]
+
+        val irClass = irConstructor.parentAsClass
+        val parentThisField = context.declarationFactory.getOuterThisField(irClass)
+
+        val blockBody = irConstructor.body as? IrBlockBody ?: throw AssertionError("Unexpected constructor body: ${irConstructor.body}")
+
+        loweredConstructor.body = IrBlockBodyImpl(blockBody.startOffset, blockBody.endOffset) {
+            context.createIrBuilder(irConstructor.symbol, irConstructor.startOffset, irConstructor.endOffset).apply {
+                statements.add(0, irSetField(irGet(irClass.thisReceiver!!), parentThisField, irGet(outerThisParameter)))
+            }
+
+            statements.addAll(blockBody.statements)
+
+            if (statements.find { it is IrInstanceInitializerCall } == null) {
+                val delegatingConstructorCall =
+                    statements.find { it is IrDelegatingConstructorCall } as IrDelegatingConstructorCall?
+                        ?: throw AssertionError("Delegating constructor call expected: ${irConstructor.dump()}")
+                delegatingConstructorCall.apply { dispatchReceiver = IrGetValueImpl(startOffset, endOffset, outerThisParameter.symbol) }
+            }
+            patchDeclarationParents(loweredConstructor)
+
+            val oldConstructorParameterToNew = context.primaryConstructorParameterMap(loweredConstructor)
+            transformChildrenVoid(VariableRemapper(oldConstructorParameterToNew))
+        }
+
+        return loweredConstructor
+    }
+
+}
+
+private fun BackendContext.primaryConstructorParameterMap(loweredConstructor: IrConstructor): Map<IrValueParameter, IrValueParameter> {
+    val oldConstructorParameterToNew = HashMap<IrValueParameter, IrValueParameter>()
+
+    val originalConstructor = declarationFactory.getInnerClassConstructorWithInnerThisParameter(loweredConstructor)
+
+    originalConstructor.valueParameters.forEach { old ->
+        oldConstructorParameterToNew[old] = loweredConstructor.valueParameters[old.index + 1]
+    }
+
+    return oldConstructorParameterToNew
+}
+
+
+class InnerClassesMemberBodyLowering(val context: BackendContext) : BodyLoweringPass {
     private val IrValueSymbol.classForImplicitThis: IrClass?
         // TODO: is this the correct way to get the class?
         get() =
@@ -36,40 +105,25 @@ class InnerClassesLowering(val context: BackendContext) : ClassLoweringPass {
             } else
                 null
 
-    override fun lower(irClass: IrClass) {
+    override fun lower(irBody: IrBody, container: IrDeclaration) {
+        val irClass = container.parent as? IrClass ?: return
+
         if (!irClass.isInner) return
 
-        val parentThisField = context.declarationFactory.getOuterThisField(irClass)
-        val oldConstructorParameterToNew = HashMap<IrValueParameter, IrValueParameter>()
-
-        fun lowerConstructor(irConstructor: IrConstructor): IrConstructor {
-            val loweredConstructor = context.declarationFactory.getInnerClassConstructorWithOuterThisParameter(irConstructor)
-            val outerThisParameter = loweredConstructor.valueParameters[0]
-
-            irConstructor.valueParameters.forEach { old ->
-                oldConstructorParameterToNew[old] = loweredConstructor.valueParameters[old.index + 1]
+        if (container is IrField || container is IrAnonymousInitializer || container is IrValueParameter) {
+            // TODO read original declarations
+            val primaryConstructor = irClass.declarations.find { it is IrConstructor && it.isPrimary } as? IrConstructor
+            if (primaryConstructor != null) {
+                val oldConstructorParameterToNew = context.primaryConstructorParameterMap(primaryConstructor)
+                irBody.transformChildrenVoid(VariableRemapper(oldConstructorParameterToNew))
             }
-
-            val blockBody = irConstructor.body as? IrBlockBody ?: throw AssertionError("Unexpected constructor body: ${irConstructor.body}")
-            context.createIrBuilder(irConstructor.symbol, irConstructor.startOffset, irConstructor.endOffset).apply {
-                blockBody.statements.add(0, irSetField(irGet(irClass.thisReceiver!!), parentThisField, irGet(outerThisParameter)))
-            }
-            if (blockBody.statements.find { it is IrInstanceInitializerCall } == null) {
-                val delegatingConstructorCall =
-                    blockBody.statements.find { it is IrDelegatingConstructorCall } as IrDelegatingConstructorCall?
-                        ?: throw AssertionError("Delegating constructor call expected: ${irConstructor.dump()}")
-                delegatingConstructorCall.apply { dispatchReceiver = IrGetValueImpl(startOffset, endOffset, outerThisParameter.symbol) }
-            }
-            blockBody.patchDeclarationParents(loweredConstructor)
-            loweredConstructor.body = blockBody
-            return loweredConstructor
         }
 
-        irClass.declarations += parentThisField
-        irClass.transformDeclarationsFlat { irMember -> (irMember as? IrConstructor)?.let { listOf(lowerConstructor(it)) } }
-        irClass.transformChildrenVoid(VariableRemapper(oldConstructorParameterToNew))
+        irBody.fixThisReference(irClass)
+    }
 
-        irClass.transformChildrenVoid(object : IrElementTransformerVoidWithContext() {
+    fun IrBody.fixThisReference(irClass: IrClass) {
+        transformChildrenVoid(object : IrElementTransformerVoidWithContext() {
             override fun visitClassNew(declaration: IrClass): IrStatement =
                 declaration
 

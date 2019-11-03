@@ -35,6 +35,7 @@ class JvmDeclarationFactory(
     private val singletonFieldDeclarations = HashMap<IrSymbolOwner, IrField>()
     private val outerThisDeclarations = HashMap<IrClass, IrField>()
     private val innerClassConstructors = HashMap<IrConstructor, IrConstructor>()
+    private val innerClassConstructorsReversed = HashMap<IrConstructor, IrConstructor>()
 
     private val defaultImplsMethods = HashMap<IrSimpleFunction, IrSimpleFunction>()
     private val defaultImplsClasses = HashMap<IrClass, IrClass>()
@@ -74,6 +75,12 @@ class JvmDeclarationFactory(
         return innerClassConstructors.getOrPut(innerClassConstructor) {
             createInnerClassConstructorWithOuterThisParameter(innerClassConstructor)
         }
+    }
+
+    override fun getInnerClassConstructorWithInnerThisParameter(innerClassConstructor: IrConstructor): IrConstructor {
+        assert((innerClassConstructor.parent as IrClass).isInner) { "Class is not inner: ${(innerClassConstructor.parent as IrClass).dump()}" }
+
+        return innerClassConstructorsReversed[innerClassConstructor]!!
     }
 
     private fun createInnerClassConstructorWithOuterThisParameter(oldConstructor: IrConstructor): IrConstructor {
@@ -116,6 +123,8 @@ class JvmDeclarationFactory(
 
             oldConstructor.valueParameters.mapTo(valueParameters) { it.copyTo(this, index = it.index + 1) }
             metadata = oldConstructor.metadata
+        }.also {
+            innerClassConstructorsReversed[it] = oldConstructor
         }
     }
 
