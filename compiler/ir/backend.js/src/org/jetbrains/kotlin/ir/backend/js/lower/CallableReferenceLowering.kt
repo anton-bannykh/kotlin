@@ -10,6 +10,7 @@ import org.jetbrains.kotlin.backend.common.FileLoweringPass
 import org.jetbrains.kotlin.backend.common.descriptors.WrappedTypeParameterDescriptor
 import org.jetbrains.kotlin.backend.common.descriptors.WrappedValueParameterDescriptor
 import org.jetbrains.kotlin.backend.common.lower.BOUND_VALUE_PARAMETER
+import org.jetbrains.kotlin.backend.common.lower.dispatchFunction
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
@@ -500,7 +501,7 @@ class CallableReferenceLowering(val context: JsIrBackendContext) : BodyLoweringP
 
         closureFunction.valueParameters += unboundParamDeclarations
 
-        val callTarget = context.ir.defaultParameterDeclarationsCache[declaration] ?: declaration
+        val callTarget = declaration.dispatchFunction ?: declaration
 
         val target = callTarget.symbol
 

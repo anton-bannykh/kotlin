@@ -303,6 +303,12 @@ private val defaultArgumentStubGeneratorPhase = makeJsModulePhase(
     description = "Generate synthetic stubs for functions with default parameter values"
 )
 
+private val defaultParameterPatchOverridenSymbolsPhase = makeJsModulePhase(
+    ::DefaultParameterPatchOverridenSymbolsLowering,
+    name = "DefaultParameterPatchOverridenSymbolsLowering",
+    description = "Set correct overrides"
+)
+
 private val defaultParameterInjectorPhase = makeJsModulePhase(
     { context -> DefaultParameterInjector(context, skipExternalMethods = true) },
     name = "DefaultParameterInjector",
@@ -519,6 +525,7 @@ val phaseList = listOf(
     privateMembersBodyLoweringPhase,
     callableReferenceLoweringPhase,
     defaultArgumentStubGeneratorPhase,
+    defaultParameterPatchOverridenSymbolsPhase,
     defaultParameterInjectorPhase,
     defaultParameterCleanerPhase,
     jsDefaultCallbackGeneratorPhase,
@@ -589,6 +596,7 @@ val jsPhases = namedIrModulePhase(
             privateMembersBodyLoweringPhase then
             callableReferenceLoweringPhase then
             defaultArgumentStubGeneratorPhase then
+            defaultParameterPatchOverridenSymbolsPhase then
             defaultParameterInjectorPhase then
             defaultParameterCleanerPhase then
             jsDefaultCallbackGeneratorPhase then

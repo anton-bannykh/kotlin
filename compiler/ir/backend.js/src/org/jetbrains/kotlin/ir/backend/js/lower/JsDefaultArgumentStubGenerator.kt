@@ -9,6 +9,7 @@ import org.jetbrains.kotlin.backend.common.BodyLoweringPass
 import org.jetbrains.kotlin.backend.common.ir.isOverridableOrOverrides
 import org.jetbrains.kotlin.backend.common.lower.DefaultArgumentStubGenerator
 import org.jetbrains.kotlin.backend.common.lower.DEFAULT_DISPATCH_CALL
+import org.jetbrains.kotlin.backend.common.lower.originalFunction
 import org.jetbrains.kotlin.ir.backend.js.JsIrBackendContext
 import org.jetbrains.kotlin.ir.builders.IrBlockBodyBuilder
 import org.jetbrains.kotlin.ir.builders.irCall
@@ -71,7 +72,7 @@ class JsDefaultCallbackGenerator(val context: JsIrBackendContext): BodyLoweringP
 
     private fun buildBoundSuperCall(irCall: IrCall): IrExpression {
 
-        val originalFunction = context.ir.defaultParameterDeclarationsCache.entries.first { it.value == irCall.symbol.owner }.key
+        val originalFunction = irCall.symbol.owner.originalFunction!!
 
         val reference = irCall.run {
             IrFunctionReferenceImpl(
