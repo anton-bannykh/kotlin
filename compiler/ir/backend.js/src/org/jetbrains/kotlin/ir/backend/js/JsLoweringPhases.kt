@@ -267,6 +267,12 @@ private val suspendFunctionsLoweringPhase = makeJsModulePhase(
     description = "Transform suspend functions into CoroutineImpl instance and build state machine"
 )
 
+private val suspendLambdasRemovingPhase = makeJsModulePhase(
+    { _ -> RemoveSuspendLambdas() },
+    name = "RemoveSuspendLambdasLowering",
+    description = "Remove suspend lambdas"
+)
+
 private val privateMembersLoweringPhase = makeJsModulePhase(
     ::PrivateMembersLowering,
     name = "PrivateMembersLowering",
@@ -507,6 +513,7 @@ val phaseList = listOf(
     enumUsageLoweringPhase,
     enumEntryRemovalLoweringPhase,
     suspendFunctionsLoweringPhase,
+    suspendLambdasRemovingPhase,
     returnableBlockLoweringPhase,
     privateMembersLoweringPhase,
     privateMembersBodyLoweringPhase,
@@ -576,6 +583,7 @@ val jsPhases = namedIrModulePhase(
             enumEntryRemovalLoweringPhase then
 
             suspendFunctionsLoweringPhase then
+            suspendLambdasRemovingPhase then
             returnableBlockLoweringPhase then
             privateMembersLoweringPhase then
             privateMembersBodyLoweringPhase then
