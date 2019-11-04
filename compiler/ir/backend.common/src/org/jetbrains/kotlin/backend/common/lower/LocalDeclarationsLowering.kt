@@ -5,10 +5,7 @@
 
 package org.jetbrains.kotlin.backend.common.lower
 
-import org.jetbrains.kotlin.backend.common.BackendContext
-import org.jetbrains.kotlin.backend.common.FileLoweringPass
-import org.jetbrains.kotlin.backend.common.IrElementVisitorVoidWithContext
-import org.jetbrains.kotlin.backend.common.ScopeWithIr
+import org.jetbrains.kotlin.backend.common.*
 import org.jetbrains.kotlin.backend.common.descriptors.*
 import org.jetbrains.kotlin.backend.common.ir.*
 import org.jetbrains.kotlin.descriptors.Modality
@@ -33,6 +30,7 @@ import org.jetbrains.kotlin.ir.symbols.impl.IrValueParameterSymbolImpl
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.util.constructedClass
 import org.jetbrains.kotlin.ir.util.dump
+import org.jetbrains.kotlin.ir.util.file
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
 import org.jetbrains.kotlin.ir.visitors.acceptChildrenVoid
 import org.jetbrains.kotlin.ir.visitors.acceptVoid
@@ -75,8 +73,7 @@ class LocalDeclarationsLowering(
     val context: BackendContext,
     val localNameProvider: LocalNameProvider = LocalNameProvider.DEFAULT,
     val visibilityPolicy: VisibilityPolicy = VisibilityPolicy.DEFAULT
-) :
-    FileLoweringPass {
+) : BodyLoweringPass {
 
     object DECLARATION_ORIGIN_FIELD_FOR_CAPTURED_VALUE :
         IrDeclarationOriginImpl("FIELD_FOR_CAPTURED_VALUE", isSynthetic = true)
@@ -84,8 +81,8 @@ class LocalDeclarationsLowering(
     private object STATEMENT_ORIGIN_INITIALIZER_OF_FIELD_FOR_CAPTURED_VALUE :
         IrStatementOriginImpl("INITIALIZER_OF_FIELD_FOR_CAPTURED_VALUE")
 
-    override fun lower(irFile: IrFile) {
-        LocalDeclarationsTransformer(irFile).lowerLocalDeclarations()
+    override fun lower(irBody: IrBody, container: IrDeclaration) {
+        LocalDeclarationsTransformer(irBody, container).lowerLocalDeclarations()
     }
 
     private abstract class LocalContext {
@@ -156,7 +153,7 @@ class LocalDeclarationsLowering(
 
     }
 
-    private inner class LocalDeclarationsTransformer(val irFile: IrFile) {
+    private inner class LocalDeclarationsTransformer(val irBody: IrBody, val container: IrDeclaration) {
         val localFunctions: MutableMap<IrFunction, LocalFunctionContext> = LinkedHashMap()
         val localClasses: MutableMap<IrClass, LocalClassContext> = LinkedHashMap()
         val localClassConstructors: MutableMap<IrConstructor, LocalClassConstructorContext> = LinkedHashMap()
@@ -432,7 +429,7 @@ class LocalDeclarationsLowering(
                 rewriteClassMembers(it.declaration, it)
             }
 
-            rewriteFunctionBody(irFile, null)
+            rewriteFunctionBody(container, null)
         }
 
         private fun createNewCall(oldCall: IrCall, newCallee: IrFunction) =
@@ -716,7 +713,7 @@ class LocalDeclarationsLowering(
 
         private fun collectClosureForLocalDeclarations() {
             //TODO: maybe use for granular declarations
-            val annotator = ClosureAnnotator(irFile)
+            val annotator = ClosureAnnotator(container)
 
             localFunctions.forEach { (declaration, context) ->
                 context.closure = annotator.getFunctionClosure(declaration)
@@ -733,7 +730,9 @@ class LocalDeclarationsLowering(
                 var counter: Int = 0
             }
 
-            irFile.acceptVoid(object : IrElementVisitorVoidWithContext() {
+            val enclosingFileScope = ScopeWithCounter(Scope(container.file.symbol), container.file)
+
+            irBody.acceptVoid(object : IrElementVisitorVoidWithContext() {
 
                 override fun visitElement(element: IrElement) {
                     element.acceptChildrenVoid(this)
@@ -748,7 +747,7 @@ class LocalDeclarationsLowering(
 
                     if (declaration.visibility == Visibilities.LOCAL) {
                         val scopeWithIr =
-                            (currentClass ?: currentFile /*file is required for K/N cause file declarations are not split by classes*/
+                            (currentClass ?: enclosingFileScope /*file is required for K/N cause file declarations are not split by classes*/
                             ?: error("No scope for ${declaration.dump()}"))
                         localFunctions[declaration] =
                             LocalFunctionContext(
