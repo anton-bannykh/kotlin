@@ -134,6 +134,11 @@ private val enumClassConstructorLoweringPhase = makeWasmModulePhase(
     description = "Transform Enum Class into regular Class"
 )
 
+private val enumClassConstructorBodyLoweringPhase = makeWasmModulePhase(
+    ::EnumClassConstructorBodyTransformer,
+    name = "EnumClassConstructorBodyLowering",
+    description = "Transform Enum Class into regular Class"
+)
 
 private val sharedVariablesLoweringPhase = makeWasmModulePhase(
     ::SharedVariablesLowering,
@@ -367,6 +372,7 @@ val wasmPhases = namedIrModulePhase<WasmBackendContext>(
             tailrecLoweringPhase then
 
             enumClassConstructorLoweringPhase then
+            enumClassConstructorBodyLoweringPhase then
 
             sharedVariablesLoweringPhase then
             localDelegatedPropertiesLoweringPhase then
