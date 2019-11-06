@@ -71,6 +71,14 @@ private fun collectExternalClasses(container: IrDeclarationContainer, includeCur
         nestedExternalClasses
 }
 
+fun moveBodilessDeclarationsToSeparatePlace(context: JsIrBackendContext, moduleFragment: IrModuleFragment) {
+    MoveBodilessDeclarationsToSeparatePlaceLowering(context).let { moveBodiless ->
+        moduleFragment.files.forEach {
+            moveBodiless.lower(it)
+        }
+    }
+}
+
 class MoveBodilessDeclarationsToSeparatePlaceLowering(private val context: JsIrBackendContext) : DeclarationTransformer {
 
     override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {

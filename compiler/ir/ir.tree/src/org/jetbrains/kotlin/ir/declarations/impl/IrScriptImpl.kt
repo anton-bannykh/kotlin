@@ -9,6 +9,7 @@ import org.jetbrains.kotlin.descriptors.ScriptDescriptor
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
 import org.jetbrains.kotlin.ir.declarations.*
+import org.jetbrains.kotlin.ir.declarations.impl.carriers.ScriptCarrier
 import org.jetbrains.kotlin.ir.symbols.IrScriptSymbol
 import org.jetbrains.kotlin.ir.util.transform
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformer
@@ -20,7 +21,7 @@ private val SCRIPT_ORIGIN = object : IrDeclarationOriginImpl("FIELD_FOR_OBJECT_I
 class IrScriptImpl(
     override val symbol: IrScriptSymbol,
     override val name: Name
-) : IrScript, IrDeclarationBase(UNDEFINED_OFFSET, UNDEFINED_OFFSET, SCRIPT_ORIGIN) {
+) : IrScript, IrDeclarationBase<ScriptCarrier>(UNDEFINED_OFFSET, UNDEFINED_OFFSET, SCRIPT_ORIGIN), ScriptCarrier {
     override val declarations: MutableList<IrDeclaration> = mutableListOf()
     override val statements: MutableList<IrStatement> = mutableListOf()
 
