@@ -207,8 +207,17 @@ fun DeclarationTransformer.runPostfix(): DeclarationTransformer {
                         val result = this@runPostfix.transformFlat(this)
                         if (result != null) {
                             (parent as? IrDeclarationContainer)?.let {
-                                it.declarations.remove(this)
-                                it.declarations += result
+                                var index = -1
+                                it.declarations.forEachIndexed { i, v ->
+                                    if (v == this || index == -1 && v == declaration) {
+                                        index = i
+                                    }
+                                }
+
+                                if (it.declarations[index] == this) {
+                                    it.declarations.removeAt(index)
+                                }
+                                it.declarations.addAll(index + 1, result)
                             }
                         }
                     }
