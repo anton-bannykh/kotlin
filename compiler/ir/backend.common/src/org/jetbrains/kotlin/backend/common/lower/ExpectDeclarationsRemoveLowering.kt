@@ -71,7 +71,7 @@ class ExpectDeclarationsRemoveLowering(val context: BackendContext) : Declaratio
         symbolTable.referenceFunction(descriptor.findActualForExpect()).owner
 
     private fun IrFunction.findExpectForActual(): IrFunction =
-        symbolTable.referenceFunction(descriptor.findActualForExpect()).owner
+        symbolTable.referenceFunction(descriptor.findExpectForActual()).owner
 
     private fun IrClass.findActualForExpected(): IrClass =
         symbolTable.referenceClass(descriptor.findActualForExpect()).owner
@@ -82,6 +82,14 @@ class ExpectDeclarationsRemoveLowering(val context: BackendContext) : Declaratio
         if (!descriptor.isExpect) error(this)
 
         findCompatibleActualForExpected(descriptor.module).singleOrNull() ?: error(descriptor)
+    } as T
+
+    private inline fun <reified T : MemberDescriptor> T.findExpectForActual() = with(ExpectedActualResolver) {
+        val descriptor = this@findExpectForActual
+
+        if (!descriptor.isActual) null else {
+            findCompatibleExpectedForActual(descriptor.module).singleOrNull()
+        }
     } as T
 
     private fun IrExpression.remapExpectValueSymbols(): IrExpression {
