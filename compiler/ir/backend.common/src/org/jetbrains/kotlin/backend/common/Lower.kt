@@ -132,7 +132,6 @@ fun BodyLoweringPass.runOnFilePostfix(irFile: IrFile) {
             }
 
             override fun visitBody(body: IrBody, data: IrDeclaration?) {
-                body.acceptChildren(this, data)
                 lower(body, data!!)
             }
         }, null)
