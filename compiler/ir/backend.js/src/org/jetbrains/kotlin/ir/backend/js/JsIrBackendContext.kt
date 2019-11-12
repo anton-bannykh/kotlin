@@ -76,7 +76,7 @@ class JsIrBackendContext(
     }
 
     val externalNestedClasses = mutableListOf<IrClass>()
-    val packageLevelJsModules = mutableListOf<IrFile>()
+    val packageLevelJsModules = mutableSetOf<IrFile>()
     val declarationLevelJsModules = mutableListOf<IrDeclarationWithName>()
 
     val internalPackageFragmentDescriptor = EmptyPackageFragmentDescriptor(builtIns.builtInsModule, FqName("kotlin.js.internal"))

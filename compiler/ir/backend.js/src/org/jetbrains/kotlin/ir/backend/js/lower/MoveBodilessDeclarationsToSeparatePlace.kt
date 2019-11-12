@@ -98,6 +98,8 @@ class MoveBodilessDeclarationsToSeparatePlaceLowering(private val context: JsIrB
             externalPackageFragment.declarations += declaration
             declaration.parent = externalPackageFragment
 
+            context.packageLevelJsModules += externalPackageFragment
+
             return emptyList()
         } else {
             val d = declaration as? IrDeclarationWithName ?: return null
