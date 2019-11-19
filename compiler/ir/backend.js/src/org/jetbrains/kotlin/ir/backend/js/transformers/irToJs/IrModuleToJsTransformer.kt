@@ -43,8 +43,10 @@ class IrModuleToJsTransformer(
         statements += preDeclarationBlock
 
         module.files.forEach {
-            statements.add(JsDocComment(mapOf("file" to it.path)).makeStmt())
-            statements.addAll(it.accept(IrFileToJsTransformer(), context).statements)
+            if (it.declarations.isNotEmpty()) {
+                statements.add(JsDocComment(mapOf("file" to it.path)).makeStmt())
+                statements.addAll(it.accept(IrFileToJsTransformer(), context).statements)
+            }
         }
 
         // sort member forwarding code

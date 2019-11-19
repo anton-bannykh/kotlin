@@ -19,6 +19,7 @@ import org.jetbrains.kotlin.ir.visitors.acceptChildrenVoid
 import org.jetbrains.kotlin.ir.visitors.acceptVoid
 import org.jetbrains.kotlin.js.naming.isES5IdentifierPart
 import org.jetbrains.kotlin.js.naming.isES5IdentifierStart
+import org.jetbrains.kotlin.js.naming.isValidES5Identifier
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.utils.addToStdlib.ifNotEmpty
 
@@ -149,6 +150,9 @@ fun functionSignature(declaration: IrFunction): Signature {
     // TODO: Check reserved names
     return ParameterTypeBasedSignature(signature, declarationName)
 }
+
+private val String.errorName: String
+    get() = sanitizeName(this) + "__error__"
 
 class NameTables(
     packages: List<IrPackageFragment>,
@@ -325,17 +329,18 @@ class NameTables(
             parent = parent.parent
         }
 
-        return mappedNames[mapToKey(declaration)] ?: error("Can't find name for declaration ${declaration.fqNameWhenAvailable}")
+        return mappedNames[mapToKey(declaration)] ?:  declaration.name.asString().errorName
+            //error("Can't find name for declaration ${declaration.fqNameWhenAvailable}")
     }
 
     fun getNameForMemberField(field: IrField): String {
         val signature = fieldSignature(field)
         val name = memberNames.names[signature] ?: mappedNames[mapToKey(signature)]
 
-        require(name != null) {
-            "Can't find name for member field $field"
-        }
-        return name
+//        require(name != null) {
+//            "Can't find name for member field $field"
+//        }
+        return name ?: field.name.asString().errorName
     }
 
     fun getNameForMemberFunction(function: IrSimpleFunction): String {
@@ -346,10 +351,10 @@ class NameTables(
         //       of `invoke` functions in FunctionN interfaces
         if (name == null && signature is ParameterTypeBasedSignature && signature.suggestedName.startsWith("invoke"))
             return signature.suggestedName
-        require(name != null) {
-            "Can't find name for member function ${function.render()}"
-        }
-        return name
+//        require(name != null) {
+//            "Can't find name for member function ${function.render()}"
+//        }
+        return name ?: function.name.asString().errorName
     }
 
     private fun generateNamesForTopLevelDecl(declaration: IrDeclaration) {

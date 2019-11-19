@@ -1,4 +1,5 @@
 // EXPECTED_REACHABLE_NODES: 1276
+@JsExport
 class A(val x: Char)
 
 fun typeOf(x: dynamic): String = js("typeof x")
