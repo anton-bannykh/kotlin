@@ -12,6 +12,7 @@ import org.jetbrains.kotlin.backend.common.lower.loops.ForLoopsLowering
 import org.jetbrains.kotlin.backend.common.phaser.*
 import org.jetbrains.kotlin.ir.backend.js.lower.*
 import org.jetbrains.kotlin.ir.backend.js.lower.calls.CallsLowering
+import org.jetbrains.kotlin.ir.backend.js.lower.cleanup.CleanupLowering
 import org.jetbrains.kotlin.ir.backend.js.lower.coroutines.JsSuspendFunctionsLowering
 import org.jetbrains.kotlin.ir.backend.js.lower.inline.RemoveInlineFunctionsWithReifiedTypeParametersLowering
 import org.jetbrains.kotlin.ir.declarations.IrFile
@@ -387,6 +388,12 @@ private val objectUsageLoweringPhase = makeCustomJsModulePhase(
     description = "Transform IrGetObjectValue into instance generator call"
 )
 
+private val cleanupLoweringPhase = makeJsModulePhase(
+    { CleanupLowering() },
+    name = "CleanupLowering",
+    description = "Clean up IR before codegen"
+)
+
 val jsPhases = namedIrModulePhase(
     name = "IrModuleLowering",
     description = "IR module lowering",
@@ -441,5 +448,6 @@ val jsPhases = namedIrModulePhase(
             objectDeclarationLoweringPhase then
             objectUsageLoweringPhase then
             callsLoweringPhase then
+            cleanupLoweringPhase then
             validateIrAfterLowering
 )
