@@ -195,7 +195,14 @@ fun translateCall(
             )
         }
     } else {
-        JsInvocation(ref, listOfNotNull(jsExtensionReceiver) + arguments)
+        JsInvocation(ref, listOfNotNull(jsExtensionReceiver) + arguments).let { result ->
+            (context.currentFunction as? IrSimpleFunction)?.let { f ->
+                if (f.name.asString().endsWith("\$Init\$") && expression.symbol.owner.name.asString().endsWith("\$Init\$")) {
+                    val thisRef = context.getNameForValueDeclaration(context.currentFunction!!.valueParameters.last()).makeRef()
+                    return JsBinaryOperation(JsBinaryOperator.ASG, thisRef, result)
+                } else result
+            } ?: result
+        }
     }
 }
 

@@ -33,6 +33,10 @@ class PrimaryConstructorLowering(context: CommonBackendContext) : ClassLoweringP
 
         val primary = createPrimaryConstructor(irClass)
 
+        if (irClass.name.asString() == "A") {
+            1
+        }
+
         val initializeTransformer = object : IrElementTransformerVoid() {
             override fun visitDeclaration(declaration: IrDeclaration) = declaration // optimize visiting
 
@@ -41,7 +45,7 @@ class PrimaryConstructorLowering(context: CommonBackendContext) : ClassLoweringP
             }
         }
 
-        constructors.forEach { it.transformChildrenVoid(initializeTransformer) }
+//        constructors.forEach { it.transformChildrenVoid(initializeTransformer) }
     }
 
     private object SYNTHETIC_PRIMARY_CONSTRUCTOR : IrDeclarationOriginImpl("SYNTHETIC_PRIMARY_CONSTRUCTOR")

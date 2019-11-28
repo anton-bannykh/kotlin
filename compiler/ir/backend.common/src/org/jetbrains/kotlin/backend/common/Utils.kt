@@ -17,7 +17,11 @@
 package org.jetbrains.kotlin.backend.common
 
 import org.jetbrains.kotlin.ir.IrElement
+import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.declarations.IrFile
+import org.jetbrains.kotlin.ir.expressions.*
+import org.jetbrains.kotlin.ir.util.transformFlat
+import org.jetbrains.kotlin.ir.visitors.*
 
 fun CommonBackendContext.reportWarning(message: String, irFile: IrFile?, irElement: IrElement) {
     report(irElement, irFile, message, false)
@@ -32,4 +36,36 @@ fun <E> MutableList<E>.peek(): E? = if (size == 0) null else this[size - 1]
 fun <T: Any> T.onlyIf(condition: T.()->Boolean, then: (T)->Unit): T {
     if (this.condition()) then(this)
     return this
+}
+
+fun IrBlockBody.insertPreDelegationInitialization(statements: List<IrStatement>) {
+    var done = false
+
+    fun IrStatementContainer.process() {
+        this.statements.transformFlat {
+            if (it is IrDelegatingConstructorCall && !done) {
+                done = true
+                listOf(it) + statements
+            } else null
+        }
+    }
+
+    this.process()
+
+    if (!done) {
+        acceptVoid(object : IrElementVisitorVoid {
+            override fun visitElement(element: IrElement) {
+                element.acceptChildrenVoid(this)
+            }
+
+            override fun visitContainerExpression(expression: IrContainerExpression) {
+                expression.acceptChildrenVoid(this)
+                expression.process()
+            }
+        })
+    }
+
+    if (!done) {
+        this.statements.addAll(0, statements)
+    }
 }

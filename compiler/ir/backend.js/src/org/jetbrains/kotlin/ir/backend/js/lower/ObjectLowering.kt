@@ -8,6 +8,7 @@ package org.jetbrains.kotlin.ir.backend.js.lower
 import org.jetbrains.kotlin.backend.common.CommonBackendContext
 import org.jetbrains.kotlin.backend.common.DeclarationContainerLoweringPass
 import org.jetbrains.kotlin.backend.common.FileLoweringPass
+import org.jetbrains.kotlin.backend.common.insertPreDelegationInitialization
 import org.jetbrains.kotlin.backend.common.lower.createIrBuilder
 import org.jetbrains.kotlin.backend.common.lower.irBlockBody
 import org.jetbrains.kotlin.backend.common.lower.irIfThen
@@ -26,10 +27,7 @@ import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.IrGetObjectValue
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.types.makeNullable
-import org.jetbrains.kotlin.ir.util.defaultType
-import org.jetbrains.kotlin.ir.util.isEffectivelyExternal
-import org.jetbrains.kotlin.ir.util.primaryConstructor
-import org.jetbrains.kotlin.ir.util.transformDeclarationsFlat
+import org.jetbrains.kotlin.ir.util.*
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
 import org.jetbrains.kotlin.ir.visitors.transformChildrenVoid
 import org.jetbrains.kotlin.name.Name
@@ -60,7 +58,12 @@ class ObjectDeclarationLowering(
             val initInstanceField = context.createIrBuilder(primaryConstructor.symbol).buildStatement(UNDEFINED_OFFSET, UNDEFINED_OFFSET) {
                 irSetField(null, instanceField, irGet(declaration.thisReceiver!!))
             }
-            body.statements.add(0, initInstanceField)
+
+            if (declaration.file.fileEntry.name.contains("withInheritance")) {
+                1
+            }
+
+            body.insertPreDelegationInitialization(listOf(initInstanceField))
 
             getInstanceFun.body = context.createIrBuilder(getInstanceFun.symbol).irBlockBody(getInstanceFun) {
                 +irIfThen(

@@ -5,6 +5,7 @@
 
 package org.jetbrains.kotlin.ir.backend.js.transformers.irToJs
 
+import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.ir.backend.js.export.isExported
 import org.jetbrains.kotlin.ir.backend.js.utils.*
@@ -39,15 +40,48 @@ class JsClassGenerator(private val irClass: IrClass, val context: JsGenerationCo
         // We'll use IrSimpleFunction::correspondingProperty to collect them into set
         val properties = mutableSetOf<IrProperty>()
 
+        val jsClass = JsClass(name = className)
+
+        if (baseClass != null && !baseClass.isAny()) {
+            jsClass.baseClass = baseClassName?.makeRef()
+        }
+
+        if (className.ident == "IntIterator") {
+            1
+        }
+
+        classModel.preDeclarationBlock.statements += jsClass.makeStmt()
+
         for (declaration in irClass.declarations) {
             when (declaration) {
                 is IrConstructor -> {
-                    classBlock.statements += declaration.accept(transformer, context)
-                    classModel.preDeclarationBlock.statements += generateInheritanceCode()
+                    declaration.accept(IrFunctionToJsTransformer(), context).let {
+                        if (it.body.statements.filterNot { it is JsEmpty }.isNotEmpty()) {
+                            jsClass.constructor = it
+
+                            if (jsClass.baseClass != null) {
+
+                                val hasSuper = it.body.statements.any {
+                                    it is JsExpressionStatement && ((it.expression as? JsInvocation)?.qualifier as? JsNameRef)?.ident == "super"
+                                }
+
+                                if (!hasSuper) {
+                                    it.body.statements.add(0, JsInvocation(JsNameRef("super")).makeStmt())
+                                }
+
+                            }
+
+//                            if (baseClass != null && !baseClass.isAny() && (baseClass.classifierOrFail.owner as IrClass).modality == Modality.ABSTRACT) {
+//
+//                            }
+                        }
+                    }
+
+//                    classModel.preDeclarationBlock.statements += generateInheritanceCode()
                 }
                 is IrSimpleFunction -> {
                     properties.addIfNotNull(declaration.correspondingPropertySymbol?.owner)
-                    generateMemberFunction(declaration)?.let { classBlock.statements += it }
+                    generateMemberFunction(declaration)?.let { jsClass.members += it }
                 }
                 is IrClass -> {
                     classBlock.statements += JsClassGenerator(declaration, context).generate()
@@ -109,7 +143,7 @@ class JsClassGenerator(private val irClass: IrClass, val context: JsGenerationCo
         return this.overriddenSymbols.any { it.owner.overridesExternal() }
     }
 
-    private fun generateMemberFunction(declaration: IrSimpleFunction): JsStatement? {
+    private fun generateMemberFunction(declaration: IrSimpleFunction): JsFunction? {
 
         val memberName = context.getNameForMemberFunction(declaration.realOverrideTarget)
         val memberRef = JsNameRef(memberName, classPrototypeRef)
@@ -119,7 +153,7 @@ class JsClassGenerator(private val irClass: IrClass, val context: JsGenerationCo
 
             assert(!declaration.isStaticMethodOfClass)
 
-            return jsAssignment(memberRef, translatedFunction.apply { name = null }).makeStmt()
+            return translatedFunction
         }
 
         // do not generate code like

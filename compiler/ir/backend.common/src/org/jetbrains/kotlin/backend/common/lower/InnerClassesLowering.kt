@@ -52,7 +52,7 @@ class InnerClassesLowering(val context: BackendContext) : ClassLoweringPass {
 
             val blockBody = irConstructor.body as? IrBlockBody ?: throw AssertionError("Unexpected constructor body: ${irConstructor.body}")
             context.createIrBuilder(irConstructor.symbol, irConstructor.startOffset, irConstructor.endOffset).apply {
-                blockBody.statements.add(0, irSetField(irGet(irClass.thisReceiver!!), parentThisField, irGet(outerThisParameter)))
+                blockBody.insertPreDelegationInitialization(listOf(irSetField(irGet(irClass.thisReceiver!!), parentThisField, irGet(outerThisParameter))))
             }
             if (blockBody.statements.find { it is IrInstanceInitializerCall } == null) {
                 val delegatingConstructorCall =

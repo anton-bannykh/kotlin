@@ -22,30 +22,30 @@ public open class MyException : Exception {
 @Suppress("USELESS_ELVIS_RIGHT_IS_NULL")
 public actual open class Error actual constructor(message: String?, cause: Throwable?) : Throwable(message, cause ?: null) {
     actual constructor() : this(null, null) {
-        Error::class.js.asDynamic().call(this, null, null)
+//        Error::class.js.asDynamic().call(this, null, null)
     }
 
     actual constructor(message: String?) : this(message, null) {
-        Error::class.js.asDynamic().call(this, message, null)
+//        Error::class.js.asDynamic().call(this, message, null)
     }
 
     actual constructor(cause: Throwable?) : this(undefined, cause) {
-        Error::class.js.asDynamic().call(this, undefined, cause)
+//        Error::class.js.asDynamic().call(this, undefined, cause)
     }
 }
 
 @Suppress("USELESS_ELVIS_RIGHT_IS_NULL")
 public actual open class Exception actual constructor(message: String?, cause: Throwable?) : Throwable(message, cause ?: null) {
     actual constructor() : this(null, null) {
-        Exception::class.js.asDynamic().call(this, null, null)
+//        Exception::class.js.asDynamic().call(this, null, null)
     }
 
     actual constructor(message: String?) : this(message, null) {
-        Exception::class.js.asDynamic().call(this, message, null)
+//        Exception::class.js.asDynamic().call(this, message, null)
     }
 
     actual constructor(cause: Throwable?) : this(undefined, cause) {
-        Exception::class.js.asDynamic().call(this, undefined, cause)
+//        Exception::class.js.asDynamic().call(this, undefined, cause)
     }
 }
 
@@ -67,7 +67,7 @@ public actual open class IllegalStateException actual constructor(message: Strin
     actual constructor(cause: Throwable?) : this(undefined, cause)
 }
 
-public actual open class IndexOutOfBoundsException actual constructor(message: String?) : RuntimeException(message) {
+public actual open class IndexOutOfBoundsException actual constructor(message: String?) : RuntimeException(message, null) {
     actual constructor() : this(null)
 }
 
@@ -84,16 +84,16 @@ public actual open class UnsupportedOperationException actual constructor(messag
 }
 
 
-public actual open class NumberFormatException actual constructor(message: String?) : IllegalArgumentException(message) {
+public actual open class NumberFormatException actual constructor(message: String?) : IllegalArgumentException(message, null) {
     actual constructor() : this(null)
 }
 
 
-public actual open class NullPointerException actual constructor(message: String?) : RuntimeException(message) {
+public actual open class NullPointerException actual constructor(message: String?) : RuntimeException(message, null) {
     actual constructor() : this(null)
 }
 
-public actual open class ClassCastException actual constructor(message: String?) : RuntimeException(message) {
+public actual open class ClassCastException actual constructor(message: String?) : RuntimeException(message, null) {
     actual constructor() : this(null)
 }
 
@@ -103,12 +103,12 @@ public actual open class AssertionError private constructor(message: String?, ca
     actual constructor(message: Any?) : this(message.toString(), message as? Throwable)
 }
 
-public actual open class NoSuchElementException actual constructor(message: String?) : RuntimeException(message) {
+public actual open class NoSuchElementException actual constructor(message: String?) : RuntimeException(message, null) {
     actual constructor() : this(null)
 }
 
 @SinceKotlin("1.3")
-public actual open class ArithmeticException actual constructor(message: String?) : RuntimeException(message) {
+public actual open class ArithmeticException actual constructor(message: String?) : RuntimeException(message, null) {
     actual constructor() : this(null)
 }
 

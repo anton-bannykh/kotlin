@@ -8,6 +8,7 @@ package org.jetbrains.kotlin.ir.backend.js.lower
 import org.jetbrains.kotlin.backend.common.CommonBackendContext
 import org.jetbrains.kotlin.backend.common.DeclarationContainerLoweringPass
 import org.jetbrains.kotlin.backend.common.FileLoweringPass
+import org.jetbrains.kotlin.backend.common.insertPreDelegationInitialization
 import org.jetbrains.kotlin.backend.common.ir.copyParameterDeclarationsFrom
 import org.jetbrains.kotlin.backend.common.lower.createIrBuilder
 import org.jetbrains.kotlin.backend.common.lower.irBlockBody
@@ -411,9 +412,9 @@ class EnumClassTransformer(val context: JsIrBackendContext, private val irClass:
 
                 // Initialize entry instance at the beginning of constructor so it can be used inside constructor body
                 (it.body as? IrBlockBody)?.apply {
-                    statements.add(0, context.createIrBuilder(it.symbol).run {
+                    insertPreDelegationInitialization(listOf(context.createIrBuilder(it.symbol).run {
                         irSetVar(instance.symbol, irGet(entry.correspondingClass!!.thisReceiver!!))
-                    })
+                    }))
                 }
             }
         }
@@ -432,9 +433,9 @@ class EnumClassTransformer(val context: JsIrBackendContext, private val irClass:
         enumEntry.correspondingClass?.constructors?.forEach {
             // Initialize entry instance at the beginning of constructor so it can be used inside constructor body
             (it.body as? IrBlockBody)?.apply {
-                statements.add(0, context.createIrBuilder(it.symbol).run {
+                insertPreDelegationInitialization(listOf(context.createIrBuilder(it.symbol).run {
                     irSetField(null, result, irGet(enumEntry.correspondingClass!!.thisReceiver!!))
-                })
+                }))
             }
         }
 

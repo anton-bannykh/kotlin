@@ -5,10 +5,7 @@
 
 package org.jetbrains.kotlin.backend.common.lower
 
-import org.jetbrains.kotlin.backend.common.BackendContext
-import org.jetbrains.kotlin.backend.common.FileLoweringPass
-import org.jetbrains.kotlin.backend.common.IrElementVisitorVoidWithContext
-import org.jetbrains.kotlin.backend.common.ScopeWithIr
+import org.jetbrains.kotlin.backend.common.*
 import org.jetbrains.kotlin.backend.common.descriptors.*
 import org.jetbrains.kotlin.backend.common.ir.*
 import org.jetbrains.kotlin.descriptors.Modality
@@ -38,6 +35,7 @@ import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.util.constructedClass
 import org.jetbrains.kotlin.ir.util.dump
 import org.jetbrains.kotlin.ir.util.parentAsClass
+import org.jetbrains.kotlin.ir.util.transformFlat
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
 import org.jetbrains.kotlin.ir.visitors.acceptChildrenVoid
 import org.jetbrains.kotlin.ir.visitors.acceptVoid
@@ -407,18 +405,15 @@ class LocalDeclarationsLowering(
 
                 // NOTE: It's important to set the fields for captured values in the same order as the arguments,
                 // since `AnonymousObjectTransformer` relies on this ordering.
-                blockBody.statements.addAll(
-                    0,
-                    localClassContext.capturedValueToField.map { (capturedValue, field) ->
-                        IrSetFieldImpl(
-                            irClass.startOffset, irClass.endOffset, field.symbol,
-                            IrGetValueImpl(irClass.startOffset, irClass.endOffset, irClass.thisReceiver!!.symbol),
-                            constructorContext.irGet(irClass.startOffset, irClass.endOffset, capturedValue)!!,
-                            context.irBuiltIns.unitType,
-                            STATEMENT_ORIGIN_INITIALIZER_OF_FIELD_FOR_CAPTURED_VALUE
-                        )
-                    }
-                )
+                blockBody.insertPreDelegationInitialization(localClassContext.capturedValueToField.map { (capturedValue, field) ->
+                    IrSetFieldImpl(
+                        irClass.startOffset, irClass.endOffset, field.symbol,
+                        IrGetValueImpl(irClass.startOffset, irClass.endOffset, irClass.thisReceiver!!.symbol),
+                        constructorContext.irGet(irClass.startOffset, irClass.endOffset, capturedValue)!!,
+                        context.irBuiltIns.unitType,
+                        STATEMENT_ORIGIN_INITIALIZER_OF_FIELD_FOR_CAPTURED_VALUE
+                    )
+                })
             }
         }
 
