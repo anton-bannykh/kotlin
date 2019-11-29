@@ -69,7 +69,6 @@ fun compile(
     dependencyModules.forEach {
         ExternalDependenciesGenerator(it.descriptor, symbolTable, irBuiltIns, deserializer).generateUnboundSymbolsAsDependencies()
     }
-
     val irFiles = dependencyModules.flatMap { it.files } + moduleFragment.files
 
     moduleFragment.files.clear()

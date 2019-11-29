@@ -43,7 +43,7 @@ fun IrBlockBody.insertPreDelegationInitialization(statements: List<IrStatement>)
 
     fun IrStatementContainer.process() {
         this.statements.transformFlat {
-            if (it is IrDelegatingConstructorCall && !done) {
+            if ((it is IrDelegatingConstructorCall || it is IrCall && it.symbol.owner.name.asString().endsWith("\$Init\$")) && !done) {
                 done = true
                 listOf(it) + statements
             } else null

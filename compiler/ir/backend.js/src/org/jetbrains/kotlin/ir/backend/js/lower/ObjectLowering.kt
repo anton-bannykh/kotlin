@@ -59,7 +59,7 @@ class ObjectDeclarationLowering(
                 irSetField(null, instanceField, irGet(declaration.thisReceiver!!))
             }
 
-            if (declaration.file.fileEntry.name.contains("withInheritance")) {
+            if (declaration.file.fileEntry.name.contains("CoroutineUtil.kt")) {
                 1
             }
 

@@ -66,7 +66,25 @@ class JsClassGenerator(private val irClass: IrClass, val context: JsGenerationCo
                                 }
 
                                 if (!hasSuper) {
-                                    it.body.statements.add(0, JsInvocation(JsNameRef("super")).makeStmt())
+//                                    it.body.statements.add(0, JsInvocation(JsNameRef("super")).makeStmt())
+
+                                    it.body.statements.let { ss ->
+                                        for (i in ss.indices) {
+                                            val s = ss[i] as? JsExpressionStatement ?: continue
+
+                                            val e = s.expression as? JsInvocation ?: continue
+
+                                            val q = e.qualifier as? JsNameRef ?: continue
+
+                                            if (q.name?.ident?.endsWith("\$Init\$") != true) continue
+
+                                            e.arguments[e.arguments.lastIndex] = JsObjectLiteral(listOf(JsPropertyInitializer(JsNameRef("constructor"), JsNameRef("target","new"))))
+
+                                            ss[i] = JsReturn(e)
+
+                                            break;
+                                        }
+                                    }
                                 }
 
                             }

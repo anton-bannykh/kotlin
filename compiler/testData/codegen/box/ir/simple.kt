@@ -24,14 +24,40 @@
 //
 //}
 
-sealed class A {
-    class B: A()
-    class C: A()
-    class D: A()
+open class A(var a: Int) {
+    constructor(): this(20)
 }
 
+open class B : A {
+    constructor(t: Short): this(t.toInt() * 10)
+
+    constructor(t: Int): super() {
+        a += t
+    }
+}
+
+open class C: B {
+    constructor(e: Int): super(3.toShort()) {
+        a += e
+    }
+}
+
+class D : C {
+    constructor() : super(7)
+}
+
+class A {
+
+    console.log(new A(10));
+    console.log(A.create());
+    console.log(B.create(1));
+    console.log(new C(4));
+    console.log(new D(5));
+    console.log(D.create());
+}
+
+
 fun box(): String {
-    A.B()
 
     return "OK"
 }
