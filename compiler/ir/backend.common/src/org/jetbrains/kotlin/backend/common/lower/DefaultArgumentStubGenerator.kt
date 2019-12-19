@@ -197,7 +197,7 @@ open class DefaultParameterInjector(
         irFile.transformChildrenVoid(this)
     }
 
-    override fun lower(irBody: IrBody) {
+    override fun lower(irBody: IrBody, container: IrDeclaration) {
         irBody.transformChildrenVoid(this)
     }
 
