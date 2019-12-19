@@ -17,7 +17,7 @@
 package org.jetbrains.kotlin.backend.common.lower
 
 import org.jetbrains.kotlin.backend.common.BackendContext
-import org.jetbrains.kotlin.backend.common.FileLoweringPass
+import org.jetbrains.kotlin.backend.common.BodyLoweringPass
 import org.jetbrains.kotlin.backend.common.phaser.makeIrFilePhase
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.IrStatement
@@ -36,33 +36,14 @@ val sharedVariablesPhase = makeIrFilePhase(
 
 object CoroutineIntrinsicLambdaOrigin : IrStatementOriginImpl("Coroutine intrinsic lambda")
 
-class SharedVariablesLowering(val context: BackendContext) : FileLoweringPass {
-    override fun lower(irFile: IrFile) {
-        irFile.acceptChildrenVoid(object : IrElementVisitorVoid {
-            override fun visitElement(element: IrElement) {
-                element.acceptChildrenVoid(this)
-            }
+class SharedVariablesLowering(val context: BackendContext) : BodyLoweringPass {
 
-            override fun visitFunction(declaration: IrFunction) {
-                declaration.acceptChildrenVoid(this)
-
-                SharedVariablesTransformer(declaration).lowerSharedVariables()
-            }
-
-            override fun visitField(declaration: IrField) {
-                declaration.acceptChildrenVoid(this)
-
-                SharedVariablesTransformer(declaration).lowerSharedVariables()
-            }
-
-            override fun visitAnonymousInitializer(declaration: IrAnonymousInitializer) {
-                declaration.acceptChildrenVoid(this)
-
-                SharedVariablesTransformer(declaration).lowerSharedVariables()
-            }
-        })
+    override fun lower(irBody: IrBody, container: IrDeclaration) {
+        // TODO remove this condition
+        if (container is IrFunction || container is IrField || container is IrAnonymousInitializer) {
+            SharedVariablesTransformer(container).lowerSharedVariables()
+        }
     }
-
 
     private inner class SharedVariablesTransformer(val irDeclaration: IrDeclaration) {
         private val sharedVariables = HashSet<IrVariable>()
