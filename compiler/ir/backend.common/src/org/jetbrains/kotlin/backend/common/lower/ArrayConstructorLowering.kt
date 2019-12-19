@@ -5,15 +5,15 @@
 
 package org.jetbrains.kotlin.backend.common.lower
 
+import org.jetbrains.kotlin.backend.common.BodyLoweringPass
 import org.jetbrains.kotlin.backend.common.CommonBackendContext
 import org.jetbrains.kotlin.backend.common.FileLoweringPass
 import org.jetbrains.kotlin.backend.common.IrElementTransformerVoidWithContext
 import org.jetbrains.kotlin.backend.common.ir.asSimpleLambda
 import org.jetbrains.kotlin.backend.common.ir.inline
 import org.jetbrains.kotlin.ir.builders.*
-import org.jetbrains.kotlin.ir.declarations.IrConstructor
-import org.jetbrains.kotlin.ir.declarations.IrFile
-import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
+import org.jetbrains.kotlin.ir.declarations.*
+import org.jetbrains.kotlin.ir.expressions.IrBody
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.copyTypeArgumentsFrom
@@ -27,10 +27,17 @@ import org.jetbrains.kotlin.ir.util.patchDeclarationParents
 import org.jetbrains.kotlin.ir.visitors.transformChildrenVoid
 import org.jetbrains.kotlin.util.OperatorNameConventions
 
-class ArrayConstructorLowering(val context: CommonBackendContext) : IrElementTransformerVoidWithContext(), FileLoweringPass {
-    override fun lower(irFile: IrFile) {
-        irFile.transformChildrenVoid(this)
+class ArrayConstructorLowering(val context: CommonBackendContext) : IrElementTransformerVoidWithContext(), BodyLoweringPass {
+
+    override fun lower(irBody: IrBody, container: IrDeclaration) {
+        irBody.transformChildrenVoid(ArrayConstructorTransformer(context, container as IrSymbolOwner))
     }
+}
+
+private class ArrayConstructorTransformer(
+    val context: CommonBackendContext,
+    val container: IrSymbolOwner
+) : IrElementTransformerVoidWithContext() {
 
     // Array(size, init) -> Array(size)
     private fun arrayInlineToSizeConstructor(irConstructor: IrConstructor): IrFunctionSymbol? {
@@ -65,7 +72,7 @@ class ArrayConstructorLowering(val context: CommonBackendContext) : IrElementTra
         // (and similar for primitive arrays)
         val size = expression.getValueArgument(0)!!.transform(this, null)
         val invokable = expression.getValueArgument(1)!!.transform(this, null)
-        val scope = currentScope!!.scope
+        val scope = (currentScope ?: createScope(container)).scope
         return context.createIrBuilder(scope.scopeOwnerSymbol).irBlock(expression.startOffset, expression.endOffset) {
             val index = irTemporaryVar(irInt(0))
             val sizeVar = irTemporary(size)
