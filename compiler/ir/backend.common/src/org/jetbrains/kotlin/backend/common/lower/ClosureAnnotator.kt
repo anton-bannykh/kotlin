@@ -36,12 +36,12 @@ import kotlin.collections.set
 
 data class Closure(val capturedValues: List<IrValueSymbol>, val capturedTypeParameters: List<IrTypeParameter>)
 
-class ClosureAnnotator(irFile: IrFile) {
+class ClosureAnnotator(declaration: IrDeclaration) {
     private val closureBuilders = mutableMapOf<IrDeclaration, ClosureBuilder>()
 
     init {
         // Collect all closures for classes and functions. Collect call graph
-        irFile.acceptChildrenVoid(ClosureCollectorVisitor())
+        declaration.acceptChildrenVoid(ClosureCollectorVisitor())
     }
 
     fun getFunctionClosure(declaration: IrFunction) = getClosure(declaration)
