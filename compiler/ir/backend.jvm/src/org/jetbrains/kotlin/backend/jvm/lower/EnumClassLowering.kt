@@ -226,7 +226,7 @@ private class EnumClassLowering(val context: JvmBackendContext) : ClassLoweringP
                 enumEntry, (enumEntry.correspondingClass ?: enumEntry.parentAsClass).defaultType
             ).also {
                 it.initializer = IrExpressionBodyImpl(
-                    enumEntry.initializerExpression!!.patchDeclarationParents(it)
+                    enumEntry.initializerExpression!!.expression.patchDeclarationParents(it)
                 )
                 it.annotations.addAll(enumEntry.annotations)
                 enumEntryFields.add(it)

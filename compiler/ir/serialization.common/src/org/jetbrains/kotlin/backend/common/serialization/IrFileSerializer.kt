@@ -1224,7 +1224,7 @@ open class IrFileSerializer(
             .setName(serializeName(enumEntry.name))
 
         enumEntry.initializerExpression?.let {
-            proto.initializer = serializeIrExpressionBody(it)
+            proto.initializer = serializeIrExpressionBody(it.expression)
         }
         enumEntry.correspondingClass?.let {
             proto.correspondingClass = serializeIrClass(it)
