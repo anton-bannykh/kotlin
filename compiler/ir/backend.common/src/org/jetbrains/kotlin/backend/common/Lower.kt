@@ -175,7 +175,7 @@ fun DeclarationTransformer.toDeclarationContainerLoweringPass(): DeclarationCont
     }
 }
 
-fun DeclarationTransformer.runPostfix(): DeclarationTransformer {
+fun DeclarationTransformer.runPostfix(withLocalDeclarations: Boolean = false): DeclarationTransformer {
     return object : DeclarationTransformer {
         override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
             declaration.acceptVoid(object : IrElementVisitorVoid {
@@ -184,10 +184,15 @@ fun DeclarationTransformer.runPostfix(): DeclarationTransformer {
                 }
 
                 override fun visitBody(body: IrBody) {
-                    // Stop
+                    if (withLocalDeclarations) {
+                        super.visitBody(body)
+                    }
+                    // else stop
                 }
 
                 override fun visitFunction(declaration: IrFunction) {
+                    super.visitFunction(declaration)
+
                     declaration.valueParameters.transformFlat { this@runPostfix.transformFlat(it)?.map { it as IrValueParameter } }
                 }
 
@@ -196,7 +201,12 @@ fun DeclarationTransformer.runPostfix(): DeclarationTransformer {
 
                     if (declaration.isEffectivelyExternal()) return
 
+                    val visitor = this
+
                     fun IrDeclaration.transform() {
+
+                        acceptVoid(visitor)
+
                         val result = this@runPostfix.transformFlat(this)
                         if (result != null) {
                             (parent as? IrDeclarationContainer)?.let {
