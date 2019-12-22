@@ -52,11 +52,10 @@ class PropertiesLowering(
                 declaration.correspondingPropertySymbol?.owner?.let { property ->
                     if (!skipExternalProperties || !property.isEffectivelyExternal()) {
                         // JvmFields in a companion object refer to companion's owners and should not be generated within companion.
-                        val kind = (declaration.parent as? IrClass)?.kind ?: ClassKind.CLASS
-                        if (generateAnnotationFields || (kind != ClassKind.ANNOTATION_CLASS && property.backingField?.parent == declaration.parent)) {
+                        val kind = (property.parent as? IrClass)?.kind ?: ClassKind.CLASS
+                        if (generateAnnotationFields || (kind != ClassKind.ANNOTATION_CLASS && declaration.parent == property.parent)) {
                             return listOf(declaration)
                         }
-                        return listOf()
                     }
                 }
             }
@@ -98,6 +97,7 @@ class PropertiesLowering(
 
             annotations.addAll(declaration.annotations)
             metadata = declaration.metadata
+            parent = declaration.parent
         }
     }
 
