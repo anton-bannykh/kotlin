@@ -81,6 +81,10 @@ class LocalDeclarationsLowering(
 ) :
     BodyLoweringPass {
 
+    override fun lower(irFile: IrFile) {
+        super.lower(irFile)
+    }
+
     object DECLARATION_ORIGIN_FIELD_FOR_CAPTURED_VALUE :
         IrDeclarationOriginImpl("FIELD_FOR_CAPTURED_VALUE", isSynthetic = true)
 
@@ -792,7 +796,8 @@ class LocalDeclarationsLowering(
                 }
 
                 private val inInlineFunctionScope: Boolean
-                    get() = allScopes.any { scope -> (scope.irElement as? IrFunction)?.isInline ?: false }
+                    get() = allScopes.any { scope -> (scope.irElement as? IrFunction)?.isInline ?: false } ||
+                            generateSequence(container) { it.parent as? IrDeclaration }.any { it is IrFunction && it.isInline }
             })
         }
     }
