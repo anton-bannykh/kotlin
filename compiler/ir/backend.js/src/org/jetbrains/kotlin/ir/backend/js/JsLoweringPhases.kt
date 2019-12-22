@@ -278,6 +278,13 @@ private val initializersLoweringPhase = makeJsModulePhase(
     prerequisite = setOf(enumClassConstructorLoweringPhase, primaryConstructorLoweringPhase, annotationConstructorLowering)
 )
 
+private val initializersCleanupLoweringPhase = makeJsModulePhase(
+    ::InitializersCleanupLowering,
+    name = "InitializersCleanupLowering",
+    description = "Remove non-static anonymous initializers and field init expressions",
+    prerequisite = setOf(initializersLoweringPhase)
+)
+
 private val multipleCatchesLoweringPhase = makeJsModulePhase(
     ::MultipleCatchesLowering,
     name = "MultipleCatchesLowering",
@@ -413,6 +420,7 @@ val jsPhases = namedIrModulePhase(
             primaryConstructorLoweringPhase then
             annotationConstructorLowering then
             initializersLoweringPhase then
+            initializersCleanupLoweringPhase then
             // Common prefix ends
             enumClassLoweringPhase then
             enumUsageLoweringPhase then
