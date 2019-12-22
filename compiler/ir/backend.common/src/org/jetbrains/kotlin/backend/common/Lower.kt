@@ -199,8 +199,6 @@ fun DeclarationTransformer.runPostfix(withLocalDeclarations: Boolean = false): D
                 override fun visitProperty(declaration: IrProperty) {
                     // TODO This is a hack to allow lowering a getter separately from the enclosing property
 
-                    if (declaration.isEffectivelyExternal()) return
-
                     val visitor = this
 
                     fun IrDeclaration.transform() {
