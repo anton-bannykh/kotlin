@@ -5,6 +5,7 @@
 
 package org.jetbrains.kotlin.backend.jvm.lower
 
+import org.jetbrains.kotlin.backend.common.ClassLoweringPass
 import org.jetbrains.kotlin.backend.common.lower.InitializersLoweringBase
 import org.jetbrains.kotlin.backend.jvm.JvmBackendContext
 import org.jetbrains.kotlin.backend.jvm.JvmLoweredDeclarationOrigin
@@ -18,7 +19,7 @@ import org.jetbrains.kotlin.ir.expressions.impl.IrBlockBodyImpl
 import org.jetbrains.kotlin.ir.util.patchDeclarationParents
 import org.jetbrains.kotlin.name.Name
 
-class StaticInitializersLowering(override val context: JvmBackendContext) : InitializersLoweringBase(context) {
+class StaticInitializersLowering(override val context: JvmBackendContext) : InitializersLoweringBase(context), ClassLoweringPass {
     override fun lower(irClass: IrClass) {
         val staticInitializerStatements = extractInitializers(irClass) {
             // JVM implementations are required to generate initializers for all static fields with ConstantValue,
@@ -44,6 +45,12 @@ class StaticInitializersLowering(override val context: JvmBackendContext) : Init
             }.apply {
                 body = IrBlockBodyImpl(irClass.startOffset, irClass.endOffset, staticInitializerStatements).patchDeclarationParents(this)
             }
+
+            // Clean up
+            irClass.declarations.filterIsInstance<IrField>().filter { it.isStatic && it.constantValue(context) == null }.forEach {
+                it.initializer = null
+            }
+            irClass.declarations.removeAll { it is IrAnonymousInitializer && it.isStatic }
         }
     }
 
