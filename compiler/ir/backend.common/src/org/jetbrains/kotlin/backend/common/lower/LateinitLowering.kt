@@ -16,7 +16,9 @@
 
 package org.jetbrains.kotlin.backend.common.lower
 
+import org.jetbrains.kotlin.backend.common.BodyLoweringPass
 import org.jetbrains.kotlin.backend.common.CommonBackendContext
+import org.jetbrains.kotlin.backend.common.DeclarationTransformer
 import org.jetbrains.kotlin.backend.common.FileLoweringPass
 import org.jetbrains.kotlin.backend.common.ir.Symbols
 import org.jetbrains.kotlin.ir.IrStatement
@@ -35,43 +37,78 @@ import org.jetbrains.kotlin.ir.util.resolveFakeOverride
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
 import org.jetbrains.kotlin.ir.visitors.transformChildrenVoid
 
-class LateinitLowering(val backendContext: CommonBackendContext) : FileLoweringPass {
+class NullableFieldsForLateinitCreationLowering(val backendContext: CommonBackendContext) : DeclarationTransformer {
 
-    private val nullableFields = backendContext.lateinitNullableFields
-    private fun buildOrGetNullableField(originalField: IrField): IrField {
-        if (originalField.type.isMarkedNullable()) return originalField
-        return nullableFields.getOrPut(originalField) {
-            buildField {
-                updateFrom(originalField)
-                type = originalField.type.makeNullable()
-                name = originalField.name
-            }.apply {
-                parent = originalField.parent
-                correspondingPropertySymbol = originalField.correspondingPropertySymbol
-                annotations += originalField.annotations
+    override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
+        if (declaration is IrField) {
+            declaration.correspondingPropertySymbol?.owner?.let { property ->
+                if (property.isRealLateinit) {
+                    val newField = backendContext.buildOrGetNullableField(declaration)
+                    if (declaration != newField && declaration.parent != property.parent) return listOf(newField)
+                }
             }
         }
+        return null
     }
+}
 
-    override fun lower(irFile: IrFile) {
+// Transform declarations
+class NullableFieldsDeclarationLowering(val backendContext: CommonBackendContext) : DeclarationTransformer {
 
-        val nullableVariables = mutableMapOf<IrVariable, IrVariable>()
-
-        // Transform declarations
-        irFile.transformChildrenVoid(object : IrElementTransformerVoid() {
-            override fun visitProperty(declaration: IrProperty): IrStatement {
-                declaration.transformChildrenVoid(this)
-                if (declaration.isLateinit && declaration.origin != IrDeclarationOrigin.FAKE_OVERRIDE) {
-                    val oldField = declaration.backingField!!
-                    val newField = buildOrGetNullableField(oldField)
-
-                    declaration.backingField = newField
-
-                    transformGetter(newField, declaration.getter!!)
+    override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
+        when (declaration) {
+            is IrProperty -> {
+                if (declaration.isRealLateinit) {
+                    declaration.backingField = backendContext.buildOrGetNullableField(declaration.backingField!!)
                 }
-                return declaration
             }
 
+            is IrSimpleFunction -> {
+                declaration.correspondingPropertySymbol?.owner?.let { property ->
+                    if (declaration == property.getter && property.isRealLateinit) {
+                        // f = buildOrGetNullableField is idempotent, i.e. f(f(x)) == f(x)
+                        transformGetter(backendContext.buildOrGetNullableField(property.backingField!!), declaration)
+                    }
+                }
+            }
+        }
+
+        return null
+    }
+
+    // TODO use proper body constructors
+    private fun transformGetter(backingField: IrField, getter: IrFunction) {
+        val type = backingField.type
+        assert(!type.isPrimitiveType()) { "'lateinit' modifier is not allowed on primitive types" }
+        val startOffset = getter.startOffset
+        val endOffset = getter.endOffset
+        val irBuilder = backendContext.createIrBuilder(getter.symbol, startOffset, endOffset)
+        irBuilder.run {
+            val body = IrBlockBodyImpl(startOffset, endOffset)
+            val resultVar = scope.createTemporaryVariable(
+                irGetField(getter.dispatchReceiverParameter?.let { irGet(it) }, backingField)
+            )
+            resultVar.parent = getter
+            body.statements.add(resultVar)
+            val throwIfNull = irIfThenElse(
+                context.irBuiltIns.nothingType,
+                irNotEquals(irGet(resultVar), irNull()),
+                irReturn(irGet(resultVar)),
+                backendContext.throwUninitializedPropertyAccessException(this, backingField.name.asString())
+            )
+            body.statements.add(throwIfNull)
+            getter.body = body
+        }
+    }
+}
+
+// Transform usages
+class LateinitUsageLowering(val backendContext: CommonBackendContext) : BodyLoweringPass {
+
+    override fun lower(irBody: IrBody, container: IrDeclaration) {
+        val nullableVariables = mutableMapOf<IrVariable, IrVariable>()
+
+        irBody.transformChildrenVoid(object : IrElementTransformerVoid() {
             override fun visitVariable(declaration: IrVariable): IrStatement {
                 declaration.transformChildrenVoid(this)
 
@@ -92,41 +129,17 @@ class LateinitLowering(val backendContext: CommonBackendContext) : FileLoweringP
                 ).also {
                     descriptor.bind(it)
                     it.parent = declaration.parent
-                    it.initializer = IrConstImpl.constNull(declaration.startOffset, declaration.endOffset, backendContext.irBuiltIns.nothingNType)
+                    it.initializer =
+                        IrConstImpl.constNull(declaration.startOffset, declaration.endOffset, backendContext.irBuiltIns.nothingNType)
                 }
 
                 nullableVariables[declaration] = newVar
 
                 return newVar
             }
-
-            private fun transformGetter(backingField: IrField, getter: IrFunction) {
-                val type = backingField.type
-                assert(!type.isPrimitiveType()) { "'lateinit' modifier is not allowed on primitive types" }
-                val startOffset = getter.startOffset
-                val endOffset = getter.endOffset
-                val irBuilder = backendContext.createIrBuilder(getter.symbol, startOffset, endOffset)
-                irBuilder.run {
-                    val body = IrBlockBodyImpl(startOffset, endOffset)
-                    val resultVar = scope.createTemporaryVariable(
-                        irGetField(getter.dispatchReceiverParameter?.let { irGet(it) }, backingField)
-                    )
-                    resultVar.parent = getter
-                    body.statements.add(resultVar)
-                    val throwIfNull = irIfThenElse(
-                        context.irBuiltIns.nothingType,
-                        irNotEquals(irGet(resultVar), irNull()),
-                        irReturn(irGet(resultVar)),
-                        backendContext.throwUninitializedPropertyAccessException(this, backingField.name.asString())
-                    )
-                    body.statements.add(throwIfNull)
-                    getter.body = body
-                }
-            }
         })
 
-        // Transform usages
-        irFile.transformChildrenVoid(object : IrElementTransformerVoid() {
+        irBody.transformChildrenVoid(object : IrElementTransformerVoid() {
             override fun visitGetValue(expression: IrGetValue): IrExpression {
                 val irVar = nullableVariables[expression.symbol.owner] ?: return expression
 
@@ -152,7 +165,7 @@ class LateinitLowering(val backendContext: CommonBackendContext) : FileLoweringP
 
             override fun visitGetField(expression: IrGetField): IrExpression {
                 expression.transformChildrenVoid(this)
-                val newField = nullableFields[expression.symbol.owner] ?: return expression
+                val newField = backendContext.lateinitNullableFields[expression.symbol.owner] ?: return expression
                 return with(expression) {
                     IrGetFieldImpl(startOffset, endOffset, newField.symbol, newField.type, receiver, origin, superQualifierSymbol)
                 }
@@ -160,7 +173,7 @@ class LateinitLowering(val backendContext: CommonBackendContext) : FileLoweringP
 
             override fun visitSetField(expression: IrSetField): IrExpression {
                 expression.transformChildrenVoid(this)
-                val newField = nullableFields[expression.symbol.owner] ?: return expression
+                val newField = backendContext.lateinitNullableFields[expression.symbol.owner] ?: return expression
                 return with(expression) {
                     IrSetFieldImpl(startOffset, endOffset, newField.symbol, receiver, value, type, origin, superQualifierSymbol)
                 }
@@ -177,7 +190,9 @@ class LateinitLowering(val backendContext: CommonBackendContext) : FileLoweringP
                     receiver.getter?.owner?.resolveFakeOverride()?.correspondingPropertySymbol!!.owner.also { assert(it.isLateinit) }
 
                 val nullableField =
-                    buildOrGetNullableField(property.backingField ?: error("Lateinit property is supposed to have backing field"))
+                    backendContext.buildOrGetNullableField(
+                        property.backingField ?: error("Lateinit property is supposed to have backing field")
+                    )
 
                 return expression.run { backendContext.createIrBuilder(symbol, startOffset, endOffset) }.run {
                     irNotEquals(irGetField(receiver.dispatchReceiver, nullableField), irNull())
@@ -186,3 +201,20 @@ class LateinitLowering(val backendContext: CommonBackendContext) : FileLoweringP
         })
     }
 }
+
+private fun CommonBackendContext.buildOrGetNullableField(originalField: IrField): IrField {
+    if (originalField.type.isMarkedNullable()) return originalField
+    return lateinitNullableFields.getOrPut(originalField) {
+        buildField {
+            updateFrom(originalField)
+            type = originalField.type.makeNullable()
+            name = originalField.name
+        }.apply {
+            parent = originalField.parent
+            correspondingPropertySymbol = originalField.correspondingPropertySymbol
+            annotations += originalField.annotations
+        }
+    }
+}
+
+private val IrProperty.isRealLateinit get() = isLateinit && origin != IrDeclarationOrigin.FAKE_OVERRIDE
