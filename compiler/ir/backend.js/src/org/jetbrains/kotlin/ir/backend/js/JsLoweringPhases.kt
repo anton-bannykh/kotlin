@@ -202,6 +202,13 @@ private val innerClassesLoweringPhase = makeJsModulePhase(
     description = "Capture outer this reference to inner class"
 )
 
+private val innerClassesMemberBodyLoweringPhase = makeJsModulePhase(
+    ::InnerClassesMemberBodyLowering,
+    name = "InnerClassesMemberBody",
+    description = "Replace `this` with 'outer this' field references",
+    prerequisite = setOf(innerClassesLoweringPhase)
+)
+
 private val innerClassConstructorCallsLoweringPhase = makeJsModulePhase(
     ::InnerClassConstructorCallsLowering,
     name = "InnerClassConstructorCallsLowering",
@@ -429,6 +436,7 @@ val jsPhases = namedIrModulePhase(
             localDeclarationsLoweringPhase then
             localClassExtractionPhase then
             innerClassesLoweringPhase then
+            innerClassesMemberBodyLoweringPhase then
             innerClassConstructorCallsLoweringPhase then
             propertiesLoweringPhase then
             primaryConstructorLoweringPhase then
