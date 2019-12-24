@@ -109,11 +109,8 @@ private val arrayConstructorPhase = makeJsModulePhase(
     description = "Transform `Array(size) { index -> value }` into a loop"
 )
 
-private val functionInliningPhase = makeCustomJsModulePhase(
-    { context, module ->
-        FunctionInlining(context).inline(module)
-        module.patchDeclarationParents()
-    },
+private val functionInliningPhase = makeJsModulePhase(
+    ::FunctionInlining,
     name = "FunctionInliningPhase",
     description = "Perform function inlining",
     prerequisite = setOf(expectDeclarationsRemovingPhase)
