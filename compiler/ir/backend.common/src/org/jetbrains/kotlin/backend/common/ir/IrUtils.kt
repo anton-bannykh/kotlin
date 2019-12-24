@@ -149,8 +149,11 @@ fun IrValueParameter.copyTo(
         WrappedValueParameterDescriptor(this.descriptor.annotations, this.descriptor.source)
     }
     val symbol = IrValueParameterSymbolImpl(descriptor)
-    val defaultValueCopy = defaultValue?.deepCopyWithVariables()
-    defaultValueCopy?.patchDeclarationParents(irFunction)
+    val defaultValueCopy = defaultValue?.let { originalDefault ->
+        IrExpressionBodyImpl(originalDefault.startOffset, originalDefault.endOffset) {
+            expression = originalDefault.expression.deepCopyWithSymbols(irFunction)
+        }
+    }
     return IrValueParameterImpl(
         startOffset, endOffset, origin, symbol,
         name, index, type, varargElementType, isCrossinline, isNoinline
