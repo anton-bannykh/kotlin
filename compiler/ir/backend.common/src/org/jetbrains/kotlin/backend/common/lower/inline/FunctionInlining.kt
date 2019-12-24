@@ -32,7 +32,14 @@ import org.jetbrains.kotlin.ir.visitors.IrElementVisitor
 import org.jetbrains.kotlin.ir.visitors.transformChildrenVoid
 import org.jetbrains.kotlin.util.OperatorNameConventions
 
-class FunctionInlining(val context: CommonBackendContext) : IrElementTransformerVoidWithContext() {
+class FunctionInlining(val context: CommonBackendContext) : IrElementTransformerVoidWithContext(), BodyLoweringPass {
+
+    override fun lower(irBody: IrBody, container: IrDeclaration) {
+        container.accept(this, null)
+
+        //TODO fix this
+        container.patchDeclarationParents(container.parent)
+    }
 
     fun inline(irModule: IrModuleFragment) = irModule.accept(this, data = null)
 
@@ -52,7 +59,8 @@ class FunctionInlining(val context: CommonBackendContext) : IrElementTransformer
 
         val actualCallee = getFunctionDeclaration(callee.symbol)
 
-        val parent = allScopes.map { it.irElement }.filterIsInstance<IrDeclarationParent>().lastOrNull()
+        val parent = allScopes.map { it.irElement }.filterIsInstance<IrDeclarationParent>().lastOrNull() ?:
+        allScopes.map { it.irElement }.filterIsInstance<IrDeclaration>().lastOrNull()?.parent
 
         val inliner = Inliner(expression, actualCallee, currentScope!!, parent, context)
         return inliner.inline()
