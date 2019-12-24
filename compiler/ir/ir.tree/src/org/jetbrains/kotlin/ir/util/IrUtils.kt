@@ -610,6 +610,15 @@ val IrDeclaration.file: IrFile
         }
     }
 
+val IrDeclaration.classOrNull: IrClass?
+    get() = parent.let {
+        when (it) {
+            is IrClass -> it
+            is IrDeclaration -> it.classOrNull
+            else -> null
+        }
+    }
+
 val IrFunction.allTypeParameters: List<IrTypeParameter>
     get() = if (this is IrConstructor)
         parentAsClass.typeParameters + typeParameters
