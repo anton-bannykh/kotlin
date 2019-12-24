@@ -280,6 +280,12 @@ private val inlineClassLoweringPhase = makeCustomWasmModulePhase(
 //    description = "Insert box/unbox intrinsics"
 //)
 
+private val createFieldInitializerFunction = makeWasmModulePhase(
+    ::CreateIrFieldInitializerFunction,
+    name = "CreateIrFieldInitializerFunction",
+    description = "Create initializer functions for fields"
+)
+
 private val blockDecomposerLoweringPhase = makeCustomWasmModulePhase(
     { context, module ->
         WasmBlockDecomposerLowering(context).lower(module)
@@ -428,6 +434,7 @@ val wasmPhases = namedIrModulePhase<WasmBackendContext>(
 //            TODO: Commonize box/unbox intrinsics
 //            autoboxingTransformerPhase then
 
+            createFieldInitializerFunction then
             blockDecomposerLoweringPhase then
 
 //            TODO: Reimplement
