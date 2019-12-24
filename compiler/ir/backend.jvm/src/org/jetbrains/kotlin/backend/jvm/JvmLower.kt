@@ -175,11 +175,18 @@ private val defaultArgumentStubPhase = makeIrFilePhase(
     prerequisite = setOf(localDeclarationsPhase)
 )
 
+private val defaultArgumentPatchOverridesPhase = makeIrFilePhase(
+    { context : JvmBackendContext -> DefaultParameterPatchOverridenSymbolsLowering(context, false, false) },
+    name = "DefaultArgumentsPatchOverrides",
+    description = "Patch overrides for fake override dispatch functions",
+    prerequisite = setOf(defaultArgumentStubPhase)
+)
+
 private val defaultArgumentInjectorPhase = makeIrFilePhase(
     ::JvmDefaultParameterInjector,
     name = "DefaultParameterInjector",
     description = "Transform calls with default arguments into calls to stubs",
-    prerequisite = setOf(defaultArgumentStubPhase, callableReferencePhase, inlineCallableReferenceToLambdaPhase)
+    prerequisite = setOf(defaultArgumentPatchOverridesPhase, callableReferencePhase, inlineCallableReferenceToLambdaPhase)
 )
 
 private val interfacePhase = makeIrFilePhase(
@@ -308,6 +315,7 @@ private val jvmFilePhases =
         jvmStringConcatenationLowering then
 
         defaultArgumentStubPhase then
+        defaultArgumentPatchOverridesPhase then
         defaultArgumentInjectorPhase then
 
         interfacePhase then

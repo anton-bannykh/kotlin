@@ -184,6 +184,13 @@ private val defaultArgumentStubGeneratorPhase = makeWasmModulePhase(
     description = "Generate synthetic stubs for functions with default parameter values"
 )
 
+private val defaultArgumentPatchOverridesPhase = makeWasmModulePhase(
+    ::DefaultParameterPatchOverridenSymbolsLowering,
+    name = "DefaultArgumentsPatchOverrides",
+    description = "Patch overrides for fake override dispatch functions",
+    prerequisite = setOf(defaultArgumentStubGeneratorPhase)
+)
+
 private val defaultParameterInjectorPhase = makeWasmModulePhase(
     { context -> DefaultParameterInjector(context, skipExternalMethods = true) },
     name = "DefaultParameterInjector",
@@ -388,6 +395,7 @@ val wasmPhases = namedIrModulePhase<WasmBackendContext>(
 //            callableReferenceLoweringPhase then
 
             defaultArgumentStubGeneratorPhase then
+            defaultArgumentPatchOverridesPhase then
             defaultParameterInjectorPhase then
             defaultParameterCleanerPhase then
 

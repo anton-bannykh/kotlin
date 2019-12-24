@@ -32,7 +32,9 @@ abstract class Ir<out T : CommonBackendContext>(val context: T, val irModule: Ir
 
     abstract val symbols: Symbols<T>
 
+    // TODO hide the maps or use a BiMap
     val defaultParameterDeclarationsCache = mutableMapOf<IrFunction, IrFunction>()
+    val defaultParameterDeclarationsReversedCache = mutableMapOf<IrFunction, IrFunction>()
 
     // If irType is an inline class type, return the underlying type according to the
     // unfolding rules of the current backend. Otherwise, returns null.

@@ -10,7 +10,6 @@ import org.jetbrains.kotlin.backend.common.descriptors.*
 import org.jetbrains.kotlin.backend.common.ir.*
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.descriptors.Visibilities
-import org.jetbrains.kotlin.descriptors.Visibility
 import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
 import org.jetbrains.kotlin.ir.builders.*
 import org.jetbrains.kotlin.ir.builders.declarations.addValueParameter
@@ -34,20 +33,23 @@ open class DefaultArgumentStubGenerator(
     open val context: CommonBackendContext,
     private val skipInlineMethods: Boolean = true,
     private val skipExternalMethods: Boolean = false
-) : DeclarationContainerLoweringPass {
+) : DeclarationTransformer {
 
-    override fun lower(irDeclarationContainer: IrDeclarationContainer) {
-        irDeclarationContainer.transformDeclarationsFlat { memberDeclaration ->
-            if (memberDeclaration is IrFunction)
-                lower(memberDeclaration)
-            else
-                null
-        }
+    override fun lower(irFile: IrFile) {
+        runPostfix(true).toFileLoweringPass().lower(irFile)
     }
 
-    private fun lower(irFunction: IrFunction): List<IrFunction> {
+    override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
+        if (declaration is IrFunction) {
+            return lower(declaration)
+        }
+
+        return null
+    }
+
+    private fun lower(irFunction: IrFunction): List<IrFunction>? {
         val newIrFunction = irFunction.generateDefaultsFunction(context, skipInlineMethods, skipExternalMethods)
-            ?: return listOf(irFunction)
+            ?: return null
         if (newIrFunction.origin == IrDeclarationOrigin.FAKE_OVERRIDE) {
             return listOf(irFunction, newIrFunction)
         }
@@ -185,6 +187,30 @@ open class DefaultArgumentStubGenerator(
     private fun log(msg: () -> String) = context.log { "DEFAULT-REPLACER: ${msg()}" }
 }
 
+private fun IrFunction.findBaseFunctionWithDefaultArguments(skipInlineMethods: Boolean, skipExternalMethods: Boolean): IrFunction? {
+
+    val visited = mutableSetOf<IrFunction>()
+
+    fun IrFunction.dfsImpl(): IrFunction? {
+        visited += this
+
+        if (isInline && skipInlineMethods) return null
+        if (skipExternalMethods && isExternalOrInheritedFromExternal()) return null
+        if (valueParameters.any { it.defaultValue != null }) return this
+
+        if (this !is IrSimpleFunction) return null
+
+        overriddenSymbols.forEach {
+            val base = it.owner
+            if (base !in visited) base.dfsImpl()?.let { return it }
+        }
+
+        return null
+    }
+
+    return dfsImpl()
+}
+
 val DEFAULT_DISPATCH_CALL = object : IrStatementOriginImpl("DEFAULT_DISPATCH_CALL") {}
 
 open class DefaultParameterInjector(
@@ -192,10 +218,6 @@ open class DefaultParameterInjector(
     private val skipInline: Boolean = true,
     private val skipExternalMethods: Boolean = false
 ) : IrElementTransformerVoid(), BodyLoweringPass, FileLoweringPass {
-
-    override fun lower(irFile: IrFile) {
-        irFile.transformChildrenVoid(this)
-    }
 
     override fun lower(irBody: IrBody, container: IrDeclaration) {
         irBody.transformChildrenVoid(this)
@@ -269,12 +291,12 @@ open class DefaultParameterInjector(
         val endOffset = expression.endOffset
         val declaration = expression.symbol.owner
 
-        val stubOverride = declaration.generateDefaultsFunction(context, skipInline, skipExternalMethods) ?: return null
-        // We *have* to resolve the fake override here since on the JVM, a default stub for a function implemented
+        // We *have* to find the actual function here since on the JVM, a default stub for a function implemented
         // in an interface does not leave an abstract method after being moved to DefaultImpls (see InterfaceLowering).
         // Calling the fake override on an implementation of that interface would then result in a call to a method
         // that does not actually exist as DefaultImpls is not part of the inheritance hierarchy.
-        val stubFunction = if (stubOverride is IrSimpleFunction) stubOverride.resolveFakeOverride()!! else stubOverride
+        val stubFunction = declaration.findBaseFunctionWithDefaultArguments(skipInline, skipExternalMethods)?.generateDefaultsFunction(context, skipInline, skipExternalMethods) ?: return null
+
         log { "$declaration -> $stubFunction" }
 
         val realArgumentsNumber = declaration.valueParameters.size
@@ -319,11 +341,32 @@ open class DefaultParameterInjector(
     private fun log(msg: () -> String) = context.log { "DEFAULT-INJECTOR: ${msg()}" }
 }
 
-class DefaultParameterCleaner constructor(val context: CommonBackendContext) : FunctionLoweringPass {
-    override fun lower(irFunction: IrFunction) {
-        if (!context.scriptMode) {
-            irFunction.valueParameters.forEach { it.defaultValue = null }
+class DefaultParameterCleaner constructor(val context: CommonBackendContext) : DeclarationTransformer {
+    override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
+        if (declaration is IrValueParameter && !context.scriptMode) {
+            declaration.defaultValue = null
         }
+        return null
+    }
+}
+
+class DefaultParameterPatchOverridenSymbolsLowering(
+    val context: CommonBackendContext,
+    private val skipInlineMethods: Boolean = true,
+    private val skipExternalMethods: Boolean = false
+) : DeclarationTransformer {
+    override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
+        if (declaration is IrSimpleFunction) {
+            (context.ir.defaultParameterDeclarationsReversedCache[declaration] as? IrSimpleFunction)?.run {
+                overriddenSymbols.forEach {
+                    it.owner.generateDefaultsFunction(context, skipInlineMethods, skipExternalMethods)?.let { defaultsBaseFun ->
+                        declaration.overriddenSymbols.add((defaultsBaseFun as IrSimpleFunction).symbol)
+                    }
+                }
+            }
+        }
+
+        return null
     }
 }
 
@@ -337,16 +380,14 @@ private fun IrFunction.generateDefaultsFunction(
     valueParameters.any { it.defaultValue != null } ->
         generateDefaultsFunctionImpl(context, IrDeclarationOrigin.FUNCTION_FOR_DEFAULT_PARAMETER).also {
             context.ir.defaultParameterDeclarationsCache[this] = it
+            context.ir.defaultParameterDeclarationsReversedCache[it] = this
         }
     this is IrSimpleFunction -> {
         // If this is an override of a function with default arguments, produce a fake override of a default stub.
-        val overriddenStubs = overriddenSymbols.mapNotNull {
-            it.owner.generateDefaultsFunction(context, skipInlineMethods, skipExternalMethods)?.symbol as IrSimpleFunctionSymbol?
-        }
-        if (overriddenStubs.isNotEmpty())
+        if (findBaseFunctionWithDefaultArguments(skipInlineMethods, skipExternalMethods) != null)
             generateDefaultsFunctionImpl(context, IrDeclarationOrigin.FAKE_OVERRIDE).also {
-                (it as IrSimpleFunction).overriddenSymbols.addAll(overriddenStubs)
                 context.ir.defaultParameterDeclarationsCache[this] = it
+                context.ir.defaultParameterDeclarationsReversedCache[it] = this
             }
         else
             null
