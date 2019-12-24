@@ -367,6 +367,12 @@ private val autoboxingTransformerPhase = makeJsModulePhase(
     description = "Insert box/unbox intrinsics"
 )
 
+private val createFieldInitializerFunction = makeJsModulePhase(
+    ::CreateIrFieldInitializerFunction,
+    name = "CreateIrFieldInitializerFunction",
+    description = "Create initializer functions for fields"
+)
+
 private val blockDecomposerLoweringPhase = makeCustomJsModulePhase(
     { context, module ->
         JsBlockDecomposerLowering(context).lower(module)
@@ -374,7 +380,7 @@ private val blockDecomposerLoweringPhase = makeCustomJsModulePhase(
     },
     name = "BlockDecomposerLowering",
     description = "Transform statement-like-expression nodes into pure-statement to make it easily transform into JS",
-    prerequisite = setOf(typeOperatorLoweringPhase, suspendFunctionsLoweringPhase)
+    prerequisite = setOf(typeOperatorLoweringPhase, suspendFunctionsLoweringPhase, createFieldInitializerFunction)
 )
 
 private val classReferenceLoweringPhase = makeJsModulePhase(
@@ -479,6 +485,7 @@ val jsPhases = namedIrModulePhase(
             classReferenceLoweringPhase then
             inlineClassLoweringPhase then
             autoboxingTransformerPhase then
+            createFieldInitializerFunction then
             blockDecomposerLoweringPhase then
             primitiveCompanionLoweringPhase then
             constLoweringPhase then
