@@ -422,11 +422,8 @@ private val createFieldInitializerFunction = makeJsModulePhase(
     description = "Create initializer functions for fields"
 )
 
-private val blockDecomposerLoweringPhase = makeCustomJsModulePhase(
-    { context, module ->
-        JsBlockDecomposerLowering(context).lower(module)
-        module.patchDeclarationParents()
-    },
+private val blockDecomposerLoweringPhase = makeJsModulePhase(
+    ::JsBlockDecomposerLowering,
     name = "BlockDecomposerLowering",
     description = "Transform statement-like-expression nodes into pure-statement to make it easily transform into JS",
     prerequisite = setOf(typeOperatorLoweringPhase, suspendFunctionsLoweringPhase, createFieldInitializerFunction)
