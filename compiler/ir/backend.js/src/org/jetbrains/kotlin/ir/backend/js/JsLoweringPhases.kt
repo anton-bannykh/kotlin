@@ -148,10 +148,38 @@ private val enumClassConstructorLoweringPhase = makeJsModulePhase(
     description = "Transform Enum Class into regular Class"
 )
 
-private val enumClassLoweringPhase = makeJsModulePhase(
-    ::EnumClassLowering,
-    name = "EnumClassLowering",
-    description = "Transform Enum Class into regular Class",
+private val enumClassConstructorBodyLoweringPhase = makeJsModulePhase(
+    ::EnumClassConstructorBodyTransformer,
+    name = "EnumClassConstructorBodyLowering",
+    description = "Transform Enum Class into regular Class"
+)
+
+
+private val enumEntryInstancesLoweringPhase = makeJsModulePhase(
+    ::EnumEntryInstancesLowering,
+    name = "EnumEntryInstancesLowering",
+    description = "Create instance variable for each enum entry initialized with `null`",
+    prerequisite = setOf(enumClassConstructorLoweringPhase)
+)
+
+private val enumClassCreateInitializerLoweringPhase = makeJsModulePhase(
+    ::EnumClassCreateInitializerLowering,
+    name = "EnumClassCreateInitializerLowering",
+    description = "Create initializer for enum entries",
+    prerequisite = setOf(enumClassConstructorLoweringPhase)
+)
+
+private val enumEntryCreateGetInstancesFunsLoweringPhase = makeJsModulePhase(
+    ::EnumEntryCreateGetInstancesFunsLowering,
+    name = "EnumEntryCreateGetInstancesFunsLowering",
+    description = "Create enumEntry_getInstance functions",
+    prerequisite = setOf(enumClassConstructorLoweringPhase)
+)
+
+private val enumSyntheticFunsLoweringPhase = makeJsModulePhase(
+    ::EnumSyntheticFunctionsLowering,
+    name = "EnumSyntheticFunctionsLowering",
+    description = "Implement `valueOf` and `values`",
     prerequisite = setOf(enumClassConstructorLoweringPhase)
 )
 
@@ -159,7 +187,14 @@ private val enumUsageLoweringPhase = makeJsModulePhase(
     ::EnumUsageLowering,
     name = "EnumUsageLowering",
     description = "Replace enum access with invocation of corresponding function",
-    prerequisite = setOf(enumClassLoweringPhase)
+    prerequisite = setOf(enumEntryCreateGetInstancesFunsLoweringPhase)
+)
+
+private val enumEntryRemovalLoweringPhase = makeJsModulePhase(
+    ::EnumClassRemoveEntriesLowering,
+    name = "EnumEntryRemovalLowering",
+    description = "Replace enum entry with corresponding class",
+    prerequisite = setOf(enumUsageLoweringPhase)
 )
 
 private val sharedVariablesLoweringPhase = makeJsModulePhase(
@@ -463,6 +498,7 @@ val jsPhases = namedIrModulePhase(
             lateinitUsageLoweringPhase then
             tailrecLoweringPhase then
             enumClassConstructorLoweringPhase then
+            enumClassConstructorBodyLoweringPhase then
             sharedVariablesLoweringPhase then
             localDelegatedPropertiesLoweringPhase then
             localDeclarationsLoweringPhase then
@@ -477,8 +513,12 @@ val jsPhases = namedIrModulePhase(
             initializersLoweringPhase then
             initializersCleanupLoweringPhase then
             // Common prefix ends
-            enumClassLoweringPhase then
+            enumEntryInstancesLoweringPhase then
+            enumClassCreateInitializerLoweringPhase then
+            enumEntryCreateGetInstancesFunsLoweringPhase then
+            enumSyntheticFunsLoweringPhase then
             enumUsageLoweringPhase then
+            enumEntryRemovalLoweringPhase then
             suspendFunctionsLoweringPhase then
             returnableBlockLoweringPhase then
             forLoopsLoweringPhase then
