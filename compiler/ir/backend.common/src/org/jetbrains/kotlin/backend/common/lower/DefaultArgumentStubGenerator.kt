@@ -217,7 +217,7 @@ open class DefaultParameterInjector(
     open val context: CommonBackendContext,
     private val skipInline: Boolean = true,
     private val skipExternalMethods: Boolean = false
-) : IrElementTransformerVoid(), BodyLoweringPass, FileLoweringPass {
+) : IrElementTransformerVoid(), BodyLoweringPass {
 
     override fun lower(irBody: IrBody, container: IrDeclaration) {
         irBody.transformChildrenVoid(this)
