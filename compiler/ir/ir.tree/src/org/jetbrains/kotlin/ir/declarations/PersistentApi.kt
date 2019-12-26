@@ -5,6 +5,7 @@
 
 package org.jetbrains.kotlin.ir.declarations
 
+import org.jetbrains.kotlin.ir.declarations.impl.IrBodyBase
 import org.jetbrains.kotlin.ir.declarations.impl.IrDeclarationBase
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import kotlin.reflect.KMutableProperty0
@@ -20,7 +21,7 @@ interface StageController {
 
     fun lazyLower(file: IrFile) {}
 
-//    fun lowerBody(body: IrBodyBase<*>) {}
+    fun lowerBody(body: IrBodyBase<*>) {}
 
     fun <T> withStage(stage: Int, fn: () -> T): T = fn()
 
@@ -30,7 +31,7 @@ interface StageController {
 
     fun <T> withInitialIr(block: () -> T): T
 
-//    fun register(declaration: IrDeclarationBase<*>) {}
+    fun register(declaration: IrDeclarationBase<*>) {}
 
     fun <K: IrDeclaration, V> getUserdata(declaration: IrDeclaration): MutableMap<MappingKey<K, V>, V>
 }
