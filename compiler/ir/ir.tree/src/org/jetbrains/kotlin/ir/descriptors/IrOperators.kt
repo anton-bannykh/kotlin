@@ -8,8 +8,6 @@ package org.jetbrains.kotlin.ir.descriptors
 import org.jetbrains.kotlin.descriptors.*
 import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
 import org.jetbrains.kotlin.ir.declarations.*
-import org.jetbrains.kotlin.ir.declarations.impl.IrDeclarationBase
-import org.jetbrains.kotlin.ir.declarations.impl.IrFunctionBase
 import org.jetbrains.kotlin.ir.expressions.IrBody
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.expressions.IrExpressionBody
@@ -18,15 +16,42 @@ import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
 import org.jetbrains.kotlin.ir.symbols.IrTypeParameterSymbol
 import org.jetbrains.kotlin.ir.symbols.IrValueParameterSymbol
 import org.jetbrains.kotlin.ir.types.IrType
-import org.jetbrains.kotlin.ir.util.transform
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformer
 import org.jetbrains.kotlin.ir.visitors.IrElementVisitor
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.types.Variance
 import org.jetbrains.kotlin.utils.SmartList
+import kotlin.reflect.KProperty
 
 interface IrBuiltinWithMangle : IrDeclaration, IrSymbolOwner {
     val mangle: String
+}
+
+abstract class IrBuiltInOperatorBase : IrDeclaration {
+    override val startOffset: Int get() = UNDEFINED_OFFSET
+    override val endOffset: Int get() = UNDEFINED_OFFSET
+
+    override var origin: IrDeclarationOrigin
+        get() = IrBuiltIns.BUILTIN_OPERATOR
+        set(_) {}
+
+    private var _parent: IrDeclarationParent? = null
+    override var parent: IrDeclarationParent
+        get() = _parent
+            ?: throw UninitializedPropertyAccessException("Parent not initialized: $this")
+        set(v) {
+            _parent = v
+        }
+
+    override val annotations: MutableList<IrConstructorCall> = SmartList()
+    override val metadata: MetadataSource? get() = null
+}
+
+private class NullValueDelegate<T> {
+    operator fun getValue(thisRef: Any?, property: KProperty<*>): T? = null
+    operator fun setValue(thisRef: Any?, property: KProperty<*>, v: T?) {
+        error("IrBuiltInOperators are not supposed to be mutated")
+    }
 }
 
 class IrBuiltInOperator(
@@ -37,14 +62,8 @@ class IrBuiltInOperator(
 ) :
     IrSimpleFunction,
     IrBuiltinWithMangle,
-    IrFunction {
-
-    override val startOffset: Int get() = UNDEFINED_OFFSET
-    override val endOffset: Int get() = UNDEFINED_OFFSET
-
-    override var origin: IrDeclarationOrigin
-        get() = IrBuiltIns.BUILTIN_OPERATOR
-        set(_) {}
+    IrFunction,
+    IrBuiltInOperatorBase() {
 
     override val visibility: Visibility get() = Visibilities.PUBLIC
 
@@ -52,40 +71,22 @@ class IrBuiltInOperator(
     override val isExternal: Boolean get() = false
     override val isExpect: Boolean get() = false
 
-    override var dispatchReceiverParameter: IrValueParameter?
-        get() = null
-        set(_) {}
+    override var dispatchReceiverParameter: IrValueParameter? by NullValueDelegate()
 
-    override var extensionReceiverParameter: IrValueParameter?
-        get() = null
-        set(_) {}
+    override var extensionReceiverParameter: IrValueParameter? by NullValueDelegate()
 
-    override var body: IrBody?
-        get() = null
-        set(_) {}
-
-    override val metadata: MetadataSource? get() = null
+    override var body: IrBody? by NullValueDelegate()
 
     override val valueParameters: MutableList<IrValueParameter> = SmartList()
     override val typeParameters: MutableList<IrTypeParameter> = SmartList()
-    override val annotations: MutableList<IrConstructorCall> = SmartList()
-
-    private var _parent: IrDeclarationParent? = null
-    override var parent: IrDeclarationParent
-        get() = _parent
-            ?: throw UninitializedPropertyAccessException("Parent not initialized: $this")
-        set(v) {
-            _parent = v
-        }
 
     override val modality get() = Modality.FINAL
     override val isTailrec get() = false
     override val isSuspend get() = false
     override val isFakeOverride get() = false
     override val isOperator: Boolean get() = false
-    override var correspondingPropertySymbol: IrPropertySymbol?
-        get() = null
-        set(_) {}
+    override var correspondingPropertySymbol: IrPropertySymbol? by NullValueDelegate()
+
     override val descriptor: FunctionDescriptor get() = symbol.descriptor
 
     override fun <R, D> accept(visitor: IrElementVisitor<R, D>, data: D): R {
@@ -100,40 +101,23 @@ class IrBuiltInOperator(
     }
 
     override fun <D> acceptChildren(visitor: IrElementVisitor<Unit, D>, data: D) {
+        // Do nothing
     }
 
     override fun <D> transformChildren(transformer: IrElementTransformer<D>, data: D) {
+        // Do nothing
     }
 }
 
 class IrBuiltInOperatorValueParameter(override val symbol: IrValueParameterSymbol, override val index: Int, override val type: IrType) :
-    IrValueParameter {
-
-    override val startOffset: Int get() = UNDEFINED_OFFSET
-    override val endOffset: Int get() = UNDEFINED_OFFSET
-
-    override var origin: IrDeclarationOrigin
-        get() = IrBuiltIns.BUILTIN_OPERATOR
-        set(_) {}
-
-    private var _parent: IrDeclarationParent? = null
-    override var parent: IrDeclarationParent
-        get() = _parent
-            ?: throw UninitializedPropertyAccessException("Parent not initialized: $this")
-        set(v) {
-            _parent = v
-        }
-
-    override val annotations: MutableList<IrConstructorCall> = SmartList()
-    override val metadata: MetadataSource? get() = null
+    IrValueParameter, IrBuiltInOperatorBase() {
 
     override val descriptor: ParameterDescriptor get() = symbol.descriptor
     override val varargElementType: IrType? get() = null
     override val isCrossinline: Boolean get() = false
     override val isNoinline: Boolean get() = false
-    override var defaultValue: IrExpressionBody?
-        get() = null
-        set(_) {}
+    override var defaultValue: IrExpressionBody? by NullValueDelegate()
+
     override val name: Name = Name.identifier("arg$index")
 
     override fun <D> transform(transformer: IrElementTransformer<D>, data: D) =
@@ -153,25 +137,7 @@ class IrBuiltInOperatorTypeParameter(
     override val variance: Variance,
     override val index: Int,
     override val isReified: Boolean
-) : IrTypeParameter {
-
-    override val startOffset: Int get() = UNDEFINED_OFFSET
-    override val endOffset: Int get() = UNDEFINED_OFFSET
-
-    override var origin: IrDeclarationOrigin
-        get() = IrBuiltIns.BUILTIN_OPERATOR
-        set(_) {}
-
-    private var _parent: IrDeclarationParent? = null
-    override var parent: IrDeclarationParent
-        get() = _parent
-            ?: throw UninitializedPropertyAccessException("Parent not initialized: $this")
-        set(v) {
-            _parent = v
-        }
-
-    override val annotations: MutableList<IrConstructorCall> = SmartList()
-    override val metadata: MetadataSource? get() = null
+) : IrTypeParameter, IrBuiltInOperatorBase() {
 
     override val descriptor: TypeParameterDescriptor get() = symbol.descriptor
     override val superTypes: MutableList<IrType> = SmartList()
