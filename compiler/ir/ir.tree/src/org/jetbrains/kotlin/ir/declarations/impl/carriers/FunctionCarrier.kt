@@ -5,6 +5,7 @@
 
 package org.jetbrains.kotlin.ir.declarations.impl.carriers
 
+import org.jetbrains.kotlin.descriptors.Visibility
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
@@ -24,6 +25,7 @@ interface FunctionCarrier : FunctionBaseCarrier<FunctionCarrier> {
                 extensionReceiverParameterField === other.extensionReceiverParameterField &&
                 bodyField === other.bodyField &&
                 metadataField === other.metadataField &&
+                visibilityField === other.visibilityField &&
                 correspondingPropertySymbolField === other.correspondingPropertySymbolField
     }
 
@@ -36,6 +38,7 @@ interface FunctionCarrier : FunctionBaseCarrier<FunctionCarrier> {
             extensionReceiverParameterField,
             bodyField,
             metadataField,
+            visibilityField,
             correspondingPropertySymbolField
         )
     }
@@ -49,5 +52,6 @@ class FunctionCarrierImpl(
     override var extensionReceiverParameterField: IrValueParameter?,
     override var bodyField: IrBody?,
     override var metadataField: MetadataSource?,
+    override var visibilityField: Visibility,
     override var correspondingPropertySymbolField: IrPropertySymbol?
 ) : FunctionCarrier

@@ -33,7 +33,7 @@ abstract class IrFunctionBase<T : FunctionBaseCarrier<T>>(
     endOffset: Int,
     origin: IrDeclarationOrigin,
     override val name: Name,
-    override var visibility: Visibility,
+    visibility: Visibility,
     override val isInline: Boolean,
     override val isExternal: Boolean,
     override val isExpect: Boolean,
@@ -105,6 +105,16 @@ abstract class IrFunctionBase<T : FunctionBaseCarrier<T>>(
         set(v) {
             if (metadata !== v) {
                 setCarrier().metadataField = v
+            }
+        }
+
+    override var visibilityField: Visibility = visibility
+
+    override var visibility: Visibility
+        get() = getCarrier().visibilityField
+        set(v) {
+            if (visibility !== v) {
+                setCarrier().visibilityField = v
             }
         }
 

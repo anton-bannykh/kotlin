@@ -39,7 +39,7 @@ class IrClassImpl(
     override val name: Name,
     override val kind: ClassKind,
     visibility: Visibility,
-    override var modality: Modality, // TODO persist
+    modality: Modality,
     override val isCompanion: Boolean,
     override val isInner: Boolean,
     override val isData: Boolean,
@@ -113,7 +113,25 @@ class IrClassImpl(
             }
         }
 
-    override var attributeOwnerId: IrAttributeContainer = this
+    override var modalityField: Modality = modality
+
+    override var modality: Modality
+        get() = getCarrier().modalityField
+        set(v) {
+            if (modality !== v) {
+                setCarrier().modalityField = v
+            }
+        }
+
+    override var attributeOwnerIdField: IrAttributeContainer = this
+
+    override var attributeOwnerId: IrAttributeContainer
+        get() = getCarrier().attributeOwnerIdField
+        set(v) {
+            if (attributeOwnerId !== v) {
+                setCarrier().attributeOwnerIdField = v
+            }
+        }
 
     override fun <R, D> accept(visitor: IrElementVisitor<R, D>, data: D): R =
         visitor.visitClass(this, data)

@@ -5,23 +5,25 @@
 
 package org.jetbrains.kotlin.ir.declarations.impl.carriers
 
+import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.descriptors.Visibility
-import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
-import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
-import org.jetbrains.kotlin.ir.declarations.IrValueParameter
-import org.jetbrains.kotlin.ir.declarations.MetadataSource
+import org.jetbrains.kotlin.ir.declarations.*
 
 interface ClassCarrier : DeclarationCarrier<ClassCarrier> {
     var thisReceiverField: IrValueParameter?
     var metadataField: MetadataSource?
     var visibilityField: Visibility
+    var modalityField: Modality
+    var attributeOwnerIdField: IrAttributeContainer
 
     override fun eq(other: ClassCarrier): Boolean {
         return parentField === other.parentField &&
                 originField === other.originField &&
                 thisReceiverField === other.thisReceiverField &&
                 metadataField === other.metadataField &&
-                visibilityField === other.visibilityField
+                visibilityField === other.visibilityField &&
+                modalityField === other.modalityField &&
+                attributeOwnerIdField === other.attributeOwnerIdField
     }
 
     override fun clone(): ClassCarrier {
@@ -30,7 +32,9 @@ interface ClassCarrier : DeclarationCarrier<ClassCarrier> {
             originField,
             thisReceiverField,
             metadataField,
-            visibilityField
+            visibilityField,
+            modalityField,
+            attributeOwnerIdField
         )
     }
 }
@@ -40,5 +44,7 @@ class ClassCarrierImpl(
     override var originField: IrDeclarationOrigin,
     override var thisReceiverField: IrValueParameter?,
     override var metadataField: MetadataSource?,
-    override var visibilityField: Visibility
+    override var visibilityField: Visibility,
+    override var modalityField: Modality,
+    override var attributeOwnerIdField: IrAttributeContainer
 ) : ClassCarrier

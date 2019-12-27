@@ -5,6 +5,7 @@
 
 package org.jetbrains.kotlin.ir.declarations.impl.carriers
 
+import org.jetbrains.kotlin.descriptors.Visibility
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
@@ -21,7 +22,8 @@ interface ConstructorCarrier : FunctionBaseCarrier<ConstructorCarrier> {
                 dispatchReceiverParameterField === other.dispatchReceiverParameterField &&
                 extensionReceiverParameterField === other.extensionReceiverParameterField &&
                 bodyField === other.bodyField &&
-                metadataField === other.metadataField
+                metadataField === other.metadataField &&
+                visibilityField === other.visibilityField
     }
 
     override fun clone(): ConstructorCarrier {
@@ -32,7 +34,8 @@ interface ConstructorCarrier : FunctionBaseCarrier<ConstructorCarrier> {
             dispatchReceiverParameterField,
             extensionReceiverParameterField,
             bodyField,
-            metadataField
+            metadataField,
+            visibilityField
         )
     }
 }
@@ -44,5 +47,6 @@ class ConstructorCarrierImpl(
     override var dispatchReceiverParameterField: IrValueParameter?,
     override var extensionReceiverParameterField: IrValueParameter?,
     override var bodyField: IrBody?,
-    override var metadataField: MetadataSource?
+    override var metadataField: MetadataSource?,
+    override var visibilityField: Visibility
 ) : ConstructorCarrier
