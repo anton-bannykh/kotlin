@@ -5,11 +5,14 @@
 
 package org.jetbrains.kotlin.ir.backend.js
 
-import org.jetbrains.kotlin.backend.common.*
+import org.jetbrains.kotlin.backend.common.ClassLoweringPass
+import org.jetbrains.kotlin.backend.common.DeclarationContainerLoweringPass
+import org.jetbrains.kotlin.backend.common.FileLoweringPass
 import org.jetbrains.kotlin.backend.common.lower.*
 import org.jetbrains.kotlin.backend.common.lower.inline.FunctionInlining
 import org.jetbrains.kotlin.backend.common.lower.loops.ForLoopsLowering
 import org.jetbrains.kotlin.backend.common.phaser.*
+import org.jetbrains.kotlin.backend.common.runOnFilePostfix
 import org.jetbrains.kotlin.ir.backend.js.lower.*
 import org.jetbrains.kotlin.ir.backend.js.lower.calls.CallsLowering
 import org.jetbrains.kotlin.ir.backend.js.lower.coroutines.JsSuspendFunctionsLowering
@@ -63,6 +66,12 @@ private val validateIrAfterLowering = makeCustomJsModulePhase(
     { context, module -> validationCallback(context, module) },
     name = "ValidateIrAfterLowering",
     description = "Validate IR after lowering"
+)
+
+private val moveBodilessDeclarationsToSeparatePlacePhase = makeJsModulePhase(
+    ::MoveBodilessDeclarationsToSeparatePlaceLowering,
+    name = "MoveBodilessDeclarationsToSeparatePlaceLowering",
+    description = "Move bodiless declarations to a separate place"
 )
 
 private val expectDeclarationsRemovingPhase = makeJsModulePhase(
@@ -160,6 +169,14 @@ private val enumEntryInstancesLoweringPhase = makeJsModulePhase(
     description = "Create instance variable for each enum entry initialized with `null`",
     prerequisite = setOf(enumClassConstructorLoweringPhase)
 )
+
+private val enumEntryInstancesBodyLoweringPhase = makeJsModulePhase(
+    ::EnumEntryInstancesBodyLowering,
+    name = "EnumEntryInstancesBodyLowering",
+    description = "Insert enum entry field initialization into correxposnding class constructors",
+    prerequisite = setOf(enumEntryInstancesLoweringPhase)
+)
+
 
 private val enumClassCreateInitializerLoweringPhase = makeJsModulePhase(
     ::EnumClassCreateInitializerLowering,
@@ -350,7 +367,7 @@ private val delegateToPrimaryConstructorLoweringPhase = makeJsModulePhase(
 )
 
 private val annotationConstructorLowering = makeJsModulePhase(
-    ::AnnotationConstructorLowering,
+    ::AnnotationConstructorLowering, // TODO
     name = "AnnotationConstructorLowering",
     description = "Generate annotation constructor body"
 )
@@ -459,7 +476,7 @@ private val callsLoweringPhase = makeJsModulePhase(
 )
 
 private val testGenerationPhase = makeJsModulePhase(
-    ::TestGenerator,
+    ::TestGenerator, // TODO
     name = "TestGenerationLowering",
     description = "Generate invocations to kotlin.test suite and test functions"
 )
@@ -482,75 +499,81 @@ private val objectUsageLoweringPhase = makeJsModulePhase(
     description = "Transform IrGetObjectValue into instance generator call"
 )
 
+val phaseList = listOf(
+    moveBodilessDeclarationsToSeparatePlacePhase,
+    scriptRemoveReceiverLowering,
+    validateIrBeforeLowering,
+    testGenerationPhase,
+    expectDeclarationsRemovingPhase,
+    stripTypeAliasDeclarationsPhase,
+    arrayConstructorPhase,
+    functionInliningPhase,
+    copyInlineFunctionBodyLoweringPhase,
+    createScriptFunctionsPhase,
+    provisionalFunctionExpressionPhase,
+    lateinitNullableFieldsPhase,
+    lateinitDeclarationLoweringPhase,
+    lateinitUsageLoweringPhase,
+    tailrecLoweringPhase,
+    enumClassConstructorLoweringPhase,
+    enumClassConstructorBodyLoweringPhase,
+    sharedVariablesLoweringPhase,
+    localDelegatedPropertiesLoweringPhase,
+    localDeclarationsLoweringPhase,
+    localClassExtractionPhase,
+    innerClassesLoweringPhase,
+    innerClassesMemberBodyLoweringPhase,
+    innerClassConstructorCallsLoweringPhase,
+    propertiesLoweringPhase,
+    primaryConstructorLoweringPhase,
+    delegateToPrimaryConstructorLoweringPhase,
+    annotationConstructorLowering,
+    initializersLoweringPhase,
+    initializersCleanupLoweringPhase,
+    // Common prefix ends
+    enumEntryInstancesLoweringPhase,
+    enumEntryInstancesBodyLoweringPhase,
+    enumClassCreateInitializerLoweringPhase,
+    enumEntryCreateGetInstancesFunsLoweringPhase,
+    enumSyntheticFunsLoweringPhase,
+    enumUsageLoweringPhase,
+    enumEntryRemovalLoweringPhase,
+    suspendFunctionsLoweringPhase,
+    suspendLambdasRemovalLoweringPhase,
+    returnableBlockLoweringPhase,
+    forLoopsLoweringPhase,
+    privateMembersLoweringPhase,
+    privateMemberUsagesLoweringPhase,
+    callableReferenceLoweringPhase,
+    defaultArgumentStubGeneratorPhase,
+    defaultArgumentPatchOverridesPhase,
+    defaultParameterInjectorPhase,
+    defaultParameterCleanerPhase,
+    jsDefaultCallbackGeneratorPhase,
+    removeInlineFunctionsWithReifiedTypeParametersLoweringPhase,
+    throwableSuccessorsLoweringPhase,
+    varargLoweringPhase,
+    multipleCatchesLoweringPhase,
+    bridgesConstructionPhase,
+    typeOperatorLoweringPhase,
+    secondaryConstructorLoweringPhase,
+    secondaryFactoryInjectorLoweringPhase,
+    classReferenceLoweringPhase,
+    inlineClassDeclarationLoweringPhase,
+    inlineClassUsageLoweringPhase,
+    autoboxingTransformerPhase,
+    createFieldInitializerFunction,
+    blockDecomposerLoweringPhase,
+    primitiveCompanionLoweringPhase,
+    constLoweringPhase,
+    objectDeclarationLoweringPhase,
+    objectUsageLoweringPhase,
+    callsLoweringPhase,
+    validateIrAfterLowering
+)
+
 val jsPhases = namedIrModulePhase(
     name = "IrModuleLowering",
     description = "IR module lowering",
-    lower = scriptRemoveReceiverLowering then
-            validateIrBeforeLowering then
-            testGenerationPhase then
-            expectDeclarationsRemovingPhase then
-            stripTypeAliasDeclarationsPhase then
-            arrayConstructorPhase then
-            functionInliningPhase then
-            copyInlineFunctionBodyLoweringPhase then
-            createScriptFunctionsPhase then
-            provisionalFunctionExpressionPhase then
-            lateinitNullableFieldsPhase then
-            lateinitDeclarationLoweringPhase then
-            lateinitUsageLoweringPhase then
-            tailrecLoweringPhase then
-            enumClassConstructorLoweringPhase then
-            enumClassConstructorBodyLoweringPhase then
-            sharedVariablesLoweringPhase then
-            localDelegatedPropertiesLoweringPhase then
-            localDeclarationsLoweringPhase then
-            localClassExtractionPhase then
-            innerClassesLoweringPhase then
-            innerClassesMemberBodyLoweringPhase then
-            innerClassConstructorCallsLoweringPhase then
-            propertiesLoweringPhase then
-            primaryConstructorLoweringPhase then
-            delegateToPrimaryConstructorLoweringPhase then
-            annotationConstructorLowering then
-            initializersLoweringPhase then
-            initializersCleanupLoweringPhase then
-            // Common prefix ends
-            enumEntryInstancesLoweringPhase then
-            enumClassCreateInitializerLoweringPhase then
-            enumEntryCreateGetInstancesFunsLoweringPhase then
-            enumSyntheticFunsLoweringPhase then
-            enumUsageLoweringPhase then
-            enumEntryRemovalLoweringPhase then
-            suspendFunctionsLoweringPhase then
-            suspendLambdasRemovalLoweringPhase then
-            returnableBlockLoweringPhase then
-            forLoopsLoweringPhase then
-            privateMembersLoweringPhase then
-            privateMemberUsagesLoweringPhase then
-            callableReferenceLoweringPhase then
-            defaultArgumentStubGeneratorPhase then
-            defaultArgumentPatchOverridesPhase then
-            defaultParameterInjectorPhase then
-            defaultParameterCleanerPhase then
-            jsDefaultCallbackGeneratorPhase then
-            removeInlineFunctionsWithReifiedTypeParametersLoweringPhase then
-            throwableSuccessorsLoweringPhase then
-            varargLoweringPhase then
-            multipleCatchesLoweringPhase then
-            bridgesConstructionPhase then
-            typeOperatorLoweringPhase then
-            secondaryConstructorLoweringPhase then
-            secondaryFactoryInjectorLoweringPhase then
-            classReferenceLoweringPhase then
-            inlineClassDeclarationLoweringPhase then
-            inlineClassUsageLoweringPhase then
-            autoboxingTransformerPhase then
-            createFieldInitializerFunction then
-            blockDecomposerLoweringPhase then
-            primitiveCompanionLoweringPhase then
-            constLoweringPhase then
-            objectDeclarationLoweringPhase then
-            objectUsageLoweringPhase then
-            callsLoweringPhase then
-            validateIrAfterLowering
+    lower = phaseList.drop(1).fold(phaseList[0]) { acc: CompilerPhase<JsIrBackendContext, IrModuleFragment, IrModuleFragment>, phase -> acc.then(phase) }
 )
