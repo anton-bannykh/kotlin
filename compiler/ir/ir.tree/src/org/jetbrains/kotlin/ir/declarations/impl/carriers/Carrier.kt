@@ -6,6 +6,8 @@
 package org.jetbrains.kotlin.ir.declarations.impl.carriers
 
 interface Carrier<in T : Carrier<T>> {
+    val lastModified: Int
+
     fun eq(other: T): Boolean
 
     fun clone(): Carrier<T>

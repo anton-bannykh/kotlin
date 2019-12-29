@@ -24,6 +24,7 @@ interface PropertyCarrier : DeclarationCarrier<PropertyCarrier> {
 
     override fun clone(): PropertyCarrier {
         return PropertyCarrierImpl(
+            lastModified,
             parentField,
             originField,
             backingFieldField,
@@ -35,6 +36,7 @@ interface PropertyCarrier : DeclarationCarrier<PropertyCarrier> {
 }
 
 class PropertyCarrierImpl(
+    override val lastModified: Int,
     override var parentField: IrDeclarationParent?,
     override var originField: IrDeclarationOrigin,
     override var backingFieldField: IrField?,

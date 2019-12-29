@@ -28,6 +28,7 @@ interface ClassCarrier : DeclarationCarrier<ClassCarrier> {
 
     override fun clone(): ClassCarrier {
         return ClassCarrierImpl(
+            lastModified,
             parentField,
             originField,
             thisReceiverField,
@@ -40,6 +41,7 @@ interface ClassCarrier : DeclarationCarrier<ClassCarrier> {
 }
 
 class ClassCarrierImpl(
+    override val lastModified: Int,
     override var parentField: IrDeclarationParent?,
     override var originField: IrDeclarationOrigin,
     override var thisReceiverField: IrValueParameter?,

@@ -17,6 +17,7 @@ interface TypeAliasCarrier : DeclarationCarrier<TypeAliasCarrier> {
 
     override fun clone(): TypeAliasCarrier {
         return TypeAliasCarrierImpl(
+            lastModified,
             parentField,
             originField
         )
@@ -24,6 +25,7 @@ interface TypeAliasCarrier : DeclarationCarrier<TypeAliasCarrier> {
 }
 
 class TypeAliasCarrierImpl(
+    override val lastModified: Int,
     override var parentField: IrDeclarationParent?,
     override var originField: IrDeclarationOrigin
-    ) : TypeAliasCarrier
+) : TypeAliasCarrier

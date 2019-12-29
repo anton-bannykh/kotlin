@@ -28,6 +28,7 @@ interface ConstructorCarrier : FunctionBaseCarrier<ConstructorCarrier> {
 
     override fun clone(): ConstructorCarrier {
         return ConstructorCarrierImpl(
+            lastModified,
             parentField,
             originField,
             returnTypeFieldField,
@@ -41,6 +42,7 @@ interface ConstructorCarrier : FunctionBaseCarrier<ConstructorCarrier> {
 }
 
 class ConstructorCarrierImpl(
+    override val lastModified: Int,
     override var parentField: IrDeclarationParent?,
     override var originField: IrDeclarationOrigin,
     override var returnTypeFieldField: IrType,

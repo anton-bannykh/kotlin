@@ -20,6 +20,7 @@ interface VariableCarrier : DeclarationCarrier<VariableCarrier> {
 
     override fun clone(): VariableCarrier {
         return VariableCarrierImpl(
+            lastModified,
             parentField,
             originField,
             initializerField
@@ -28,6 +29,7 @@ interface VariableCarrier : DeclarationCarrier<VariableCarrier> {
 }
 
 class VariableCarrierImpl(
+    override val lastModified: Int,
     override var parentField: IrDeclarationParent?,
     override var originField: IrDeclarationOrigin,
     override var initializerField: IrExpression?

@@ -16,11 +16,12 @@ interface TypeParameterCarrier : DeclarationCarrier<TypeParameterCarrier> {
     }
 
     override fun clone(): TypeParameterCarrier {
-        return TypeParameterCarrierImpl(parentField, originField)
+        return TypeParameterCarrierImpl(lastModified, parentField, originField)
     }
 }
 
 class TypeParameterCarrierImpl(
+    override val lastModified: Int,
     override var parentField: IrDeclarationParent?,
     override var originField: IrDeclarationOrigin
 ) : TypeParameterCarrier

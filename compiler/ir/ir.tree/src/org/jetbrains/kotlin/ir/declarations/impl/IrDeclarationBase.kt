@@ -77,14 +77,14 @@ abstract class IrPersistingElementBase<T : Carrier<T>>(
 ) : IrElementBase(startOffset, endOffset),
     Carrier<T> {
 
+    override var lastModified: Int = stageController.currentStage
+
     var loweredUpTo = stageController.currentStage
 
-    var mask = 1L shl stageController.currentStage
+    private var values: Array<Any?>? = null
 
     val createdOn: Int
-        get() = java.lang.Long.bitCount(java.lang.Long.lowestOneBit(mask) - 1)
-
-    private var values: Array<Any?>? = null
+        get() = values?.let { (it[0] as T).lastModified } ?: lastModified
 
     abstract fun ensureLowered()
 
@@ -92,13 +92,25 @@ abstract class IrPersistingElementBase<T : Carrier<T>>(
         stageController.currentStage.let { stage ->
             ensureLowered()
 
-            val m = (1L shl (stage + 1)) - 1L
+            if (stage >= lastModified) return this as T
 
-            if ((mask and m.inv()) == 0L) return this as T
+            val v = values!!
 
-            val index = java.lang.Long.bitCount(mask and m) - 1
+            var l = -1
+            var r = v.size
+            while (r - l > 1) {
+                val m = (l + r) / 2
+                if ((v[m] as T).lastModified <= stage) {
+                    l = m
+                } else {
+                    r = m
+                }
+            }
+            if (l < 0) {
+                error("access before creation")
+            }
 
-            return values!![index] as T
+            return v[l] as T
         }
     }
 
@@ -107,46 +119,35 @@ abstract class IrPersistingElementBase<T : Carrier<T>>(
 
         ensureLowered()
 
-        val m = (1L shl stage) - 1L
-        val bit = 1L shl stage
+        if (!stageController.canModify(this)) error("Cannot modify this element!")
 
-        if ((mask and m.inv()) == bit) return this as T
-
-        val index = java.lang.Long.bitCount(mask and m) - 1
-
-        if (index < 0 || loweredUpTo > stage) {
-            error("access before creation")
+        if (loweredUpTo > stage) {
+            error("retrospective modification")
         }
 
-        if (index == 0 || !this.eq(values!![index - 1] as T)) {
-            val newValues = values?.let {
-                if (index == it.size) {
-                    it.copyOf(values!!.size + 1).also {
-                        values = it
-                    }
-                } else {
-                    error("retrospective modification")
-                }
-            } ?: arrayOfNulls<Any?>(1).also {
-                values = it
-            }
-
-            newValues[index] = this.clone()
+        if (stage == lastModified) {
+            return this as T
         } else {
-            val maskCopy = mask
-            mask = maskCopy xor java.lang.Long.highestOneBit(maskCopy and m)
+            val newValues = values?.let { oldValues ->
+                oldValues.copyOf(oldValues.size + 1)
+            } ?: arrayOfNulls<Any?>(1)
+
+            newValues[newValues.size - 1] = this.clone()
+
+            values = newValues
         }
-        mask = mask or bit
+
+        this.lastModified = stage
 
         return this as T
     }
 }
 
-abstract class IrBodyBase<B: IrBodyBase<B>>(
+abstract class IrBodyBase<B : IrBodyBase<B>>(
     startOffset: Int,
     endOffset: Int,
     private var initializer: (B.() -> Unit)?
-): IrPersistingElementBase<BodyCarrier>(startOffset, endOffset), IrBody, BodyCarrier {
+) : IrPersistingElementBase<BodyCarrier>(startOffset, endOffset), IrBody, BodyCarrier {
     override var containerField: IrDeclaration? = null
 
     var container: IrDeclaration

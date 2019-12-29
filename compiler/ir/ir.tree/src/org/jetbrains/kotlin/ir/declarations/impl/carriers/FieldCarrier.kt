@@ -26,6 +26,7 @@ interface FieldCarrier : DeclarationCarrier<FieldCarrier> {
 
     override fun clone(): FieldCarrier {
         return FieldCarrierImpl(
+            lastModified,
             parentField,
             originField,
             initializerField,
@@ -36,6 +37,7 @@ interface FieldCarrier : DeclarationCarrier<FieldCarrier> {
 }
 
 class FieldCarrierImpl(
+    override val lastModified: Int,
     override var parentField: IrDeclarationParent?,
     override var originField: IrDeclarationOrigin,
     override var initializerField: IrExpressionBody?,

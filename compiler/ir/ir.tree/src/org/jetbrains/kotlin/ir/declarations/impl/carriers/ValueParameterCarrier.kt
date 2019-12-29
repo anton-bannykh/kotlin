@@ -19,11 +19,12 @@ interface ValueParameterCarrier : DeclarationCarrier<ValueParameterCarrier> {
     }
 
     override fun clone(): ValueParameterCarrier {
-        return ValueParameterCarrierImpl(parentField, originField, defaultValueField)
+        return ValueParameterCarrierImpl(lastModified, parentField, originField, defaultValueField)
     }
 }
 
 class ValueParameterCarrierImpl(
+    override val lastModified: Int,
     override var parentField: IrDeclarationParent?,
     override var originField: IrDeclarationOrigin,
     override var defaultValueField: IrExpressionBody?

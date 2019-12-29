@@ -25,6 +25,7 @@ interface LocalDelegatedPropertyCarrier : DeclarationCarrier<LocalDelegatedPrope
 
     override fun clone(): LocalDelegatedPropertyCarrier {
         return LocalDelegatedPropertyCarrierImpl(
+            lastModified,
             parentField,
             originField,
             delegateField,
@@ -35,6 +36,7 @@ interface LocalDelegatedPropertyCarrier : DeclarationCarrier<LocalDelegatedPrope
 }
 
 class LocalDelegatedPropertyCarrierImpl(
+    override val lastModified: Int,
     override var parentField: IrDeclarationParent?,
     override var originField: IrDeclarationOrigin,
     override var delegateField: IrVariable?,

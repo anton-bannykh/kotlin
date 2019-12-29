@@ -20,6 +20,7 @@ interface AnonymousInitializerCarrier : DeclarationCarrier<AnonymousInitializerC
 
     override fun clone(): AnonymousInitializerCarrier {
         return AnonymousInitializerCarrierImpl(
+            lastModified,
             parentField,
             originField,
             bodyField
@@ -28,6 +29,7 @@ interface AnonymousInitializerCarrier : DeclarationCarrier<AnonymousInitializerC
 }
 
 class AnonymousInitializerCarrierImpl(
+    override val lastModified: Int,
     override var parentField: IrDeclarationParent?,
     override var originField: IrDeclarationOrigin,
     override var bodyField: IrBlockBody?

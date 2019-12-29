@@ -8,7 +8,6 @@ package org.jetbrains.kotlin.ir.declarations.impl.carriers
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
-import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.IrExpressionBody
 
 interface EnumEntryCarrier : DeclarationCarrier<EnumEntryCarrier> {
@@ -24,6 +23,7 @@ interface EnumEntryCarrier : DeclarationCarrier<EnumEntryCarrier> {
 
     override fun clone(): EnumEntryCarrier {
         return EnumEntryCarrierImpl(
+            lastModified,
             parentField,
             originField,
             correspondingClassField,
@@ -33,6 +33,7 @@ interface EnumEntryCarrier : DeclarationCarrier<EnumEntryCarrier> {
 }
 
 class EnumEntryCarrierImpl(
+    override val lastModified: Int,
     override var parentField: IrDeclarationParent?,
     override var originField: IrDeclarationOrigin,
     override var correspondingClassField: IrClass?,
