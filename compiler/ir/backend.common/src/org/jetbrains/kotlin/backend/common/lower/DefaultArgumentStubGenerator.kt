@@ -6,7 +6,7 @@
 package org.jetbrains.kotlin.backend.common.lower
 
 import org.jetbrains.kotlin.backend.common.*
-import org.jetbrains.kotlin.backend.common.descriptors.*
+import org.jetbrains.kotlin.backend.common.descriptors.synthesizedString
 import org.jetbrains.kotlin.backend.common.ir.*
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.descriptors.Visibilities
@@ -20,8 +20,10 @@ import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.expressions.impl.*
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
 import org.jetbrains.kotlin.ir.symbols.IrFunctionSymbol
-import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
-import org.jetbrains.kotlin.ir.types.*
+import org.jetbrains.kotlin.ir.types.IrType
+import org.jetbrains.kotlin.ir.types.defaultType
+import org.jetbrains.kotlin.ir.types.isNullable
+import org.jetbrains.kotlin.ir.types.makeNullable
 import org.jetbrains.kotlin.ir.util.*
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
 import org.jetbrains.kotlin.ir.visitors.transformChildrenVoid
@@ -120,12 +122,6 @@ open class DefaultArgumentStubGenerator(
                 }
                 is IrSimpleFunction -> +irReturn(dispatchToImplementation(irFunction, newIrFunction, params))
                 else -> error("Unknown function declaration")
-            }
-        }
-        // Remove default argument initializers.
-        irFunction.valueParameters.forEach {
-            if (it.defaultValue != null) {
-                it.defaultValue = IrExpressionBodyImpl(IrErrorExpressionImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET, it.type, "Default Stub"))
             }
         }
         return listOf(irFunction, newIrFunction)
@@ -341,10 +337,22 @@ open class DefaultParameterInjector(
     private fun log(msg: () -> String) = context.log { "DEFAULT-INJECTOR: ${msg()}" }
 }
 
-class DefaultParameterCleaner constructor(val context: CommonBackendContext) : DeclarationTransformer {
+// Remove default argument initializers.
+class DefaultParameterCleaner(
+    val context: CommonBackendContext,
+    val replaceDefaultValuesWithStubs: Boolean = false
+) : DeclarationTransformer {
+    override fun lower(irFile: IrFile) {
+        runPostfix(true).toFileLoweringPass().lower(irFile)
+    }
+
     override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
-        if (declaration is IrValueParameter && !context.scriptMode) {
-            declaration.defaultValue = null
+        if (declaration is IrValueParameter && !context.scriptMode && declaration.defaultValue != null) {
+            if (replaceDefaultValuesWithStubs) {
+                declaration.defaultValue = IrExpressionBodyImpl(IrErrorExpressionImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET, declaration.type, "Default Stub"))
+            } else {
+                declaration.defaultValue = null
+            }
         }
         return null
     }

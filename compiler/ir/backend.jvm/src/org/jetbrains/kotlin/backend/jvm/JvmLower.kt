@@ -182,6 +182,13 @@ private val defaultArgumentPatchOverridesPhase = makeIrFilePhase(
     prerequisite = setOf(defaultArgumentStubPhase)
 )
 
+private val defaultArgumentCleanerPhase = makeIrFilePhase(
+    { context: JvmBackendContext -> DefaultParameterCleaner(context, replaceDefaultValuesWithStubs = true) },
+    name = "DefaultParameterCleaner",
+    description = "Replace default values arguments with stubs",
+    prerequisite = setOf(defaultArgumentStubPhase)
+)
+
 private val defaultArgumentInjectorPhase = makeIrFilePhase(
     ::JvmDefaultParameterInjector,
     name = "DefaultParameterInjector",
@@ -317,6 +324,7 @@ private val jvmFilePhases =
         defaultArgumentStubPhase then
         defaultArgumentPatchOverridesPhase then
         defaultArgumentInjectorPhase then
+        defaultArgumentCleanerPhase then
 
         interfacePhase then
         interfaceDelegationPhase then
