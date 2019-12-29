@@ -158,10 +158,16 @@ interface DeclarationTransformer: FileLoweringPass {
     }
 }
 
+fun DeclarationTransformer.transformFlatRestricted(declaration: IrDeclaration): List<IrDeclaration>? {
+    return stageController.restrictTo(declaration) {
+        transformFlat(declaration)
+    }
+}
+
 fun DeclarationTransformer.toFileLoweringPass(): FileLoweringPass {
     return object : FileLoweringPass {
         override fun lower(irFile: IrFile) {
-            irFile.declarations.transformFlat(this@toFileLoweringPass::transformFlat)
+            irFile.declarations.transformFlat(this@toFileLoweringPass::transformFlatRestricted)
         }
     }
 }
@@ -182,9 +188,9 @@ fun DeclarationTransformer.runPostfix(withLocalDeclarations: Boolean = false): D
                 }
 
                 override fun visitFunction(declaration: IrFunction) {
-                    super.visitFunction(declaration)
+                    declaration.acceptChildrenVoid(this)
 
-                    declaration.valueParameters.transformFlat { this@runPostfix.transformFlat(it)?.map { it as IrValueParameter } }
+                    declaration.valueParameters.transformFlat { this@runPostfix.transformFlatRestricted(it)?.map { it as IrValueParameter } }
                 }
 
                 override fun visitProperty(declaration: IrProperty) {
@@ -196,7 +202,7 @@ fun DeclarationTransformer.runPostfix(withLocalDeclarations: Boolean = false): D
 
                         acceptVoid(visitor)
 
-                        val result = this@runPostfix.transformFlat(this)
+                        val result = this@runPostfix.transformFlatRestricted(this)
                         if (result != null) {
                             (parent as? IrDeclarationContainer)?.let {
                                 var index = -1
@@ -225,11 +231,11 @@ fun DeclarationTransformer.runPostfix(withLocalDeclarations: Boolean = false): D
                     declaration.typeParameters.forEach { it.accept(this, null) }
                     ArrayList(declaration.declarations).forEach { it.accept(this, null) }
 
-                    declaration.declarations.transformFlat(this@runPostfix::transformFlat)
+                    declaration.declarations.transformFlat(this@runPostfix::transformFlatRestricted)
                 }
             })
 
-            return this@runPostfix.transformFlat(declaration)
+            return this@runPostfix.transformFlatRestricted(declaration)
         }
     }
 }
