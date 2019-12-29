@@ -5,8 +5,10 @@
 
 package org.jetbrains.kotlin.ir.declarations
 
+import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.declarations.impl.IrBodyBase
 import org.jetbrains.kotlin.ir.declarations.impl.IrDeclarationBase
+import org.jetbrains.kotlin.ir.declarations.impl.IrPersistingElementBase
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import kotlin.reflect.KMutableProperty0
 import kotlin.reflect.KProperty
@@ -34,9 +36,15 @@ interface StageController {
     fun register(declaration: IrDeclarationBase<*>) {}
 
     fun <K: IrDeclaration, V> getUserdata(declaration: IrDeclaration): MutableMap<MappingKey<K, V>, V>
+
+    fun <T> restrictTo(declaration: IrDeclaration, fn: () -> T): T
+
+    fun <T> unsafe(fn: () -> T): T
+
+    fun canModify(element: IrElement): Boolean = true
 }
 
-class NoopController(override var currentStage: Int = 0) : StageController {
+open class NoopController(override var currentStage: Int = 0) : StageController {
 
     override val bodiesEnabled: Boolean
         get() = true
@@ -47,6 +55,26 @@ class NoopController(override var currentStage: Int = 0) : StageController {
 
     override fun <K : IrDeclaration, V> getUserdata(declaration: IrDeclaration): MutableMap<MappingKey<K, V>, V> {
         return userDataMap.getOrPut(declaration) { mutableMapOf<MappingKey<IrDeclaration, Any>, Any>() } as MutableMap<MappingKey<K, V>, V>
+    }
+
+    private var restrictedToDeclaration: IrDeclaration? = null
+
+    override fun <T> restrictTo(declaration: IrDeclaration, fn: () -> T): T = restrictionImpl(declaration, fn)
+
+    override fun <T> unsafe(fn: () -> T): T = restrictionImpl(null, fn)
+
+    private fun <T> restrictionImpl(declaration: IrDeclaration?, fn: () -> T): T {
+        val prev = restrictedToDeclaration
+        restrictedToDeclaration = declaration
+        try {
+            return fn()
+        } finally {
+            restrictedToDeclaration = prev
+        }
+    }
+
+    override fun canModify(element: IrElement): Boolean {
+        return restrictedToDeclaration === null || restrictedToDeclaration === element || element is IrPersistingElementBase<*> && element.createdOn == currentStage
     }
 }
 
