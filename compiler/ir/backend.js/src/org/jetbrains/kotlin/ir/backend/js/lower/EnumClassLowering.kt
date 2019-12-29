@@ -13,6 +13,7 @@ import org.jetbrains.kotlin.backend.common.lower.createIrBuilder
 import org.jetbrains.kotlin.backend.common.lower.irBlockBody
 import org.jetbrains.kotlin.backend.common.lower.irIfThen
 import org.jetbrains.kotlin.backend.common.lower.parents
+import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
 import org.jetbrains.kotlin.ir.backend.js.JsIrBackendContext
@@ -32,7 +33,9 @@ import org.jetbrains.kotlin.ir.symbols.impl.IrFieldSymbolImpl
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.makeNullable
 import org.jetbrains.kotlin.ir.util.*
-import org.jetbrains.kotlin.ir.visitors.*
+import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
+import org.jetbrains.kotlin.ir.visitors.acceptVoid
+import org.jetbrains.kotlin.ir.visitors.transformChildrenVoid
 import org.jetbrains.kotlin.name.Name
 
 private var IrEnumEntry.getInstanceFun by mapping<IrEnumEntry, IrSimpleFunction>()
@@ -356,20 +359,22 @@ class EnumEntryInstancesLowering(val context: JsIrBackendContext) : DeclarationT
 
         enumEntry.correspondingField = result
 
+        return result
+    }
+}
 
-        enumEntry.correspondingClass?.constructors?.forEach {
-            // Initialize entry instance at the beginning of constructor so it can be used inside constructor body
-            (it.body as? IrBlockBody)?.let { oldBody ->
-                it.body = IrBlockBodyImpl(oldBody.startOffset, oldBody.endOffset) {
-                    statements += oldBody.statements
-                    statements.add(0, context.createIrBuilder(it.symbol).run {
-                        irSetField(null, result, irGet(enumEntry.correspondingClass!!.thisReceiver!!))
-                    })
-                }
+class EnumEntryInstancesBodyLowering(val context: JsIrBackendContext): BodyLoweringPass {
+    override fun lower(irBody: IrBody, container: IrDeclaration) {
+        if (container is IrConstructor && container.constructedClass.kind == ClassKind.ENUM_ENTRY) {
+            val entryClass = container.constructedClass
+            val enum = entryClass.parentAsClass
+            if (enum.goodEnum) {
+                val entry = enum.declarations.filterIsInstance<IrEnumEntry>().find { it.correspondingClass === entryClass }!!
+                (irBody as IrBlockBody).statements.add(0, context.createIrBuilder(container.symbol).run {
+                    irSetField(null, entry.correspondingField!!, irGet(entryClass.thisReceiver!!))
+                })
             }
         }
-
-        return result
     }
 }
 
