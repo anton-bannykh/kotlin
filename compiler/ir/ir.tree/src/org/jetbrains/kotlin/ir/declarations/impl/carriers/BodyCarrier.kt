@@ -16,8 +16,11 @@ interface BodyCarrier : Carrier<BodyCarrier> {
     }
 
     override fun clone(): BodyCarrier {
-        return BodyCarrierImpl(containerField)
+        return BodyCarrierImpl(lastModified, containerField)
     }
 }
 
-class BodyCarrierImpl(override var containerField: IrDeclaration?) : BodyCarrier
+class BodyCarrierImpl(
+    override val lastModified: Int,
+    override var containerField: IrDeclaration?
+) : BodyCarrier

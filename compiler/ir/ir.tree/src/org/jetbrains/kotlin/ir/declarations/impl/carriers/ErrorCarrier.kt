@@ -16,9 +16,12 @@ interface ErrorCarrier : DeclarationCarrier<ErrorCarrier> {
     }
 
     override fun clone(): ErrorCarrier {
-        return ErrorCarrierImpl(parentField, originField)
+        return ErrorCarrierImpl(lastModified, parentField, originField)
     }
 }
 
-class ErrorCarrierImpl(override var parentField: IrDeclarationParent?,
-                       override var originField: IrDeclarationOrigin ) : ErrorCarrier
+class ErrorCarrierImpl(
+    override val lastModified: Int,
+    override var parentField: IrDeclarationParent?,
+    override var originField: IrDeclarationOrigin
+) : ErrorCarrier

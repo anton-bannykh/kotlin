@@ -31,6 +31,7 @@ interface FunctionCarrier : FunctionBaseCarrier<FunctionCarrier> {
 
     override fun clone(): FunctionCarrier {
         return FunctionCarrierImpl(
+            lastModified,
             parentField,
             originField,
             returnTypeFieldField,
@@ -45,6 +46,7 @@ interface FunctionCarrier : FunctionBaseCarrier<FunctionCarrier> {
 }
 
 class FunctionCarrierImpl(
+    override val lastModified: Int,
     override var parentField: IrDeclarationParent?,
     override var originField: IrDeclarationOrigin,
     override var returnTypeFieldField: IrType,
