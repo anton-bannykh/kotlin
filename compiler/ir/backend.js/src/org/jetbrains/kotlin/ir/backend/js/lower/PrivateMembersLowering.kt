@@ -37,6 +37,7 @@ class PrivateMembersLowering(val context: JsIrBackendContext) : DeclarationTrans
                 listOf(staticFunction)
             }
             is IrProperty -> listOf(declaration.apply {
+                // Detach old function from corresponding property
                 this.getter = this.getter?.let { g -> transformAccessor(g) }
                 this.setter = this.setter?.let { s -> transformAccessor(s) }
             })
@@ -64,16 +65,6 @@ class PrivateMembersLowering(val context: JsIrBackendContext) : DeclarationTrans
                 descriptor.bind(it)
                 it.parent = parent
                 it.correspondingPropertySymbol = correspondingPropertySymbol
-            }
-        }
-
-        // Detach old function from corresponding property
-        val correspondingProperty = function.correspondingPropertySymbol?.owner
-        if (correspondingProperty != null) {
-            when (function) {
-                // TODO Shouldn't this be done separately?
-                correspondingProperty.getter -> correspondingProperty.getter = staticFunction
-                correspondingProperty.setter -> correspondingProperty.setter = staticFunction
             }
         }
 
