@@ -68,9 +68,9 @@ class ExpectDeclarationsRemoveLowering(val context: BackendContext, val keepOpti
 
             val defaultValue = expectParameter.defaultValue ?: return null
 
-            defaultValue.expression.let { originalDefault ->
+            defaultValue.let { originalDefault ->
                 declaration.defaultValue = IrExpressionBodyImpl(originalDefault.startOffset, originalDefault.endOffset) {
-                    expression = originalDefault.remapExpectValueSymbols()
+                    expression = originalDefault.expression.remapExpectValueSymbols()
                 }
             }
         }
