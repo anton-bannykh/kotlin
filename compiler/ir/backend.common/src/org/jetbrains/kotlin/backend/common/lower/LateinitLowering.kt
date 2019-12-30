@@ -19,7 +19,6 @@ package org.jetbrains.kotlin.backend.common.lower
 import org.jetbrains.kotlin.backend.common.BodyLoweringPass
 import org.jetbrains.kotlin.backend.common.CommonBackendContext
 import org.jetbrains.kotlin.backend.common.DeclarationTransformer
-import org.jetbrains.kotlin.backend.common.FileLoweringPass
 import org.jetbrains.kotlin.backend.common.ir.Symbols
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.builders.*
@@ -76,28 +75,27 @@ class NullableFieldsDeclarationLowering(val backendContext: CommonBackendContext
         return null
     }
 
-    // TODO use proper body constructors
     private fun transformGetter(backingField: IrField, getter: IrFunction) {
         val type = backingField.type
         assert(!type.isPrimitiveType()) { "'lateinit' modifier is not allowed on primitive types" }
         val startOffset = getter.startOffset
         val endOffset = getter.endOffset
-        val irBuilder = backendContext.createIrBuilder(getter.symbol, startOffset, endOffset)
-        irBuilder.run {
-            val body = IrBlockBodyImpl(startOffset, endOffset)
-            val resultVar = scope.createTemporaryVariable(
-                irGetField(getter.dispatchReceiverParameter?.let { irGet(it) }, backingField)
-            )
-            resultVar.parent = getter
-            body.statements.add(resultVar)
-            val throwIfNull = irIfThenElse(
-                context.irBuiltIns.nothingType,
-                irNotEquals(irGet(resultVar), irNull()),
-                irReturn(irGet(resultVar)),
-                backendContext.throwUninitializedPropertyAccessException(this, backingField.name.asString())
-            )
-            body.statements.add(throwIfNull)
-            getter.body = body
+        getter.body = IrBlockBodyImpl(startOffset, endOffset) {
+            val irBuilder = backendContext.createIrBuilder(getter.symbol, startOffset, endOffset)
+            irBuilder.run {
+                val resultVar = scope.createTemporaryVariable(
+                    irGetField(getter.dispatchReceiverParameter?.let { irGet(it) }, backingField)
+                )
+                resultVar.parent = getter
+                statements.add(resultVar)
+                val throwIfNull = irIfThenElse(
+                    context.irBuiltIns.nothingType,
+                    irNotEquals(irGet(resultVar), irNull()),
+                    irReturn(irGet(resultVar)),
+                    backendContext.throwUninitializedPropertyAccessException(this, backingField.name.asString())
+                )
+                statements.add(throwIfNull)
+            }
         }
     }
 }
