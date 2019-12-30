@@ -7,7 +7,6 @@ package org.jetbrains.kotlin.backend.common.ir
 
 import org.jetbrains.kotlin.backend.common.CommonBackendContext
 import org.jetbrains.kotlin.backend.common.DumpIrTreeWithDescriptorsVisitor
-import org.jetbrains.kotlin.backend.common.deepCopyWithVariables
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.descriptors.Visibilities
@@ -149,8 +148,11 @@ fun IrValueParameter.copyTo(
         WrappedValueParameterDescriptor(this.descriptor.annotations, this.descriptor.source)
     }
     val symbol = IrValueParameterSymbolImpl(descriptor)
-    val defaultValueCopy = defaultValue?.deepCopyWithVariables()
-    defaultValueCopy?.patchDeclarationParents(irFunction)
+    val defaultValueCopy = defaultValue?.let { originalDefault ->
+        IrExpressionBodyImpl(originalDefault.startOffset, originalDefault.endOffset) {
+            expression = originalDefault.expression.deepCopyWithSymbols(irFunction)
+        }
+    }
     return IrValueParameterImpl(
         startOffset, endOffset, origin, symbol,
         name, index, type, varargElementType, isCrossinline, isNoinline
