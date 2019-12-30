@@ -59,70 +59,73 @@ open class DefaultArgumentStubGenerator(
         log { "$irFunction -> $newIrFunction" }
         val builder = context.createIrBuilder(newIrFunction.symbol)
 
-        newIrFunction.body = builder.irBlockBody(newIrFunction) {
-            val params = mutableListOf<IrValueDeclaration>()
-            val variables = mutableMapOf<IrValueDeclaration, IrValueDeclaration>()
+        newIrFunction.body = IrBlockBodyImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET) {
+            statements += builder.irBlockBody(newIrFunction) {
+                val params = mutableListOf<IrValueDeclaration>()
+                val variables = mutableMapOf<IrValueDeclaration, IrValueDeclaration>()
 
-            irFunction.dispatchReceiverParameter?.let {
-                variables[it] = newIrFunction.dispatchReceiverParameter!!
-            }
-
-            irFunction.extensionReceiverParameter?.let {
-                variables[it] = newIrFunction.extensionReceiverParameter!!
-            }
-
-            // In order to deal with forward references in default value lambdas,
-            // accesses to the parameter before it has been determined if there is
-            // a default value or not is redirected to the actual parameter of the
-            // $default function. This is to ensure that examples such as:
-            //
-            // fun f(f1: () -> String = { f2() },
-            //       f2: () -> String = { "OK" }) = f1()
-            //
-            // works correctly so that `f() { "OK" }` returns "OK" and
-            // `f()` throws a NullPointerException.
-            irFunction.valueParameters.associateWithTo(variables) {
-                newIrFunction.valueParameters[it.index]
-            }
-
-            for (valueParameter in irFunction.valueParameters) {
-                val parameter = newIrFunction.valueParameters[valueParameter.index]
-                val remapped = if (valueParameter.defaultValue != null) {
-                    val mask = irGet(newIrFunction.valueParameters[irFunction.valueParameters.size + valueParameter.index / 32])
-                    val bit = irInt(1 shl (valueParameter.index % 32))
-                    val defaultFlag = irCallOp(this@DefaultArgumentStubGenerator.context.ir.symbols.intAnd, context.irBuiltIns.intType, mask, bit)
-
-                    val expressionBody = valueParameter.defaultValue!!
-                    expressionBody.patchDeclarationParents(newIrFunction)
-                    expressionBody.transformChildrenVoid(object : IrElementTransformerVoid() {
-                        override fun visitGetValue(expression: IrGetValue): IrExpression {
-                            log { "GetValue: ${expression.symbol.owner}" }
-                            val valueSymbol = variables[expression.symbol.owner] ?: return expression
-                            return irGet(valueSymbol)
-                        }
-                    })
-
-                    selectArgumentOrDefault(defaultFlag, parameter, expressionBody.expression)
-                } else {
-                    parameter
+                irFunction.dispatchReceiverParameter?.let {
+                    variables[it] = newIrFunction.dispatchReceiverParameter!!
                 }
-                params.add(remapped)
-                variables[valueParameter] = remapped
-            }
 
-            when (irFunction) {
-                is IrConstructor -> +irDelegatingConstructorCall(irFunction).apply {
-                    passTypeArgumentsFrom(newIrFunction.parentAsClass)
-                    // This is for Kotlin/Native, which differs from the other backends in that constructors
-                    // apparently do have dispatch receivers (though *probably* not type arguments, but copy
-                    // those as well just in case):
-                    passTypeArgumentsFrom(newIrFunction, offset = newIrFunction.parentAsClass.typeParameters.size)
-                    dispatchReceiver = newIrFunction.dispatchReceiverParameter?.let { irGet(it) }
-                    params.forEachIndexed { i, variable -> putValueArgument(i, irGet(variable)) }
+                irFunction.extensionReceiverParameter?.let {
+                    variables[it] = newIrFunction.extensionReceiverParameter!!
                 }
-                is IrSimpleFunction -> +irReturn(dispatchToImplementation(irFunction, newIrFunction, params))
-                else -> error("Unknown function declaration")
-            }
+
+                // In order to deal with forward references in default value lambdas,
+                // accesses to the parameter before it has been determined if there is
+                // a default value or not is redirected to the actual parameter of the
+                // $default function. This is to ensure that examples such as:
+                //
+                // fun f(f1: () -> String = { f2() },
+                //       f2: () -> String = { "OK" }) = f1()
+                //
+                // works correctly so that `f() { "OK" }` returns "OK" and
+                // `f()` throws a NullPointerException.
+                irFunction.valueParameters.associateWithTo(variables) {
+                    newIrFunction.valueParameters[it.index]
+                }
+
+                for (valueParameter in irFunction.valueParameters) {
+                    val parameter = newIrFunction.valueParameters[valueParameter.index]
+                    val remapped = if (valueParameter.defaultValue != null) {
+                        val mask = irGet(newIrFunction.valueParameters[irFunction.valueParameters.size + valueParameter.index / 32])
+                        val bit = irInt(1 shl (valueParameter.index % 32))
+                        val defaultFlag =
+                            irCallOp(this@DefaultArgumentStubGenerator.context.ir.symbols.intAnd, context.irBuiltIns.intType, mask, bit)
+
+                        val expressionBody = valueParameter.defaultValue!!
+                        expressionBody.patchDeclarationParents(newIrFunction)
+                        expressionBody.transformChildrenVoid(object : IrElementTransformerVoid() {
+                            override fun visitGetValue(expression: IrGetValue): IrExpression {
+                                log { "GetValue: ${expression.symbol.owner}" }
+                                val valueSymbol = variables[expression.symbol.owner] ?: return expression
+                                return irGet(valueSymbol)
+                            }
+                        })
+
+                        selectArgumentOrDefault(defaultFlag, parameter, expressionBody.expression)
+                    } else {
+                        parameter
+                    }
+                    params.add(remapped)
+                    variables[valueParameter] = remapped
+                }
+
+                when (irFunction) {
+                    is IrConstructor -> +irDelegatingConstructorCall(irFunction).apply {
+                        passTypeArgumentsFrom(newIrFunction.parentAsClass)
+                        // This is for Kotlin/Native, which differs from the other backends in that constructors
+                        // apparently do have dispatch receivers (though *probably* not type arguments, but copy
+                        // those as well just in case):
+                        passTypeArgumentsFrom(newIrFunction, offset = newIrFunction.parentAsClass.typeParameters.size)
+                        dispatchReceiver = newIrFunction.dispatchReceiverParameter?.let { irGet(it) }
+                        params.forEachIndexed { i, variable -> putValueArgument(i, irGet(variable)) }
+                    }
+                    is IrSimpleFunction -> +irReturn(dispatchToImplementation(irFunction, newIrFunction, params))
+                    else -> error("Unknown function declaration")
+                }
+            }.statements
         }
         return listOf(irFunction, newIrFunction)
     }
