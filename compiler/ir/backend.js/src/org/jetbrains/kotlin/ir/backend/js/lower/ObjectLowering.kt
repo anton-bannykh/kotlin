@@ -5,7 +5,9 @@
 
 package org.jetbrains.kotlin.ir.backend.js.lower
 
-import org.jetbrains.kotlin.backend.common.*
+import org.jetbrains.kotlin.backend.common.BodyLoweringPass
+import org.jetbrains.kotlin.backend.common.CommonBackendContext
+import org.jetbrains.kotlin.backend.common.DeclarationTransformer
 import org.jetbrains.kotlin.backend.common.lower.createIrBuilder
 import org.jetbrains.kotlin.backend.common.lower.irBlockBody
 import org.jetbrains.kotlin.backend.common.lower.irIfThen
@@ -19,8 +21,12 @@ import org.jetbrains.kotlin.ir.expressions.IrBlockBody
 import org.jetbrains.kotlin.ir.expressions.IrBody
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.IrGetObjectValue
+import org.jetbrains.kotlin.ir.expressions.impl.IrBlockBodyImpl
 import org.jetbrains.kotlin.ir.types.makeNullable
-import org.jetbrains.kotlin.ir.util.*
+import org.jetbrains.kotlin.ir.util.defaultType
+import org.jetbrains.kotlin.ir.util.isEffectivelyExternal
+import org.jetbrains.kotlin.ir.util.parentAsClass
+import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
 import org.jetbrains.kotlin.ir.visitors.transformChildrenVoid
 import org.jetbrains.kotlin.name.Name
@@ -51,13 +57,15 @@ class ObjectDeclarationLowering(
 
         val primaryConstructor = declaration.primaryConstructor!! // TODO find a way to trigger this correctly
 
-        getInstanceFun.body = context.createIrBuilder(getInstanceFun.symbol).irBlockBody(getInstanceFun) {
-            +irIfThen(
-                irEqualsNull(irGetField(null, instanceField)),
-                // Instance field initialized inside constructor
-                irCallConstructor(primaryConstructor.symbol, emptyList())
-            )
-            +irReturn(irGetField(null, instanceField))
+        getInstanceFun.body = IrBlockBodyImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET) {
+            statements += context.createIrBuilder(getInstanceFun.symbol).irBlockBody(getInstanceFun) {
+                +irIfThen(
+                    irEqualsNull(irGetField(null, instanceField)),
+                    // Instance field initialized inside constructor
+                    irCallConstructor(primaryConstructor.symbol, emptyList())
+                )
+                +irReturn(irGetField(null, instanceField))
+            }.statements
         }
 
         return listOf(declaration, instanceField, getInstanceFun)
