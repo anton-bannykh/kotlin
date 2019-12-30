@@ -167,7 +167,7 @@ fun DeclarationTransformer.transformFlatRestricted(declaration: IrDeclaration): 
 fun DeclarationTransformer.toFileLoweringPass(): FileLoweringPass {
     return object : FileLoweringPass {
         override fun lower(irFile: IrFile) {
-            irFile.declarations.transformFlat(this@toFileLoweringPass::transformFlatRestricted)
+            irFile.declarations.transformFlat(this@toFileLoweringPass::transformFlat)
         }
     }
 }
