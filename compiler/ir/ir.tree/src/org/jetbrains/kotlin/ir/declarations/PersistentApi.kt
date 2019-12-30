@@ -46,8 +46,7 @@ interface StageController {
 
 open class NoopController(override var currentStage: Int = 0) : StageController {
 
-    override val bodiesEnabled: Boolean
-        get() = true
+    override var bodiesEnabled: Boolean = true
 
     override fun <T> withInitialIr(block: () -> T): T = block()
 
@@ -66,10 +65,13 @@ open class NoopController(override var currentStage: Int = 0) : StageController 
     private fun <T> restrictionImpl(declaration: IrDeclaration?, fn: () -> T): T {
         val prev = restrictedToDeclaration
         restrictedToDeclaration = declaration
+        val wereBodiesEnabled = bodiesEnabled
+        bodiesEnabled = false
         try {
             return fn()
         } finally {
             restrictedToDeclaration = prev
+            bodiesEnabled = wereBodiesEnabled
         }
     }
 
