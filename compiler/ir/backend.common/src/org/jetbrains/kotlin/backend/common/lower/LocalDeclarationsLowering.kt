@@ -6,7 +6,7 @@
 package org.jetbrains.kotlin.backend.common.lower
 
 import org.jetbrains.kotlin.backend.common.*
-import org.jetbrains.kotlin.backend.common.descriptors.*
+import org.jetbrains.kotlin.backend.common.descriptors.synthesizedName
 import org.jetbrains.kotlin.backend.common.ir.*
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.descriptors.ReceiverParameterDescriptor
@@ -80,6 +80,10 @@ class LocalDeclarationsLowering(
     val visibilityPolicy: VisibilityPolicy = VisibilityPolicy.DEFAULT
 ) :
     BodyLoweringPass {
+
+    override fun lower(irFile: IrFile) {
+        runOnFilePostfix(irFile, allowDeclarationModification = true)
+    }
 
     object DECLARATION_ORIGIN_FIELD_FOR_CAPTURED_VALUE :
         IrDeclarationOriginImpl("FIELD_FOR_CAPTURED_VALUE", isSynthetic = true)
