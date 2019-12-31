@@ -14,10 +14,10 @@ import kotlin.reflect.KMutableProperty0
 import kotlin.reflect.KProperty
 
 // TODO threadlocal
-var stageController: StageController = NoopController()
+var stageController: StageController = object : StageController {}
 
 interface StageController {
-    val currentStage: Int
+    val currentStage: Int get() = 0
 
     fun lazyLower(declaration: IrDeclaration) {}
 
@@ -29,19 +29,19 @@ interface StageController {
 
     fun tryLoad(symbol: IrSymbol) {}
 
-    val bodiesEnabled: Boolean
+    val bodiesEnabled: Boolean get() = true
 
-    fun <T> withInitialIr(block: () -> T): T
+    fun <T> withInitialIr(block: () -> T): T = block()
 
     fun register(declaration: IrDeclarationBase<*>) {}
 
-    fun <K: IrDeclaration, V> getUserdata(declaration: IrDeclaration): MutableMap<MappingKey<K, V>, V>
+    fun <K: IrDeclaration, V> getUserdata(declaration: IrDeclaration): MutableMap<MappingKey<K, V>, V> = error("Userdata not supported")
 
-    fun <T> restrictTo(declaration: IrDeclaration, fn: () -> T): T
+    fun <T> restrictTo(declaration: IrDeclaration, fn: () -> T): T = fn()
 
-    fun <T> unsafe(fn: () -> T): T
+    fun <T> unsafe(fn: () -> T): T = fn()
 
-    fun <T> bodyLowering(fn: () -> T): T
+    fun <T> bodyLowering(fn: () -> T): T = fn()
 
     fun canModify(element: IrElement): Boolean = true
 }
