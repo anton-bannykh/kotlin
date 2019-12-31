@@ -16,7 +16,10 @@
 
 package org.jetbrains.kotlin.backend.common.lower
 
-import org.jetbrains.kotlin.backend.common.*
+import org.jetbrains.kotlin.backend.common.BackendContext
+import org.jetbrains.kotlin.backend.common.BodyLoweringPass
+import org.jetbrains.kotlin.backend.common.collectTailRecursionCalls
+import org.jetbrains.kotlin.backend.common.deepCopyWithVariables
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.builders.*
 import org.jetbrains.kotlin.ir.declarations.*
@@ -66,11 +69,13 @@ private fun lowerTailRecursionCalls(context: BackendContext, irFunction: IrFunct
     }
 
     val oldBody = irFunction.body as IrBlockBody
+    val oldBodyStatements = ArrayList(oldBody.statements)
     val builder = context.createIrBuilder(irFunction.symbol).at(oldBody)
 
     val parameters = irFunction.explicitParameters
 
-    irFunction.body = builder.irBlockBody {
+    oldBody.statements.clear()
+    oldBody.statements += builder.irBlockBody {
         // Define variables containing current values of parameters:
         val parameterToVariable = parameters.associate {
             it to createTmpVariable(irGet(it), nameHint = it.symbol.suggestVariableName(), isMutable = true)
@@ -94,14 +99,14 @@ private fun lowerTailRecursionCalls(context: BackendContext, irFunction: IrFunct
                     properComputationOrderOfTailrecDefaultParameters
                 )
 
-                oldBody.statements.forEach {
+                oldBodyStatements.forEach {
                     +it.transform(transformer, null)
                 }
 
                 +irBreak(loop)
             }
         }
-    }
+    }.statements
 }
 
 private class BodyTransformer(
