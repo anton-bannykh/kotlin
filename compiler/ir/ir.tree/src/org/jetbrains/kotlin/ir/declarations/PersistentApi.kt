@@ -41,6 +41,8 @@ interface StageController {
 
     fun <T> unsafe(fn: () -> T): T
 
+    fun <T> bodyLowering(fn: () -> T): T
+
     fun canModify(element: IrElement): Boolean = true
 }
 
@@ -56,6 +58,8 @@ open class NoopController(override var currentStage: Int = 0) : StageController 
         return userDataMap.getOrPut(declaration) { mutableMapOf<MappingKey<IrDeclaration, Any>, Any>() } as MutableMap<MappingKey<K, V>, V>
     }
 
+    private var restricted: Boolean = false
+
     private var restrictedToDeclaration: IrDeclaration? = null
 
     override fun <T> restrictTo(declaration: IrDeclaration, fn: () -> T): T = restrictionImpl(declaration, fn)
@@ -67,16 +71,32 @@ open class NoopController(override var currentStage: Int = 0) : StageController 
         restrictedToDeclaration = declaration
         val wereBodiesEnabled = bodiesEnabled
         bodiesEnabled = false
+        val wasRestricted = restricted
+        restricted = true
         try {
             return fn()
         } finally {
             restrictedToDeclaration = prev
             bodiesEnabled = wereBodiesEnabled
+            restricted = wasRestricted
+        }
+    }
+
+    override fun <T> bodyLowering(fn: () -> T): T {
+        val wereBodiesEnabled = bodiesEnabled
+        bodiesEnabled = true
+        val wasRestricted = restricted
+        restricted = true
+        try {
+            return fn()
+        } finally {
+            bodiesEnabled = wereBodiesEnabled
+            restricted = wasRestricted
         }
     }
 
     override fun canModify(element: IrElement): Boolean {
-        return restrictedToDeclaration === null || restrictedToDeclaration === element || element is IrPersistingElementBase<*> && element.createdOn == currentStage
+        return !restricted || restrictedToDeclaration === element || element is IrPersistingElementBase<*> && element.createdOn == currentStage
     }
 }
 
