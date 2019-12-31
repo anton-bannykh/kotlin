@@ -12,7 +12,6 @@ import org.jetbrains.kotlin.backend.common.ir.createTemporaryVariableWithWrapped
 import org.jetbrains.kotlin.backend.common.lower.CoroutineIntrinsicLambdaOrigin
 import org.jetbrains.kotlin.backend.common.lower.createIrBuilder
 import org.jetbrains.kotlin.config.languageVersionSettings
-import org.jetbrains.kotlin.descriptors.ValueDescriptor
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
@@ -37,8 +36,7 @@ class FunctionInlining(val context: CommonBackendContext) : IrElementTransformer
     override fun lower(irBody: IrBody, container: IrDeclaration) {
         container.accept(this, null)
 
-        //TODO fix this
-        container.patchDeclarationParents(container.parent)
+        irBody.patchDeclarationParents(container as? IrDeclarationParent ?: container.parent)
     }
 
     fun inline(irModule: IrModuleFragment) = irModule.accept(this, data = null)
