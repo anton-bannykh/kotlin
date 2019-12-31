@@ -119,7 +119,9 @@ abstract class IrPersistingElementBase<T : Carrier<T>>(
 
         ensureLowered()
 
-        if (!stageController.canModify(this)) error("Cannot modify this element!")
+        if (!stageController.canModify(this)) {
+            error("Cannot modify this element!")
+        }
 
         if (loweredUpTo > stage) {
             error("retrospective modification")
