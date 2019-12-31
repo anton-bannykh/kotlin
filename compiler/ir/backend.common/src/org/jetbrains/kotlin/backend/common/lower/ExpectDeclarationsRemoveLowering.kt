@@ -17,6 +17,7 @@ import org.jetbrains.kotlin.ir.expressions.impl.IrGetValueImpl
 import org.jetbrains.kotlin.ir.symbols.IrValueParameterSymbol
 import org.jetbrains.kotlin.ir.symbols.IrValueSymbol
 import org.jetbrains.kotlin.ir.util.ReferenceSymbolTable
+import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
 import org.jetbrains.kotlin.ir.util.isTopLevelDeclaration
 import org.jetbrains.kotlin.ir.util.referenceFunction
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
@@ -70,7 +71,7 @@ class ExpectDeclarationsRemoveLowering(val context: BackendContext, val keepOpti
 
             defaultValue.let { originalDefault ->
                 declaration.defaultValue = IrExpressionBodyImpl(originalDefault.startOffset, originalDefault.endOffset) {
-                    expression = originalDefault.expression.remapExpectValueSymbols()
+                    expression = originalDefault.expression.deepCopyWithSymbols(function).remapExpectValueSymbols()
                 }
             }
         }
