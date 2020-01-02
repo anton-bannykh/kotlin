@@ -30,6 +30,8 @@ import org.jetbrains.kotlin.ir.visitors.IrElementVisitor
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.resolve.descriptorUtil.isEffectivelyExternal
 import org.jetbrains.kotlin.utils.SmartList
+import java.util.*
+import kotlin.collections.ArrayList
 
 class IrClassImpl(
     startOffset: Int,
@@ -97,8 +99,22 @@ class IrClassImpl(
             }
         }
 
+    private var initialDeclarations: MutableList<IrDeclaration>? = null
+
     override val declarations: MutableList<IrDeclaration> = ArrayList()
-        get() = stageController.declarationListAccess(this) { field }
+        get() = stageController.declarationListAccess(this) {
+
+            if (createdOn != stageController.currentStage) {
+                // TODO The correctness of initialDeclarations initialization is questionable
+                if (initialDeclarations == null) {
+                    initialDeclarations = Collections.unmodifiableList(ArrayList(field))
+                }
+
+                field
+            } else {
+                initialDeclarations ?: field
+            }
+        }
 
     override val typeParameters: MutableList<IrTypeParameter> = SmartList()
 
