@@ -8,6 +8,7 @@ package org.jetbrains.kotlin.backend.common.lower.loops
 import org.jetbrains.kotlin.backend.common.lower.DeclarationIrBuilder
 import org.jetbrains.kotlin.ir.builders.createTmpVariable
 import org.jetbrains.kotlin.ir.builders.irGet
+import org.jetbrains.kotlin.ir.declarations.initialFunctions
 import org.jetbrains.kotlin.ir.expressions.IrConst
 import org.jetbrains.kotlin.ir.expressions.IrConstKind
 import org.jetbrains.kotlin.ir.expressions.IrExpression
@@ -17,7 +18,6 @@ import org.jetbrains.kotlin.ir.expressions.impl.IrConstImpl
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.getClass
 import org.jetbrains.kotlin.ir.types.isNothing
-import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.util.OperatorNameConventions
 
@@ -26,7 +26,7 @@ internal fun IrExpression.castIfNecessary(targetType: IrType, numberCastFunction
     return if (type == targetType || type.isNothing()) {
         this
     } else {
-        val castFun = type.getClass()!!.functions.single { it.name == numberCastFunctionName && it.valueParameters.isEmpty() }
+        val castFun = type.getClass()!!.initialFunctions.single { it.name == numberCastFunctionName && it.valueParameters.isEmpty() }
         IrCallImpl(startOffset, endOffset, castFun.returnType, castFun.symbol)
             .apply { dispatchReceiver = this@castIfNecessary }
     }
@@ -41,7 +41,7 @@ internal fun IrExpression.negate(): IrExpression {
             // This expression's type could be Nothing from an exception throw, in which case the unary minus function will not exist.
             if (type.isNothing()) return this
 
-            val unaryMinusFun = type.getClass()!!.functions.single {
+            val unaryMinusFun = type.getClass()!!.initialFunctions.single {
                 it.name == OperatorNameConventions.UNARY_MINUS &&
                         it.valueParameters.isEmpty()
             }
@@ -59,7 +59,7 @@ internal fun IrExpression.decrement(): IrExpression {
         is Long -> IrConstImpl(startOffset, endOffset, type, IrConstKind.Long, thisValue - 1)
         is Char -> IrConstImpl(startOffset, endOffset, type, IrConstKind.Char, thisValue - 1)
         else -> {
-            val decFun = type.getClass()!!.functions.single {
+            val decFun = type.getClass()!!.initialFunctions.single {
                 it.name == OperatorNameConventions.DEC &&
                         it.valueParameters.isEmpty()
             }
