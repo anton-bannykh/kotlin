@@ -14,7 +14,7 @@ import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.builders.*
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
 import org.jetbrains.kotlin.ir.declarations.IrVariable
-import org.jetbrains.kotlin.ir.declarations.stageController
+import org.jetbrains.kotlin.ir.declarations.initialFunctions
 import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrContainerExpression
 import org.jetbrains.kotlin.ir.expressions.IrExpression
@@ -25,7 +25,6 @@ import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.types.*
 import org.jetbrains.kotlin.ir.util.coerceToUnitIfNeeded
 import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
-import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.util.OperatorNameConventions
 
 /**
@@ -142,14 +141,10 @@ internal abstract class NumericForLoopHeader<T : NumericHeaderInfo>(
     /** Statement used to increment the induction variable. */
     protected fun incrementInductionVariable(builder: DeclarationIrBuilder): IrStatement = with(builder) {
         // inductionVariable = inductionVariable + step
-        val plusFun = inductionVariable.type.getClass()!!.let { klass ->
-            stageController.withInitialStateOf(klass) {
-                klass.functions.single {
-                    it.name == OperatorNameConventions.PLUS &&
-                            it.valueParameters.size == 1 &&
-                            it.valueParameters[0].type == stepVariable.type
-                }
-            }
+        val plusFun = inductionVariable.type.getClass()!!.initialFunctions.single {
+            it.name == OperatorNameConventions.PLUS &&
+                    it.valueParameters.size == 1 &&
+                    it.valueParameters[0].type == stepVariable.type
         }
         irSetVar(
             inductionVariable.symbol, irCallOp(
@@ -486,7 +481,7 @@ internal class WithIndexLoopHeader(
                 with(builder) {
                     // Add `index++` to end of the loop.
                     // TODO: MUSTDO: Check for overflow for Iterable and Sequence (call to checkIndexOverflow()).
-                    val plusFun = indexVariable.type.getClass()!!.functions.first {
+                    val plusFun = indexVariable.type.getClass()!!.initialFunctions.first {
                         it.name == OperatorNameConventions.PLUS &&
                                 it.valueParameters.size == 1 &&
                                 it.valueParameters[0].type.isInt()
@@ -522,7 +517,7 @@ internal class IterableLoopHeader(
             // loopVariable = iteratorVar.next()
             val iteratorClass = headerInfo.iteratorVariable.type.getClass()!!
             val next =
-                irCall(iteratorClass.functions.first { it.name == OperatorNameConventions.NEXT && it.valueParameters.isEmpty() }).apply {
+                irCall(iteratorClass.initialFunctions.first { it.name == OperatorNameConventions.NEXT && it.valueParameters.isEmpty() }).apply {
                     dispatchReceiver = irGet(headerInfo.iteratorVariable)
                 }
             loopVariable?.initializer = next
@@ -540,7 +535,7 @@ internal class IterableLoopHeader(
         //   }
         val iteratorClass = headerInfo.iteratorVariable.type.getClass()!!
         val hasNext =
-            irCall(iteratorClass.functions.first { it.name == OperatorNameConventions.HAS_NEXT && it.valueParameters.isEmpty() }).apply {
+            irCall(iteratorClass.initialFunctions.first { it.name == OperatorNameConventions.HAS_NEXT && it.valueParameters.isEmpty() }).apply {
                 dispatchReceiver = irGet(headerInfo.iteratorVariable)
             }
         val newLoop = IrWhileLoopImpl(oldLoop.startOffset, oldLoop.endOffset, oldLoop.type, oldLoop.origin).apply {

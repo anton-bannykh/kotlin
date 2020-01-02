@@ -28,7 +28,7 @@ class PrimaryConstructorLowering(context: CommonBackendContext) : DeclarationTra
 
     override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
         if (declaration is IrClass) {
-            val constructors = stageController.withInitialStateOf(declaration) { declaration.declarations.filterIsInstance<IrConstructor>() }
+            val constructors = declaration.initialConstructors
 
             if (constructors.any { it.isPrimary }) return null
 

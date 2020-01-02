@@ -15,12 +15,16 @@ import org.jetbrains.kotlin.backend.common.lower.matchers.singleArgumentExtensio
 import org.jetbrains.kotlin.ir.builders.*
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrVariable
-import org.jetbrains.kotlin.ir.declarations.stageController
+import org.jetbrains.kotlin.ir.declarations.initialFunctions
+import org.jetbrains.kotlin.ir.declarations.withInitialState
 import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.types.*
-import org.jetbrains.kotlin.ir.util.*
+import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
+import org.jetbrains.kotlin.ir.util.getPropertyGetter
+import org.jetbrains.kotlin.ir.util.getSimpleFunction
+import org.jetbrains.kotlin.ir.util.isPrimitiveArray
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.util.OperatorNameConventions
 import kotlin.math.absoluteValue
@@ -531,7 +535,7 @@ internal class ArrayIndicesHandler(context: CommonBackendContext) : IndicesHandl
     }
 
     override val IrType.sizePropertyGetter: IrSimpleFunction
-        get() = getClass()!!.let { klass -> stageController.withInitialStateOf(klass) { klass.getPropertyGetter("size")!!.owner } }
+        get() = getClass()!!.withInitialState { getPropertyGetter("size")!!.owner }
 }
 
 internal class CharSequenceIndicesHandler(context: CommonBackendContext) : IndicesHandler(context) {
@@ -651,21 +655,13 @@ internal class ArrayIterationHandler(context: CommonBackendContext) : IndexedGet
     override fun matchIterable(expression: IrExpression) = expression.type.run { isArray() || isPrimitiveArray() }
 
     override val IrType.sizePropertyGetter
-        get() = getClass()!!.let { klass ->
-            stageController.withInitialStateOf(klass) {
-                klass.getPropertyGetter("size")!!.owner
-            }
-        }
+        get() = getClass()!!.withInitialState { getPropertyGetter("size")!!.owner }
 
     override val IrType.getFunction
-        get() = getClass()!!.let { klass ->
-            stageController.withInitialStateOf(klass) {
-                klass.functions.single {
-                    it.name == OperatorNameConventions.GET &&
-                            it.valueParameters.size == 1 &&
-                            it.valueParameters[0].type.isInt()
-                }
-            }
+        get() = getClass()!!.initialFunctions.single {
+            it.name == OperatorNameConventions.GET &&
+                    it.valueParameters.size == 1 &&
+                    it.valueParameters[0].type.isInt()
         }
 }
 

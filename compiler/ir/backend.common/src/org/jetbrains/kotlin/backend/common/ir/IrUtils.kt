@@ -390,7 +390,7 @@ fun IrSimpleFunction.isMethodOfAny() =
     ((valueParameters.size == 0 && name.asString().let { it == "hashCode" || it == "toString" }) ||
             (valueParameters.size == 1 && name.asString() == "equals" && valueParameters[0].type.isNullableAny()))
 
-fun IrClass.simpleFunctions() = stageController.withInitialStateOf(this) {
+fun IrClass.simpleFunctions() = withInitialState {
     declarations.flatMap {
         when (it) {
             is IrSimpleFunction -> listOf(it)

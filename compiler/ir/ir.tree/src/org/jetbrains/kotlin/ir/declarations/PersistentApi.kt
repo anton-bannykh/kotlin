@@ -10,7 +10,7 @@ import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.declarations.impl.IrBodyBase
 import org.jetbrains.kotlin.ir.declarations.impl.IrDeclarationBase
 import org.jetbrains.kotlin.ir.declarations.impl.IrPersistingElementBase
-import org.jetbrains.kotlin.ir.symbols.IrSymbol
+import org.jetbrains.kotlin.ir.symbols.*
 import kotlin.reflect.KMutableProperty0
 import kotlin.reflect.KProperty
 
@@ -176,3 +176,35 @@ fun <K : IrDeclaration, V> mapping(key: MappingKey<K, V>) = MappingDelegate(key)
 
 inline fun <K : IrDeclaration, V> mapping() = MappingDelegate(object : MappingKey<K, V> {})
 
+inline fun <T> IrClass.withInitialState(noinline fn: IrClass.() -> T): T {
+    return stageController.withInitialStateOf(this) {
+        this.fn()
+    }
+}
+
+inline val IrClass.initialDeclarations: List<IrDeclaration>
+    get() = stageController.withInitialStateOf(this) { this.declarations }
+
+val IrClass.initialFunctions: Sequence<IrSimpleFunction>
+    get() = initialDeclarations.asSequence().filterIsInstance<IrSimpleFunction>()
+
+val IrClassSymbol.initialFunctions: Sequence<IrSimpleFunctionSymbol>
+    get() = owner.initialFunctions.map { it.symbol }
+
+val IrClass.initialConstructors: Sequence<IrConstructor>
+    get() = initialDeclarations.asSequence().filterIsInstance<IrConstructor>()
+
+val IrClassSymbol.initialConstructors: Sequence<IrConstructorSymbol>
+    get() = owner.initialConstructors.map { it.symbol }
+
+val IrClass.initialFields: Sequence<IrField>
+    get() = initialDeclarations.asSequence().filterIsInstance<IrField>()
+
+val IrClassSymbol.initialFields: Sequence<IrFieldSymbol>
+    get() = owner.initialFields.map { it.symbol }
+
+val IrClass.initialPrimaryConstructor: IrConstructor?
+    get() = initialDeclarations.singleOrNull { it is IrConstructor && it.isPrimary } as IrConstructor?
+
+val IrClass.initialProperties: Sequence<IrProperty>
+    get() = initialDeclarations.asSequence().filterIsInstance<IrProperty>()

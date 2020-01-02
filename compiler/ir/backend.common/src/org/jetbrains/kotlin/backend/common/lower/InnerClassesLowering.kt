@@ -124,7 +124,7 @@ class InnerClassesMemberBodyLowering(val context: BackendContext) : BodyLowering
         if (!irClass.isInner) return
 
         if (container is IrField || container is IrAnonymousInitializer || container is IrValueParameter) {
-            val primaryConstructor = stageController.withInitialStateOf(irClass) { irClass.declarations.find { it is IrConstructor && it.isPrimary } as? IrConstructor }
+            val primaryConstructor = irClass.initialPrimaryConstructor
             if (primaryConstructor != null) {
                 val oldConstructorParameterToNew = context.primaryConstructorParameterMap(primaryConstructor)
                 irBody.transformChildrenVoid(VariableRemapper(oldConstructorParameterToNew))

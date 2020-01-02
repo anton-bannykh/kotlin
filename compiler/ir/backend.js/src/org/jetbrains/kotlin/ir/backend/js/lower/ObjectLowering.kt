@@ -26,7 +26,6 @@ import org.jetbrains.kotlin.ir.types.makeNullable
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.isEffectivelyExternal
 import org.jetbrains.kotlin.ir.util.parentAsClass
-import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
 import org.jetbrains.kotlin.ir.visitors.transformChildrenVoid
 import org.jetbrains.kotlin.name.Name
@@ -55,7 +54,7 @@ class ObjectDeclarationLowering(
 
         declaration.instanceField = instanceField
 
-        val primaryConstructor = stageController.withInitialStateOf(declaration) { declaration.primaryConstructor } ?: declaration.syntheticPrimaryConstructor!!
+        val primaryConstructor = declaration.initialPrimaryConstructor ?: declaration.syntheticPrimaryConstructor!!
 
         getInstanceFun.body = IrBlockBodyImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET) {
             statements += context.createIrBuilder(getInstanceFun.symbol).irBlockBody(getInstanceFun) {
