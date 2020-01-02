@@ -11,7 +11,7 @@ import org.jetbrains.kotlin.ir.backend.js.JsIrBackendContext
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
-import org.jetbrains.kotlin.ir.declarations.initialFunctions
+import org.jetbrains.kotlin.ir.declarations.initialProperties
 import org.jetbrains.kotlin.ir.expressions.IrBody
 import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
@@ -52,7 +52,12 @@ class PrimitiveCompanionLowering(val context: JsIrBackendContext) : BodyLowering
         val actualCompanion = getActualPrimitiveCompanion(companion)
             ?: return null
 
-        return actualCompanion.initialFunctions.single { it.name == function.name }
+        for (p in actualCompanion.initialProperties) {
+            p.getter?.let { if (it.name == function.name) return it }
+            p.setter?.let { if (it.name == function.name) return it }
+        }
+
+        error("Accessor not found")
     }
 
     override fun lower(irBody: IrBody, container: IrDeclaration) {
