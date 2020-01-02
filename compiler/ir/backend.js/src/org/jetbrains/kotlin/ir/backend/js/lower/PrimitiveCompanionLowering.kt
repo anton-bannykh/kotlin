@@ -11,7 +11,7 @@ import org.jetbrains.kotlin.ir.backend.js.JsIrBackendContext
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
-import org.jetbrains.kotlin.ir.declarations.stageController
+import org.jetbrains.kotlin.ir.declarations.initialFunctions
 import org.jetbrains.kotlin.ir.expressions.IrBody
 import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
@@ -52,11 +52,7 @@ class PrimitiveCompanionLowering(val context: JsIrBackendContext) : BodyLowering
         val actualCompanion = getActualPrimitiveCompanion(companion)
             ?: return null
 
-        return stageController.withInitialStateOf(actualCompanion) {
-            actualCompanion.declarations
-                .filterIsInstance<IrSimpleFunction>()
-                .single { it.name == function.name }
-        }
+        return actualCompanion.initialFunctions.single { it.name == function.name }
     }
 
     override fun lower(irBody: IrBody, container: IrDeclaration) {

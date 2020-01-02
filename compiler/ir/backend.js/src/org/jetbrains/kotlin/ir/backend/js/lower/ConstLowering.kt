@@ -9,7 +9,7 @@ import org.jetbrains.kotlin.backend.common.BodyLoweringPass
 import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
 import org.jetbrains.kotlin.ir.backend.js.JsIrBackendContext
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
-import org.jetbrains.kotlin.ir.declarations.stageController
+import org.jetbrains.kotlin.ir.declarations.initialConstructors
 import org.jetbrains.kotlin.ir.expressions.IrBody
 import org.jetbrains.kotlin.ir.expressions.IrConst
 import org.jetbrains.kotlin.ir.expressions.IrConstKind
@@ -20,7 +20,6 @@ import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.classifierOrNull
 import org.jetbrains.kotlin.ir.types.defaultType
-import org.jetbrains.kotlin.ir.util.constructors
 import org.jetbrains.kotlin.ir.util.isUnsigned
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
 import org.jetbrains.kotlin.ir.visitors.transformChildrenVoid
@@ -32,7 +31,7 @@ class ConstTransformer(private val context: JsIrBackendContext) : IrElementTrans
         carrierFactory: (Int, Int, IrType, C) -> IrExpression,
         vararg args: C
     ): IrExpression {
-        val constructor = stageController.withInitialStateOf(irClass.owner) { irClass.constructors.single() }
+        val constructor = irClass.initialConstructors.single()
         val argType = constructor.owner.valueParameters.first().type
         return IrConstructorCallImpl.fromSymbolOwner(irClass.defaultType, constructor).apply {
             for (i in args.indices) {

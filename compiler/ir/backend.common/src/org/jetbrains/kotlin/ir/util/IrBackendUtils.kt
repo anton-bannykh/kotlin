@@ -19,7 +19,7 @@ package org.jetbrains.kotlin.ir.util
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
-import org.jetbrains.kotlin.ir.declarations.stageController
+import org.jetbrains.kotlin.ir.declarations.withInitialState
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
 
@@ -34,16 +34,16 @@ private fun IrClass.getPropertyDeclaration(name: String): IrProperty? {
     return properties.firstOrNull()
 }
 
-private fun IrClass.getSimpleFunction(name: String): IrSimpleFunctionSymbol? = stageController.withInitialStateOf(this) {
+private fun IrClass.getSimpleFunction(name: String): IrSimpleFunctionSymbol? = withInitialState {
     findDeclaration<IrSimpleFunction> { it.name.asString() == name }?.symbol
 }
 
-fun IrClass.getPropertyGetter(name: String): IrSimpleFunctionSymbol? = stageController.withInitialStateOf(this) {
+fun IrClass.getPropertyGetter(name: String): IrSimpleFunctionSymbol? = withInitialState {
     getPropertyDeclaration(name)?.getter?.symbol
         ?: getSimpleFunction("<get-$name>").also { assert(it?.owner?.correspondingPropertySymbol?.owner?.name?.asString() == name) }
 }
 
-fun IrClass.getPropertySetter(name: String): IrSimpleFunctionSymbol? = stageController.withInitialStateOf(this) {
+fun IrClass.getPropertySetter(name: String): IrSimpleFunctionSymbol? = withInitialState {
     getPropertyDeclaration(name)?.setter?.symbol
         ?: getSimpleFunction("<set-$name>").also { assert(it?.owner?.correspondingPropertySymbol?.owner?.name?.asString() == name) }
 }

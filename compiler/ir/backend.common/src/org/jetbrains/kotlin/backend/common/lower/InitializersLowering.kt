@@ -65,13 +65,12 @@ open class InitializersLowering(context: CommonBackendContext) : InitializersLow
 
 abstract class InitializersLoweringBase(open val context: CommonBackendContext) {
     protected fun extractInitializers(irClass: IrClass, filter: (IrDeclaration) -> Boolean) =
-        stageController.unrestrictDeclarationListsAccess { // TODO What about fields that were added by lowerings? e.g. captured outer class or locals?
-            irClass.declarations.filter(filter).mapNotNull {
-                when (it) {
-                    is IrField -> handleField(irClass, it)
-                    is IrAnonymousInitializer -> handleAnonymousInitializer(it)
-                    else -> null
-                }
+        // TODO What about fields that were added by lowerings? e.g. captured outer class or locals?
+        irClass.initialDeclarations.filter(filter).mapNotNull {
+            when (it) {
+                is IrField -> handleField(irClass, it)
+                is IrAnonymousInitializer -> handleAnonymousInitializer(it)
+                else -> null
             }
         }
 

@@ -320,10 +320,9 @@ abstract class AbstractSuspendFunctionsLowering<C : CommonBackendContext>(val co
         private val argumentToPropertiesMap = functionParameters.associateWith { coroutineClass.addField(it.name, it.type, false) }
 
         private val coroutineBaseClass = getCoroutineBaseClass(irFunction)
-        private val coroutineBaseClassConstructor = stageController.withInitialStateOf(coroutineBaseClass.owner) { coroutineBaseClass.owner.constructors.single { it.valueParameters.size == 1 } }
-        private val create1Function = stageController.withInitialStateOf(coroutineBaseClass.owner) {
-            coroutineBaseClass.owner.simpleFunctions()
-                .single { it.name.asString() == "create" && it.valueParameters.size == 1 }
+        private val coroutineBaseClassConstructor = coroutineBaseClass.owner.initialConstructors.single { it.valueParameters.size == 1 }
+        private val create1Function = coroutineBaseClass.owner.withInitialState {
+            simpleFunctions().single { it.name.asString() == "create" && it.valueParameters.size == 1 }
         }
         private val create1CompletionParameter = create1Function.valueParameters[0]
 
@@ -350,7 +349,7 @@ abstract class AbstractSuspendFunctionsLowering<C : CommonBackendContext>(val co
 
             val coroutineConstructor = buildConstructor()
 
-            val superInvokeSuspendFunction = stageController.withInitialStateOf(coroutineBaseClass.owner) { coroutineBaseClass.owner.simpleFunctions().single { it.name == stateMachineMethodName } }
+            val superInvokeSuspendFunction = coroutineBaseClass.owner.withInitialState { simpleFunctions().single { it.name == stateMachineMethodName } }
             val invokeSuspendMethod = buildInvokeSuspendMethod(superInvokeSuspendFunction, coroutineClass)
 
             var coroutineFactoryConstructor: IrConstructor? = null

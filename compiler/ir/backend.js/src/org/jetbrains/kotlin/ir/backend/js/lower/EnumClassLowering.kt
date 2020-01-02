@@ -373,7 +373,7 @@ class EnumEntryInstancesBodyLowering(val context: JsIrBackendContext): BodyLower
             val entryClass = container.constructedClass
             val enum = entryClass.parentAsClass
             if (enum.goodEnum) {
-                val entry = stageController.withInitialStateOf(enum) { enum.declarations.filterIsInstance<IrEnumEntry>().find { it.correspondingClass === entryClass }!! }
+                val entry = enum.withInitialState { declarations.filterIsInstance<IrEnumEntry>().find { it.correspondingClass === entryClass }!! }
                 (irBody as IrBlockBody).statements.add(0, context.createIrBuilder(container.symbol).run {
                     irSetField(null, entry.correspondingField!!, irGet(entryClass.thisReceiver!!))
                 })
@@ -544,7 +544,7 @@ class EnumSyntheticFunctionsLowering(val context: JsIrBackendContext): Declarati
 }
 
 private val IrClass.enumEntries: List<IrEnumEntry>
-    get() = stageController.withInitialStateOf(this) { this.declarations.filterIsInstance<IrEnumEntry>() }
+    get() = initialDeclarations.filterIsInstance<IrEnumEntry>()
 
 // Should be applied recursively
 class EnumClassRemoveEntriesLowering(val context: JsIrBackendContext) : DeclarationTransformer {

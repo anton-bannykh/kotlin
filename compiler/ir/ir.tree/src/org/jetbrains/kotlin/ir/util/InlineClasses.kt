@@ -26,7 +26,7 @@ fun IrType.getInlinedClass(): IrClass? {
                 var fieldType: IrType
                 var fieldInlinedClass = erased
                 while (true) {
-                    fieldType = stageController.withInitialStateOf(fieldInlinedClass) { getInlineClassUnderlyingType(fieldInlinedClass) }
+                    fieldType = fieldInlinedClass.withInitialState { getInlineClassUnderlyingType(fieldInlinedClass) }
                     if (fieldType.isMarkedNullable()) {
                         return null
                     }
@@ -54,18 +54,12 @@ private tailrec fun erase(type: IrType): IrClass? {
 }
 
 fun getInlineClassUnderlyingType(irClass: IrClass): IrType {
-    val declarations = stageController.withInitialStateOf(irClass) { irClass.declarations }
-    for (declaration in declarations) {
-        if (declaration is IrConstructor && declaration.isPrimary) {
-            return declaration.valueParameters[0].type
-        }
-    }
-    error("Inline class has no primary constructor: ${irClass.fqNameWhenAvailable}")
+    return irClass.initialPrimaryConstructor?.valueParameters?.get(0)?.type
+        ?: error("Inline class has no primary constructor: ${irClass.fqNameWhenAvailable}")
 }
 
 fun getInlineClassBackingField(irClass: IrClass): IrField {
-    val declarations = stageController.withInitialStateOf(irClass) { irClass.declarations }
-    for (declaration in declarations) {
+    for (declaration in irClass.initialDeclarations) {
         if (declaration is IrField)
             return declaration
 
