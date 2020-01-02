@@ -40,7 +40,7 @@ class JvmDeclarationFactory(
     private val interfaceCompanionFieldDeclarations = HashMap<IrSymbolOwner, IrField>()
     private val outerThisDeclarations = HashMap<IrClass, IrField>()
     private val innerClassConstructors = HashMap<IrConstructor, IrConstructor>()
-    private val innerClassConstructorsReversed = HashMap<IrConstructor, IrConstructor>()
+    private val originalInnerClassConstructorsByClass = HashMap<IrClass, IrConstructor>()
     private val staticBackingFields = HashMap<IrProperty, IrField>()
 
     private val defaultImplsMethods = HashMap<IrSimpleFunction, IrSimpleFunction>()
@@ -76,20 +76,20 @@ class JvmDeclarationFactory(
         }
 
     override fun getInnerClassConstructorWithOuterThisParameter(innerClassConstructor: IrConstructor): IrConstructor {
-        assert((innerClassConstructor.parent as IrClass).isInner) { "Class is not inner: ${(innerClassConstructor.parent as IrClass).dump()}" }
+        val innerClass = innerClassConstructor.parent as IrClass
+        assert(innerClass.isInner) { "Class is not inner: ${(innerClassConstructor.parent as IrClass).dump()}" }
 
         return innerClassConstructors.getOrPut(innerClassConstructor) {
             createInnerClassConstructorWithOuterThisParameter(innerClassConstructor)
         }.also {
-            innerClassConstructorsReversed[it] = innerClassConstructor
+            originalInnerClassConstructorsByClass[innerClass] = innerClassConstructor
         }
     }
 
-    override fun getInnerClassConstructorWithInnerThisParameter(innerClassConstructor: IrConstructor): IrConstructor {
-        val innerClass = innerClassConstructor.parent as IrClass
+    override fun getInnerClassOriginalPrimaryConstructorOrNull(innerClass: IrClass): IrConstructor? {
         assert(innerClass.isInner) { "Class is not inner: $innerClass" }
 
-        return innerClassConstructorsReversed[innerClassConstructor]!!
+        return originalInnerClassConstructorsByClass[innerClass]
     }
 
     private fun createInnerClassConstructorWithOuterThisParameter(oldConstructor: IrConstructor): IrConstructor {

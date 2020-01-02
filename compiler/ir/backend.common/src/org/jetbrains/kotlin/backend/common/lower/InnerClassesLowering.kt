@@ -41,7 +41,7 @@ class InnerClassesLowering(val context: BackendContext) : DeclarationTransformer
             if (!irClass.isInner) return null
 
             val newConstructor = lowerConstructor(declaration)
-            val oldConstructorParameterToNew = context.primaryConstructorParameterMap(newConstructor)
+            val oldConstructorParameterToNew = context.primaryConstructorParameterMap(declaration)
             for ((oldParam, newParam) in oldConstructorParameterToNew.entries) {
                 newParam.defaultValue = oldParam.defaultValue?.let { oldDefault ->
                     IrExpressionBodyImpl(oldDefault.startOffset, oldDefault.endOffset) {
@@ -80,7 +80,7 @@ class InnerClassesLowering(val context: BackendContext) : DeclarationTransformer
             }
             patchDeclarationParents(loweredConstructor)
 
-            val oldConstructorParameterToNew = context.primaryConstructorParameterMap(loweredConstructor)
+            val oldConstructorParameterToNew = context.primaryConstructorParameterMap(irConstructor)
             transformChildrenVoid(VariableRemapper(oldConstructorParameterToNew))
         }
 
@@ -89,10 +89,10 @@ class InnerClassesLowering(val context: BackendContext) : DeclarationTransformer
 
 }
 
-private fun BackendContext.primaryConstructorParameterMap(loweredConstructor: IrConstructor): Map<IrValueParameter, IrValueParameter> {
+private fun BackendContext.primaryConstructorParameterMap(originalConstructor: IrConstructor): Map<IrValueParameter, IrValueParameter> {
     val oldConstructorParameterToNew = HashMap<IrValueParameter, IrValueParameter>()
 
-    val originalConstructor = declarationFactory.getInnerClassConstructorWithInnerThisParameter(loweredConstructor)
+    val loweredConstructor = declarationFactory.getInnerClassConstructorWithOuterThisParameter(originalConstructor)
 
     originalConstructor.valueParameters.forEach { old ->
         oldConstructorParameterToNew[old] = loweredConstructor.valueParameters[old.index + 1]
@@ -124,7 +124,7 @@ class InnerClassesMemberBodyLowering(val context: BackendContext) : BodyLowering
         if (!irClass.isInner) return
 
         if (container is IrField || container is IrAnonymousInitializer || container is IrValueParameter) {
-            val primaryConstructor = irClass.initialPrimaryConstructor
+            val primaryConstructor = context.declarationFactory.getInnerClassOriginalPrimaryConstructorOrNull(irClass)
             if (primaryConstructor != null) {
                 val oldConstructorParameterToNew = context.primaryConstructorParameterMap(primaryConstructor)
                 irBody.transformChildrenVoid(VariableRemapper(oldConstructorParameterToNew))
