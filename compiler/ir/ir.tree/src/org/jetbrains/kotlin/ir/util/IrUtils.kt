@@ -184,7 +184,7 @@ val DeclarationDescriptorWithSource.startOffset: Int? get() = (this.source as? P
 val DeclarationDescriptorWithSource.endOffset: Int? get() = (this.source as? PsiSourceElement)?.psi?.endOffset
 
 val IrClass.functions: Sequence<IrSimpleFunction>
-    get() = initialDeclarations.asSequence().filterIsInstance<IrSimpleFunction>()
+    get() = declarations.asSequence().filterIsInstance<IrSimpleFunction>()
 
 val IrClassSymbol.functions: Sequence<IrSimpleFunctionSymbol>
     get() = owner.functions.map { it.symbol }
