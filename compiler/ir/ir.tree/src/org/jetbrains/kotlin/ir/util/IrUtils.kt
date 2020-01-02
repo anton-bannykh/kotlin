@@ -184,25 +184,25 @@ val DeclarationDescriptorWithSource.startOffset: Int? get() = (this.source as? P
 val DeclarationDescriptorWithSource.endOffset: Int? get() = (this.source as? PsiSourceElement)?.psi?.endOffset
 
 val IrClass.functions: Sequence<IrSimpleFunction>
-    get() = declarations.asSequence().filterIsInstance<IrSimpleFunction>()
+    get() = stageController.withInitialStateOf(this) { declarations.asSequence().filterIsInstance<IrSimpleFunction>() }
 
 val IrClassSymbol.functions: Sequence<IrSimpleFunctionSymbol>
     get() = owner.functions.map { it.symbol }
 
 val IrClass.constructors: Sequence<IrConstructor>
-    get() = declarations.asSequence().filterIsInstance<IrConstructor>()
+    get() = stageController.withInitialStateOf(this) { declarations.asSequence().filterIsInstance<IrConstructor>() }
 
 val IrClassSymbol.constructors: Sequence<IrConstructorSymbol>
     get() = owner.constructors.map { it.symbol }
 
 val IrClass.fields: Sequence<IrField>
-    get() = declarations.asSequence().filterIsInstance<IrField>()
+    get() = stageController.withInitialStateOf(this) { declarations.asSequence().filterIsInstance<IrField>() }
 
 val IrClassSymbol.fields: Sequence<IrFieldSymbol>
     get() = owner.fields.map { it.symbol }
 
 val IrClass.primaryConstructor: IrConstructor?
-    get() = this.declarations.singleOrNull { it is IrConstructor && it.isPrimary } as IrConstructor?
+    get() = stageController.withInitialStateOf(this) { declarations.singleOrNull { it is IrConstructor && it.isPrimary } as IrConstructor? }
 
 val IrDeclarationContainer.properties: Sequence<IrProperty>
     get() = declarations.asSequence().filterIsInstance<IrProperty>()

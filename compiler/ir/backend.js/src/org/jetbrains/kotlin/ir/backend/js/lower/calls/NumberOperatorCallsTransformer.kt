@@ -9,6 +9,7 @@ import org.jetbrains.kotlin.ir.backend.js.JsIrBackendContext
 import org.jetbrains.kotlin.ir.backend.js.ir.JsIrBuilder
 import org.jetbrains.kotlin.ir.backend.js.utils.OperatorNames
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
+import org.jetbrains.kotlin.ir.declarations.stageController
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.IrFunctionAccessExpression
 import org.jetbrains.kotlin.ir.expressions.impl.IrCallImpl
@@ -219,7 +220,7 @@ class NumberOperatorCallsTransformer(context: JsIrBackendContext) : CallsTransfo
 
                         // Replace {Byte, Short, Int}.OP with corresponding Long.OP
                         val declaration = call.symbol.owner as IrSimpleFunction
-                        val replacement = intrinsics.longClassSymbol.owner.declarations.filterIsInstance<IrSimpleFunction>()
+                        val replacement = intrinsics.longClassSymbol.owner.let { stageController.withInitialStateOf(it) { it.declarations.filterIsInstance<IrSimpleFunction>() } }
                             .single { member ->
                                 member.name.asString() == declaration.name.asString() &&
                                         member.valueParameters.size == declaration.valueParameters.size &&

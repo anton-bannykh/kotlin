@@ -55,7 +55,7 @@ class ObjectDeclarationLowering(
 
         declaration.instanceField = instanceField
 
-        val primaryConstructor = declaration.primaryConstructor!! // TODO find a way to trigger this correctly
+        val primaryConstructor = stageController.withInitialStateOf(declaration) { declaration.primaryConstructor } ?: declaration.syntheticPrimaryConstructor!!
 
         getInstanceFun.body = IrBlockBodyImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET) {
             statements += context.createIrBuilder(getInstanceFun.symbol).irBlockBody(getInstanceFun) {

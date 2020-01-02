@@ -320,9 +320,11 @@ abstract class AbstractSuspendFunctionsLowering<C : CommonBackendContext>(val co
         private val argumentToPropertiesMap = functionParameters.associateWith { coroutineClass.addField(it.name, it.type, false) }
 
         private val coroutineBaseClass = getCoroutineBaseClass(irFunction)
-        private val coroutineBaseClassConstructor = coroutineBaseClass.owner.constructors.single { it.valueParameters.size == 1 }
-        private val create1Function = coroutineBaseClass.owner.simpleFunctions()
-            .single { it.name.asString() == "create" && it.valueParameters.size == 1 }
+        private val coroutineBaseClassConstructor = stageController.withInitialStateOf(coroutineBaseClass.owner) { coroutineBaseClass.owner.constructors.single { it.valueParameters.size == 1 } }
+        private val create1Function = stageController.withInitialStateOf(coroutineBaseClass.owner) {
+            coroutineBaseClass.owner.simpleFunctions()
+                .single { it.name.asString() == "create" && it.valueParameters.size == 1 }
+        }
         private val create1CompletionParameter = create1Function.valueParameters[0]
 
         private val coroutineConstructors = mutableListOf<IrConstructor>()
@@ -348,7 +350,7 @@ abstract class AbstractSuspendFunctionsLowering<C : CommonBackendContext>(val co
 
             val coroutineConstructor = buildConstructor()
 
-            val superInvokeSuspendFunction = coroutineBaseClass.owner.simpleFunctions().single { it.name == stateMachineMethodName }
+            val superInvokeSuspendFunction = stageController.withInitialStateOf(coroutineBaseClass.owner) { coroutineBaseClass.owner.simpleFunctions().single { it.name == stateMachineMethodName } }
             val invokeSuspendMethod = buildInvokeSuspendMethod(superInvokeSuspendFunction, coroutineClass)
 
             var coroutineFactoryConstructor: IrConstructor? = null
@@ -381,7 +383,10 @@ abstract class AbstractSuspendFunctionsLowering<C : CommonBackendContext>(val co
             }
 
             coroutineClass.superTypes += superTypes
-            coroutineClass.addFakeOverrides()
+            // TODO no idea what's going on here
+            stageController.unrestrictDeclarationListsAccess {
+                coroutineClass.addFakeOverrides()
+            }
 
             initializeStateMachine(coroutineConstructors, coroutineClassThis)
 

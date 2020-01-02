@@ -5,7 +5,9 @@
 
 package org.jetbrains.kotlin.backend.common.lower
 
-import org.jetbrains.kotlin.backend.common.*
+import org.jetbrains.kotlin.backend.common.BodyLoweringPass
+import org.jetbrains.kotlin.backend.common.CommonBackendContext
+import org.jetbrains.kotlin.backend.common.DeclarationTransformer
 import org.jetbrains.kotlin.backend.common.ir.createStaticFunctionWithReceivers
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
@@ -45,7 +47,7 @@ class InlineClassLowering(val context: CommonBackendContext) {
 
             transformConstructorBody(irConstructor, result)
 
-            return listOf()
+            return listOf(result)
         }
 
 
@@ -60,9 +62,9 @@ class InlineClassLowering(val context: CommonBackendContext) {
             function.body = delegateToStaticMethod(function, staticMethod)
 
             if (function.overriddenSymbols.isEmpty())  // Function is used only in unboxed context
-                return listOf()
+                return listOf(staticMethod)
 
-            return null
+            return listOf(function, staticMethod)
         }
 
         private fun transformConstructorBody(irConstructor: IrConstructor, staticMethod: IrSimpleFunction) {
@@ -198,9 +200,7 @@ class InlineClassLowering(val context: CommonBackendContext) {
 
     private fun getOrCreateStaticMethod(function: IrFunction): IrSimpleFunctionSymbol =
         function::transformedFunction.getOrPut {
-            createStaticBodilessMethod(function).also {
-                function.parentAsClass.declarations.add(it)
-            }
+            createStaticBodilessMethod(function)
         }.symbol
 
     val inlineClassUsageLowering = object : BodyLoweringPass {

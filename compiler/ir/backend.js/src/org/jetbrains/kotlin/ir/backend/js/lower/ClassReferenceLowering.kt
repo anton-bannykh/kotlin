@@ -11,7 +11,10 @@ import org.jetbrains.kotlin.backend.common.ir.Symbols
 import org.jetbrains.kotlin.ir.backend.js.JsIrBackendContext
 import org.jetbrains.kotlin.ir.backend.js.ir.JsIrBuilder
 import org.jetbrains.kotlin.ir.backend.js.utils.toJsArrayLiteral
-import org.jetbrains.kotlin.ir.declarations.*
+import org.jetbrains.kotlin.ir.declarations.IrDeclaration
+import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
+import org.jetbrains.kotlin.ir.declarations.IrTypeParameter
+import org.jetbrains.kotlin.ir.declarations.stageController
 import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.symbols.IrClassifierSymbol
 import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
@@ -21,7 +24,7 @@ import org.jetbrains.kotlin.ir.util.isFunction
 import org.jetbrains.kotlin.ir.util.isThrowable
 import org.jetbrains.kotlin.ir.visitors.transformChildrenVoid
 import org.jetbrains.kotlin.name.Name
-import org.jetbrains.kotlin.types.*
+import org.jetbrains.kotlin.types.Variance
 
 class ClassReferenceLowering(val context: JsIrBackendContext) : BodyLoweringPass {
     private val intrinsics = context.intrinsics
@@ -35,36 +38,40 @@ class ClassReferenceLowering(val context: JsIrBackendContext) : BodyLoweringPass
             ?: primitiveClassesObject.owner.declarations.filterIsInstance<IrSimpleFunction>().single { it.name == Name.special("<get-$name>") }
 
     private val finalPrimitiveClasses by lazy {
-        mapOf(
-            IrType::isBoolean to "booleanClass",
-            IrType::isByte to "byteClass",
-            IrType::isShort to "shortClass",
-            IrType::isInt to "intClass",
-            IrType::isFloat to "floatClass",
-            IrType::isDouble to "doubleClass",
-            IrType::isArray to "arrayClass",
-            IrType::isString to "stringClass",
-            IrType::isBooleanArray to "booleanArrayClass",
-            IrType::isCharArray to "charArrayClass",
-            IrType::isByteArray to "byteArrayClass",
-            IrType::isShortArray to "shortArrayClass",
-            IrType::isIntArray to "intArrayClass",
-            IrType::isLongArray to "longArrayClass",
-            IrType::isFloatArray to "floatArrayClass",
-            IrType::isDoubleArray to "doubleArrayClass"
-        ).mapValues {
-            primitiveClassProperty(it.value)
+        stageController.withInitialIr {
+            mapOf(
+                IrType::isBoolean to "booleanClass",
+                IrType::isByte to "byteClass",
+                IrType::isShort to "shortClass",
+                IrType::isInt to "intClass",
+                IrType::isFloat to "floatClass",
+                IrType::isDouble to "doubleClass",
+                IrType::isArray to "arrayClass",
+                IrType::isString to "stringClass",
+                IrType::isBooleanArray to "booleanArrayClass",
+                IrType::isCharArray to "charArrayClass",
+                IrType::isByteArray to "byteArrayClass",
+                IrType::isShortArray to "shortArrayClass",
+                IrType::isIntArray to "intArrayClass",
+                IrType::isLongArray to "longArrayClass",
+                IrType::isFloatArray to "floatArrayClass",
+                IrType::isDoubleArray to "doubleArrayClass"
+            ).mapValues {
+                primitiveClassProperty(it.value)
+            }
         }
     }
 
     private val openPrimitiveClasses by lazy {
-        mapOf(
-            IrType::isAny to "anyClass",
-            IrType::isNumber to "numberClass",
-            IrType::isThrowable to "throwableClass",
-            IrType::isNothing to "nothingClass"
-        ).mapValues {
-            primitiveClassProperty(it.value)
+        stageController.withInitialIr {
+            mapOf(
+                IrType::isAny to "anyClass",
+                IrType::isNumber to "numberClass",
+                IrType::isThrowable to "throwableClass",
+                IrType::isNothing to "nothingClass"
+            ).mapValues {
+                primitiveClassProperty(it.value)
+            }
         }
     }
 

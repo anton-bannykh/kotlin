@@ -5,6 +5,7 @@
 
 package org.jetbrains.kotlin.ir.declarations
 
+import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.declarations.impl.IrBodyBase
 import org.jetbrains.kotlin.ir.declarations.impl.IrDeclarationBase
@@ -33,6 +34,8 @@ interface StageController {
 
     fun <T> withInitialIr(block: () -> T): T = block()
 
+    fun <T> withInitialStateOf(declaration: IrDeclaration, block: () -> T): T = block()
+
     fun register(declaration: IrDeclarationBase<*>) {}
 
     fun <K: IrDeclaration, V> getUserdata(declaration: IrDeclaration): MutableMap<MappingKey<K, V>, V> = error("Userdata not supported")
@@ -44,13 +47,29 @@ interface StageController {
     fun <T> bodyLowering(fn: () -> T): T = fn()
 
     fun canModify(element: IrElement): Boolean = true
+
+    fun <T> unrestrictDeclarationListsAccess(fn: () -> T): T = fn()
+
+    fun <T> declarationListAccess(declaration: IrClass, fn: () -> T): T = fn()
 }
 
 open class NoopController(override var currentStage: Int = 0) : StageController {
 
     override var bodiesEnabled: Boolean = true
 
-    override fun <T> withInitialIr(block: () -> T): T = block()
+    override fun <T> withInitialIr(block: () -> T): T = withIrImpl(0, block)
+
+    override fun <T> withInitialStateOf(declaration: IrDeclaration, block: () -> T): T = withIrImpl((declaration as? IrPersistingElementBase<*>)?.createdOn ?: 0, block)
+
+    private fun <T> withIrImpl(stage: Int, block: () -> T): T {
+        val prevStage = currentStage
+        currentStage = stage
+        try {
+            return block()
+        } finally {
+            currentStage = prevStage
+        }
+    }
 
     private val userDataMap: MutableMap<IrDeclaration, MutableMap<MappingKey<IrDeclaration, Any>, Any>> = mutableMapOf()
 
@@ -73,12 +92,15 @@ open class NoopController(override var currentStage: Int = 0) : StageController 
         bodiesEnabled = false
         val wasRestricted = restricted
         restricted = true
+        val wereDeclarationListsRestricted = declarationListsRestricted
+        declarationListsRestricted = true
         try {
             return fn()
         } finally {
             restrictedToDeclaration = prev
             bodiesEnabled = wereBodiesEnabled
             restricted = wasRestricted
+            declarationListsRestricted = wereDeclarationListsRestricted
         }
     }
 
@@ -87,16 +109,39 @@ open class NoopController(override var currentStage: Int = 0) : StageController 
         bodiesEnabled = true
         val wasRestricted = restricted
         restricted = true
+        val wereDeclarationListsRestricted = declarationListsRestricted
+        declarationListsRestricted = true
         try {
             return fn()
         } finally {
             bodiesEnabled = wereBodiesEnabled
             restricted = wasRestricted
+            declarationListsRestricted = wereDeclarationListsRestricted
         }
     }
 
     override fun canModify(element: IrElement): Boolean {
         return !restricted || restrictedToDeclaration === element || element is IrPersistingElementBase<*> && element.createdOn == currentStage
+    }
+
+    private var declarationListsRestricted = false
+
+    override fun <T> unrestrictDeclarationListsAccess(fn: () -> T): T {
+        val wereDeclarationListsRestricted = declarationListsRestricted
+        declarationListsRestricted = false
+        try {
+            return fn()
+        } finally {
+            declarationListsRestricted = wereDeclarationListsRestricted
+        }
+    }
+
+    override fun <T> declarationListAccess(declaration: IrClass, fn: () -> T): T {
+        if (declarationListsRestricted && declaration.visibility != Visibilities.LOCAL && currentStage != (declaration as? IrPersistingElementBase<*>)?.createdOn ?: 0) {
+            error("Cannot access declaration list at non-initial stage")
+        }
+
+        return fn()
     }
 }
 

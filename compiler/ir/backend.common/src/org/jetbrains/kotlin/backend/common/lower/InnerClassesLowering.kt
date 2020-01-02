@@ -17,7 +17,10 @@ import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
 import org.jetbrains.kotlin.ir.symbols.IrValueParameterSymbol
 import org.jetbrains.kotlin.ir.symbols.IrValueSymbol
 import org.jetbrains.kotlin.ir.types.classOrNull
-import org.jetbrains.kotlin.ir.util.*
+import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
+import org.jetbrains.kotlin.ir.util.dump
+import org.jetbrains.kotlin.ir.util.parentAsClass
+import org.jetbrains.kotlin.ir.util.patchDeclarationParents
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
 import org.jetbrains.kotlin.ir.visitors.transformChildrenVoid
 
@@ -30,7 +33,9 @@ class InnerClassesLowering(val context: BackendContext) : DeclarationTransformer
     override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
 
         if (declaration is IrClass && declaration.isInner) {
-            declaration.declarations += context.declarationFactory.getOuterThisField(declaration)
+            stageController.unrestrictDeclarationListsAccess {
+                declaration.declarations += context.declarationFactory.getOuterThisField(declaration)
+            }
         } else if (declaration is IrConstructor) {
             val irClass = declaration.parentAsClass
             if (!irClass.isInner) return null
@@ -119,8 +124,7 @@ class InnerClassesMemberBodyLowering(val context: BackendContext) : BodyLowering
         if (!irClass.isInner) return
 
         if (container is IrField || container is IrAnonymousInitializer || container is IrValueParameter) {
-            // TODO read original declarations
-            val primaryConstructor = irClass.declarations.find { it is IrConstructor && it.isPrimary } as? IrConstructor
+            val primaryConstructor = stageController.withInitialStateOf(irClass) { irClass.declarations.find { it is IrConstructor && it.isPrimary } as? IrConstructor }
             if (primaryConstructor != null) {
                 val oldConstructorParameterToNew = context.primaryConstructorParameterMap(primaryConstructor)
                 irBody.transformChildrenVoid(VariableRemapper(oldConstructorParameterToNew))
