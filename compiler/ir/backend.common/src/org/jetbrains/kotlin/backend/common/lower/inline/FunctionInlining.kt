@@ -33,13 +33,15 @@ import org.jetbrains.kotlin.util.OperatorNameConventions
 
 class FunctionInlining(val context: CommonBackendContext) : IrElementTransformerVoidWithContext(), BodyLoweringPass {
 
-    override fun lower(irBody: IrBody, container: IrDeclaration) {
-        // TODO do local classes have non-local visibility?
-        stageController.unrestrictDeclarationListsAccess {
-            container.accept(this, null)
+    private var containerScope: ScopeWithIr? = null
 
-            irBody.patchDeclarationParents(container as? IrDeclarationParent ?: container.parent)
-        }
+    override fun lower(irBody: IrBody, container: IrDeclaration) {
+        // TODO container: IrSymbolDeclaration
+        containerScope = createScope(container as IrSymbolOwner)
+        irBody.accept(this, null)
+        containerScope = null
+
+        irBody.patchDeclarationParents(container as? IrDeclarationParent ?: container.parent)
     }
 
     fun inline(irModule: IrModuleFragment) = irModule.accept(this, data = null)
@@ -60,10 +62,12 @@ class FunctionInlining(val context: CommonBackendContext) : IrElementTransformer
 
         val actualCallee = getFunctionDeclaration(callee.symbol)
 
-        val parent = allScopes.map { it.irElement }.filterIsInstance<IrDeclarationParent>().lastOrNull() ?:
-        allScopes.map { it.irElement }.filterIsInstance<IrDeclaration>().lastOrNull()?.parent
+        val parent = allScopes.map { it.irElement }.filterIsInstance<IrDeclarationParent>().lastOrNull()
+            ?: allScopes.map { it.irElement }.filterIsInstance<IrDeclaration>().lastOrNull()?.parent
+            ?: containerScope?.irElement as? IrDeclarationParent
+            ?: (containerScope?.irElement as? IrDeclaration)?.parent
 
-        val inliner = Inliner(expression, actualCallee, currentScope!!, parent, context)
+        val inliner = Inliner(expression, actualCallee, currentScope ?: containerScope!!, parent, context)
         return inliner.inline()
     }
 
