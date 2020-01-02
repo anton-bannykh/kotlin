@@ -6,14 +6,15 @@
 package org.jetbrains.kotlin.ir.backend.js.lower.calls
 
 import org.jetbrains.kotlin.ir.backend.js.JsIrBackendContext
-import org.jetbrains.kotlin.ir.util.irCall
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.isStaticMethodOfClass
+import org.jetbrains.kotlin.ir.declarations.stageController
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.IrFunctionAccessExpression
 import org.jetbrains.kotlin.ir.types.getClass
 import org.jetbrains.kotlin.ir.types.isString
 import org.jetbrains.kotlin.ir.util.findDeclaration
+import org.jetbrains.kotlin.ir.util.irCall
 import org.jetbrains.kotlin.ir.util.isEnumClass
 import org.jetbrains.kotlin.name.Name
 
@@ -25,7 +26,7 @@ class EnumIntrinsicsTransformer(private val context: JsIrBackendContext) : Calls
     ): IrExpression {
         val enum = call.getTypeArgument(0)?.getClass() ?: return call
         if (!enum.isEnumClass) return call
-        val staticMethod = enum.findDeclaration(staticMethodPredicate)
+        val staticMethod = stageController.withInitialStateOf(enum) { enum.findDeclaration(staticMethodPredicate) }
         if (staticMethod == null || !staticMethod.isStaticMethodOfClass)
             throw IllegalStateException("Enum class should have static method for ${call.symbol.owner.name}")
 

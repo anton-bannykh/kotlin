@@ -34,9 +34,12 @@ import org.jetbrains.kotlin.util.OperatorNameConventions
 class FunctionInlining(val context: CommonBackendContext) : IrElementTransformerVoidWithContext(), BodyLoweringPass {
 
     override fun lower(irBody: IrBody, container: IrDeclaration) {
-        container.accept(this, null)
+        // TODO do local classes have non-local visibility?
+        stageController.unrestrictDeclarationListsAccess {
+            container.accept(this, null)
 
-        irBody.patchDeclarationParents(container as? IrDeclarationParent ?: container.parent)
+            irBody.patchDeclarationParents(container as? IrDeclarationParent ?: container.parent)
+        }
     }
 
     fun inline(irModule: IrModuleFragment) = irModule.accept(this, data = null)

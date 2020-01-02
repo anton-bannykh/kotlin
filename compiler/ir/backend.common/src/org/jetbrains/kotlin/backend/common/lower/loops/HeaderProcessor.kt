@@ -14,6 +14,7 @@ import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.builders.*
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
 import org.jetbrains.kotlin.ir.declarations.IrVariable
+import org.jetbrains.kotlin.ir.declarations.stageController
 import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrContainerExpression
 import org.jetbrains.kotlin.ir.expressions.IrExpression
@@ -141,10 +142,14 @@ internal abstract class NumericForLoopHeader<T : NumericHeaderInfo>(
     /** Statement used to increment the induction variable. */
     protected fun incrementInductionVariable(builder: DeclarationIrBuilder): IrStatement = with(builder) {
         // inductionVariable = inductionVariable + step
-        val plusFun = inductionVariable.type.getClass()!!.functions.single {
-            it.name == OperatorNameConventions.PLUS &&
-                    it.valueParameters.size == 1 &&
-                    it.valueParameters[0].type == stepVariable.type
+        val plusFun = inductionVariable.type.getClass()!!.let { klass ->
+            stageController.withInitialStateOf(klass) {
+                klass.functions.single {
+                    it.name == OperatorNameConventions.PLUS &&
+                            it.valueParameters.size == 1 &&
+                            it.valueParameters[0].type == stepVariable.type
+                }
+            }
         }
         irSetVar(
             inductionVariable.symbol, irCallOp(

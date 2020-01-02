@@ -11,10 +11,7 @@ import org.jetbrains.kotlin.backend.common.IrElementTransformerVoidWithContext
 import org.jetbrains.kotlin.backend.common.ir.asSimpleLambda
 import org.jetbrains.kotlin.backend.common.ir.inline
 import org.jetbrains.kotlin.ir.builders.*
-import org.jetbrains.kotlin.ir.declarations.IrConstructor
-import org.jetbrains.kotlin.ir.declarations.IrDeclaration
-import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
-import org.jetbrains.kotlin.ir.declarations.IrSymbolOwner
+import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.expressions.IrBody
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
@@ -29,7 +26,10 @@ import org.jetbrains.kotlin.util.OperatorNameConventions
 class ArrayConstructorLowering(val context: CommonBackendContext) : IrElementTransformerVoidWithContext(), BodyLoweringPass {
 
     override fun lower(irBody: IrBody, container: IrDeclaration) {
-        irBody.transformChildrenVoid(ArrayConstructorTransformer(context, container as IrSymbolOwner))
+        // TODO local declarations need to be traversed
+//        stageController.unrestrictDeclarationListsAccess {
+            irBody.transformChildrenVoid(ArrayConstructorTransformer(context, container as IrSymbolOwner))
+//        }
     }
 }
 
@@ -96,12 +96,16 @@ private class ArrayConstructorTransformer(
                         irGet(invokableVar!!),
                         irGet(tempIndex)
                     )
-                    +irCall(result.type.getClass()!!.functions.single { it.name == OperatorNameConventions.SET }).apply {
+                    +irCall(result.type.getClass()!!.let { klass ->
+                        stageController.withInitialStateOf(klass) {
+                            klass.functions.single { it.name == OperatorNameConventions.SET }
+                        }
+                    }).apply {
                         dispatchReceiver = irGet(result)
                         putValueArgument(0, irGet(tempIndex))
                         putValueArgument(1, value)
                     }
-                    val inc = index.type.getClass()!!.functions.single { it.name == OperatorNameConventions.INC }
+                    val inc = index.type.getClass()!!.let { klass -> stageController.withInitialStateOf(klass) { klass.functions.single { it.name == OperatorNameConventions.INC } } }
                     +irSetVar(index.symbol, irCallOp(inc.symbol, index.type, irGet(index)))
                 }
             }

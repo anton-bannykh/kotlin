@@ -62,18 +62,6 @@ private class DescriptorlessIrFileSymbol : IrFileSymbol {
 private fun isBuiltInClass(declaration: IrDeclaration): Boolean =
     declaration is IrClass && declaration.fqNameWhenAvailable in BODILESS_BUILTIN_CLASSES
 
-private fun collectExternalClasses(container: IrDeclarationContainer, includeCurrentLevel: Boolean): List<IrClass> {
-    val externalClasses =
-        container.declarations.filterIsInstance<IrClass>().filter { it.isEffectivelyExternal() }
-
-    val nestedExternalClasses =
-        externalClasses.flatMap { collectExternalClasses(it, true) }
-
-    return if (includeCurrentLevel)
-        externalClasses + nestedExternalClasses
-    else
-        nestedExternalClasses
-}
 
 fun moveBodilessDeclarationsToSeparatePlace(context: JsIrBackendContext, moduleFragment: IrModuleFragment) {
     MoveBodilessDeclarationsToSeparatePlaceLowering(context).let { moveBodiless ->
@@ -95,8 +83,6 @@ class MoveBodilessDeclarationsToSeparatePlaceLowering(private val context: JsIrB
                 }
             }
         }
-
-        context.externalNestedClasses += collectExternalClasses(irFile, includeCurrentLevel = false)
 
         if (irFile.getJsModule() != null || irFile.getJsQualifier() != null) {
             externalPackageFragment.declarations += declaration

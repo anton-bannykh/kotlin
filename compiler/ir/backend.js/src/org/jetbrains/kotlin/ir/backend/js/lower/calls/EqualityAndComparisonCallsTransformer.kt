@@ -159,7 +159,7 @@ class EqualityAndComparisonCallsTransformer(context: JsIrBackendContext) : Calls
     private fun IrType.findEqualsMethod(): IrSimpleFunction? {
         val klass = getClass() ?: return null
         if (klass.isEnumClass && klass.isExternal) return null
-        return klass.declarations
+        return stageController.withInitialStateOf(klass) { klass.declarations }
             .filterIsInstance<IrSimpleFunction>()
             .filter { it.isEqualsInheritedFromAny() && !it.isFakeOverriddenFromAny() }
             .also { assert(it.size <= 1) }

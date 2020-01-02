@@ -98,6 +98,7 @@ class IrClassImpl(
         }
 
     override val declarations: MutableList<IrDeclaration> = ArrayList()
+        get() = stageController.declarationListAccess(this) { field }
 
     override val typeParameters: MutableList<IrTypeParameter> = SmartList()
 

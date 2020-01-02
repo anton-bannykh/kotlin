@@ -5,10 +5,7 @@
 
 package org.jetbrains.kotlin.ir.util
 
-import org.jetbrains.kotlin.ir.declarations.IrClass
-import org.jetbrains.kotlin.ir.declarations.IrConstructor
-import org.jetbrains.kotlin.ir.declarations.IrField
-import org.jetbrains.kotlin.ir.declarations.IrProperty
+import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.symbols.IrTypeParameterSymbol
 import org.jetbrains.kotlin.ir.types.IrSimpleType
@@ -29,7 +26,7 @@ fun IrType.getInlinedClass(): IrClass? {
                 var fieldType: IrType
                 var fieldInlinedClass = erased
                 while (true) {
-                    fieldType = getInlineClassUnderlyingType(fieldInlinedClass)
+                    fieldType = stageController.withInitialStateOf(fieldInlinedClass) { getInlineClassUnderlyingType(fieldInlinedClass) }
                     if (fieldType.isMarkedNullable()) {
                         return null
                     }
@@ -57,7 +54,8 @@ private tailrec fun erase(type: IrType): IrClass? {
 }
 
 fun getInlineClassUnderlyingType(irClass: IrClass): IrType {
-    for (declaration in irClass.declarations) {
+    val declarations = stageController.withInitialStateOf(irClass) { irClass.declarations }
+    for (declaration in declarations) {
         if (declaration is IrConstructor && declaration.isPrimary) {
             return declaration.valueParameters[0].type
         }
@@ -66,7 +64,8 @@ fun getInlineClassUnderlyingType(irClass: IrClass): IrType {
 }
 
 fun getInlineClassBackingField(irClass: IrClass): IrField {
-    for (declaration in irClass.declarations) {
+    val declarations = stageController.withInitialStateOf(irClass) { irClass.declarations }
+    for (declaration in declarations) {
         if (declaration is IrField)
             return declaration
 

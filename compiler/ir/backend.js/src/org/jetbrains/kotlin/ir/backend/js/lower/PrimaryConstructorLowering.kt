@@ -6,14 +6,12 @@
 package org.jetbrains.kotlin.ir.backend.js.lower
 
 import org.jetbrains.kotlin.backend.common.BodyLoweringPass
-import org.jetbrains.kotlin.backend.common.ClassLoweringPass
 import org.jetbrains.kotlin.backend.common.CommonBackendContext
 import org.jetbrains.kotlin.backend.common.DeclarationTransformer
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.ir.builders.declarations.addConstructor
 import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.expressions.IrBody
-import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.IrInstanceInitializerCall
 import org.jetbrains.kotlin.ir.expressions.impl.IrBlockBodyImpl
 import org.jetbrains.kotlin.ir.expressions.impl.IrDelegatingConstructorCallImpl
@@ -23,14 +21,14 @@ import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
 import org.jetbrains.kotlin.ir.visitors.transformChildrenVoid
 
 
-private var IrClass.syntheticPrimaryConstructor by mapping<IrClass, IrConstructor>()
+var IrClass.syntheticPrimaryConstructor by mapping<IrClass, IrConstructor>()
 
 // Create primary constructor if it doesn't exist
 class PrimaryConstructorLowering(context: CommonBackendContext) : DeclarationTransformer {
 
     override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
         if (declaration is IrClass) {
-            val constructors = declaration.declarations.filterIsInstance<IrConstructor>()
+            val constructors = stageController.withInitialStateOf(declaration) { declaration.declarations.filterIsInstance<IrConstructor>() }
 
             if (constructors.any { it.isPrimary }) return null
 
@@ -45,10 +43,13 @@ class PrimaryConstructorLowering(context: CommonBackendContext) : DeclarationTra
     private val unitType = context.irBuiltIns.unitType
 
     private fun createPrimaryConstructor(irClass: IrClass): IrConstructor {
-        val declaration = irClass.addConstructor {
-            origin = SYNTHETIC_PRIMARY_CONSTRUCTOR
-            isPrimary = true
-            visibility = Visibilities.PRIVATE
+        // TODO better API for declaration creation. This case doesn't fit the usual transformFlat-like API.
+        val declaration = stageController.unrestrictDeclarationListsAccess {
+            irClass.addConstructor {
+                origin = SYNTHETIC_PRIMARY_CONSTRUCTOR
+                isPrimary = true
+                visibility = Visibilities.PRIVATE
+            }
         }
 
         declaration.body = irClass.run {
