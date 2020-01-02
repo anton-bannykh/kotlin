@@ -31,7 +31,7 @@ class JsDeclarationFactory : DeclarationFactory {
     private val singletonFieldDescriptors = HashMap<IrClass, IrField>()
     private val outerThisFieldSymbols = HashMap<IrClass, IrField>()
     private val innerClassConstructors = HashMap<IrConstructor, IrConstructor>()
-    private val innerClassConstructorsReversed = HashMap<IrConstructor, IrConstructor>()
+    private val originalInnerClassConstructorsByClass = HashMap<IrClass, IrConstructor>()
 
     override fun getFieldForEnumEntry(enumEntry: IrEnumEntry, entryType: IrType): IrField = TODO()
 
@@ -81,15 +81,14 @@ class JsDeclarationFactory : DeclarationFactory {
         return innerClassConstructors.getOrPut(innerClassConstructor) {
             createInnerClassConstructorWithOuterThisParameter(innerClassConstructor)
         }.also {
-            innerClassConstructorsReversed[it] = innerClassConstructor
+            originalInnerClassConstructorsByClass[innerClass] = innerClassConstructor
         }
     }
 
-    override fun getInnerClassConstructorWithInnerThisParameter(innerClassConstructor: IrConstructor): IrConstructor {
-        val innerClass = innerClassConstructor.parent as IrClass
+    override fun getInnerClassOriginalPrimaryConstructorOrNull(innerClass: IrClass): IrConstructor? {
         assert(innerClass.isInner) { "Class is not inner: $innerClass" }
 
-        return innerClassConstructorsReversed[innerClassConstructor]!!
+        return originalInnerClassConstructorsByClass[innerClass]
     }
 
     private fun createInnerClassConstructorWithOuterThisParameter(oldConstructor: IrConstructor): IrConstructor {
