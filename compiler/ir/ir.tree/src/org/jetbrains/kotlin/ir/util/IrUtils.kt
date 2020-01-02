@@ -190,19 +190,19 @@ val IrClassSymbol.functions: Sequence<IrSimpleFunctionSymbol>
     get() = owner.functions.map { it.symbol }
 
 val IrClass.constructors: Sequence<IrConstructor>
-    get() = initialDeclarations.asSequence().filterIsInstance<IrConstructor>()
+    get() = declarations.asSequence().filterIsInstance<IrConstructor>()
 
 val IrClassSymbol.constructors: Sequence<IrConstructorSymbol>
     get() = owner.constructors.map { it.symbol }
 
 val IrClass.fields: Sequence<IrField>
-    get() = initialDeclarations.asSequence().filterIsInstance<IrField>()
+    get() = declarations.asSequence().filterIsInstance<IrField>()
 
 val IrClassSymbol.fields: Sequence<IrFieldSymbol>
     get() = owner.fields.map { it.symbol }
 
 val IrClass.primaryConstructor: IrConstructor?
-    get() = initialDeclarations.singleOrNull { it is IrConstructor && it.isPrimary } as IrConstructor?
+    get() = declarations.singleOrNull { it is IrConstructor && it.isPrimary } as IrConstructor?
 
 val IrDeclarationContainer.properties: Sequence<IrProperty>
     get() = declarations.asSequence().filterIsInstance<IrProperty>()
