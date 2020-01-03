@@ -74,9 +74,9 @@ fun compile(
     deserializer.finalizeExpectActualLinker()
 
     val phaserState = PhaserState<IrModuleFragment>()
-    phaseList.forEachIndexed { index, phase ->
+    loweringList.forEachIndexed { index, lowering ->
         controller.currentStage = index + 1
-        phase.invoke(phaseConfig, phaserState, context, moduleFragment)
+        lowering.modulePhase.invoke(phaseConfig, phaserState, context, moduleFragment)
     }
 
 //    jsPhases.invokeToplevel(phaseConfig, context, moduleFragment)
