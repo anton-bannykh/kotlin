@@ -463,7 +463,7 @@ fun IrClass.addFakeOverrides() {
     val unoverriddenSuperFunctions = superTypes
         .map { it.getClass()!! }
         .flatMap { irClass ->
-            irClass.declarations
+            irClass.initialDeclarations
                 .flatMap { it.toList() }
                 .filter { it !in overriddenFunctions }
                 .filter { it.visibility != Visibilities.PRIVATE }
