@@ -367,7 +367,7 @@ private val delegateToPrimaryConstructorLoweringPhase = makeJsModulePhase(
 )
 
 private val annotationConstructorLowering = makeJsModulePhase(
-    ::AnnotationConstructorLowering, // TODO
+    ::AnnotationConstructorLowering,
     name = "AnnotationConstructorLowering",
     description = "Generate annotation constructor body"
 )
