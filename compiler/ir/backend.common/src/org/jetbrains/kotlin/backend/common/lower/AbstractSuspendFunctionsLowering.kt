@@ -382,10 +382,7 @@ abstract class AbstractSuspendFunctionsLowering<C : CommonBackendContext>(val co
             }
 
             coroutineClass.superTypes += superTypes
-            // TODO no idea what's going on here
-            stageController.unrestrictDeclarationListsAccess {
-                coroutineClass.addFakeOverrides()
-            }
+            coroutineClass.addFakeOverrides()
 
             initializeStateMachine(coroutineConstructors, coroutineClassThis)
 
