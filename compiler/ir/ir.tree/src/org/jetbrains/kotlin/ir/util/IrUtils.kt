@@ -610,6 +610,14 @@ val IrDeclaration.file: IrFile
         }
     }
 
+val IrDeclaration.fileOrNull: IrFile? get() = parent.let {
+    when (it) {
+        is IrFile -> it
+        is IrDeclaration -> it.fileOrNull
+        else -> null
+    }
+}
+
 val IrDeclaration.classOrNull: IrClass?
     get() = parent.let {
         when (it) {

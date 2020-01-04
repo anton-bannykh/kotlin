@@ -28,11 +28,13 @@ fun eliminateDeadDeclarations(
     mainFunction: IrSimpleFunction?
 ) {
 
-    val allRoots = buildRoots(module, context, mainFunction)
+    val allRoots = stageController.withInitialIr { buildRoots(module, context, mainFunction) }
 
     val usefulDeclarations = usefulDeclarations(allRoots, context)
 
-    removeUselessDeclarations(module, usefulDeclarations)
+    stageController.unrestrictDeclarationListsAccess {
+        removeUselessDeclarations(module, usefulDeclarations)
+    }
 }
 
 private fun buildRoots(module: IrModuleFragment, context: JsIrBackendContext, mainFunction: IrSimpleFunction?): Iterable<IrDeclaration> {
@@ -75,6 +77,7 @@ private fun removeUselessDeclarations(module: IrModuleFragment, usefulDeclaratio
             }
 
             override fun visitConstructor(declaration: IrConstructor) {
+                // TODO this looks suspicious
                 if (declaration !in usefulDeclarations) {
                     // Keep the constructor declaration without body in order to declare the JS constructor function
                     declaration.body = IrBlockBodyImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET, emptyList())
@@ -127,22 +130,30 @@ fun usefulDeclarations(roots: Iterable<IrDeclaration>, context: JsIrBackendConte
         if (this !in result) {
             result.add(this)
             queue.addLast(this)
+
+            if (this is IrClass && name.asString() == "Unit") {
+                1
+            }
         }
     }
 
     // Add roots, including nested declarations
-    roots.withNested().forEach { it.enqueue() }
+    stageController.withInitialIr {
+        roots.withNested().forEach { it.enqueue() }
+    }
 
     val toStringMethod =
-        context.irBuiltIns.anyClass.owner.declarations.filterIsInstance<IrFunction>().single { it.name.asString() == "toString" }
+        context.irBuiltIns.anyClass.owner.initialDeclarations.filterIsInstance<IrFunction>().single { it.name.asString() == "toString" }
     val equalsMethod =
-        context.irBuiltIns.anyClass.owner.declarations.filterIsInstance<IrFunction>().single { it.name.asString() == "equals" }
+        context.irBuiltIns.anyClass.owner.initialDeclarations.filterIsInstance<IrFunction>().single { it.name.asString() == "equals" }
     val hashCodeMethod =
-        context.irBuiltIns.anyClass.owner.declarations.filterIsInstance<IrFunction>().single { it.name.asString() == "hashCode" }
+        context.irBuiltIns.anyClass.owner.initialDeclarations.filterIsInstance<IrFunction>().single { it.name.asString() == "hashCode" }
 
     while (queue.isNotEmpty()) {
         while (queue.isNotEmpty()) {
             val declaration = queue.pollFirst()
+
+            stageController.lazyLower(declaration)
 
             if (declaration is IrClass) {
                 declaration.superTypes.forEach {
@@ -151,7 +162,7 @@ fun usefulDeclarations(roots: Iterable<IrDeclaration>, context: JsIrBackendConte
 
                 // Special hack for `IntrinsicsJs.kt` support
                 if (declaration.superTypes.any { it.isSuspendFunctionTypeOrSubtype() }) {
-                    declaration.declarations.forEach {
+                    declaration.initialDeclarations.forEach {
                         if (it is IrSimpleFunction && it.name.asString().startsWith("invoke")) {
                             it.enqueue()
                         }
@@ -160,7 +171,7 @@ fun usefulDeclarations(roots: Iterable<IrDeclaration>, context: JsIrBackendConte
 
                 // TODO find out how `doResume` gets removed
                 if (declaration.symbol == context.ir.symbols.coroutineImpl) {
-                    declaration.declarations.forEach {
+                    declaration.initialDeclarations.forEach {
                         if (it is IrSimpleFunction && it.name.asString() == "doResume") {
                             it.enqueue()
                         }
@@ -187,69 +198,71 @@ fun usefulDeclarations(roots: Iterable<IrDeclaration>, context: JsIrBackendConte
                 else -> null
             }
 
-            body?.acceptVoid(object : IrElementVisitorVoid {
-                override fun visitElement(element: IrElement) {
-                    element.acceptChildrenVoid(this)
-                }
+            stageController.bodyLowering {
+                body?.acceptVoid(object : IrElementVisitorVoid {
+                    override fun visitElement(element: IrElement) {
+                        element.acceptChildrenVoid(this)
+                    }
 
-                override fun visitFunctionAccess(expression: IrFunctionAccessExpression) {
-                    super.visitFunctionAccess(expression)
+                    override fun visitFunctionAccess(expression: IrFunctionAccessExpression) {
+                        super.visitFunctionAccess(expression)
 
-                    expression.symbol.owner.enqueue()
-                }
+                        expression.symbol.owner.enqueue()
+                    }
 
-                override fun visitVariableAccess(expression: IrValueAccessExpression) {
-                    super.visitVariableAccess(expression)
+                    override fun visitVariableAccess(expression: IrValueAccessExpression) {
+                        super.visitVariableAccess(expression)
 
-                    expression.symbol.owner.enqueue()
-                }
+                        expression.symbol.owner.enqueue()
+                    }
 
-                override fun visitFieldAccess(expression: IrFieldAccessExpression) {
-                    super.visitFieldAccess(expression)
+                    override fun visitFieldAccess(expression: IrFieldAccessExpression) {
+                        super.visitFieldAccess(expression)
 
-                    expression.symbol.owner.enqueue()
-                }
+                        expression.symbol.owner.enqueue()
+                    }
 
-                override fun visitCall(expression: IrCall) {
-                    super.visitCall(expression)
+                    override fun visitCall(expression: IrCall) {
+                        super.visitCall(expression)
 
-                    when (expression.symbol) {
-                        context.intrinsics.jsBoxIntrinsic -> {
-                            val inlineClass = expression.getTypeArgument(0)!!.getInlinedClass()!!
-                            val constructor = inlineClass.declarations.filterIsInstance<IrConstructor>().single { it.isPrimary }
-                            constructor.enqueue()
-                        }
-                        context.intrinsics.jsClass -> {
-                            (expression.getTypeArgument(0)!!.classifierOrFail.owner as IrDeclaration).enqueue()
-                        }
-                        context.intrinsics.jsObjectCreate.symbol -> {
-                            val classToCreate = expression.getTypeArgument(0)!!.classifierOrFail.owner as IrClass
-                            classToCreate.enqueue()
-                            constructedClasses += classToCreate
-                        }
-                        context.intrinsics.jsEquals -> {
-                            equalsMethod.enqueue()
-                        }
-                        context.intrinsics.jsToString -> {
-                            toStringMethod.enqueue()
-                        }
-                        context.intrinsics.jsHashCode -> {
-                            hashCodeMethod.enqueue()
-                        }
-                        context.intrinsics.jsPlus -> {
-                            if (expression.getValueArgument(0)?.type?.classOrNull == context.irBuiltIns.stringClass) {
+                        when (expression.symbol) {
+                            context.intrinsics.jsBoxIntrinsic -> {
+                                val inlineClass = expression.getTypeArgument(0)!!.getInlinedClass()!!
+                                val constructor = inlineClass.initialDeclarations.filterIsInstance<IrConstructor>().single { it.isPrimary }
+                                constructor.enqueue()
+                            }
+                            context.intrinsics.jsClass -> {
+                                (expression.getTypeArgument(0)!!.classifierOrFail.owner as IrDeclaration).enqueue()
+                            }
+                            context.intrinsics.jsObjectCreate.symbol -> {
+                                val classToCreate = expression.getTypeArgument(0)!!.classifierOrFail.owner as IrClass
+                                classToCreate.enqueue()
+                                constructedClasses += classToCreate
+                            }
+                            context.intrinsics.jsEquals -> {
+                                equalsMethod.enqueue()
+                            }
+                            context.intrinsics.jsToString -> {
                                 toStringMethod.enqueue()
+                            }
+                            context.intrinsics.jsHashCode -> {
+                                hashCodeMethod.enqueue()
+                            }
+                            context.intrinsics.jsPlus -> {
+                                if (expression.getValueArgument(0)?.type?.classOrNull == context.irBuiltIns.stringClass) {
+                                    toStringMethod.enqueue()
+                                }
                             }
                         }
                     }
-                }
 
-                override fun visitStringConcatenation(expression: IrStringConcatenation) {
-                    super.visitStringConcatenation(expression)
+                    override fun visitStringConcatenation(expression: IrStringConcatenation) {
+                        super.visitStringConcatenation(expression)
 
-                    toStringMethod.enqueue()
-                }
-            })
+                        toStringMethod.enqueue()
+                    }
+                })
+            }
         }
 
         fun IrOverridableDeclaration<*>.overridesUsefulFunction(): Boolean {
@@ -261,7 +274,8 @@ fun usefulDeclarations(roots: Iterable<IrDeclaration>, context: JsIrBackendConte
         }
 
         for (klass in constructedClasses) {
-            for (declaration in klass.declarations) {
+            // TODO a better way to support inverse overrides.
+            for (declaration in ArrayList(klass.declarations)) {
                 if (declaration in result) continue
 
                 if (declaration is IrOverridableDeclaration<*> && declaration.overridesUsefulFunction()) {

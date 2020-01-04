@@ -15,8 +15,11 @@ import org.jetbrains.kotlin.ir.backend.js.lower.calls.CallsLowering
 import org.jetbrains.kotlin.ir.backend.js.lower.coroutines.JsSuspendFunctionsLowering
 import org.jetbrains.kotlin.ir.backend.js.lower.inline.CopyInlineFunctionBodyLowering
 import org.jetbrains.kotlin.ir.backend.js.lower.inline.RemoveInlineFunctionsWithReifiedTypeParametersLowering
-import org.jetbrains.kotlin.ir.declarations.IrFile
-import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
+import org.jetbrains.kotlin.ir.declarations.*
+import org.jetbrains.kotlin.ir.declarations.impl.IrBodyBase
+import org.jetbrains.kotlin.ir.declarations.impl.IrDeclarationBase
+import org.jetbrains.kotlin.ir.declarations.impl.IrFileImpl
+import org.jetbrains.kotlin.ir.util.fileOrNull
 
 private fun DeclarationContainerLoweringPass.runOnFilesPostfix(files: Iterable<IrFile>) = files.forEach { runOnFilePostfix(it) }
 
@@ -559,7 +562,7 @@ private val objectUsageLoweringPhase = makeBodyLoweringPhase(
 )
 
 val loweringList = listOf<Lowering>(
-    moveBodilessDeclarationsToSeparatePlacePhase,
+//    moveBodilessDeclarationsToSeparatePlacePhase,
 //    scriptRemoveReceiverLowering, // TODO
     validateIrBeforeLowering,
 //    testGenerationPhase, // TODO
@@ -628,6 +631,7 @@ val loweringList = listOf<Lowering>(
     objectDeclarationLoweringPhase,
     objectUsageLoweringPhase,
     callsLoweringPhase,
+    staticMembersLoweringPhase,
     validateIrAfterLowering
 )
 
@@ -638,3 +642,89 @@ val jsPhases = namedIrModulePhase(
         acc.then(lowering.modulePhase)
     }
 )
+
+class MutableController(val context: JsIrBackendContext): NoopController() {
+
+    override fun lazyLower(declaration: IrDeclaration) {
+        if (declaration is IrDeclarationBase<*> && currentStage - 1 > declaration.loweredUpTo) {
+            val stageNonInclusive = currentStage
+
+            while (declaration.loweredUpTo + 1 < stageNonInclusive) {
+                val i = declaration.loweredUpTo + 1
+                val parentBefore = withStage(i) { declaration.parent }
+                if (parentBefore !is IrDeclarationContainer) {
+                    break
+                }
+
+                if (declaration is IrClass && declaration.name.asString() == "Throwable") {
+                    1
+                }
+                withStage(i) {
+                    val fileBefore = declaration.fileOrNull as? IrFileImpl
+                    // TODO a better way to skip declarations in external package fragments
+                    if (declaration.removedOn > i && fileBefore != null && fileBefore.symbol !in context.externalPackageFragmentSymbols) {
+                        val lowering = loweringList[i - 1]
+                        if (lowering is DeclarationLowering) {
+
+                            val result = restrictTo(declaration) { lowering.declarationTransformer(context).transformFlat(declaration) }
+                            if (result != null) {
+                                result.forEach {
+                                    it.loweredUpTo = i
+                                    it.parent = parentBefore
+                                }
+
+                                stageController.unrestrictDeclarationListsAccess {
+
+                                    var index = -1
+                                    parentBefore.declarations.forEachIndexed { i, v ->
+                                        if (index == -1 && v == declaration) {
+                                            index = i
+                                        }
+                                    }
+
+                                    if (index != -1) {
+                                        parentBefore.declarations.removeAt(index)
+                                        parentBefore.declarations.addAll(index, result)
+                                    } else {
+                                        parentBefore.declarations.addAll(result)
+                                    }
+
+                                    if (declaration.parent == parentBefore && declaration !in result) {
+                                        declaration.removedOn = currentStage
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    declaration.loweredUpTo = i
+                }
+            }
+        }
+    }
+
+
+    override fun lowerBody(body: IrBodyBase<*>) {
+        if (body.loweredUpTo + 1 < currentStage) {
+            for (i in (body.loweredUpTo + 1) until currentStage) {
+                withStage(i) {
+                    val declaration = body.container
+                    val fileBefore = declaration.fileOrNull as? IrFileImpl
+                    if (fileBefore != null) {
+                        val lowering = loweringList[i - 1]
+
+                        if (lowering is BodyLowering) {
+                            lowering.bodyLowering(context).lower(body, declaration)
+                        }
+                    }
+                    body.loweredUpTo = i
+                }
+            }
+        }
+    }
+}
+
+private var IrDeclaration.loweredUpTo: Int
+    get() = (this as? IrDeclarationBase<*>)?.loweredUpTo ?: 0
+    set(v) {
+        (this as? IrDeclarationBase<*>)?.loweredUpTo = v
+    }

@@ -199,7 +199,8 @@ class NameTables(
         }
 
         for (p in packages) {
-            for (declaration in p.declarations) {
+            // TODO
+            for (declaration in ArrayList(p.declarations)) {
                 acceptDeclaration(declaration)
             }
         }
@@ -325,7 +326,7 @@ class NameTables(
             parent = parent.parent
         }
 
-        return mappedNames[mapToKey(declaration)] ?: error("Can't find name for declaration ${declaration.fqNameWhenAvailable}")
+        return mappedNames[mapToKey(declaration)] ?: declaration.name.asString() + "__error" //error("Can't find name for declaration ${declaration.fqNameWhenAvailable}")
     }
 
     fun getNameForMemberField(field: IrField): String {
