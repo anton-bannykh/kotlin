@@ -302,6 +302,14 @@ fun usefulDeclarations(roots: Iterable<IrDeclaration>, context: JsIrBackendConte
                     declaration.enqueue()
                 }
             }
+
+            for (declaration in klass.initialDeclarations) {
+                // TODO this is a hack.
+                if (declaration is IrProperty) {
+                    declaration.getter?.let { if (it.overridesUsefulFunction()) it.enqueue() }
+                    declaration.setter?.let { if (it.overridesUsefulFunction()) it.enqueue() }
+                }
+            }
         }
     }
 
