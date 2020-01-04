@@ -652,13 +652,10 @@ class MutableController(val context: JsIrBackendContext): NoopController() {
             while (declaration.loweredUpTo + 1 < stageNonInclusive) {
                 val i = declaration.loweredUpTo + 1
                 val parentBefore = withStage(i) { declaration.parent }
-                if (parentBefore !is IrDeclarationContainer) {
-                    break
-                }
+//                if (parentBefore !is IrDeclarationContainer) {
+//                    break
+//                }
 
-                if (declaration is IrClass && declaration.name.asString() == "Throwable") {
-                    1
-                }
                 withStage(i) {
                     val fileBefore = declaration.fileOrNull as? IrFileImpl
                     // TODO a better way to skip declarations in external package fragments
@@ -673,24 +670,26 @@ class MutableController(val context: JsIrBackendContext): NoopController() {
                                     it.parent = parentBefore
                                 }
 
-                                stageController.unrestrictDeclarationListsAccess {
+                                if (parentBefore is IrDeclarationContainer) {
+                                    stageController.unrestrictDeclarationListsAccess {
 
-                                    var index = -1
-                                    parentBefore.declarations.forEachIndexed { i, v ->
-                                        if (index == -1 && v == declaration) {
-                                            index = i
+                                        var index = -1
+                                        parentBefore.declarations.forEachIndexed { i, v ->
+                                            if (index == -1 && v == declaration) {
+                                                index = i
+                                            }
                                         }
-                                    }
 
-                                    if (index != -1) {
-                                        parentBefore.declarations.removeAt(index)
-                                        parentBefore.declarations.addAll(index, result)
-                                    } else {
-                                        parentBefore.declarations.addAll(result)
-                                    }
+                                        if (index != -1) {
+                                            parentBefore.declarations.removeAt(index)
+                                            parentBefore.declarations.addAll(index, result)
+                                        } else {
+                                            parentBefore.declarations.addAll(result)
+                                        }
 
-                                    if (declaration.parent == parentBefore && declaration !in result) {
-                                        declaration.removedOn = currentStage
+                                        if (declaration.parent == parentBefore && declaration !in result) {
+                                            declaration.removedOn = currentStage
+                                        }
                                     }
                                 }
                             }
@@ -713,7 +712,9 @@ class MutableController(val context: JsIrBackendContext): NoopController() {
                         val lowering = loweringList[i - 1]
 
                         if (lowering is BodyLowering) {
-                            lowering.bodyLowering(context).lower(body, declaration)
+                            stageController.bodyLowering {
+                                lowering.bodyLowering(context).lower(body, declaration)
+                            }
                         }
                     }
                     body.loweredUpTo = i
