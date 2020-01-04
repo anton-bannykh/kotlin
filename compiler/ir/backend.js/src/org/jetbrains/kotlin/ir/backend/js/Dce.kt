@@ -163,24 +163,6 @@ fun usefulDeclarations(roots: Iterable<IrDeclaration>, context: JsIrBackendConte
                 declaration.superTypes.forEach {
                     (it.classifierOrNull as? IrClassSymbol)?.owner?.enqueue()
                 }
-
-                // Special hack for `IntrinsicsJs.kt` support
-                if (declaration.superTypes.any { it.isSuspendFunctionTypeOrSubtype() }) {
-                    declaration.initialDeclarations.forEach {
-                        if (it is IrSimpleFunction && it.name.asString().startsWith("invoke")) {
-                            it.enqueue()
-                        }
-                    }
-                }
-
-                // TODO find out how `doResume` gets removed
-                if (declaration.symbol == context.ir.symbols.coroutineImpl) {
-                    declaration.initialDeclarations.forEach {
-                        if (it is IrSimpleFunction && it.name.asString() == "doResume") {
-                            it.enqueue()
-                        }
-                    }
-                }
             }
 
             if (declaration is IrSimpleFunction) {
@@ -308,6 +290,24 @@ fun usefulDeclarations(roots: Iterable<IrDeclaration>, context: JsIrBackendConte
                 if (declaration is IrProperty) {
                     declaration.getter?.let { if (it.overridesUsefulFunction()) it.enqueue() }
                     declaration.setter?.let { if (it.overridesUsefulFunction()) it.enqueue() }
+                }
+            }
+
+            // Special hack for `IntrinsicsJs.kt` support
+            if (klass.superTypes.any { it.isSuspendFunctionTypeOrSubtype() }) {
+                ArrayList(klass.declarations).forEach {
+                    if (it is IrSimpleFunction && it.name.asString().startsWith("invoke")) {
+                        it.enqueue()
+                    }
+                }
+            }
+
+            // TODO find out how `doResume` gets removed
+            if (klass.symbol == context.ir.symbols.coroutineImpl) {
+                ArrayList(klass.declarations).forEach {
+                    if (it is IrSimpleFunction && it.name.asString() == "doResume") {
+                        it.enqueue()
+                    }
                 }
             }
         }
