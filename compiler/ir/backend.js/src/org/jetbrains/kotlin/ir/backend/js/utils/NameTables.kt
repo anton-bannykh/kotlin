@@ -352,7 +352,7 @@ class NameTables(
             return signature.suggestedName
 
         if (name == null) {
-            1
+            return function.name.asString() + "__error" // TODO one case is a virtual method of an abstract class with no implementation
         }
 
         require(name != null) {
