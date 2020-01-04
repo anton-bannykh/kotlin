@@ -22,13 +22,9 @@ interface StageController {
 
     fun lazyLower(declaration: IrDeclaration) {}
 
-    fun lazyLower(file: IrFile) {}
-
     fun lowerBody(body: IrBodyBase<*>) {}
 
     fun <T> withStage(stage: Int, fn: () -> T): T = fn()
-
-    fun tryLoad(symbol: IrSymbol) {}
 
     val bodiesEnabled: Boolean get() = true
 
