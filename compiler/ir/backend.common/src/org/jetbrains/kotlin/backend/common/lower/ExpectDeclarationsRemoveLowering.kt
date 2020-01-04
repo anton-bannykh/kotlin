@@ -59,6 +59,9 @@ class ExpectDeclarationsRemoveLowering(val context: BackendContext, val keepOpti
             if (!function.descriptor.isActual) return null
 
             val index = declaration.index
+
+            if (index < 0) return null
+
             assert(function.valueParameters[index] == declaration)
 
             // If the containing declaration is an `expect class` that matches an `actual typealias`,
