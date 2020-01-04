@@ -48,7 +48,7 @@ class ExpectDeclarationsRemoveLowering(val context: BackendContext, val keepOpti
                 return null
             }
 
-            val function = declaration.parent as IrFunction
+            val function = declaration.parent as? IrFunction ?: return null
 
             if (function is IrConstructor &&
                 ExpectedActualDeclarationChecker.isOptionalAnnotationClass(function.descriptor.constructedClass)

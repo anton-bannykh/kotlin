@@ -213,6 +213,7 @@ fun DeclarationTransformer.runPostfix(withLocalDeclarations: Boolean = false): D
                             (parent as? IrDeclarationContainer)?.let {
                                 var index = -1
                                 it.declarations.forEachIndexed { i, v ->
+                                    // TODO Why do we look for property itself as well?
                                     if (v == this || index == -1 && v == declaration) {
                                         index = i
                                     }

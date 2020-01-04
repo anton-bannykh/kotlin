@@ -53,19 +53,19 @@ open class NoopController(override var currentStage: Int = 0) : StageController 
 
     override var bodiesEnabled: Boolean = true
 
-    override fun <T> withInitialIr(block: () -> T): T = withIrImpl(0, block)
-
-    override fun <T> withInitialStateOf(declaration: IrDeclaration, block: () -> T): T = withIrImpl((declaration as? IrPersistingElementBase<*>)?.createdOn ?: 0, block)
-
-    private fun <T> withIrImpl(stage: Int, block: () -> T): T {
+    override fun <T> withStage(stage: Int, fn: () -> T): T {
         val prevStage = currentStage
         currentStage = stage
         try {
-            return block()
+            return fn()
         } finally {
             currentStage = prevStage
         }
     }
+
+    override fun <T> withInitialIr(block: () -> T): T = withStage(0, block)
+
+    override fun <T> withInitialStateOf(declaration: IrDeclaration, block: () -> T): T = withStage((declaration as? IrPersistingElementBase<*>)?.createdOn ?: 0, block)
 
     private val userDataMap: MutableMap<IrDeclaration, MutableMap<MappingKey<IrDeclaration, Any>, Any>> = mutableMapOf()
 

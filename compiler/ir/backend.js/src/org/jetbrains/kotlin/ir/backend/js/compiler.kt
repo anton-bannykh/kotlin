@@ -16,6 +16,7 @@ import org.jetbrains.kotlin.ir.backend.js.utils.JsMainFunctionDetector
 import org.jetbrains.kotlin.ir.backend.js.utils.NameTables
 import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
 import org.jetbrains.kotlin.ir.declarations.NoopController
+import org.jetbrains.kotlin.ir.declarations.StageController
 import org.jetbrains.kotlin.ir.declarations.stageController
 import org.jetbrains.kotlin.ir.util.ExternalDependenciesGenerator
 import org.jetbrains.kotlin.ir.util.generateTypicalIrProviderList
@@ -43,8 +44,8 @@ fun compile(
     generateFullJs: Boolean = true,
     generateDceJs: Boolean = false
 ): CompilerResult {
-    val controller = NoopController()
-    stageController = controller
+
+    stageController = object : StageController {}
 
     val (moduleFragment, dependencyModules, irBuiltIns, symbolTable, deserializer) =
         loadIr(project, files, configuration, allDependencies, friendDependencies)
@@ -73,14 +74,26 @@ fun compile(
 
     deserializer.finalizeExpectActualLinker()
 
-    val phaserState = PhaserState<IrModuleFragment>()
-    loweringList.forEachIndexed { index, lowering ->
-        controller.currentStage = index + 1
-        lowering.modulePhase.invoke(phaseConfig, phaserState, context, moduleFragment)
-    }
+    moveBodilessDeclarationsToSeparatePlace(context, moduleFragment)
+
+//    val phaserState = PhaserState<IrModuleFragment>()
+//    loweringList.forEachIndexed { index, lowering ->
+//        controller.currentStage = index + 1
+//        lowering.modulePhase.invoke(phaseConfig, phaserState, context, moduleFragment)
+//    }
 
 //    jsPhases.invokeToplevel(phaseConfig, context, moduleFragment)
 
+    val controller = MutableController(context)
+    stageController = controller
+
+    controller.currentStage = loweringList.size + 1
+
+    eliminateDeadDeclarations(moduleFragment, context, mainFunction)
+
+    stageController = object : StageController {
+        override val currentStage: Int = controller.currentStage
+    }
 
     val transformer = IrModuleToJsTransformer(context, mainFunction, mainArguments)
     return transformer.generateModule(moduleFragment, generateFullJs, generateDceJs)

@@ -80,6 +80,8 @@ class MoveBodilessDeclarationsToSeparatePlaceLowering(private val context: JsIrB
             context.externalPackageFragment.getOrPut(irFile.symbol) {
                 IrFileImpl(fileEntry = irFile.fileEntry, fqName = irFile.fqName, symbol = DescriptorlessIrFileSymbol()).also {
                     it.annotations += irFile.annotations
+                }.also {
+                    context.externalPackageFragmentSymbols += it.symbol
                 }
             }
         }
