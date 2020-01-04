@@ -329,7 +329,7 @@ class NameTables(
             parent = parent.parent
         }
 
-        return mappedNames[mapToKey(declaration)] ?: declaration.name.asString() + "__error" //error("Can't find name for declaration ${declaration.fqNameWhenAvailable}")
+        return mappedNames[mapToKey(declaration)] ?: sanitizeName(declaration.name.asString()) + "__error" //error("Can't find name for declaration ${declaration.fqNameWhenAvailable}")
     }
 
     fun getNameForMemberField(field: IrField): String {
@@ -352,7 +352,7 @@ class NameTables(
             return signature.suggestedName
 
         if (name == null) {
-            return function.name.asString() + "__error" // TODO one case is a virtual method of an abstract class with no implementation
+            return sanitizeName(function.name.asString()) + "__error" // TODO one case is a virtual method of an abstract class with no implementation
         }
 
         require(name != null) {
