@@ -117,7 +117,8 @@ open class NoopController(override var currentStage: Int = 0) : StageController 
     }
 
     override fun canModify(element: IrElement): Boolean {
-        return !restricted || restrictedToDeclaration === element || element is IrPersistingElementBase<*> && element.createdOn == currentStage
+        return true
+//        return !restricted || restrictedToDeclaration === element || element is IrPersistingElementBase<*> && element.createdOn == currentStage
     }
 
     private var declarationListsRestricted = false

@@ -12,6 +12,8 @@ import org.jetbrains.kotlin.ir.backend.js.utils.getJsName
 import org.jetbrains.kotlin.ir.backend.js.utils.getJsNameOrKotlinName
 import org.jetbrains.kotlin.ir.backend.js.utils.realOverrideTarget
 import org.jetbrains.kotlin.ir.declarations.*
+import org.jetbrains.kotlin.ir.declarations.impl.IrBodyBase
+import org.jetbrains.kotlin.ir.declarations.impl.IrPersistingElementBase
 import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.expressions.impl.IrBlockBodyImpl
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
@@ -78,15 +80,15 @@ private fun removeUselessDeclarations(module: IrModuleFragment, usefulDeclaratio
 
             override fun visitConstructor(declaration: IrConstructor) {
                 // TODO this looks suspicious
-                if (declaration !in usefulDeclarations) {
-                    // Keep the constructor declaration without body in order to declare the JS constructor function
-                    declaration.body = IrBlockBodyImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET, emptyList())
-                }
+//                if (declaration !in usefulDeclarations) {
+//                    // Keep the constructor declaration without body in order to declare the JS constructor function
+//                    declaration.body = IrBlockBodyImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET, emptyList())
+//                }
             }
 
             private fun process(container: IrDeclarationContainer) {
                 container.declarations.transformFlat { member ->
-                    if (member !in usefulDeclarations && member !is IrConstructor) {
+                    if (member !in usefulDeclarations /*&& member !is IrConstructor*/) {
                         emptyList()
                     } else {
                         member.acceptVoid(this)
@@ -130,10 +132,6 @@ fun usefulDeclarations(roots: Iterable<IrDeclaration>, context: JsIrBackendConte
         if (this !in result) {
             result.add(this)
             queue.addLast(this)
-
-            if (this is IrClass && name.asString() == "Unit") {
-                1
-            }
         }
     }
 
@@ -154,6 +152,12 @@ fun usefulDeclarations(roots: Iterable<IrDeclaration>, context: JsIrBackendConte
             val declaration = queue.pollFirst()
 
             stageController.lazyLower(declaration)
+
+            if (declaration is IrPersistingElementBase<*> && declaration.loweredUpTo != 0 && declaration.loweredUpTo + 1 < stageController.currentStage) {
+                1
+                stageController.lazyLower(declaration)
+                2
+            }
 
             if (declaration is IrClass) {
                 declaration.superTypes.forEach {
@@ -198,7 +202,11 @@ fun usefulDeclarations(roots: Iterable<IrDeclaration>, context: JsIrBackendConte
                 else -> null
             }
 
-            stageController.bodyLowering {
+            (body as? IrBodyBase<*>)?.let {
+                stageController.lowerBody(it)
+            }
+
+//            stageController.bodyLowering {
                 body?.acceptVoid(object : IrElementVisitorVoid {
                     override fun visitElement(element: IrElement) {
                         element.acceptChildrenVoid(this)
@@ -262,7 +270,7 @@ fun usefulDeclarations(roots: Iterable<IrDeclaration>, context: JsIrBackendConte
                         toStringMethod.enqueue()
                     }
                 })
-            }
+//            }
         }
 
         fun IrOverridableDeclaration<*>.overridesUsefulFunction(): Boolean {

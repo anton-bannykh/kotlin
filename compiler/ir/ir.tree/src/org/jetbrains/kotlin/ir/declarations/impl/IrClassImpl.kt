@@ -104,16 +104,13 @@ class IrClassImpl(
     override val declarations: MutableList<IrDeclaration> = ArrayList()
         get() = stageController.declarationListAccess(this) {
 
-            if (createdOn != stageController.currentStage) {
-                // TODO The correctness of initialDeclarations initialization is questionable
-                if (initialDeclarations == null) {
-                    initialDeclarations = Collections.unmodifiableList(ArrayList(field))
-                }
-
-                field
-            } else {
-                initialDeclarations ?: field
+            if (createdOn < loweredUpTo && initialDeclarations == null) {
+                initialDeclarations = Collections.unmodifiableList(ArrayList(field))
             }
+
+            if (createdOn == stageController.currentStage) {
+                initialDeclarations ?: field
+            } else field
         }
 
     override val typeParameters: MutableList<IrTypeParameter> = SmartList()

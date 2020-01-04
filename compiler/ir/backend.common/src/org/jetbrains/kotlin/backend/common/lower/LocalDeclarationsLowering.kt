@@ -194,7 +194,7 @@ class LocalDeclarationsLowering(
             localFunctions.values.forEach {
                 it.transformedDeclaration.apply {
                     val original = it.declaration
-                    this.body = original.body
+                    this.body = original.body // TODO is this correct?
 
                     original.valueParameters.filter { v -> v.defaultValue != null }.forEach { argument ->
                         val body = argument.defaultValue!!

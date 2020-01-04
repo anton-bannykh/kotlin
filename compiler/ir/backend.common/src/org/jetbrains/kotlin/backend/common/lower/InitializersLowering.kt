@@ -19,8 +19,11 @@ import org.jetbrains.kotlin.ir.expressions.IrStatementOriginImpl
 import org.jetbrains.kotlin.ir.expressions.impl.IrBlockImpl
 import org.jetbrains.kotlin.ir.expressions.impl.IrGetValueImpl
 import org.jetbrains.kotlin.ir.expressions.impl.IrSetFieldImpl
+import org.jetbrains.kotlin.ir.types.IrSimpleType
+import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.util.constructedClass
 import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
+import org.jetbrains.kotlin.ir.util.fileOrNull
 import org.jetbrains.kotlin.ir.visitors.*
 
 object SYNTHESIZED_INIT_BLOCK : IrStatementOriginImpl("SYNTHESIZED_INIT_BLOCK")
@@ -35,6 +38,10 @@ open class InitializersLowering(context: CommonBackendContext) : InitializersLow
         if (container !is IrConstructor) return
 
         val irClass = container.constructedClass
+
+        if (irClass.superTypes.any { it is IrSimpleType && (it.classifier.owner as? IrClass)?.name?.asString() == "AssertionResult" }) {
+            1
+        }
 
         val instanceInitializerStatements = extractInitializers(irClass) {
             (it is IrField && !it.isStatic) || (it is IrAnonymousInitializer && !it.isStatic)
