@@ -385,25 +385,30 @@ private fun IrFunction.generateDefaultsFunction(
     context: CommonBackendContext,
     skipInlineMethods: Boolean,
     skipExternalMethods: Boolean
-): IrFunction? = context.ir.defaultParameterDeclarationsCache[this] ?: when {
-    skipInlineMethods && isInline -> null
-    skipExternalMethods && isExternalOrInheritedFromExternal() -> null
-    valueParameters.any { it.defaultValue != null } ->
-        generateDefaultsFunctionImpl(context, IrDeclarationOrigin.FUNCTION_FOR_DEFAULT_PARAMETER).also {
-            context.ir.defaultParameterDeclarationsCache[this] = it
-            context.ir.defaultParameterDeclarationsReversedCache[it] = this
-        }
-    this is IrSimpleFunction -> {
-        // If this is an override of a function with default arguments, produce a fake override of a default stub.
-        if (findBaseFunctionWithDefaultArguments(skipInlineMethods, skipExternalMethods) != null)
-            generateDefaultsFunctionImpl(context, IrDeclarationOrigin.FAKE_OVERRIDE).also {
+): IrFunction? {
+    // TODO hide explicit lowering triggering
+    stageController.lazyLower(this)
+    return context.ir.defaultParameterDeclarationsCache[this] ?: when {
+        skipInlineMethods && isInline -> null
+        skipExternalMethods && isExternalOrInheritedFromExternal() -> null
+        this in context.ir.defaultParameterDeclarationsReversedCache -> null
+        valueParameters.any { it.defaultValue != null } ->
+            generateDefaultsFunctionImpl(context, IrDeclarationOrigin.FUNCTION_FOR_DEFAULT_PARAMETER).also {
                 context.ir.defaultParameterDeclarationsCache[this] = it
                 context.ir.defaultParameterDeclarationsReversedCache[it] = this
             }
-        else
-            null
+        this is IrSimpleFunction -> {
+            // If this is an override of a function with default arguments, produce a fake override of a default stub.
+            if (findBaseFunctionWithDefaultArguments(skipInlineMethods, skipExternalMethods) != null)
+                generateDefaultsFunctionImpl(context, IrDeclarationOrigin.FAKE_OVERRIDE).also {
+                    context.ir.defaultParameterDeclarationsCache[this] = it
+                    context.ir.defaultParameterDeclarationsReversedCache[it] = this
+                }
+            else
+                null
+        }
+        else -> null
     }
-    else -> null
 }
 
 private fun IrFunction.generateDefaultsFunctionImpl(context: CommonBackendContext, newOrigin: IrDeclarationOrigin): IrFunction {
@@ -442,6 +447,7 @@ private fun IrFunction.generateDefaultsFunctionImpl(context: CommonBackendContex
         it.copyTo(
             newFunction,
             type = if (makeNullable) newType.makeNullable() else newType,
+            // TODO Why??????
             defaultValue = if (it.defaultValue != null) {
                 IrExpressionBodyImpl(IrErrorExpressionImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET, it.type, "Default Stub"))
             } else null
