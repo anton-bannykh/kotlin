@@ -83,8 +83,8 @@ abstract class IrPersistingElementBase<T : Carrier<T>>(
 
     private var values: Array<Any?>? = null
 
-    val createdOn: Int
-        get() = values?.let { (it[0] as T).lastModified } ?: lastModified
+    val createdOn: Int = stageController.currentStage
+//        get() = values?.let { (it[0] as T).lastModified } ?: lastModified
 
     abstract fun ensureLowered()
 
@@ -94,7 +94,10 @@ abstract class IrPersistingElementBase<T : Carrier<T>>(
 
             if (stage >= lastModified) return this as T
 
-            val v = values!!
+            if (stage < createdOn) error("Access before creation")
+
+            val v = values
+                ?: error("How come?")
 
             var l = -1
             var r = v.size

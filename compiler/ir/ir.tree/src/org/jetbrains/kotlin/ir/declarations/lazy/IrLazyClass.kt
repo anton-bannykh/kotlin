@@ -70,37 +70,45 @@ class IrLazyClass(
     override val descriptor: ClassDescriptor get() = symbol.descriptor
 
     override var thisReceiver: IrValueParameter? by lazyVar {
-        typeTranslator.buildWithScope(this) {
-            descriptor.thisAsReceiverParameter.generateReceiverParameterStub().apply { parent = this@IrLazyClass }
+        withInitialIr {
+            typeTranslator.buildWithScope(this) {
+                descriptor.thisAsReceiverParameter.generateReceiverParameterStub().apply { parent = this@IrLazyClass }
+            }
         }
     }
 
 
     override val declarations: MutableList<IrDeclaration> by lazyVar {
-        ArrayList<IrDeclaration>().also {
-            typeTranslator.buildWithScope(this) {
-                generateChildStubs(descriptor.constructors, it)
-                generateMemberStubs(descriptor.defaultType.memberScope, it)
-                generateMemberStubs(descriptor.staticScope, it)
-            }
-        }.also {
-            it.forEach {
-                it.parent = this //initialize parent for non lazy cases
+        withInitialIr {
+            ArrayList<IrDeclaration>().also {
+                typeTranslator.buildWithScope(this) {
+                    generateChildStubs(descriptor.constructors, it)
+                    generateMemberStubs(descriptor.defaultType.memberScope, it)
+                    generateMemberStubs(descriptor.staticScope, it)
+                }
+            }.also {
+                it.forEach {
+                    it.parent = this //initialize parent for non lazy cases
+                }
             }
         }
     }
 
     override val typeParameters: MutableList<IrTypeParameter> by lazy {
-        descriptor.declaredTypeParameters.mapTo(arrayListOf()) {
-            stubGenerator.generateOrGetTypeParameterStub(it)
+        withInitialIr {
+            descriptor.declaredTypeParameters.mapTo(arrayListOf()) {
+                stubGenerator.generateOrGetTypeParameterStub(it)
+            }
         }
     }
 
     override val superTypes: MutableList<IrType> by lazy {
-        typeTranslator.buildWithScope(this) {
-            // TODO get rid of code duplication, see ClassGenerator#generateClass
-            descriptor.typeConstructor.supertypes.mapNotNullTo(arrayListOf()) {
-                it.toIrType()
+        withInitialIr {
+            typeTranslator.buildWithScope(this) {
+                // TODO get rid of code duplication, see ClassGenerator#generateClass
+                descriptor.typeConstructor.supertypes.mapNotNullTo(arrayListOf()) {
+                    it.toIrType()
+                }
             }
         }
     }

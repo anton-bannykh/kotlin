@@ -179,6 +179,10 @@ inline fun <T> IrClass.withInitialState(noinline fn: IrClass.() -> T): T {
     }
 }
 
+inline fun <T> withInitialIr(noinline fn: () -> T): T {
+    return stageController.withInitialIr(fn)
+}
+
 inline val IrClass.initialDeclarations: List<IrDeclaration>
     get() = stageController.withInitialStateOf(this) { this.declarations }
 
