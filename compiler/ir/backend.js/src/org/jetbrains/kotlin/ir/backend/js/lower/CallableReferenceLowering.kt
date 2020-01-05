@@ -498,6 +498,9 @@ class CallableReferenceLowering(val context: JsIrBackendContext) : BodyLoweringP
 
         closureFunction.valueParameters += unboundParamDeclarations
 
+        // TODO Hide explicit lowering triggering
+        stageController.lazyLower(declaration)
+
         val callTarget = context.ir.defaultParameterDeclarationsCache[declaration] ?: declaration
 
         val target = callTarget.symbol
