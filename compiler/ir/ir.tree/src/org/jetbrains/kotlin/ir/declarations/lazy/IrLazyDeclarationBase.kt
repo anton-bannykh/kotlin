@@ -47,11 +47,15 @@ abstract class IrLazyDeclarationBase(
     }
 
     override var parent: IrDeclarationParent by lazyVar {
-        createLazyParent()!!
+        withInitialIr {
+            createLazyParent()!!
+        }
     }
 
     override val annotations: MutableList<IrConstructorCall> by lazy {
-        descriptor.annotations.mapNotNull(typeTranslator.constantValueGenerator::generateAnnotationConstructorCall).toMutableList()
+        withInitialIr {
+            descriptor.annotations.mapNotNull(typeTranslator.constantValueGenerator::generateAnnotationConstructorCall).toMutableList()
+        }
     }
 
     override var metadata: Nothing?

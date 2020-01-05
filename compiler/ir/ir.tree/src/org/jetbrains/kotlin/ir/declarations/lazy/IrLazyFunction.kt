@@ -11,6 +11,7 @@ import org.jetbrains.kotlin.descriptors.Visibility
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrTypeParameter
+import org.jetbrains.kotlin.ir.declarations.withInitialIr
 import org.jetbrains.kotlin.ir.symbols.IrPropertySymbol
 import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
 import org.jetbrains.kotlin.ir.util.DeclarationStubGenerator
@@ -67,16 +68,18 @@ class IrLazyFunction(
     override val descriptor: FunctionDescriptor = symbol.descriptor
 
     override val typeParameters: MutableList<IrTypeParameter> by lazy {
-        typeTranslator.buildWithScope(this) {
-            stubGenerator.symbolTable.withScope(descriptor) {
-                val propertyIfAccessor = descriptor.propertyIfAccessor
-                propertyIfAccessor.typeParameters.mapTo(arrayListOf()) { typeParameterDescriptor ->
-                    if (descriptor != propertyIfAccessor) {
-                        stubGenerator.generateOrGetScopedTypeParameterStub(typeParameterDescriptor).also { irTypeParameter ->
-                            irTypeParameter.parent = this@IrLazyFunction
+        withInitialIr {
+            typeTranslator.buildWithScope(this) {
+                stubGenerator.symbolTable.withScope(descriptor) {
+                    val propertyIfAccessor = descriptor.propertyIfAccessor
+                    propertyIfAccessor.typeParameters.mapTo(arrayListOf()) { typeParameterDescriptor ->
+                        if (descriptor != propertyIfAccessor) {
+                            stubGenerator.generateOrGetScopedTypeParameterStub(typeParameterDescriptor).also { irTypeParameter ->
+                                irTypeParameter.parent = this@IrLazyFunction
+                            }
+                        } else {
+                            stubGenerator.generateOrGetTypeParameterStub(typeParameterDescriptor)
                         }
-                    } else {
-                        stubGenerator.generateOrGetTypeParameterStub(typeParameterDescriptor)
                     }
                 }
             }
@@ -85,8 +88,10 @@ class IrLazyFunction(
 
 
     override val overriddenSymbols: MutableList<IrSimpleFunctionSymbol> by lazy {
-        descriptor.overriddenDescriptors.mapTo(arrayListOf()) {
-            stubGenerator.generateFunctionStub(it.original).symbol
+        withInitialIr {
+            descriptor.overriddenDescriptors.mapTo(arrayListOf()) {
+                stubGenerator.generateFunctionStub(it.original).symbol
+            }
         }
     }
 

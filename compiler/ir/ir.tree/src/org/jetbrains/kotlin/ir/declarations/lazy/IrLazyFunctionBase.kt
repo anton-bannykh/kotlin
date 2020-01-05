@@ -9,6 +9,7 @@ import org.jetbrains.kotlin.descriptors.Visibility
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
+import org.jetbrains.kotlin.ir.declarations.withInitialIr
 import org.jetbrains.kotlin.ir.expressions.IrBody
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.util.DeclarationStubGenerator
@@ -34,24 +35,32 @@ abstract class IrLazyFunctionBase(
     IrFunction {
 
     val initialSignatureFunction: IrFunction? by lazyVar {
-        descriptor.initialSignatureDescriptor?.takeIf { it != descriptor }?.original?.let(stubGenerator::generateFunctionStub)
+        withInitialIr {
+            descriptor.initialSignatureDescriptor?.takeIf { it != descriptor }?.original?.let(stubGenerator::generateFunctionStub)
+        }
     }
 
     override var dispatchReceiverParameter: IrValueParameter? by lazyVar {
-        typeTranslator.buildWithScope(this) {
-            descriptor.dispatchReceiverParameter?.generateReceiverParameterStub()?.also { it.parent = this@IrLazyFunctionBase }
+        withInitialIr {
+            typeTranslator.buildWithScope(this) {
+                descriptor.dispatchReceiverParameter?.generateReceiverParameterStub()?.also { it.parent = this@IrLazyFunctionBase }
+            }
         }
     }
     override var extensionReceiverParameter: IrValueParameter? by lazyVar {
-        typeTranslator.buildWithScope(this) {
-            descriptor.extensionReceiverParameter?.generateReceiverParameterStub()?.also { it.parent = this@IrLazyFunctionBase }
+        withInitialIr {
+            typeTranslator.buildWithScope(this) {
+                descriptor.extensionReceiverParameter?.generateReceiverParameterStub()?.also { it.parent = this@IrLazyFunctionBase }
+            }
         }
     }
 
     override val valueParameters: MutableList<IrValueParameter> by lazy {
-        typeTranslator.buildWithScope(this) {
-            descriptor.valueParameters.mapTo(arrayListOf()) {
-                stubGenerator.generateValueParameterStub(it).apply { parent = this@IrLazyFunctionBase }
+        withInitialIr {
+            typeTranslator.buildWithScope(this) {
+                descriptor.valueParameters.mapTo(arrayListOf()) {
+                    stubGenerator.generateValueParameterStub(it).apply { parent = this@IrLazyFunctionBase }
+                }
             }
         }
     }
@@ -59,8 +68,10 @@ abstract class IrLazyFunctionBase(
     final override var body: IrBody? = null
 
     final override var returnType: IrType by lazyVar {
-        typeTranslator.buildWithScope(this) {
-            descriptor.returnType!!.toIrType()
+        withInitialIr {
+            typeTranslator.buildWithScope(this) {
+                descriptor.returnType!!.toIrType()
+            }
         }
     }
 

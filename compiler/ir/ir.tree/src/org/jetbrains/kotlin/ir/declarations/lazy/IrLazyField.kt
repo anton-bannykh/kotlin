@@ -11,6 +11,7 @@ import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
 import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrProperty
+import org.jetbrains.kotlin.ir.declarations.withInitialIr
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.expressions.IrExpressionBody
 import org.jetbrains.kotlin.ir.expressions.impl.IrExpressionBodyImpl
@@ -64,33 +65,43 @@ class IrLazyField(
     }
 
     override val annotations: MutableList<IrConstructorCall> by lazy {
-        descriptor.backingField?.annotations
-            ?.mapNotNullTo(mutableListOf(), typeTranslator.constantValueGenerator::generateAnnotationConstructorCall)
-            ?: mutableListOf()
+        withInitialIr {
+            descriptor.backingField?.annotations
+                ?.mapNotNullTo(mutableListOf(), typeTranslator.constantValueGenerator::generateAnnotationConstructorCall)
+                ?: mutableListOf()
+        }
     }
 
     override val descriptor: PropertyDescriptor = symbol.descriptor
 
     override val overriddenSymbols: MutableList<IrFieldSymbol> by lazy {
-        symbol.descriptor.overriddenDescriptors.map {
-            stubGenerator.generateFieldStub(it.original).symbol
-        }.toMutableList()
+        withInitialIr {
+            symbol.descriptor.overriddenDescriptors.map {
+                stubGenerator.generateFieldStub(it.original).symbol
+            }.toMutableList()
+        }
     }
 
     override var type: IrType by lazyVar {
-        descriptor.type.toIrType()
+        withInitialIr {
+            descriptor.type.toIrType()
+        }
     }
 
     override var initializer: IrExpressionBody? by lazyVar {
-        descriptor.compileTimeInitializer?.let {
-            IrExpressionBodyImpl(
-                typeTranslator.constantValueGenerator.generateConstantValueAsExpression(UNDEFINED_OFFSET, UNDEFINED_OFFSET, it)
-            )
+        withInitialIr {
+            descriptor.compileTimeInitializer?.let {
+                IrExpressionBodyImpl(
+                    typeTranslator.constantValueGenerator.generateConstantValueAsExpression(UNDEFINED_OFFSET, UNDEFINED_OFFSET, it)
+                )
+            }
         }
     }
 
     override var correspondingPropertySymbol: IrPropertySymbol? by lazyVar {
-        stubGenerator.generatePropertyStub(descriptor).symbol
+        withInitialIr {
+            stubGenerator.generatePropertyStub(descriptor).symbol
+        }
     }
 
     override fun <R, D> accept(visitor: IrElementVisitor<R, D>, data: D): R {
