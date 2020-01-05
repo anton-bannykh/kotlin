@@ -21,12 +21,18 @@ import org.jetbrains.kotlin.ir.util.*
 class AutoboxingTransformer(val context: JsIrBackendContext) : AbstractValueUsageTransformer(context.irBuiltIns), BodyLoweringPass {
 
     override fun lower(irBody: IrBody, container: IrDeclaration) {
-        val replacement = container.transform(this, null) as IrDeclaration
+        // TODO workaround for callable references
+        // Prevents from revisiting local
+        if (container.parent is IrFunction) return
 
-        if (container !== replacement) error("Declaration has changed: ${container}")
+//        val replacement = container.transform(this, null) as IrDeclaration
+
+//        if (container !== replacement) error("Declaration has changed: ${container}")
+
+        irBody.transformChildrenVoid()
 
         // TODO: Track & insert parents for temporary variables
-        replacement.patchDeclarationParents(replacement.parent)
+        irBody.patchDeclarationParents(container as? IrDeclarationParent ?: container.parent)
     }
 
     private tailrec fun IrExpression.isGetUnit(): Boolean =
