@@ -39,10 +39,6 @@ open class InitializersLowering(context: CommonBackendContext) : InitializersLow
 
         val irClass = container.constructedClass
 
-        if (irClass.superTypes.any { it is IrSimpleType && (it.classifier.owner as? IrClass)?.name?.asString() == "AssertionResult" }) {
-            1
-        }
-
         val instanceInitializerStatements = extractInitializers(irClass) {
             (it is IrField && !it.isStatic) || (it is IrAnonymousInitializer && !it.isStatic)
         }
