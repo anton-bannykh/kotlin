@@ -143,6 +143,7 @@ class EnumClassConstructorLowering(val context: CommonBackendContext) : Declarat
             copyParameterDeclarationsFrom(enumConstructor)
 
             val newConstructor = this
+            enumConstructor.newConstructor = this
 
             enumConstructor.body?.let { oldBody ->
                 body = IrBlockBodyImpl(oldBody.startOffset, oldBody.endOffset) {
@@ -161,8 +162,6 @@ class EnumClassConstructorLowering(val context: CommonBackendContext) : Declarat
                     lowerEnumConstructorsBody(newConstructor)
                 }
             }
-
-            enumConstructor.newConstructor = this
 
             // TODO except for `fixReferencesToConstructorParameters` this code seems to be obsolete
             val oldParameters = enumConstructor.valueParameters
@@ -219,7 +218,7 @@ class EnumClassConstructorLowering(val context: CommonBackendContext) : Declarat
             }
 
         override fun visitDelegatingConstructorCall(expression: IrDelegatingConstructorCall): IrExpression {
-            val delegatingConstructor = expression.symbol.owner.let { it.newConstructor ?: it }
+            val delegatingConstructor = expression.symbol.owner.newConstructor ?: return expression
 
             return builder.irDelegatingConstructorCall(delegatingConstructor).apply {
                 var valueArgIdx = 0
