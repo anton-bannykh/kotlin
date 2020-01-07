@@ -673,15 +673,23 @@ class MutableController(val context: JsIrBackendContext): NoopController() {
                                 if (parentBefore is IrDeclarationContainer) {
                                     stageController.unrestrictDeclarationListsAccess {
 
+                                        val correspondingProperty = when (declaration) {
+                                            is IrSimpleFunction -> declaration.correspondingPropertySymbol?.owner
+                                            is IrField -> declaration.correspondingPropertySymbol?.owner
+                                            else -> null
+                                        }
+
                                         var index = -1
                                         parentBefore.declarations.forEachIndexed { i, v ->
-                                            if (index == -1 && v == declaration) {
+                                            if (v == declaration || index == -1 && v == correspondingProperty) {
                                                 index = i
                                             }
                                         }
 
-                                        if (index != -1) {
-                                            parentBefore.declarations.removeAt(index)
+                                        if (index != -1 && declaration !is IrProperty) {
+                                            if (parentBefore.declarations[index] == declaration) {
+                                                parentBefore.declarations.removeAt(index)
+                                            }
                                             parentBefore.declarations.addAll(index, result)
                                         } else {
                                             parentBefore.declarations.addAll(result)

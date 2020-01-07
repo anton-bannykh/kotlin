@@ -129,7 +129,7 @@ fun usefulDeclarations(roots: Iterable<IrDeclaration>, context: JsIrBackendConte
     val constructedClasses = hashSetOf<IrClass>()
 
     fun IrDeclaration.enqueue() {
-        if (this !in result) {
+        if ((this !is IrProperty || this.isExternal) && this !in result) {
             result.add(this)
             queue.addLast(this)
         }
