@@ -352,7 +352,10 @@ class DefaultParameterCleaner(
     override fun transformFlat(declaration: IrDeclaration): List<IrDeclaration>? {
         if (declaration is IrValueParameter && !context.scriptMode && declaration.defaultValue != null) {
             if (replaceDefaultValuesWithStubs) {
-                declaration.defaultValue = IrExpressionBodyImpl(IrErrorExpressionImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET, declaration.type, "Default Stub"))
+                if (declaration.parent as IrFunction !in context.ir.defaultParameterDeclarationsReversedCache) {
+                    declaration.defaultValue =
+                        IrExpressionBodyImpl(IrErrorExpressionImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET, declaration.type, "Default Stub"))
+                }
             } else {
                 declaration.defaultValue = null
             }
