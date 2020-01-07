@@ -40,7 +40,7 @@ class JvmDeclarationFactory(
     private val interfaceCompanionFieldDeclarations = HashMap<IrSymbolOwner, IrField>()
     private val outerThisDeclarations = HashMap<IrClass, IrField>()
     private val innerClassConstructors = HashMap<IrConstructor, IrConstructor>()
-    private val originalInnerClassConstructorsByClass = HashMap<IrClass, IrConstructor>()
+    private val originalInnerClassPrimaryConstructorByClass = HashMap<IrClass, IrConstructor>()
     private val staticBackingFields = HashMap<IrProperty, IrField>()
 
     private val defaultImplsMethods = HashMap<IrSimpleFunction, IrSimpleFunction>()
@@ -82,14 +82,16 @@ class JvmDeclarationFactory(
         return innerClassConstructors.getOrPut(innerClassConstructor) {
             createInnerClassConstructorWithOuterThisParameter(innerClassConstructor)
         }.also {
-            originalInnerClassConstructorsByClass[innerClass] = innerClassConstructor
+            if (innerClassConstructor.isPrimary) {
+                originalInnerClassPrimaryConstructorByClass[innerClass] = innerClassConstructor
+            }
         }
     }
 
     override fun getInnerClassOriginalPrimaryConstructorOrNull(innerClass: IrClass): IrConstructor? {
         assert(innerClass.isInner) { "Class is not inner: $innerClass" }
 
-        return originalInnerClassConstructorsByClass[innerClass]
+        return originalInnerClassPrimaryConstructorByClass[innerClass]
     }
 
     private fun createInnerClassConstructorWithOuterThisParameter(oldConstructor: IrConstructor): IrConstructor {
