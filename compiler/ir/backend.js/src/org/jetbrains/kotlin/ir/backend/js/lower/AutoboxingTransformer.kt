@@ -25,11 +25,15 @@ class AutoboxingTransformer(val context: JsIrBackendContext) : AbstractValueUsag
         // Prevents from revisiting local
         if (container.parent is IrFunction) return
 
-//        val replacement = container.transform(this, null) as IrDeclaration
+        val replacement = container.transform(this, null) as IrDeclaration
 
-//        if (container !== replacement) error("Declaration has changed: ${container}")
+        if (container !== replacement) error("Declaration has changed: ${container}")
 
-        irBody.transformChildrenVoid()
+//        irBody.transform(this, null)
+//
+//        if (container is IrFunction && irBody is IrExpressionBody) {
+//            irBody.expression = irBody.expression.useAsReturnValue(container.symbol)
+//        }
 
         // TODO: Track & insert parents for temporary variables
         irBody.patchDeclarationParents(container as? IrDeclarationParent ?: container.parent)

@@ -60,7 +60,7 @@ class CallableReferenceLowering(val context: JsIrBackendContext) : BodyLoweringP
             declaration,
             reference.dispatchReceiver != null,
             reference.extensionReceiver != null,
-            withInitialIr { reference.type.asString() } // TODO local declarations leak through types :-(
+            reference.type.asString()
         )
 
     inner class CallableReferenceLowerTransformer : IrElementTransformerVoid() {

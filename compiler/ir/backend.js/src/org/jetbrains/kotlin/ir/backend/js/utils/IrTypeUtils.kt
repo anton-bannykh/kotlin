@@ -5,6 +5,7 @@
 
 package org.jetbrains.kotlin.ir.backend.js.utils
 
+import org.jetbrains.kotlin.ir.declarations.withInitialState
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.symbols.IrClassifierSymbol
 import org.jetbrains.kotlin.ir.symbols.IrTypeParameterSymbol
@@ -35,6 +36,6 @@ private fun IrTypeArgument.asString(): String = when(this) {
 
 private fun IrClassifierSymbol.asString() = when (this) {
     is IrTypeParameterSymbol -> this.owner.name.asString()
-    is IrClassSymbol -> this.owner.fqNameWhenAvailable!!.asString()
+    is IrClassSymbol -> this.owner.withInitialState { fqNameWhenAvailable!!.asString() }
     else -> error("Unexpected kind of IrClassifierSymbol: " + javaClass.typeName)
 }

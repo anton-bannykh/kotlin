@@ -7,6 +7,7 @@ package org.jetbrains.kotlin.ir.backend.js
 
 import com.intellij.openapi.project.Project
 import org.jetbrains.kotlin.backend.common.phaser.PhaseConfig
+import org.jetbrains.kotlin.backend.common.phaser.PhaserState
 import org.jetbrains.kotlin.backend.common.phaser.invokeToplevel
 import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.ir.backend.js.lower.generateTests
@@ -77,6 +78,9 @@ fun compile(
     // TODO we should only generate tests for the current module
     generateTests(context, moduleFragment)
 
+    val controller = MutableController(context)
+    stageController = controller
+
 //    val phaserState = PhaserState<IrModuleFragment>()
 //    loweringList.forEachIndexed { index, lowering ->
 //        controller.currentStage = index + 1
@@ -84,9 +88,6 @@ fun compile(
 //    }
 
 //    jsPhases.invokeToplevel(phaseConfig, context, moduleFragment)
-
-    val controller = MutableController(context)
-    stageController = controller
 
     controller.currentStage = loweringList.size + 1
 
