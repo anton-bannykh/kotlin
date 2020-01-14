@@ -6,6 +6,7 @@
 package org.jetbrains.kotlin.ir.declarations.impl.carriers
 
 import org.jetbrains.kotlin.ir.declarations.*
+import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 
 interface PropertyCarrier : DeclarationCarrier<PropertyCarrier> {
     var backingFieldField: IrField?
@@ -16,6 +17,7 @@ interface PropertyCarrier : DeclarationCarrier<PropertyCarrier> {
     override fun eq(other: PropertyCarrier): Boolean {
         return parentField === other.parentField &&
                 originField == other.originField &&
+                annotationsField === other.annotationsField &&
                 backingFieldField === other.backingFieldField &&
                 getterField === other.getterField &&
                 setterField === other.setterField &&
@@ -27,6 +29,7 @@ interface PropertyCarrier : DeclarationCarrier<PropertyCarrier> {
             lastModified,
             parentField,
             originField,
+            annotationsField,
             backingFieldField,
             getterField,
             setterField,
@@ -39,6 +42,7 @@ class PropertyCarrierImpl(
     override val lastModified: Int,
     override var parentField: IrDeclarationParent?,
     override var originField: IrDeclarationOrigin,
+    override var annotationsField: List<IrConstructorCall>,
     override var backingFieldField: IrField?,
     override var getterField: IrSimpleFunction?,
     override var setterField: IrSimpleFunction?,

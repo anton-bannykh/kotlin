@@ -6,27 +6,31 @@
 package org.jetbrains.kotlin.ir.declarations.impl.carriers
 
 import org.jetbrains.kotlin.descriptors.Visibility
-import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
-import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
-import org.jetbrains.kotlin.ir.declarations.IrValueParameter
-import org.jetbrains.kotlin.ir.declarations.MetadataSource
+import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.expressions.IrBody
+import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.symbols.IrPropertySymbol
+import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
 import org.jetbrains.kotlin.ir.types.IrType
 
 interface FunctionCarrier : FunctionBaseCarrier<FunctionCarrier> {
     var correspondingPropertySymbolField: IrPropertySymbol?
+    var overriddenSymbolsField: List<IrSimpleFunctionSymbol>
 
     override fun eq(other: FunctionCarrier): Boolean {
         return parentField === other.parentField &&
                 originField === other.originField &&
+                annotationsField === other.annotationsField &&
                 returnTypeFieldField === other.returnTypeFieldField &&
                 dispatchReceiverParameterField === other.dispatchReceiverParameterField &&
                 extensionReceiverParameterField === other.extensionReceiverParameterField &&
                 bodyField === other.bodyField &&
                 metadataField === other.metadataField &&
                 visibilityField === other.visibilityField &&
-                correspondingPropertySymbolField === other.correspondingPropertySymbolField
+                typeParametersField === other.typeParametersField &&
+                valueParametersField === other.valueParametersField &&
+                correspondingPropertySymbolField === other.correspondingPropertySymbolField &&
+                overriddenSymbolsField === other.overriddenSymbolsField
     }
 
     override fun clone(): FunctionCarrier {
@@ -34,13 +38,17 @@ interface FunctionCarrier : FunctionBaseCarrier<FunctionCarrier> {
             lastModified,
             parentField,
             originField,
+            annotationsField,
             returnTypeFieldField,
             dispatchReceiverParameterField,
             extensionReceiverParameterField,
             bodyField,
             metadataField,
             visibilityField,
-            correspondingPropertySymbolField
+            typeParametersField,
+            valueParametersField,
+            correspondingPropertySymbolField,
+            overriddenSymbolsField
         )
     }
 }
@@ -49,11 +57,15 @@ class FunctionCarrierImpl(
     override val lastModified: Int,
     override var parentField: IrDeclarationParent?,
     override var originField: IrDeclarationOrigin,
+    override var annotationsField: List<IrConstructorCall>,
     override var returnTypeFieldField: IrType,
     override var dispatchReceiverParameterField: IrValueParameter?,
     override var extensionReceiverParameterField: IrValueParameter?,
     override var bodyField: IrBody?,
     override var metadataField: MetadataSource?,
     override var visibilityField: Visibility,
-    override var correspondingPropertySymbolField: IrPropertySymbol?
+    override var typeParametersField: List<IrTypeParameter>,
+    override var valueParametersField: List<IrValueParameter>,
+    override var correspondingPropertySymbolField: IrPropertySymbol?,
+    override var overriddenSymbolsField: List<IrSimpleFunctionSymbol>
 ) : FunctionCarrier

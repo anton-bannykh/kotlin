@@ -7,6 +7,7 @@ package org.jetbrains.kotlin.ir.declarations.impl.carriers
 
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
+import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.expressions.IrExpressionBody
 
 interface ValueParameterCarrier : DeclarationCarrier<ValueParameterCarrier> {
@@ -15,11 +16,12 @@ interface ValueParameterCarrier : DeclarationCarrier<ValueParameterCarrier> {
     override fun eq(other: ValueParameterCarrier): Boolean {
         return parentField === other.parentField &&
                 originField === other.originField &&
+                annotationsField === other.annotationsField &&
                 defaultValueField === other.defaultValueField
     }
 
     override fun clone(): ValueParameterCarrier {
-        return ValueParameterCarrierImpl(lastModified, parentField, originField, defaultValueField)
+        return ValueParameterCarrierImpl(lastModified, parentField, originField, annotationsField, defaultValueField)
     }
 }
 
@@ -27,5 +29,6 @@ class ValueParameterCarrierImpl(
     override val lastModified: Int,
     override var parentField: IrDeclarationParent?,
     override var originField: IrDeclarationOrigin,
+    override var annotationsField: List<IrConstructorCall>,
     override var defaultValueField: IrExpressionBody?
 ) : ValueParameterCarrier

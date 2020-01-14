@@ -61,7 +61,15 @@ abstract class IrFunctionBase<T : FunctionBaseCarrier<T>>(
             returnTypeField = c
         }
 
-    override val typeParameters: MutableList<IrTypeParameter> = SmartList()
+    override var typeParametersField: List<IrTypeParameter> = emptyList()
+
+    override var typeParameters: List<IrTypeParameter>
+        get() = getCarrier().typeParametersField
+        set(v) {
+            if (typeParameters !== v) {
+                setCarrier().typeParametersField = v
+            }
+        }
 
     override var dispatchReceiverParameterField: IrValueParameter? = null
 
@@ -83,7 +91,15 @@ abstract class IrFunctionBase<T : FunctionBaseCarrier<T>>(
             }
         }
 
-    override val valueParameters: MutableList<IrValueParameter> = ArrayList()
+    override var valueParametersField: List<IrValueParameter> = emptyList()
+
+    override var valueParameters: List<IrValueParameter>
+        get() = getCarrier().valueParametersField
+        set(v) {
+            if (valueParameters !== v) {
+                setCarrier().valueParametersField = v
+            }
+        }
 
     override var bodyField: IrBody? = null
 
@@ -129,11 +145,12 @@ abstract class IrFunctionBase<T : FunctionBaseCarrier<T>>(
     }
 
     override fun <D> transformChildren(transformer: IrElementTransformer<D>, data: D) {
-        typeParameters.transform { it.transform(transformer, data) }
+
+        typeParameters = typeParameters.transform { it.transform(transformer, data) }
 
         dispatchReceiverParameter = dispatchReceiverParameter?.transform(transformer, data)
         extensionReceiverParameter = extensionReceiverParameter?.transform(transformer, data)
-        valueParameters.transform { it.transform(transformer, data) }
+        valueParameters = valueParameters.transform { it.transform(transformer, data) }
 
         body = body?.transform(transformer, data)
     }

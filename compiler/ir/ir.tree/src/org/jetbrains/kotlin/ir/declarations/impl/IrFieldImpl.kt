@@ -102,7 +102,15 @@ class IrFieldImpl(
             }
         }
 
-    override val overriddenSymbols: MutableList<IrFieldSymbol> = mutableListOf()
+    override var overridenSymbolsField: List<IrFieldSymbol> = emptyList()
+
+    override var overriddenSymbols: List<IrFieldSymbol>
+        get() = getCarrier().overridenSymbolsField
+        set(v) {
+            if (overriddenSymbols !== v) {
+                setCarrier().overridenSymbolsField = v
+            }
+        }
 
     override var metadataField: MetadataSource.Property? = null
 

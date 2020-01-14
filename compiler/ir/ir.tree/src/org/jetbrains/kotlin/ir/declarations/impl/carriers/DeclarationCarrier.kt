@@ -7,8 +7,11 @@ package org.jetbrains.kotlin.ir.declarations.impl.carriers
 
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
+import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
+import org.jetbrains.kotlin.utils.SmartList
 
 interface DeclarationCarrier<in T : DeclarationCarrier<T>>: Carrier<T> {
     var parentField: IrDeclarationParent?
     var originField: IrDeclarationOrigin
+    var annotationsField: List<IrConstructorCall>
 }

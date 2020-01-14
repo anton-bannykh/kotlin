@@ -8,20 +8,25 @@ package org.jetbrains.kotlin.ir.declarations.impl.carriers
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
 import org.jetbrains.kotlin.ir.declarations.MetadataSource
+import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.expressions.IrExpressionBody
+import org.jetbrains.kotlin.ir.symbols.IrFieldSymbol
 import org.jetbrains.kotlin.ir.symbols.IrPropertySymbol
 
 interface FieldCarrier : DeclarationCarrier<FieldCarrier> {
     var initializerField: IrExpressionBody?
     var correspondingPropertySymbolField: IrPropertySymbol?
     var metadataField: MetadataSource.Property?
+    var overridenSymbolsField: List<IrFieldSymbol>
 
     override fun eq(other: FieldCarrier): Boolean {
         return parentField === other.parentField &&
                 originField === other.originField &&
+                annotationsField === other.annotationsField &&
                 initializerField === other.initializerField &&
                 correspondingPropertySymbolField === other.correspondingPropertySymbolField &&
-                metadataField === other.metadataField
+                metadataField === other.metadataField &&
+                overridenSymbolsField === other.overridenSymbolsField
     }
 
     override fun clone(): FieldCarrier {
@@ -29,9 +34,11 @@ interface FieldCarrier : DeclarationCarrier<FieldCarrier> {
             lastModified,
             parentField,
             originField,
+            annotationsField,
             initializerField,
             correspondingPropertySymbolField,
-            metadataField
+            metadataField,
+            overridenSymbolsField
         )
     }
 }
@@ -40,7 +47,9 @@ class FieldCarrierImpl(
     override val lastModified: Int,
     override var parentField: IrDeclarationParent?,
     override var originField: IrDeclarationOrigin,
+    override var annotationsField: List<IrConstructorCall>,
     override var initializerField: IrExpressionBody?,
     override var correspondingPropertySymbolField: IrPropertySymbol?,
-    override var metadataField: MetadataSource.Property?
+    override var metadataField: MetadataSource.Property?,
+    override var overridenSymbolsField: List<IrFieldSymbol>
 ): FieldCarrier

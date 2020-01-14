@@ -51,7 +51,7 @@ class IrVariableImpl(
             _parent = v
         }
 
-    override val annotations: MutableList<IrConstructorCall> = SmartList()
+    override var annotations: List<IrConstructorCall> = emptyList()
     override val metadata: MetadataSource? get() = null
 
     constructor(

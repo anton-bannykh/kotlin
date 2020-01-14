@@ -35,7 +35,7 @@ class IrScriptImpl(
             _parent = v
         }
 
-    override val annotations: MutableList<IrConstructorCall> = SmartList()
+    override var annotations: List<IrConstructorCall> = SmartList()
     override val metadata: MetadataSource? get() = null
 
     override val declarations: MutableList<IrDeclaration> = mutableListOf()

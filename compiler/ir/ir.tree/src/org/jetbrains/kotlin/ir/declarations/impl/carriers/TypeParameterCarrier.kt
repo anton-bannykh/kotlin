@@ -7,21 +7,24 @@ package org.jetbrains.kotlin.ir.declarations.impl.carriers
 
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
+import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 
 interface TypeParameterCarrier : DeclarationCarrier<TypeParameterCarrier> {
 
     override fun eq(other: TypeParameterCarrier): Boolean {
         return parentField === other.parentField &&
-                originField === other.originField
+                originField === other.originField &&
+                annotationsField === other.annotationsField
     }
 
     override fun clone(): TypeParameterCarrier {
-        return TypeParameterCarrierImpl(lastModified, parentField, originField)
+        return TypeParameterCarrierImpl(lastModified, parentField, originField, annotationsField)
     }
 }
 
 class TypeParameterCarrierImpl(
     override val lastModified: Int,
     override var parentField: IrDeclarationParent?,
-    override var originField: IrDeclarationOrigin
-) : TypeParameterCarrier
+    override var originField: IrDeclarationOrigin,
+    override var annotationsField: List<IrConstructorCall>
+    ) : TypeParameterCarrier

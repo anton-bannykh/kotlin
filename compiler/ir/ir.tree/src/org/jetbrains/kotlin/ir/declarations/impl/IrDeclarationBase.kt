@@ -16,6 +16,7 @@
 
 package org.jetbrains.kotlin.ir.declarations.impl
 
+import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.IrElementBase
 import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.declarations.impl.carriers.BodyCarrier
@@ -59,7 +60,15 @@ abstract class IrDeclarationBase<T : DeclarationCarrier<T>>(
         stageController.register(this)
     }
 
-    override val annotations: MutableList<IrConstructorCall> = SmartList()
+    override var annotationsField: List<IrConstructorCall> = emptyList()
+
+    override var annotations: List<IrConstructorCall>
+        get() = getCarrier().annotationsField
+        set(v) {
+            if (getCarrier().annotationsField !== v) {
+                setCarrier().annotationsField = v
+            }
+        }
 
     override val metadata: MetadataSource?
         get() = null
@@ -182,4 +191,31 @@ abstract class IrBodyBase<B : IrBodyBase<B>>(
 //        if (!stageController.bodiesEnabled) error("Bodies disabled!")
         // TODO
     }
+}
+
+// Returns the same instance if no elements are tranformed
+inline fun <reified T : IrElement> List<T>.transform(transformation: (T) -> IrElement): List<T> {
+    var result: MutableList<T>? = null
+
+    var i = -1
+    while (++i < size) {
+        val item = get(i)
+        val r = transformation(item) as T
+        if (r !== item) {
+            result = ArrayList<T>(size)
+            for (j in 0 until i) {
+                result.add(get(j))
+            }
+            result.add(r)
+            break
+        }
+    }
+
+    if (result == null) return this
+
+    while (++i < size) {
+        result[i] = transformation(get(i)) as T
+    }
+
+    return result
 }

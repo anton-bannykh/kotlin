@@ -113,9 +113,25 @@ class IrClassImpl(
             } else field
         }
 
-    override val typeParameters: MutableList<IrTypeParameter> = SmartList()
+    override var typeParametersField: List<IrTypeParameter> = emptyList()
 
-    override val superTypes: MutableList<IrType> = SmartList()
+    override var typeParameters: List<IrTypeParameter>
+        get() = getCarrier().typeParametersField
+        set(v) {
+            if (typeParameters !== v) {
+                setCarrier().typeParametersField = v
+            }
+        }
+
+    override var superTypesField: List<IrType> = emptyList()
+
+    override var superTypes: List<IrType>
+        get() = getCarrier().superTypesField
+        set(v) {
+            if (superTypes !== v) {
+                setCarrier().superTypesField = v
+            }
+        }
 
     override var metadataField: MetadataSource? = null
 
@@ -158,7 +174,7 @@ class IrClassImpl(
 
     override fun <D> transformChildren(transformer: IrElementTransformer<D>, data: D) {
         thisReceiver = thisReceiver?.transform(transformer, data)
-        typeParameters.transform { it.transform(transformer, data) }
+        typeParameters = typeParameters.transform { it.transform(transformer, data) }
         declarations.transform { it.transform(transformer, data) }
     }
 }

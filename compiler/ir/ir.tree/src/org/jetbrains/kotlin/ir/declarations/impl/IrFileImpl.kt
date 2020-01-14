@@ -53,7 +53,7 @@ class IrFileImpl(
 
     override val declarations: MutableList<IrDeclaration> = ArrayList()
 
-    override val annotations: MutableList<IrConstructorCall> = ArrayList()
+    override var annotations: List<IrConstructorCall> = ArrayList()
 
     override var metadata: MetadataSource.File? = null
 

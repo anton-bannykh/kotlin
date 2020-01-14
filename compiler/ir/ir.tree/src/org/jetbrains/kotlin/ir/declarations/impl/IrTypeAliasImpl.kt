@@ -41,7 +41,15 @@ class IrTypeAliasImpl(
     override val descriptor: TypeAliasDescriptor
         get() = symbol.descriptor
 
-    override val typeParameters: MutableList<IrTypeParameter> = SmartList()
+    override var typeParametersField: List<IrTypeParameter> = emptyList()
+
+    override var typeParameters: List<IrTypeParameter>
+        get() = getCarrier().typeParametersField
+        set(v) {
+            if (typeParameters !== v) {
+                setCarrier().typeParametersField = v
+            }
+        }
 
     override fun <R, D> accept(visitor: IrElementVisitor<R, D>, data: D): R =
         visitor.visitTypeAlias(this, data)
@@ -51,7 +59,7 @@ class IrTypeAliasImpl(
     }
 
     override fun <D> transformChildren(transformer: IrElementTransformer<D>, data: D) {
-        typeParameters.transform { it.transform(transformer, data) }
+        typeParameters = typeParameters.transform { it.transform(transformer, data) }
     }
 
     companion object {

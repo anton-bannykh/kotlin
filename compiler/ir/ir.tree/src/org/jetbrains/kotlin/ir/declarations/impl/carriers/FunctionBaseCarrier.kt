@@ -6,6 +6,7 @@
 package org.jetbrains.kotlin.ir.declarations.impl.carriers
 
 import org.jetbrains.kotlin.descriptors.Visibility
+import org.jetbrains.kotlin.ir.declarations.IrTypeParameter
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.declarations.MetadataSource
 import org.jetbrains.kotlin.ir.expressions.IrBody
@@ -18,4 +19,6 @@ interface FunctionBaseCarrier<T : FunctionBaseCarrier<T>> : DeclarationCarrier<T
     var bodyField: IrBody?
     var metadataField: MetadataSource?
     var visibilityField: Visibility
+    var typeParametersField: List<IrTypeParameter>
+    var valueParametersField: List<IrValueParameter>
 }

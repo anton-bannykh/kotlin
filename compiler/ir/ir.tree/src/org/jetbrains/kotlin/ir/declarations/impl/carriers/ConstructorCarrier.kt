@@ -6,11 +6,9 @@
 package org.jetbrains.kotlin.ir.declarations.impl.carriers
 
 import org.jetbrains.kotlin.descriptors.Visibility
-import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
-import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
-import org.jetbrains.kotlin.ir.declarations.IrValueParameter
-import org.jetbrains.kotlin.ir.declarations.MetadataSource
+import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.expressions.IrBody
+import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.types.IrType
 
 
@@ -18,12 +16,15 @@ interface ConstructorCarrier : FunctionBaseCarrier<ConstructorCarrier> {
     override fun eq(other: ConstructorCarrier): Boolean {
         return parentField === other.parentField &&
                 originField === other.originField &&
+                annotationsField === other.annotationsField &&
                 returnTypeFieldField === other.returnTypeFieldField &&
                 dispatchReceiverParameterField === other.dispatchReceiverParameterField &&
                 extensionReceiverParameterField === other.extensionReceiverParameterField &&
                 bodyField === other.bodyField &&
                 metadataField === other.metadataField &&
-                visibilityField === other.visibilityField
+                visibilityField === other.visibilityField &&
+                typeParametersField === other.typeParametersField &&
+                valueParametersField === other.valueParametersField
     }
 
     override fun clone(): ConstructorCarrier {
@@ -31,12 +32,15 @@ interface ConstructorCarrier : FunctionBaseCarrier<ConstructorCarrier> {
             lastModified,
             parentField,
             originField,
+            annotationsField,
             returnTypeFieldField,
             dispatchReceiverParameterField,
             extensionReceiverParameterField,
             bodyField,
             metadataField,
-            visibilityField
+            visibilityField,
+            typeParametersField,
+            valueParametersField
         )
     }
 }
@@ -45,10 +49,13 @@ class ConstructorCarrierImpl(
     override val lastModified: Int,
     override var parentField: IrDeclarationParent?,
     override var originField: IrDeclarationOrigin,
+    override var annotationsField: List<IrConstructorCall>,
     override var returnTypeFieldField: IrType,
     override var dispatchReceiverParameterField: IrValueParameter?,
     override var extensionReceiverParameterField: IrValueParameter?,
     override var bodyField: IrBody?,
     override var metadataField: MetadataSource?,
-    override var visibilityField: Visibility
+    override var visibilityField: Visibility,
+    override var typeParametersField: List<IrTypeParameter>,
+    override var valueParametersField: List<IrValueParameter>
 ) : ConstructorCarrier

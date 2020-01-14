@@ -7,19 +7,27 @@ package org.jetbrains.kotlin.ir.declarations.impl.carriers
 
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
+import org.jetbrains.kotlin.ir.declarations.IrTypeParameter
+import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 
 interface TypeAliasCarrier : DeclarationCarrier<TypeAliasCarrier> {
 
+    var typeParametersField: List<IrTypeParameter>
+
     override fun eq(other: TypeAliasCarrier): Boolean {
         return parentField === other.parentField &&
-                originField === other.originField
+                originField === other.originField &&
+                annotationsField === other.annotationsField &&
+                typeParametersField === other.typeParametersField
     }
 
     override fun clone(): TypeAliasCarrier {
         return TypeAliasCarrierImpl(
             lastModified,
             parentField,
-            originField
+            originField,
+            annotationsField,
+            typeParametersField
         )
     }
 }
@@ -27,5 +35,7 @@ interface TypeAliasCarrier : DeclarationCarrier<TypeAliasCarrier> {
 class TypeAliasCarrierImpl(
     override val lastModified: Int,
     override var parentField: IrDeclarationParent?,
-    override var originField: IrDeclarationOrigin
-) : TypeAliasCarrier
+    override var originField: IrDeclarationOrigin,
+    override var annotationsField: List<IrConstructorCall>,
+    override var typeParametersField: List<IrTypeParameter>
+    ) : TypeAliasCarrier

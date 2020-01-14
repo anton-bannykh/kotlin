@@ -9,6 +9,7 @@ import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrVariable
+import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 
 interface LocalDelegatedPropertyCarrier : DeclarationCarrier<LocalDelegatedPropertyCarrier> {
     var delegateField: IrVariable?
@@ -18,6 +19,7 @@ interface LocalDelegatedPropertyCarrier : DeclarationCarrier<LocalDelegatedPrope
     override fun eq(other: LocalDelegatedPropertyCarrier): Boolean {
         return parentField === other.parentField &&
                 originField === other.originField &&
+                annotationsField === other.annotationsField &&
                 delegateField === other.delegateField &&
                 getterField === other.getterField &&
                 setterField === other.setterField
@@ -28,6 +30,7 @@ interface LocalDelegatedPropertyCarrier : DeclarationCarrier<LocalDelegatedPrope
             lastModified,
             parentField,
             originField,
+            annotationsField,
             delegateField,
             getterField,
             setterField
@@ -39,6 +42,7 @@ class LocalDelegatedPropertyCarrierImpl(
     override val lastModified: Int,
     override var parentField: IrDeclarationParent?,
     override var originField: IrDeclarationOrigin,
+    override var annotationsField: List<IrConstructorCall>,
     override var delegateField: IrVariable?,
     override var getterField: IrFunction?,
     override var setterField: IrFunction?
