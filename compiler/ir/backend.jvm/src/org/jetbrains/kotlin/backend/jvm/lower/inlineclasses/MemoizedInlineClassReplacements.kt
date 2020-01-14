@@ -145,8 +145,9 @@ class MemoizedInlineClassReplacements {
         val replacement = buildReplacement(function) {
             annotations += function.annotations
             metadata = function.metadata
-            overriddenSymbols.addAll(overrides)
+            overriddenSymbols += overrides
 
+            val newValueParameters = ArrayList<IrValueParameter>()
             for ((index, parameter) in function.explicitParameters.withIndex()) {
                 val name = if (parameter == function.extensionReceiverParameter) Name.identifier("\$receiver") else parameter.name
                 val newParameter: IrValueParameter
@@ -155,10 +156,11 @@ class MemoizedInlineClassReplacements {
                     dispatchReceiverParameter = newParameter
                 } else {
                     newParameter = parameter.copyTo(this, index = index - 1, name = name)
-                    valueParameters.add(newParameter)
+                    newValueParameters += newParameter
                 }
                 parameterMap[parameter.symbol] = newParameter
             }
+            valueParameters = newValueParameters
         }
         return IrReplacementFunction(replacement, parameterMap)
     }
@@ -169,7 +171,8 @@ class MemoizedInlineClassReplacements {
             if (function !is IrSimpleFunction || function.overriddenSymbols.isEmpty())
                 metadata = function.metadata
 
-            for ((index, parameter) in function.explicitParameters.withIndex()) {
+
+            valueParameters += function.explicitParameters.mapIndexed { index, parameter ->
                 val name = when (parameter) {
                     function.dispatchReceiverParameter -> Name.identifier("\$this")
                     function.extensionReceiverParameter -> Name.identifier("\$receiver")
@@ -177,8 +180,9 @@ class MemoizedInlineClassReplacements {
                 }
 
                 val newParameter = parameter.copyTo(this, index = index, name = name)
-                valueParameters.add(newParameter)
                 parameterMap[parameter.symbol] = newParameter
+
+                newParameter
             }
         }
         return IrReplacementFunction(replacement, parameterMap)

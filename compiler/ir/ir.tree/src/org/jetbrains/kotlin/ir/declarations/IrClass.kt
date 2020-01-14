@@ -40,7 +40,7 @@ interface IrClass :
     val isInline: Boolean
     val isExpect: Boolean
 
-    val superTypes: MutableList<IrType>
+    var superTypes: List<IrType>
 
     var thisReceiver: IrValueParameter?
 }

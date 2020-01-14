@@ -119,7 +119,7 @@ private class InterfaceDelegationLowering(val context: JvmBackendContext) : IrEl
         }
 
         override fun visitSimpleFunction(declaration: IrSimpleFunction) {
-            declaration.overriddenSymbols.replaceAll { symbol ->
+            declaration.overriddenSymbols = declaration.overriddenSymbols.map { symbol ->
                 if (symbol.owner.getTargetForRedirection() != null)
                     context.declarationFactory.getDefaultImplsRedirection(symbol.owner).symbol
                 else symbol

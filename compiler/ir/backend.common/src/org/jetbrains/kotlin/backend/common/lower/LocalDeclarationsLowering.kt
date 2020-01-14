@@ -546,7 +546,7 @@ class LocalDeclarationsLowering(
             newDeclaration.valueParameters += createTransformedValueParameters(capturedValues, oldDeclaration, newDeclaration)
             newDeclaration.recordTransformedValueParameters(localFunctionContext)
 
-            newDeclaration.annotations.addAll(oldDeclaration.annotations)
+            newDeclaration.annotations = oldDeclaration.annotations
 
             transformedDeclarations[oldDeclaration] = newDeclaration
         }

@@ -160,14 +160,14 @@ private fun IrFunction.suspendFunctionView(context: JvmBackendContext): IrFuncti
         descriptor.bind(it)
         it.parent = parent
 
-        it.annotations.addAll(annotations)
+        it.annotations += annotations
 
         it.copyTypeParametersFrom(this)
 
         it.dispatchReceiverParameter = dispatchReceiverParameter?.copyTo(it)
         it.extensionReceiverParameter = extensionReceiverParameter?.copyTo(it)
 
-        valueParameters.mapTo(it.valueParameters) { p -> p.copyTo(it) }
+        it.valueParameters = valueParameters.map { p -> p.copyTo(it) }
         it.addValueParameter(
             SUSPEND_FUNCTION_COMPLETION_PARAMETER_NAME,
             if (isInvokeOfNumberedSuspendFunction || isBridgeInvokeOfCallableReference) context.irBuiltIns.anyNType

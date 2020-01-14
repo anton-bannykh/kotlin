@@ -345,7 +345,7 @@ private fun IrFunction.generateDefaultsFunction(
         }
         if (overriddenStubs.isNotEmpty())
             generateDefaultsFunctionImpl(context, IrDeclarationOrigin.FAKE_OVERRIDE).also {
-                (it as IrSimpleFunction).overriddenSymbols.addAll(overriddenStubs)
+                (it as IrSimpleFunction).overriddenSymbols += overriddenStubs
                 context.ir.defaultParameterDeclarationsCache[this] = it
             }
         else
@@ -383,7 +383,7 @@ private fun IrFunction.generateDefaultsFunctionImpl(context: CommonBackendContex
     newFunction.dispatchReceiverParameter = dispatchReceiverParameter?.copyTo(newFunction)
     newFunction.extensionReceiverParameter = extensionReceiverParameter?.copyTo(newFunction)
 
-    valueParameters.mapTo(newFunction.valueParameters) {
+    newFunction.valueParameters = valueParameters.map {
         val newType = it.type.remapTypeParameters(classIfConstructor, newFunction.classIfConstructor)
         val makeNullable = it.defaultValue != null &&
                 (context.ir.unfoldInlineClassType(it.type) ?: it.type) !in context.irBuiltIns.primitiveIrTypes
@@ -408,6 +408,6 @@ private fun IrFunction.generateDefaultsFunctionImpl(context: CommonBackendContex
     }
 
     // TODO some annotations are needed (e.g. @JvmStatic), others need different values (e.g. @JvmName), the rest are redundant.
-    annotations.mapTo(newFunction.annotations) { it.deepCopyWithSymbols() }
+    newFunction.annotations = annotations.map { it.deepCopyWithSymbols() }
     return newFunction
 }

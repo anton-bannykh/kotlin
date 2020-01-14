@@ -151,13 +151,11 @@ private class EnumClassLowering(val context: JvmBackendContext) : ClassLoweringP
 
                 val nameParameter = makeNameValueParameter(newConstructor)
                 val ordinalParameter = makeOrdinalValueParameter(newConstructor)
-                valueParameters.add(0, nameParameter)
-                valueParameters.add(1, ordinalParameter)
-                valueParameters.addAll(enumConstructor.valueParameters.map { param ->
+                valueParameters = listOf(nameParameter, ordinalParameter) + enumConstructor.valueParameters.map { param ->
                     param.copyTo(newConstructor, index = param.index + 2).also { newParam ->
                         loweredEnumConstructorParameters[param.symbol] = newParam
                     }
-                })
+                }
 
                 body = enumConstructor.body?.patchDeclarationParents(this)
 
@@ -228,7 +226,7 @@ private class EnumClassLowering(val context: JvmBackendContext) : ClassLoweringP
                 it.initializer = IrExpressionBodyImpl(
                     enumEntry.initializerExpression!!.expression.patchDeclarationParents(it)
                 )
-                it.annotations.addAll(enumEntry.annotations)
+                it.annotations += enumEntry.annotations
                 enumEntryFields.add(it)
                 enumEntriesByField[it] = enumEntry
             }
