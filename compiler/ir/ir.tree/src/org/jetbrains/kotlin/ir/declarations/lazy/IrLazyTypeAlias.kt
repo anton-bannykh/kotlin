@@ -10,6 +10,7 @@ import org.jetbrains.kotlin.descriptors.Visibility
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
 import org.jetbrains.kotlin.ir.declarations.IrTypeAlias
 import org.jetbrains.kotlin.ir.declarations.IrTypeParameter
+import org.jetbrains.kotlin.ir.declarations.impl.transform
 import org.jetbrains.kotlin.ir.declarations.withInitialIr
 import org.jetbrains.kotlin.ir.symbols.IrTypeAliasSymbol
 import org.jetbrains.kotlin.ir.types.IrType
@@ -41,7 +42,7 @@ class IrLazyTypeAlias(
     override val descriptor: TypeAliasDescriptor
         get() = symbol.descriptor
 
-    override val typeParameters: MutableList<IrTypeParameter> by lazy {
+    override var typeParameters: List<IrTypeParameter> by lazyVar {
         withInitialIr {
             descriptor.declaredTypeParameters.mapTo(arrayListOf()) {
                 stubGenerator.generateOrGetTypeParameterStub(it)
@@ -65,6 +66,6 @@ class IrLazyTypeAlias(
     }
 
     override fun <D> transformChildren(transformer: IrElementTransformer<D>, data: D) {
-        typeParameters.transform { it.transform(transformer, data) }
+        typeParameters = typeParameters.transform { it.transform(transformer, data) }
     }
 }

@@ -52,7 +52,7 @@ abstract class IrLazyDeclarationBase(
         }
     }
 
-    override val annotations: MutableList<IrConstructorCall> by lazy {
+    override var annotations: List<IrConstructorCall> by lazyVar {
         withInitialIr {
             descriptor.annotations.mapNotNull(typeTranslator.constantValueGenerator::generateAnnotationConstructorCall).toMutableList()
         }

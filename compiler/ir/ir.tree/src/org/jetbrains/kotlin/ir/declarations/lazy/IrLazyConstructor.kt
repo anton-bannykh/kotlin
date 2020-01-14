@@ -59,7 +59,7 @@ class IrLazyConstructor(
         typeTranslator = TypeTranslator
     )
 
-    override val typeParameters: MutableList<IrTypeParameter> by lazy {
+    override var typeParameters: List<IrTypeParameter> by lazyVar {
         withInitialIr {
             typeTranslator.buildWithScope(this) {
                 stubGenerator.symbolTable.withScope(descriptor) {

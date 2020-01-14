@@ -67,7 +67,7 @@ class IrLazyFunction(
 
     override val descriptor: FunctionDescriptor = symbol.descriptor
 
-    override val typeParameters: MutableList<IrTypeParameter> by lazy {
+    override var typeParameters: List<IrTypeParameter> by lazyVar {
         withInitialIr {
             typeTranslator.buildWithScope(this) {
                 stubGenerator.symbolTable.withScope(descriptor) {
@@ -87,7 +87,7 @@ class IrLazyFunction(
     }
 
 
-    override val overriddenSymbols: MutableList<IrSimpleFunctionSymbol> by lazy {
+    override var overriddenSymbols: List<IrSimpleFunctionSymbol> by lazyVar {
         withInitialIr {
             descriptor.overriddenDescriptors.mapTo(arrayListOf()) {
                 stubGenerator.generateFunctionStub(it.original).symbol

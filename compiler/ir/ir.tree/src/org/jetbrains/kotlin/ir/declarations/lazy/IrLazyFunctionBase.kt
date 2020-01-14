@@ -9,6 +9,7 @@ import org.jetbrains.kotlin.descriptors.Visibility
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
+import org.jetbrains.kotlin.ir.declarations.impl.transform
 import org.jetbrains.kotlin.ir.declarations.withInitialIr
 import org.jetbrains.kotlin.ir.expressions.IrBody
 import org.jetbrains.kotlin.ir.types.IrType
@@ -55,7 +56,7 @@ abstract class IrLazyFunctionBase(
         }
     }
 
-    override val valueParameters: MutableList<IrValueParameter> by lazy {
+    override var valueParameters: List<IrValueParameter> by lazyVar {
         withInitialIr {
             typeTranslator.buildWithScope(this) {
                 descriptor.valueParameters.mapTo(arrayListOf()) {
@@ -86,11 +87,11 @@ abstract class IrLazyFunctionBase(
     }
 
     override fun <D> transformChildren(transformer: IrElementTransformer<D>, data: D) {
-        typeParameters.transform { it.transform(transformer, data) }
+        typeParameters = typeParameters.transform { it.transform(transformer, data) }
 
         dispatchReceiverParameter = dispatchReceiverParameter?.transform(transformer, data)
         extensionReceiverParameter = extensionReceiverParameter?.transform(transformer, data)
-        valueParameters.transform { it.transform(transformer, data) }
+        valueParameters = valueParameters.transform { it.transform(transformer, data) }
 
         body = body?.transform(transformer, data)
     }
