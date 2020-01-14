@@ -166,7 +166,7 @@ fun IrFunction.suspendFunctionView(context: JvmBackendContext, generateBody: Boo
     }.also {
         it.parent = parent
 
-        it.annotations.addAll(annotations)
+        it.annotations += annotations
 
         it.copyAttributes(this)
         it.copyTypeParametersFrom(this)
