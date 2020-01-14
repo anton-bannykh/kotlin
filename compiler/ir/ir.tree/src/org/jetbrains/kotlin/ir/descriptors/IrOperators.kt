@@ -43,7 +43,7 @@ abstract class IrBuiltInOperatorBase : IrDeclaration {
             _parent = v
         }
 
-    override val annotations: MutableList<IrConstructorCall> = SmartList()
+    override var annotations: List<IrConstructorCall> = emptyList()
     override val metadata: MetadataSource? get() = null
 }
 
@@ -77,8 +77,8 @@ class IrBuiltInOperator(
 
     override var body: IrBody? by NullValueDelegate()
 
-    override val valueParameters: MutableList<IrValueParameter> = SmartList()
-    override val typeParameters: MutableList<IrTypeParameter> = SmartList()
+    override var valueParameters: List<IrValueParameter> = emptyList()
+    override var typeParameters: List<IrTypeParameter> = emptyList()
 
     override val modality get() = Modality.FINAL
     override val isTailrec get() = false
@@ -93,7 +93,7 @@ class IrBuiltInOperator(
         return visitor.visitSimpleFunction(this, data)
     }
 
-    override val overriddenSymbols: MutableList<IrSimpleFunctionSymbol> = SmartList()
+    override var overriddenSymbols: List<IrSimpleFunctionSymbol> = emptyList()
     override val mangle: String get() = "operator#$name@$suffix"
 
     init {
