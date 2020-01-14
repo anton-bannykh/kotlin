@@ -374,7 +374,7 @@ class DefaultParameterPatchOverridenSymbolsLowering(
             (context.ir.defaultParameterDeclarationsReversedCache[declaration] as? IrSimpleFunction)?.run {
                 overriddenSymbols.forEach {
                     it.owner.generateDefaultsFunction(context, skipInlineMethods, skipExternalMethods)?.let { defaultsBaseFun ->
-                        declaration.overriddenSymbols.add((defaultsBaseFun as IrSimpleFunction).symbol)
+                        declaration.overriddenSymbols += (defaultsBaseFun as IrSimpleFunction).symbol
                     }
                 }
             }
@@ -443,7 +443,7 @@ private fun IrFunction.generateDefaultsFunctionImpl(context: CommonBackendContex
     newFunction.dispatchReceiverParameter = dispatchReceiverParameter?.copyTo(newFunction)
     newFunction.extensionReceiverParameter = extensionReceiverParameter?.copyTo(newFunction)
 
-    valueParameters.mapTo(newFunction.valueParameters) {
+    newFunction.valueParameters = valueParameters.map {
         val newType = it.type.remapTypeParameters(classIfConstructor, newFunction.classIfConstructor)
         val makeNullable = it.defaultValue != null &&
                 (context.ir.unfoldInlineClassType(it.type) ?: it.type) !in context.irBuiltIns.primitiveIrTypes
@@ -469,6 +469,6 @@ private fun IrFunction.generateDefaultsFunctionImpl(context: CommonBackendContex
     }
 
     // TODO some annotations are needed (e.g. @JvmStatic), others need different values (e.g. @JvmName), the rest are redundant.
-    annotations.mapTo(newFunction.annotations) { it.deepCopyWithSymbols() }
+    newFunction.annotations = annotations.map { it.deepCopyWithSymbols() }
     return newFunction
 }

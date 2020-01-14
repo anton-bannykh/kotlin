@@ -93,7 +93,7 @@ class PropertiesLowering(
 
             body = IrBlockBodyImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET)
 
-            annotations.addAll(declaration.annotations)
+            annotations = declaration.annotations
             metadata = declaration.metadata
             parent = declaration.parent
         }

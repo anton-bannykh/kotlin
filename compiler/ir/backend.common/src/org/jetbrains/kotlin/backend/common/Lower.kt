@@ -196,7 +196,10 @@ fun DeclarationTransformer.runPostfix(withLocalDeclarations: Boolean = false): D
                 override fun visitFunction(declaration: IrFunction) {
                     declaration.acceptChildrenVoid(this)
 
-                    declaration.valueParameters.transformFlat { this@runPostfix.transformFlatRestricted(it)?.map { it as IrValueParameter } }
+                    for (v in declaration.valueParameters) {
+                        val result = this@runPostfix.transformFlatRestricted(v)
+                        if (result != null) error("Don't know how to add value parameters")
+                    }
                 }
 
                 override fun visitProperty(declaration: IrProperty) {
