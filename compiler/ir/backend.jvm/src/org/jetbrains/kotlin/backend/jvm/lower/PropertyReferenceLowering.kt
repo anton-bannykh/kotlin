@@ -104,10 +104,9 @@ internal class PropertyReferenceLowering(val context: JvmBackendContext) : Class
             modality = Modality.OPEN
             origin = JvmLoweredDeclarationOrigin.GENERATED_MEMBER_IN_CALLABLE_REFERENCE
         }.apply {
-            overriddenSymbols.add(method.symbol)
+            overriddenSymbols += method.symbol
             dispatchReceiverParameter = thisReceiver!!.copyTo(this)
-            for (parameter in method.valueParameters)
-                valueParameters.add(parameter.copyTo(this))
+            valueParameters = method.valueParameters.map { it.copyTo(this) }
             body = context.createIrBuilder(symbol, startOffset, endOffset).run {
                 irExprBody(buildBody(listOf(dispatchReceiverParameter!!) + valueParameters))
             }
@@ -120,10 +119,9 @@ internal class PropertyReferenceLowering(val context: JvmBackendContext) : Class
             visibility = method.visibility
             origin = IrDeclarationOrigin.FAKE_OVERRIDE
         }.apply {
-            overriddenSymbols.add(method.symbol)
+            overriddenSymbols += method.symbol
             dispatchReceiverParameter = thisReceiver!!.copyTo(this)
-            for (parameter in method.valueParameters)
-                valueParameters.add(parameter.copyTo(this))
+            valueParameters = method.valueParameters.map { it.copyTo(this) }
         }
 
     private class PropertyReferenceKind(

@@ -197,7 +197,7 @@ class SingleAbstractMethodLowering(val context: JvmBackendContext) : FileLowerin
         }.apply {
             overriddenSymbols += superMethod.symbol
             dispatchReceiverParameter = subclass.thisReceiver!!.copyTo(this)
-            superMethod.valueParameters.mapTo(valueParameters) { it.copyTo(this) }
+            valueParameters = superMethod.valueParameters.map { it.copyTo(this) }
             body = context.createIrBuilder(symbol).run {
                 irExprBody(irCall(wrappedFunctionClass.functions.single { it.name == OperatorNameConventions.INVOKE }).apply {
                     dispatchReceiver = irGetField(irGet(dispatchReceiverParameter!!), field)

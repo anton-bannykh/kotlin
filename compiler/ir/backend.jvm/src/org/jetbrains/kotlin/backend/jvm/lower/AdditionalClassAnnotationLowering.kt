@@ -139,11 +139,10 @@ private class AdditionalClassAnnotationLowering(private val context: JvmBackendC
             return
         }
 
-        irClass.annotations.add(
+        irClass.annotations +=
             IrConstructorCallImpl.fromSymbolOwner(
                 UNDEFINED_OFFSET, UNDEFINED_OFFSET, documentedConstructor.returnType, documentedConstructor.symbol, 0
             )
-        )
     }
 
     private val annotationRetentionMap = mapOf(
@@ -160,7 +159,7 @@ private class AdditionalClassAnnotationLowering(private val context: JvmBackendC
         val kotlinRetentionPolicy = kotlinRetentionPolicyName?.let { KotlinRetention.valueOf(it) }
         val javaRetentionPolicy = kotlinRetentionPolicy?.let { annotationRetentionMap[it] } ?: rpRuntime
 
-        irClass.annotations.add(
+        irClass.annotations +=
             IrConstructorCallImpl.fromSymbolOwner(
                 UNDEFINED_OFFSET, UNDEFINED_OFFSET, retentionConstructor.returnType, retentionConstructor.symbol, 0
             ).apply {
@@ -171,7 +170,6 @@ private class AdditionalClassAnnotationLowering(private val context: JvmBackendC
                     )
                 )
             }
-        )
     }
 
     private val jvm6TargetMap = mutableMapOf(
@@ -223,13 +221,12 @@ private class AdditionalClassAnnotationLowering(private val context: JvmBackendC
             )
         }
 
-        irClass.annotations.add(
+        irClass.annotations +=
             IrConstructorCallImpl.fromSymbolOwner(
                 UNDEFINED_OFFSET, UNDEFINED_OFFSET, targetConstructor.returnType, targetConstructor.symbol, 0
             ).apply {
                 putValueArgument(0, vararg)
             }
-        )
         // TODO
     }
 }

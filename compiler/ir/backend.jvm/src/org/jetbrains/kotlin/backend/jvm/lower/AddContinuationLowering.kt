@@ -97,7 +97,7 @@ private class AddContinuationLowering(private val context: JvmBackendContext) : 
         suspendLambda.createContinuationClassFor(info.function).apply {
             copyAttributes(info.reference)
             val functionNClass = context.ir.symbols.getJvmFunctionClass(info.arity + 1)
-            superTypes.add(
+            superTypes +=
                 IrSimpleTypeImpl(
                     functionNClass,
                     hasQuestionMark = false,
@@ -106,7 +106,6 @@ private class AddContinuationLowering(private val context: JvmBackendContext) : 
                         .map { makeTypeProjection(it, Variance.INVARIANT) },
                     annotations = emptyList()
                 )
-            )
 
             addField(COROUTINE_LABEL_FIELD_NAME, context.irBuiltIns.intType)
 
@@ -201,8 +200,8 @@ private class AddContinuationLowering(private val context: JvmBackendContext) : 
         modality: Modality = Modality.FINAL
     ): IrSimpleFunction =
         addFunction(function.name.asString(), function.returnType, modality).apply {
-            overriddenSymbols.add(function.symbol)
-            function.valueParameters.mapTo(valueParameters) { it.copyTo(this) }
+            overriddenSymbols += function.symbol
+            valueParameters += function.valueParameters.map { it.copyTo(this) }
         }
 
     // Invoke function in lambdas is responsible for
@@ -317,7 +316,7 @@ private class AddContinuationLowering(private val context: JvmBackendContext) : 
         visibility = JavaVisibilities.PACKAGE_VISIBILITY
     }.also { irClass ->
         irClass.createImplicitParameterDeclarationWithWrappedDescriptor()
-        irClass.superTypes.add(defaultType)
+        irClass.superTypes += defaultType
 
         val parent = irFunction.parents.firstIsInstance<IrDeclarationContainer>()
         irClass.parent = parent
@@ -361,7 +360,7 @@ private class AddContinuationLowering(private val context: JvmBackendContext) : 
             isPrimary = false
             returnType = defaultType
         }.also { constructor ->
-            constructor.valueParameters.addAll(primary.valueParameters.dropLast(1).map { it.copyTo(constructor) })
+            constructor.valueParameters += primary.valueParameters.dropLast(1).map { it.copyTo(constructor) }
 
             constructor.body = context.createIrBuilder(constructor.symbol).irBlockBody {
                 +irDelegatingConstructorCall(primary).also {
