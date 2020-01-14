@@ -83,7 +83,7 @@ class ClassGenerator(
         ).buildWithScope { irClass ->
             declarationGenerator.generateGlobalTypeParametersDeclarations(irClass, classDescriptor.declaredTypeParameters)
 
-            classDescriptor.typeConstructor.supertypes.mapTo(irClass.superTypes) {
+            irClass.superTypes = classDescriptor.typeConstructor.supertypes.map {
                 it.toIrType()
             }
 
