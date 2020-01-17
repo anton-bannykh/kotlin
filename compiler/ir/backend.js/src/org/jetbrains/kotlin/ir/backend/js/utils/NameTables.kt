@@ -199,7 +199,8 @@ class NameTables(
         }
 
         for (p in packages) {
-            for (declaration in p.declarations) {
+            // TODO
+            for (declaration in ArrayList(p.declarations)) {
                 acceptDeclaration(declaration)
             }
         }
@@ -325,12 +326,16 @@ class NameTables(
             parent = parent.parent
         }
 
-        return mappedNames[mapToKey(declaration)] ?: error("Can't find name for declaration ${declaration.fqNameWhenAvailable}")
+        return mappedNames[mapToKey(declaration)] ?: sanitizeName(declaration.name.asString()) + "__error" //error("Can't find name for declaration ${declaration.fqNameWhenAvailable}")
     }
 
     fun getNameForMemberField(field: IrField): String {
         val signature = fieldSignature(field)
         val name = memberNames.names[signature] ?: mappedNames[mapToKey(signature)]
+
+        if (name == null) {
+            return sanitizeName(field.name.asString()) + "__error"
+        }
 
         require(name != null) {
             "Can't find name for member field $field"
@@ -346,6 +351,11 @@ class NameTables(
         //       of `invoke` functions in FunctionN interfaces
         if (name == null && signature is ParameterTypeBasedSignature && signature.suggestedName.startsWith("invoke"))
             return signature.suggestedName
+
+        if (name == null) {
+            return sanitizeName(function.name.asString()) + "__error" // TODO one case is a virtual method of an abstract class with no implementation
+        }
+
         require(name != null) {
             "Can't find name for member function ${function.render()}"
         }

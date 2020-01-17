@@ -8,9 +8,117 @@ package org.jetbrains.kotlin.ir.backend.js
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.declarations.*
+import org.jetbrains.kotlin.ir.declarations.impl.IrBodyBase
+import org.jetbrains.kotlin.ir.declarations.impl.IrDeclarationBase
+import org.jetbrains.kotlin.ir.declarations.impl.IrFileImpl
 import org.jetbrains.kotlin.ir.declarations.impl.IrPersistingElementBase
+import org.jetbrains.kotlin.ir.expressions.IrBody
+import org.jetbrains.kotlin.ir.util.fileOrNull
+import org.jetbrains.kotlin.ir.util.isLocal
 
-open class MutableController(override var currentStage: Int = 0) : StageController {
+open class MutableController(val context: JsIrBackendContext) : StageController {
+
+    override var currentStage: Int = 0
+
+    override fun lazyLower(declaration: IrDeclaration) {
+        if (declaration is IrDeclarationBase<*> && currentStage - 1 > declaration.loweredUpTo) {
+            val stageNonInclusive = currentStage
+
+            while (declaration.loweredUpTo + 1 < stageNonInclusive) {
+                val i = declaration.loweredUpTo + 1
+                val parentBefore = withStage(i) { declaration.parent }
+
+                withStage(i) {
+                    val fileBefore = declaration.fileOrNull as? IrFileImpl
+                    // TODO a better way to skip declarations in external package fragments
+                    if (declaration.removedOn > i && fileBefore != null && fileBefore.symbol !in context.externalPackageFragmentSymbols) {
+                        val lowering = loweringList[i - 1]
+                        if (lowering is DeclarationLowering) {
+
+                            val result = restrictTo(declaration) { lowering.declarationTransformer(context).transformFlat(declaration) }
+                            if (result != null) {
+                                result.forEach {
+                                    it.loweredUpTo = i
+                                    it.parent = parentBefore
+                                }
+
+                                if (parentBefore is IrDeclarationContainer) {
+                                    stageController.unrestrictDeclarationListsAccess {
+
+                                        val correspondingProperty = when (declaration) {
+                                            is IrSimpleFunction -> declaration.correspondingPropertySymbol?.owner
+                                            is IrField -> declaration.correspondingPropertySymbol?.owner
+                                            else -> null
+                                        }
+
+                                        var index = -1
+                                        parentBefore.declarations.forEachIndexed { i, v ->
+                                            if (v == declaration || index == -1 && v == correspondingProperty) {
+                                                index = i
+                                            }
+                                        }
+
+                                        if (index != -1 && declaration !is IrProperty) {
+                                            if (parentBefore.declarations[index] == declaration) {
+                                                parentBefore.declarations.removeAt(index)
+                                            }
+                                            parentBefore.declarations.addAll(index, result)
+                                        } else {
+                                            parentBefore.declarations.addAll(result)
+                                        }
+
+                                        if (declaration.parent == parentBefore && declaration !in result) {
+                                            declaration.removedOn = currentStage
+                                        }
+                                    }
+                                }
+                            }
+                        } else if (declaration.isLocal) {
+                            // Handle local declarations in case they leak through types
+                            var lastBodyContainer: IrDeclaration? = null
+                            var parent = declaration.parent
+                            while (parent is IrDeclaration) {
+                                if (parent !is IrClass) {
+                                    lastBodyContainer = parent
+                                }
+                                parent = parent.parent
+                            }
+                            lastBodyContainer?.apply {
+                                when (this) {
+                                    is IrFunction -> body // TODO What about local declarations inside default arguments?
+                                    is IrField -> initializer
+                                    else -> null
+                                }?.let { withStage(i + 1) { lazyLower(it) } }
+                            }
+                        }
+                    }
+                    declaration.loweredUpTo = i
+                }
+            }
+        }
+    }
+
+
+    override fun lazyLower(body: IrBody) {
+        if (body is IrBodyBase<*> && body.loweredUpTo + 1 < currentStage) {
+            for (i in (body.loweredUpTo + 1) until currentStage) {
+                withStage(i) {
+                    val declaration = body.container
+                    val fileBefore = declaration.fileOrNull as? IrFileImpl
+                    if (fileBefore != null) {
+                        val lowering = loweringList[i - 1]
+
+                        if (lowering is BodyLowering) {
+                            stageController.bodyLowering {
+                                lowering.bodyLowering(context).lower(body, declaration)
+                            }
+                        }
+                    }
+                    body.loweredUpTo = i
+                }
+            }
+        }
+    }
 
     override var bodiesEnabled: Boolean = true
 
@@ -70,7 +178,8 @@ open class MutableController(override var currentStage: Int = 0) : StageControll
     }
 
     override fun canModify(element: IrElement): Boolean {
-        return !restricted || restrictedToDeclaration === element || element is IrPersistingElementBase<*> && element.createdOn == currentStage
+        return true
+//        return !restricted || restrictedToDeclaration === element || element is IrPersistingElementBase<*> && element.createdOn == currentStage
     }
 
     private var declarationListsRestricted = false
@@ -89,3 +198,9 @@ open class MutableController(override var currentStage: Int = 0) : StageControll
         return !declarationListsRestricted || irClass.visibility == Visibilities.LOCAL /*|| currentStage == (irClass as? IrPersistingElementBase<*>)?.createdOn ?: 0*/
     }
 }
+
+private var IrDeclaration.loweredUpTo: Int
+    get() = (this as? IrDeclarationBase<*>)?.loweredUpTo ?: 0
+    set(v) {
+        (this as? IrDeclarationBase<*>)?.loweredUpTo = v
+    }

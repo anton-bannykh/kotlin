@@ -46,7 +46,7 @@ abstract class BasicIrBoxTest(
 
     override val skipMinification = true
 
-    override val runIrDce: Boolean = true
+    override val runIrDce: Boolean = false
 
     // TODO Design incremental compilation for IR and add test support
     override val incrementalCompilationChecksEnabled = false
