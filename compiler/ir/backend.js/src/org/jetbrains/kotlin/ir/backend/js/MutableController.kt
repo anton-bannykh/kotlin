@@ -194,12 +194,6 @@ open class MutableController(val context: JsIrBackendContext) : StageController 
     }
 
     override fun canAccessDeclarationsOf(irClass: IrClass): Boolean {
-        return !declarationListsRestricted || irClass.visibility == Visibilities.LOCAL /*|| currentStage == (irClass as? IrPersistingElementBase<*>)?.createdOn ?: 0*/
+        return !declarationListsRestricted || irClass.visibility == Visibilities.LOCAL
     }
 }
-
-private var IrDeclaration.loweredUpTo: Int
-    get() = (this as? IrDeclarationBase<*>)?.loweredUpTo ?: 0
-    set(v) {
-        (this as? IrDeclarationBase<*>)?.loweredUpTo = v
-    }
