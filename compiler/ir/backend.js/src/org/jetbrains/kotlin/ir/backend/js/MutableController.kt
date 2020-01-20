@@ -22,72 +22,24 @@ open class MutableController(val context: JsIrBackendContext) : StageController 
 
     override fun lazyLower(declaration: IrDeclaration) {
         if (declaration is IrDeclarationBase<*> && currentStage - 1 > declaration.loweredUpTo) {
-            val stageNonInclusive = currentStage
 
-            while (declaration.loweredUpTo + 1 < stageNonInclusive) {
+            while (declaration.loweredUpTo + 1 < currentStage) {
                 val i = declaration.loweredUpTo + 1
-                val parentBefore = withStage(i) { declaration.parent }
-
                 withStage(i) {
                     val fileBefore = declaration.fileOrNull as? IrFileImpl
+
                     // TODO a better way to skip declarations in external package fragments
                     if (declaration.removedOn > i && fileBefore != null && fileBefore.symbol !in context.externalPackageFragmentSymbols) {
-                        val lowering = loweringList[i - 1]
-                        if (lowering is DeclarationLowering) {
 
-                            val result = restrictTo(declaration) { lowering.declarationTransformer(context).transformFlat(declaration) }
-                            if (result != null) {
-                                result.forEach {
-                                    it.parent = parentBefore
-                                }
-
-                                if (parentBefore is IrDeclarationContainer) {
-                                    stageController.unrestrictDeclarationListsAccess {
-
-                                        val correspondingProperty = when (declaration) {
-                                            is IrSimpleFunction -> declaration.correspondingPropertySymbol?.owner
-                                            is IrField -> declaration.correspondingPropertySymbol?.owner
-                                            else -> null
-                                        }
-
-                                        var index = -1
-                                        parentBefore.declarations.forEachIndexed { i, v ->
-                                            if (v == declaration || index == -1 && v == correspondingProperty) {
-                                                index = i
-                                            }
-                                        }
-
-                                        if (index != -1 && declaration !is IrProperty) {
-                                            if (parentBefore.declarations[index] == declaration) {
-                                                parentBefore.declarations.removeAt(index)
-                                            }
-                                            parentBefore.declarations.addAll(index, result)
-                                        } else {
-                                            parentBefore.declarations.addAll(result)
-                                        }
-
-                                        if (declaration.parent == parentBefore && declaration !in result) {
-                                            declaration.removedOn = currentStage
-                                        }
+                        when (val lowering = loweringList[i - 1]) {
+                            is DeclarationLowering -> lowering.doApplyLoweringTo(declaration)
+                            is BodyLowering -> {
+                                // Handle local declarations in case they leak through types
+                                if (declaration.isLocal) {
+                                    declaration.enclosingBody()?.let {
+                                        withStage(i + 1) { lazyLower(it) }
                                     }
                                 }
-                            }
-                        } else if (declaration.isLocal) {
-                            // Handle local declarations in case they leak through types
-                            var lastBodyContainer: IrDeclaration? = null
-                            var parent = declaration.parent
-                            while (parent is IrDeclaration) {
-                                if (parent !is IrClass) {
-                                    lastBodyContainer = parent
-                                }
-                                parent = parent.parent
-                            }
-                            lastBodyContainer?.apply {
-                                when (this) {
-                                    is IrFunction -> body // TODO What about local declarations inside default arguments?
-                                    is IrField -> initializer
-                                    else -> null
-                                }?.let { withStage(i + 1) { lazyLower(it) } }
                             }
                         }
                     }
@@ -96,7 +48,6 @@ open class MutableController(val context: JsIrBackendContext) : StageController 
             }
         }
     }
-
 
     override fun lazyLower(body: IrBody) {
         if (body is IrBodyBase<*> && body.loweredUpTo + 1 < currentStage) {
@@ -108,14 +59,83 @@ open class MutableController(val context: JsIrBackendContext) : StageController 
                         val lowering = loweringList[i - 1]
 
                         if (lowering is BodyLowering) {
-                            stageController.bodyLowering {
-                                lowering.bodyLowering(context).lower(body, declaration)
-                            }
+                            lowering.doApplyLoweringTo(body)
                         }
                     }
                     body.loweredUpTo = i
                 }
             }
+        }
+    }
+
+    // Launches a lowering and applies it's results
+    private fun DeclarationLowering.doApplyLoweringTo(declaration: IrDeclarationBase<*>) {
+        val parentBefore = declaration.parent
+        val result = restrictTo(declaration) { this.declarationTransformer(context).transformFlat(declaration) }
+        if (result != null) {
+            result.forEach {
+                // Some of our lowerings rely on transformDeclarationsFlat
+                it.parent = parentBefore
+            }
+
+            if (parentBefore is IrDeclarationContainer) {
+                unrestrictDeclarationListsAccess {
+
+                    // Field order matters for top level property initialization
+                    val correspondingProperty = when (declaration) {
+                        is IrSimpleFunction -> declaration.correspondingPropertySymbol?.owner
+                        is IrField -> declaration.correspondingPropertySymbol?.owner
+                        else -> null
+                    }
+
+                    var index = -1
+                    parentBefore.declarations.forEachIndexed { i, v ->
+                        if (v == declaration || index == -1 && v == correspondingProperty) {
+                            index = i
+                        }
+                    }
+
+                    if (index != -1 && declaration !is IrProperty) {
+                        if (parentBefore.declarations[index] == declaration) {
+                            parentBefore.declarations.removeAt(index)
+                        }
+                        parentBefore.declarations.addAll(index, result)
+                    } else {
+                        parentBefore.declarations.addAll(result)
+                    }
+
+                    if (declaration.parent == parentBefore && declaration !in result) {
+                        declaration.removedOn = currentStage
+                    }
+                }
+            }
+        }
+    }
+
+    // Finds outermost body, containing the declarations
+    // Doesn't work in case of local declarations inside default arguments
+    // That might be fine as those shouldn't leak
+    private fun IrDeclaration.enclosingBody(): IrBody? {
+        var lastBodyContainer: IrDeclaration? = null
+        var parent = this.parent
+        while (parent is IrDeclaration) {
+            if (parent !is IrClass) {
+                lastBodyContainer = parent
+            }
+            parent = parent.parent
+        }
+        return lastBodyContainer?.run {
+            when (this) {
+                is IrFunction -> body // TODO What about local declarations inside default arguments?
+                is IrField -> initializer
+                else -> null
+            }
+        }
+    }
+
+    private fun BodyLowering.doApplyLoweringTo(body: IrBodyBase<*>) {
+        bodyLowering {
+            this.bodyLowering(context).lower(body, body.container)
         }
     }
 
