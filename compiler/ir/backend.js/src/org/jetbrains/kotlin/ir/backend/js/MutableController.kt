@@ -10,10 +10,7 @@ import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.declarations.impl.IrBodyBase
 import org.jetbrains.kotlin.ir.declarations.impl.IrDeclarationBase
-import org.jetbrains.kotlin.ir.declarations.impl.IrFileImpl
-import org.jetbrains.kotlin.ir.declarations.impl.IrPersistingElementBase
 import org.jetbrains.kotlin.ir.expressions.IrBody
-import org.jetbrains.kotlin.ir.util.fileOrNull
 import org.jetbrains.kotlin.ir.util.isLocal
 
 open class MutableController(val context: JsIrBackendContext) : StageController {
@@ -26,10 +23,8 @@ open class MutableController(val context: JsIrBackendContext) : StageController 
             while (declaration.loweredUpTo + 1 < currentStage) {
                 val i = declaration.loweredUpTo + 1
                 withStage(i) {
-                    val fileBefore = declaration.fileOrNull as? IrFileImpl
-
                     // TODO a better way to skip declarations in external package fragments
-                    if (declaration.removedOn > i && fileBefore != null && fileBefore.symbol !in context.externalPackageFragmentSymbols) {
+                    if (declaration.removedOn > i && declaration !in context.externalDeclarations) {
 
                         when (val lowering = loweringList[i - 1]) {
                             is DeclarationLowering -> lowering.doApplyLoweringTo(declaration)
@@ -53,13 +48,13 @@ open class MutableController(val context: JsIrBackendContext) : StageController 
         if (body is IrBodyBase<*> && body.loweredUpTo + 1 < currentStage) {
             for (i in (body.loweredUpTo + 1) until currentStage) {
                 withStage(i) {
-                    val declaration = body.container
-                    val fileBefore = declaration.fileOrNull as? IrFileImpl
-                    if (fileBefore != null) {
+                    if (body.container !in context.externalDeclarations) {
                         val lowering = loweringList[i - 1]
 
                         if (lowering is BodyLowering) {
-                            lowering.doApplyLoweringTo(body)
+                            bodyLowering {
+                                lowering.bodyLowering(context).lower(body, body.container)
+                            }
                         }
                     }
                     body.loweredUpTo = i
@@ -130,12 +125,6 @@ open class MutableController(val context: JsIrBackendContext) : StageController 
                 is IrField -> initializer
                 else -> null
             }
-        }
-    }
-
-    private fun BodyLowering.doApplyLoweringTo(body: IrBodyBase<*>) {
-        bodyLowering {
-            this.bodyLowering(context).lower(body, body.container)
         }
     }
 
