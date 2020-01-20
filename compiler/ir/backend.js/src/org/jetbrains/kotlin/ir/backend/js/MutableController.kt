@@ -139,8 +139,6 @@ open class MutableController(val context: JsIrBackendContext) : StageController 
         }
     }
 
-    override var bodiesEnabled: Boolean = true
-
     override fun <T> withStage(stage: Int, fn: () -> T): T {
         val prevStage = currentStage
         currentStage = stage
@@ -151,69 +149,50 @@ open class MutableController(val context: JsIrBackendContext) : StageController 
         }
     }
 
-    override fun <T> withInitialIr(block: () -> T): T = restrictionImpl(null) { withStage(0, block) }
+    override fun <T> withInitialIr(block: () -> T): T = { withStage(0, block) }.withRestrictions(newRestrictedToDeclaration = null)
 
-    override fun <T> withInitialStateOf(declaration: IrDeclaration, block: () -> T): T = withStage((declaration as? IrPersistingElementBase<*>)?.createdOn ?: 0, block)
+    override fun <T> restrictTo(declaration: IrDeclaration, fn: () -> T): T = fn.withRestrictions(newRestrictedToDeclaration = declaration)
 
-    private var restricted: Boolean = false
+    override fun <T> bodyLowering(fn: () -> T): T = fn.withRestrictions(newBodiesEnabled = true, newRestricted = true, newDeclarationListsRestricted = true)
 
-    private var restrictedToDeclaration: IrDeclaration? = null
-
-    override fun <T> restrictTo(declaration: IrDeclaration, fn: () -> T): T = restrictionImpl(declaration, fn)
-
-    private fun <T> restrictionImpl(declaration: IrDeclaration?, fn: () -> T): T {
-        val prev = restrictedToDeclaration
-        restrictedToDeclaration = declaration
-        val wereBodiesEnabled = bodiesEnabled
-        bodiesEnabled = false
-        val wasRestricted = restricted
-        restricted = true
-        val wereDeclarationListsRestricted = declarationListsRestricted
-        declarationListsRestricted = true
-        try {
-            return fn()
-        } finally {
-            restrictedToDeclaration = prev
-            bodiesEnabled = wereBodiesEnabled
-            restricted = wasRestricted
-            declarationListsRestricted = wereDeclarationListsRestricted
-        }
-    }
-
-    override fun <T> bodyLowering(fn: () -> T): T {
-        val wereBodiesEnabled = bodiesEnabled
-        bodiesEnabled = true
-        val wasRestricted = restricted
-        restricted = true
-        val wereDeclarationListsRestricted = declarationListsRestricted
-        declarationListsRestricted = true
-        try {
-            return fn()
-        } finally {
-            bodiesEnabled = wereBodiesEnabled
-            restricted = wasRestricted
-            declarationListsRestricted = wereDeclarationListsRestricted
-        }
-    }
+    override fun <T> unrestrictDeclarationListsAccess(fn: () -> T): T = fn.withRestrictions(newDeclarationListsRestricted = false)
 
     override fun canModify(element: IrElement): Boolean {
         return true
 //        return !restricted || restrictedToDeclaration === element || element is IrPersistingElementBase<*> && element.createdOn == currentStage
     }
 
-    private var declarationListsRestricted = false
-
-    override fun <T> unrestrictDeclarationListsAccess(fn: () -> T): T {
-        val wereDeclarationListsRestricted = declarationListsRestricted
-        declarationListsRestricted = false
-        try {
-            return fn()
-        } finally {
-            declarationListsRestricted = wereDeclarationListsRestricted
-        }
-    }
-
     override fun canAccessDeclarationsOf(irClass: IrClass): Boolean {
         return !declarationListsRestricted || irClass.visibility == Visibilities.LOCAL
+    }
+
+    private var restrictedToDeclaration: IrDeclaration? = null
+    // TODO flags?
+    override var bodiesEnabled: Boolean = true
+    private var restricted: Boolean = false
+    private var declarationListsRestricted = false
+
+    private inline fun <T> (() -> T).withRestrictions(
+        newRestrictedToDeclaration: IrDeclaration? = null,
+        newBodiesEnabled: Boolean? = null,
+        newRestricted: Boolean? = null,
+        newDeclarationListsRestricted: Boolean? = null
+    ): T {
+        val prev = restrictedToDeclaration
+        restrictedToDeclaration = newRestrictedToDeclaration
+        val wereBodiesEnabled = bodiesEnabled
+        bodiesEnabled = newBodiesEnabled ?: bodiesEnabled
+        val wasRestricted = restricted
+        restricted = newRestricted ?: restricted
+        val wereDeclarationListsRestricted = declarationListsRestricted
+        declarationListsRestricted = newDeclarationListsRestricted ?: declarationListsRestricted
+        try {
+            return this.invoke()
+        } finally {
+            restrictedToDeclaration = prev
+            bodiesEnabled = wereBodiesEnabled
+            restricted = wasRestricted
+            declarationListsRestricted = wereDeclarationListsRestricted
+        }
     }
 }
