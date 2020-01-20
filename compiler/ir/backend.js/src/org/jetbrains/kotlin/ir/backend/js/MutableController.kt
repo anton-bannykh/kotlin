@@ -38,7 +38,6 @@ open class MutableController(val context: JsIrBackendContext) : StageController 
                             val result = restrictTo(declaration) { lowering.declarationTransformer(context).transformFlat(declaration) }
                             if (result != null) {
                                 result.forEach {
-                                    it.loweredUpTo = i
                                     it.parent = parentBefore
                                 }
 
