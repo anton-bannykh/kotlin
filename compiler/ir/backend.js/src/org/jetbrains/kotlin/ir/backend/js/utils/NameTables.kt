@@ -326,16 +326,12 @@ class NameTables(
             parent = parent.parent
         }
 
-        return mappedNames[mapToKey(declaration)] ?: sanitizeName(declaration.name.asString()) + "__error" //error("Can't find name for declaration ${declaration.fqNameWhenAvailable}")
+        return mappedNames[mapToKey(declaration)] ?: error("Can't find name for declaration ${declaration.fqNameWhenAvailable}")
     }
 
     fun getNameForMemberField(field: IrField): String {
         val signature = fieldSignature(field)
         val name = memberNames.names[signature] ?: mappedNames[mapToKey(signature)]
-
-        if (name == null) {
-            return sanitizeName(field.name.asString()) + "__error"
-        }
 
         require(name != null) {
             "Can't find name for member field $field"
