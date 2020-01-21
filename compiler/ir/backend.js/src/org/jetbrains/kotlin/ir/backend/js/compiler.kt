@@ -91,15 +91,33 @@ fun compile(
 
     controller.currentStage = loweringList.size + 1
 
+    val start = System.currentTimeMillis()
+
     eliminateDeadDeclarations(moduleFragment, context, mainFunction)
+
+    val tm = System.currentTimeMillis() - start
+    time += tm
+    ++cnt
 
     stageController = object : StageController {
         override val currentStage: Int = controller.currentStage
     }
 
+    val jsStart = System.currentTimeMillis()
+
     val transformer = IrModuleToJsTransformer(context, mainFunction, mainArguments)
-    return transformer.generateModule(moduleFragment, generateFullJs, generateDceJs)
+    val result = transformer.generateModule(moduleFragment, generateFullJs, generateDceJs)
+
+    timeJs += System.currentTimeMillis() - jsStart
+
+    println("$cnt   avg: ${time / cnt}ms   2js: ${timeJs / cnt}ms")
+
+    return result
 }
+
+var time = 0L
+var timeJs = 0L
+var cnt = 0
 
 fun generateJsCode(
     context: JsIrBackendContext,
