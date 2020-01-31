@@ -41,17 +41,14 @@ private fun IrField.isConstant(): Boolean {
 private fun buildRoots(module: IrModuleFragment, context: JsIrBackendContext, mainFunction: IrSimpleFunction?): Iterable<IrDeclaration> {
     val rootDeclarations =
         (module.files + context.packageLevelJsModules + context.externalPackageFragment.values).flatMapTo(mutableListOf()) { file ->
-            file.declarations.filter {
-                it is IrProperty && it.backingField?.initializer != null && it.fqNameWhenAvailable?.asString()?.startsWith("kotlin") != true
-                        || it.isExported(context)
-                        || it.isEffectivelyExternal()
-            }.flatMap {
-                if (it is IrProperty) {
-                    listOfNotNull(it.backingField, it.getter, it.setter)
-                } else {
-                    listOf(it)
-                }
-            }.filter { !(it is IrField && it.isConstant() && !it.isExported(context)) }
+            file.declarations.flatMap { if (it is IrProperty) listOfNotNull(it.backingField, it.getter, it.setter) else listOf(it) }
+                .filter {
+                    it is IrField && it.initializer != null && it.fqNameWhenAvailable?.asString()?.startsWith("kotlin") != true
+                            || it.isExported(context)
+                            || it.isEffectivelyExternal()
+                            || it is IrField && it.correspondingPropertySymbol?.owner?.isExported(context) == true
+                            || it is IrSimpleFunction && it.correspondingPropertySymbol?.owner?.isExported(context) == true
+                }.filter { !(it is IrField && it.isConstant() && !it.isExported(context)) }
         }
 
     if (context.hasTests) rootDeclarations += context.testContainer
