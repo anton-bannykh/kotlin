@@ -383,6 +383,11 @@ public class FirBlackBoxCodegenTestGenerated extends AbstractFirBlackBoxCodegenT
             runTest("compiler/testData/codegen/box/arrays/arrayConstructorsSimple.kt");
         }
 
+        @TestMetadata("arrayConstructorsWithLocalLambdaAndReflection.kt")
+        public void testArrayConstructorsWithLocalLambdaAndReflection() throws Exception {
+            runTest("compiler/testData/codegen/box/arrays/arrayConstructorsWithLocalLambdaAndReflection.kt");
+        }
+
         @TestMetadata("arrayGetAssignMultiIndex.kt")
         public void testArrayGetAssignMultiIndex() throws Exception {
             runTest("compiler/testData/codegen/box/arrays/arrayGetAssignMultiIndex.kt");
