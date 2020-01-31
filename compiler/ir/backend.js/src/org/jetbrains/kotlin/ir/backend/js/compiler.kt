@@ -43,7 +43,8 @@ fun compile(
     mainArguments: List<String>?,
     exportedDeclarations: Set<FqName> = emptySet(),
     generateFullJs: Boolean = true,
-    generateDceJs: Boolean = false
+    generateDceJs: Boolean = false,
+    dceDriven: Boolean = false
 ): CompilerResult {
     stageController = object : StageController {}
 
@@ -83,27 +84,25 @@ fun compile(
     // TODO we should only generate tests for the current module
     generateTests(context, moduleFragment)
 
-    val controller = MutableController(context)
-    stageController = controller
+    if (dceDriven) {
+        val controller = MutableController(context)
+        stageController = controller
 
-//    val phaserState = PhaserState<IrModuleFragment>()
-//    loweringList.forEachIndexed { index, lowering ->
-//        controller.currentStage = index + 1
-//        lowering.modulePhase.invoke(phaseConfig, phaserState, context, moduleFragment)
-//    }
+        controller.currentStage = loweringList.size + 1
 
-//    jsPhases.invokeToplevel(phaseConfig, context, moduleFragment)
+        eliminateDeadDeclarations(moduleFragment, context, mainFunction)
 
-    controller.currentStage = loweringList.size + 1
+        stageController = object : StageController {
+            override val currentStage: Int = controller.currentStage
+        }
 
-    eliminateDeadDeclarations(moduleFragment, context, mainFunction)
-
-    stageController = object : StageController {
-        override val currentStage: Int = controller.currentStage
+        val transformer = IrModuleToJsTransformer(context, mainFunction, mainArguments)
+        return transformer.generateModule(moduleFragment, fullJs = true, dceJs = false)
+    } else {
+        jsPhases.invokeToplevel(phaseConfig, context, moduleFragment)
+        val transformer = IrModuleToJsTransformer(context, mainFunction, mainArguments)
+        return transformer.generateModule(moduleFragment, generateFullJs, generateDceJs)
     }
-
-    val transformer = IrModuleToJsTransformer(context, mainFunction, mainArguments)
-    return transformer.generateModule(moduleFragment, generateFullJs, generateDceJs)
 }
 
 fun generateJsCode(

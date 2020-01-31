@@ -43,7 +43,9 @@ abstract class BasicIrBoxTest(
 
     override val skipMinification = true
 
-    override val runIrDce: Boolean = false
+    override val runIrDce: Boolean = true
+
+    override val runIrPir: Boolean = true
 
     // TODO Design incremental compilation for IR and add test support
     override val incrementalCompilationChecksEnabled = false
@@ -62,6 +64,7 @@ abstract class BasicIrBoxTest(
         units: List<TranslationUnit>,
         outputFile: File,
         dceOutputFile: File,
+        pirOutputFile: File,
         config: JsConfig,
         outputPrefixFile: File?,
         outputPostfixFile: File?,
@@ -129,6 +132,23 @@ abstract class BasicIrBoxTest(
             compiledModule.dceJsCode?.let { dceJsCode ->
                 val dceWrappedCode = wrapWithModuleEmulationMarkers(dceJsCode, moduleId = config.moduleId, moduleKind = config.moduleKind)
                 dceOutputFile.write(dceWrappedCode)
+            }
+
+            if (runIrPir) {
+                compile(
+                    project = config.project,
+                    mainModule = MainModule.SourceFiles(filesToCompile),
+                    configuration = config.configuration,
+                    phaseConfig = phaseConfig,
+                    allDependencies = resolvedLibraries,
+                    friendDependencies = emptyList(),
+                    mainArguments = mainCallParameters.run { if (shouldBeGenerated()) arguments() else null },
+                    exportedDeclarations = setOf(FqName.fromSegments(listOfNotNull(testPackage, testFunction))),
+                    dceDriven = true
+                ).jsCode!!.let { pirCode ->
+                    val pirWrappedCode = wrapWithModuleEmulationMarkers(pirCode, moduleId = config.moduleId, moduleKind = config.moduleKind)
+                    pirOutputFile.write(pirWrappedCode)
+                }
             }
 
             if (generateDts) {
