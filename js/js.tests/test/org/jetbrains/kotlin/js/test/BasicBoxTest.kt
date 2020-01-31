@@ -88,6 +88,8 @@ abstract class BasicBoxTest(
 
     protected open val runMinifierByDefault: Boolean = false
     protected open val skipMinification = getBoolean("kotlin.js.skipMinificationTest")
+
+    protected open val skipRegularMode: Boolean = false
     protected open val runIrDce: Boolean = false
     protected open val runIrPir: Boolean = false
 
@@ -237,10 +239,12 @@ abstract class BasicBoxTest(
             }
 
             if (!dontRunGeneratedCode) {
-                runGeneratedCode(allJsFiles, testModuleName, testPackage, testFunction, expectedResult, withModuleSystem)
+                if (!skipRegularMode) {
+                    runGeneratedCode(allJsFiles, testModuleName, testPackage, testFunction, expectedResult, withModuleSystem)
 
-                if (runIrDce) {
-                    runGeneratedCode(dceAllJsFiles, testModuleName, testPackage, testFunction, expectedResult, withModuleSystem)
+                    if (runIrDce) {
+                        runGeneratedCode(dceAllJsFiles, testModuleName, testPackage, testFunction, expectedResult, withModuleSystem)
+                    }
                 }
 
                 if (runIrPir) {
