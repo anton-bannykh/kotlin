@@ -24,13 +24,13 @@ import org.jetbrains.kotlin.ir.declarations.impl.carriers.DeclarationCarrier
 import org.jetbrains.kotlin.ir.expressions.IrBody
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 
-abstract class IrDeclarationBase<T : DeclarationCarrier<T>>(
+abstract class IrDeclarationBase(
     startOffset: Int,
     endOffset: Int,
     origin: IrDeclarationOrigin
-) : IrPersistingElementBase<T>(startOffset, endOffset),
+) : IrPersistingElementBase<DeclarationCarrier>(startOffset, endOffset),
     IrDeclaration,
-    DeclarationCarrier<T> {
+    DeclarationCarrier {
 
     override var parentField: IrDeclarationParent? = null
 
@@ -75,29 +75,27 @@ abstract class IrDeclarationBase<T : DeclarationCarrier<T>>(
     }
 }
 
-abstract class IrPersistingElementBase<T : Carrier<T>>(
+abstract class IrPersistingElementBase<C: Carrier>(
     startOffset: Int,
     endOffset: Int
-) : IrElementBase(startOffset, endOffset),
-    Carrier<T> {
+) : IrElementBase(startOffset, endOffset), Carrier {
 
     override var lastModified: Int = stageController.currentStage
 
     var loweredUpTo = stageController.currentStage
 
-    // TODO Array<T>?
-    private var values: Array<Any?>? = null
+    private var values: Array<Carrier>? = null
 
     val createdOn: Int = stageController.currentStage
 //        get() = values?.let { (it[0] as T).lastModified } ?: lastModified
 
     abstract fun ensureLowered()
 
-    protected fun getCarrier(): T {
+    protected fun getCarrier(): C {
         stageController.currentStage.let { stage ->
             ensureLowered()
 
-            if (stage >= lastModified) return this as T
+            if (stage >= lastModified) return this as C
 
             if (stage < createdOn) error("Access before creation")
 
@@ -108,7 +106,7 @@ abstract class IrPersistingElementBase<T : Carrier<T>>(
             var r = v.size
             while (r - l > 1) {
                 val m = (l + r) / 2
-                if ((v[m] as T).lastModified <= stage) {
+                if ((v[m] as C).lastModified <= stage) {
                     l = m
                 } else {
                     r = m
@@ -118,12 +116,12 @@ abstract class IrPersistingElementBase<T : Carrier<T>>(
                 error("access before creation")
             }
 
-            return v[l] as T
+            return v[l] as C
         }
     }
 
     // TODO naming? e.g. `mutableCarrier`
-    protected fun setCarrier(): T {
+    protected fun setCarrier(): C {
         val stage = stageController.currentStage
 
         ensureLowered()
@@ -138,20 +136,15 @@ abstract class IrPersistingElementBase<T : Carrier<T>>(
 
         // TODO move up? i.e. fast path
         if (stage == lastModified) {
-            return this as T
+            return this as C
         } else {
-            val newValues = values?.let { oldValues ->
-                oldValues.copyOf(oldValues.size + 1)
-            } ?: arrayOfNulls<Any?>(1)
-
-            newValues[newValues.size - 1] = this.clone()
-
-            values = newValues
+            val newElement = this.clone() as C
+            values = values?.plus(newElement) ?: arrayOf(newElement)
         }
 
         this.lastModified = stage
 
-        return this as T
+        return this as C
     }
 }
 

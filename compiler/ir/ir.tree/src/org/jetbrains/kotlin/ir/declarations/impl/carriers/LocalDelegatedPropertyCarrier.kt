@@ -11,7 +11,7 @@ import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrVariable
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 
-interface LocalDelegatedPropertyCarrier : DeclarationCarrier<LocalDelegatedPropertyCarrier> {
+interface LocalDelegatedPropertyCarrier : DeclarationCarrier {
     var delegateField: IrVariable?
     var getterField: IrFunction?
     var setterField: IrFunction?

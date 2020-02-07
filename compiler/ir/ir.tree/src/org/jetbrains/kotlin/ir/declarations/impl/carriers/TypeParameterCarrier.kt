@@ -9,7 +9,7 @@ import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 
-interface TypeParameterCarrier : DeclarationCarrier<TypeParameterCarrier> {
+interface TypeParameterCarrier : DeclarationCarrier {
 
     override fun clone(): TypeParameterCarrier {
         return TypeParameterCarrierImpl(lastModified, parentField, originField, annotationsField)
