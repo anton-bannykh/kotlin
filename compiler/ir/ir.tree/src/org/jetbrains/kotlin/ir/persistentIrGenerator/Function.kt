@@ -8,10 +8,6 @@ package org.jetbrains.kotlin.ir.persistentIrGenerator
 internal fun PersistentIrGenerator.generateFunction() {
 
     val returnTypeFieldField = Field("returnTypeField", IrType, typeProto)
-    val typeParametersField = Field("typeParameters", +"List<" + IrTypeParameter + ">", typeParameterListProto)
-    val dispatchReceiverParameterField = Field("dispatchReceiverParameter", IrValueParameter + "?", valueParameterProto)
-    val extensionReceiverParameterField = Field("extensionReceiverParameter", IrValueParameter + "?", valueParameterProto)
-    val valueParametersField = Field("valueParameters", +"List<" + IrValueParameter + ">", valueParameterListProto)
     val bodyField = Field("body", IrBody + "?", bodyProto)
     val visibilityField = Field("visibility", DescriptorVisibility, visibilityProto)
     val overriddenSymbolsField = Field("overriddenSymbols", +"List<" + IrSimpleFunctionSymbol + ">", simpleFunctionSymbolListProto)

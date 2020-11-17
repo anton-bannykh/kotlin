@@ -219,13 +219,13 @@ public final class PirFieldCarrier extends
   public static final int TYPE_FIELD_NUMBER = 5;
   private org.jetbrains.kotlin.backend.common.serialization.proto.IrType type_;
   /**
-   * <code>optional .org.jetbrains.kotlin.backend.common.serialization.proto.IrType type = 5;</code>
+   * <code>required .org.jetbrains.kotlin.backend.common.serialization.proto.IrType type = 5;</code>
    */
   public boolean hasType() {
     return ((bitField0_ & 0x00000008) == 0x00000008);
   }
   /**
-   * <code>optional .org.jetbrains.kotlin.backend.common.serialization.proto.IrType type = 5;</code>
+   * <code>required .org.jetbrains.kotlin.backend.common.serialization.proto.IrType type = 5;</code>
    */
   public org.jetbrains.kotlin.backend.common.serialization.proto.IrType getType() {
     return type_;
@@ -280,17 +280,19 @@ public final class PirFieldCarrier extends
       memoizedIsInitialized = 0;
       return false;
     }
+    if (!hasType()) {
+      memoizedIsInitialized = 0;
+      return false;
+    }
     for (int i = 0; i < getAnnotationCount(); i++) {
       if (!getAnnotation(i).isInitialized()) {
         memoizedIsInitialized = 0;
         return false;
       }
     }
-    if (hasType()) {
-      if (!getType().isInitialized()) {
-        memoizedIsInitialized = 0;
-        return false;
-      }
+    if (!getType().isInitialized()) {
+      memoizedIsInitialized = 0;
+      return false;
     }
     memoizedIsInitialized = 1;
     return true;
@@ -561,17 +563,19 @@ public final class PirFieldCarrier extends
         
         return false;
       }
+      if (!hasType()) {
+        
+        return false;
+      }
       for (int i = 0; i < getAnnotationCount(); i++) {
         if (!getAnnotation(i).isInitialized()) {
           
           return false;
         }
       }
-      if (hasType()) {
-        if (!getType().isInitialized()) {
-          
-          return false;
-        }
+      if (!getType().isInitialized()) {
+        
+        return false;
       }
       return true;
     }
@@ -818,19 +822,19 @@ public final class PirFieldCarrier extends
 
     private org.jetbrains.kotlin.backend.common.serialization.proto.IrType type_ = org.jetbrains.kotlin.backend.common.serialization.proto.IrType.getDefaultInstance();
     /**
-     * <code>optional .org.jetbrains.kotlin.backend.common.serialization.proto.IrType type = 5;</code>
+     * <code>required .org.jetbrains.kotlin.backend.common.serialization.proto.IrType type = 5;</code>
      */
     public boolean hasType() {
       return ((bitField0_ & 0x00000010) == 0x00000010);
     }
     /**
-     * <code>optional .org.jetbrains.kotlin.backend.common.serialization.proto.IrType type = 5;</code>
+     * <code>required .org.jetbrains.kotlin.backend.common.serialization.proto.IrType type = 5;</code>
      */
     public org.jetbrains.kotlin.backend.common.serialization.proto.IrType getType() {
       return type_;
     }
     /**
-     * <code>optional .org.jetbrains.kotlin.backend.common.serialization.proto.IrType type = 5;</code>
+     * <code>required .org.jetbrains.kotlin.backend.common.serialization.proto.IrType type = 5;</code>
      */
     public Builder setType(org.jetbrains.kotlin.backend.common.serialization.proto.IrType value) {
       if (value == null) {
@@ -842,7 +846,7 @@ public final class PirFieldCarrier extends
       return this;
     }
     /**
-     * <code>optional .org.jetbrains.kotlin.backend.common.serialization.proto.IrType type = 5;</code>
+     * <code>required .org.jetbrains.kotlin.backend.common.serialization.proto.IrType type = 5;</code>
      */
     public Builder setType(
         org.jetbrains.kotlin.backend.common.serialization.proto.IrType.Builder builderForValue) {
@@ -852,7 +856,7 @@ public final class PirFieldCarrier extends
       return this;
     }
     /**
-     * <code>optional .org.jetbrains.kotlin.backend.common.serialization.proto.IrType type = 5;</code>
+     * <code>required .org.jetbrains.kotlin.backend.common.serialization.proto.IrType type = 5;</code>
      */
     public Builder mergeType(org.jetbrains.kotlin.backend.common.serialization.proto.IrType value) {
       if (((bitField0_ & 0x00000010) == 0x00000010) &&
@@ -867,7 +871,7 @@ public final class PirFieldCarrier extends
       return this;
     }
     /**
-     * <code>optional .org.jetbrains.kotlin.backend.common.serialization.proto.IrType type = 5;</code>
+     * <code>required .org.jetbrains.kotlin.backend.common.serialization.proto.IrType type = 5;</code>
      */
     public Builder clearType() {
       type_ = org.jetbrains.kotlin.backend.common.serialization.proto.IrType.getDefaultInstance();

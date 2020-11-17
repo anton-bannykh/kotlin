@@ -49,31 +49,31 @@ public interface PirConstructorCarrierOrBuilder extends
   int getAnnotationCount();
 
   /**
-   * <code>optional .org.jetbrains.kotlin.backend.common.serialization.proto.IrType returnTypeField = 5;</code>
+   * <code>required .org.jetbrains.kotlin.backend.common.serialization.proto.IrType returnTypeField = 5;</code>
    */
   boolean hasReturnTypeField();
   /**
-   * <code>optional .org.jetbrains.kotlin.backend.common.serialization.proto.IrType returnTypeField = 5;</code>
+   * <code>required .org.jetbrains.kotlin.backend.common.serialization.proto.IrType returnTypeField = 5;</code>
    */
   org.jetbrains.kotlin.backend.common.serialization.proto.IrType getReturnTypeField();
 
   /**
-   * <code>optional .org.jetbrains.kotlin.backend.common.serialization.proto.IrValueParameter dispatchReceiverParameter = 6;</code>
+   * <code>optional int64 dispatchReceiverParameter = 6;</code>
    */
   boolean hasDispatchReceiverParameter();
   /**
-   * <code>optional .org.jetbrains.kotlin.backend.common.serialization.proto.IrValueParameter dispatchReceiverParameter = 6;</code>
+   * <code>optional int64 dispatchReceiverParameter = 6;</code>
    */
-  org.jetbrains.kotlin.backend.common.serialization.proto.IrValueParameter getDispatchReceiverParameter();
+  long getDispatchReceiverParameter();
 
   /**
-   * <code>optional .org.jetbrains.kotlin.backend.common.serialization.proto.IrValueParameter extensionReceiverParameter = 7;</code>
+   * <code>optional int64 extensionReceiverParameter = 7;</code>
    */
   boolean hasExtensionReceiverParameter();
   /**
-   * <code>optional .org.jetbrains.kotlin.backend.common.serialization.proto.IrValueParameter extensionReceiverParameter = 7;</code>
+   * <code>optional int64 extensionReceiverParameter = 7;</code>
    */
-  org.jetbrains.kotlin.backend.common.serialization.proto.IrValueParameter getExtensionReceiverParameter();
+  long getExtensionReceiverParameter();
 
   /**
    * <code>optional int32 body = 8;</code>
@@ -85,32 +85,30 @@ public interface PirConstructorCarrierOrBuilder extends
   int getBody();
 
   /**
-   * <code>repeated .org.jetbrains.kotlin.backend.common.serialization.proto.IrTypeParameter typeParameters = 9;</code>
+   * <code>repeated int64 typeParameters = 9;</code>
    */
-  java.util.List<org.jetbrains.kotlin.backend.common.serialization.proto.IrTypeParameter> 
-      getTypeParametersList();
+  java.util.List<java.lang.Long> getTypeParametersList();
   /**
-   * <code>repeated .org.jetbrains.kotlin.backend.common.serialization.proto.IrTypeParameter typeParameters = 9;</code>
-   */
-  org.jetbrains.kotlin.backend.common.serialization.proto.IrTypeParameter getTypeParameters(int index);
-  /**
-   * <code>repeated .org.jetbrains.kotlin.backend.common.serialization.proto.IrTypeParameter typeParameters = 9;</code>
+   * <code>repeated int64 typeParameters = 9;</code>
    */
   int getTypeParametersCount();
+  /**
+   * <code>repeated int64 typeParameters = 9;</code>
+   */
+  long getTypeParameters(int index);
 
   /**
-   * <code>repeated .org.jetbrains.kotlin.backend.common.serialization.proto.IrValueParameter valueParameters = 10;</code>
+   * <code>repeated int64 valueParameters = 10;</code>
    */
-  java.util.List<org.jetbrains.kotlin.backend.common.serialization.proto.IrValueParameter> 
-      getValueParametersList();
+  java.util.List<java.lang.Long> getValueParametersList();
   /**
-   * <code>repeated .org.jetbrains.kotlin.backend.common.serialization.proto.IrValueParameter valueParameters = 10;</code>
-   */
-  org.jetbrains.kotlin.backend.common.serialization.proto.IrValueParameter getValueParameters(int index);
-  /**
-   * <code>repeated .org.jetbrains.kotlin.backend.common.serialization.proto.IrValueParameter valueParameters = 10;</code>
+   * <code>repeated int64 valueParameters = 10;</code>
    */
   int getValueParametersCount();
+  /**
+   * <code>repeated int64 valueParameters = 10;</code>
+   */
+  long getValueParameters(int index);
 
   /**
    * <code>optional int64 flags = 11 [default = 0];</code>

@@ -19,6 +19,8 @@ import org.jetbrains.kotlin.ir.declarations.persistent.carriers.ConstructorCarri
 import org.jetbrains.kotlin.ir.expressions.IrBody
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
+import org.jetbrains.kotlin.ir.symbols.IrTypeParameterSymbol
+import org.jetbrains.kotlin.ir.symbols.IrValueParameterSymbol
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.impl.IrUninitializedType
 import org.jetbrains.kotlin.ir.types.impl.ReturnTypeIsNotInitializedException
@@ -77,43 +79,43 @@ internal class PersistentIrConstructor(
             returnTypeField = c
         }
 
-    override var typeParametersField: List<IrTypeParameter> = emptyList()
+    override var typeParametersField: List<IrTypeParameterSymbol> = emptyList()
 
     override var typeParameters: List<IrTypeParameter>
-        get() = getCarrier().typeParametersField
+        get() = getCarrier().typeParametersField.map { it.owner }
         set(v) {
             if (typeParameters !== v) {
-                setCarrier().typeParametersField = v
+                setCarrier().typeParametersField = v.map { it.symbol }
             }
         }
 
-    override var dispatchReceiverParameterField: IrValueParameter? = null
+    override var dispatchReceiverParameterField: IrValueParameterSymbol? = null
 
     override var dispatchReceiverParameter: IrValueParameter?
-        get() = getCarrier().dispatchReceiverParameterField
+        get() = getCarrier().dispatchReceiverParameterField?.owner
         set(v) {
             if (dispatchReceiverParameter !== v) {
-                setCarrier().dispatchReceiverParameterField = v
+                setCarrier().dispatchReceiverParameterField = v?.symbol
             }
         }
 
-    override var extensionReceiverParameterField: IrValueParameter? = null
+    override var extensionReceiverParameterField: IrValueParameterSymbol? = null
 
     override var extensionReceiverParameter: IrValueParameter?
-        get() = getCarrier().extensionReceiverParameterField
+        get() = getCarrier().extensionReceiverParameterField?.owner
         set(v) {
             if (extensionReceiverParameter !== v) {
-                setCarrier().extensionReceiverParameterField = v
+                setCarrier().extensionReceiverParameterField = v?.symbol
             }
         }
 
-    override var valueParametersField: List<IrValueParameter> = emptyList()
+    override var valueParametersField: List<IrValueParameterSymbol> = emptyList()
 
     override var valueParameters: List<IrValueParameter>
-        get() = getCarrier().valueParametersField
+        get() = getCarrier().valueParametersField.map { it.owner }
         set(v) {
             if (valueParameters !== v) {
-                setCarrier().valueParametersField = v
+                setCarrier().valueParametersField = v.map { it.symbol }
             }
         }
 

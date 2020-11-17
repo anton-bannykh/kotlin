@@ -7,9 +7,24 @@ package org.jetbrains.kotlin.ir.persistentIrGenerator
 
 internal fun PersistentIrGenerator.generateLocalDelegatedProperty() {
     val typeField = Field("type", IrType, typeProto)
-    val delegateField = Field("delegate", irDeclaration("IrVariable"), variableProto, lateinit = true)
-    val getterField = Field("getter", irDeclaration("IrFunction"), functionProto, lateinit = true)
-    val setterField = Field("setter", irDeclaration("IrFunction") + "?", functionProto)
+    val delegateField = Field("delegate", IrVariable, variableProto, lateinit = true)
+    val getterField = Field(
+        "getter",
+        IrFunction,
+        functionProto,
+        lateinit = true,
+        fieldType = IrFunctionSymbol,
+        fieldToPropValueConversion = +".owner",
+        propToFieldValueConversion = +".symbol"
+    )
+    val setterField = Field(
+        "setter",
+        IrFunction + "?",
+        functionProto,
+        fieldType = IrFunctionSymbol + "?",
+        fieldToPropValueConversion = +"?.owner",
+        propToFieldValueConversion = +"?.symbol"
+    )
 
     writeFile("PersistentIrLocalDelegatedProperty.kt", renderFile("org.jetbrains.kotlin.ir.declarations.persistent") {
         lines(

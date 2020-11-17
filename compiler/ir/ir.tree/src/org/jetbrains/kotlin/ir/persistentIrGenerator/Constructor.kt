@@ -7,10 +7,6 @@ package org.jetbrains.kotlin.ir.persistentIrGenerator
 
 internal fun PersistentIrGenerator.generateConstructor() {
     val returnTypeFieldField = Field("returnTypeField", IrType, typeProto)
-    val typeParametersField = Field("typeParameters", +"List<" + IrTypeParameter + ">", typeParameterListProto)
-    val dispatchReceiverParameterField = Field("dispatchReceiverParameter", IrValueParameter + "?", valueParameterProto)
-    val extensionReceiverParameterField = Field("extensionReceiverParameter", IrValueParameter + "?", valueParameterProto)
-    val valueParametersField = Field("valueParameters", +"List<" + IrValueParameter + ">", valueParameterListProto)
     val bodyField = Field("body", IrBody + "?", bodyProto)
     val visibilityField = Field("visibility", DescriptorVisibility, visibilityProto)
 
@@ -41,7 +37,13 @@ internal fun PersistentIrGenerator.generateConstructor() {
                     +"override var returnType: IrType",
                     lines(
                         +"get() = returnTypeField.let " + block(
-                            +"if (it !== " + import("IrUninitializedType", "org.jetbrains.kotlin.ir.types.impl") + ") it else throw " + import("ReturnTypeIsNotInitializedException", "org.jetbrains.kotlin.ir.types.impl") + "(this)"
+                            +"if (it !== " + import(
+                                "IrUninitializedType",
+                                "org.jetbrains.kotlin.ir.types.impl"
+                            ) + ") it else throw " + import(
+                                "ReturnTypeIsNotInitializedException",
+                                "org.jetbrains.kotlin.ir.types.impl"
+                            ) + "(this)"
                         ),
                         +"set(c) " + block(
                             +"returnTypeField = c"

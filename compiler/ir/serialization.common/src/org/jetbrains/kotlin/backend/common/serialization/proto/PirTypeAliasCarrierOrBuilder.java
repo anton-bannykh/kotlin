@@ -49,25 +49,24 @@ public interface PirTypeAliasCarrierOrBuilder extends
   int getAnnotationCount();
 
   /**
-   * <code>repeated .org.jetbrains.kotlin.backend.common.serialization.proto.IrTypeParameter typeParameters = 5;</code>
+   * <code>repeated int64 typeParameters = 5;</code>
    */
-  java.util.List<org.jetbrains.kotlin.backend.common.serialization.proto.IrTypeParameter> 
-      getTypeParametersList();
+  java.util.List<java.lang.Long> getTypeParametersList();
   /**
-   * <code>repeated .org.jetbrains.kotlin.backend.common.serialization.proto.IrTypeParameter typeParameters = 5;</code>
-   */
-  org.jetbrains.kotlin.backend.common.serialization.proto.IrTypeParameter getTypeParameters(int index);
-  /**
-   * <code>repeated .org.jetbrains.kotlin.backend.common.serialization.proto.IrTypeParameter typeParameters = 5;</code>
+   * <code>repeated int64 typeParameters = 5;</code>
    */
   int getTypeParametersCount();
+  /**
+   * <code>repeated int64 typeParameters = 5;</code>
+   */
+  long getTypeParameters(int index);
 
   /**
-   * <code>optional .org.jetbrains.kotlin.backend.common.serialization.proto.IrType expandedType = 6;</code>
+   * <code>required .org.jetbrains.kotlin.backend.common.serialization.proto.IrType expandedType = 6;</code>
    */
   boolean hasExpandedType();
   /**
-   * <code>optional .org.jetbrains.kotlin.backend.common.serialization.proto.IrType expandedType = 6;</code>
+   * <code>required .org.jetbrains.kotlin.backend.common.serialization.proto.IrType expandedType = 6;</code>
    */
   org.jetbrains.kotlin.backend.common.serialization.proto.IrType getExpandedType();
 }

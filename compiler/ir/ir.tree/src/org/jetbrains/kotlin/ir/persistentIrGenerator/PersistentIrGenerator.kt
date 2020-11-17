@@ -20,6 +20,8 @@ internal interface R {
 
 internal typealias E = R.() -> R
 
+internal val id: E get() = { this }
+
 internal enum class FieldKind {
     REQUIRED, OPTIONAL, REPEATED
 }
@@ -32,7 +34,15 @@ internal class Proto(
     val fieldKind: FieldKind = FieldKind.OPTIONAL
 )
 
-internal class Field(val name: String, val type: E, val proto: Proto? = null, val lateinit: Boolean = false)
+internal class Field(
+    val name: String,
+    val propType: E,
+    val proto: Proto? = null,
+    val lateinit: Boolean = false,
+    val fieldType: E = propType,
+    val fieldToPropValueConversion: E = id,
+    val propToFieldValueConversion: E = id,
+)
 
 internal object PersistentIrGenerator {
 
@@ -77,6 +87,10 @@ internal object PersistentIrGenerator {
 
     val IrPropertySymbol = irSymbol("IrPropertySymbol")
     val IrSimpleFunctionSymbol = irSymbol("IrSimpleFunctionSymbol")
+    val IrFunctionSymbol = irSymbol("IrFunctionSymbol")
+    val IrFieldSymbol = irSymbol("IrFieldSymbol")
+    val IrValueParameterSymbol = irSymbol("IrValueParameterSymbol")
+    val IrTypeParameterSymbol = irSymbol("IrTypeParameterSymbol")
 
     // Constructor parameters
 
@@ -99,41 +113,16 @@ internal object PersistentIrGenerator {
     val source = +"override val source: " + descriptorType("SourceElement") + " = SourceElement.NO_SOURCE"
     val returnType = +"returnType: " + IrType
     val isPrimary = +"override val isPrimary: Boolean"
-    val containerSource = +"override val containerSource: " + import("DeserializedContainerSource", "org.jetbrains.kotlin.serialization.deserialization.descriptors") + "?"
+    val containerSource = +"override val containerSource: " + import(
+        "DeserializedContainerSource",
+        "org.jetbrains.kotlin.serialization.deserialization.descriptors"
+    ) + "?"
 
     val irFactory = +"override val factory: PersistentIrFactory"
 
     val initBlock = +"init " + block(
         +"symbol.bind(this)"
     )
-
-    // Fields
-    val lastModified = +"override var lastModified: Int = factory.stageController.currentStage"
-    val loweredUpTo = +"override var loweredUpTo: Int = factory.stageController.currentStage"
-    val values = +"override var values: Array<" + Carrier + ">? = null"
-    val createdOn = +"override val createdOn: Int = factory.stageController.currentStage"
-
-    val parentField = +"override var parentField: " + IrDeclarationParent + "? = null"
-    val originField = +"override var originField: " + IrDeclarationOrigin + " = origin"
-    val removedOn = +"override var removedOn: Int = Int.MAX_VALUE"
-    val annotationsField = +"override var annotationsField: List<" + IrConstructorCall + "> = emptyList()"
-
-    val commonFields = lines(
-        lastModified,
-        loweredUpTo,
-        values,
-        createdOn,
-        id,
-        parentField,
-        originField,
-        removedOn,
-        annotationsField,
-    )
-
-    fun Field.toPersistentField(initializer: E, modifier: String = "override") =
-        persistentField(name, type, initializer, lateinit, modifier)
-
-    fun Field.toBody() = body(type, lateinit, name)
 
     // Proto types
 
@@ -146,20 +135,21 @@ internal object PersistentIrGenerator {
     val bodyProto = Proto("int32", "body", +"Int", IrBody)
     val blockBodyProto = Proto("int32", "blockBody", +"Int", IrBlockBody)
     val expressionBodyProto = Proto("int32", "expressionBody", +"Int", IrExpressionBody)
-    val valueParameterProto = Proto("IrValueParameter", "valueParameter", protoValueParameterType, IrValueParameter)
-    val valueParameterListProto = Proto("IrValueParameter", "valueParameter", protoValueParameterType, IrValueParameter, fieldKind = FieldKind.REPEATED)
-    val typeParameterListProto = Proto("IrTypeParameter", "typeParameter", protoTypeParameterType, IrTypeParameter, fieldKind = FieldKind.REPEATED)
+    val valueParameterProto = Proto("int64", "valueParameter", +"Long", IrValueParameterSymbol)
+    val valueParameterListProto = Proto("int64", "valueParameter", +"Long", IrValueParameterSymbol, fieldKind = FieldKind.REPEATED)
+    val typeParameterListProto = Proto("int64", "typeParameter", +"Long", IrTypeParameterSymbol, fieldKind = FieldKind.REPEATED)
     val superTypeListProto = Proto("int32", "superType", +"Int", IrType, fieldKind = FieldKind.REPEATED)
     val typeProto = Proto("IrType", "type", protoType, IrType, fieldKind = FieldKind.REQUIRED)
     val optionalTypeProto = Proto("IrType", "type", protoType, IrType, fieldKind = FieldKind.OPTIONAL)
     val variableProto = Proto("IrVariable", "variable", protoVariable, IrVariable)
 
-    val classProto = Proto("int64", "class", +"Long", IrClass)
+    val classProto = Proto("int64", "class", +"Long", IrClassSymbol)
     val propertySymbolProto = Proto("int64", "propertySymbol", +"Long", IrPropertySymbol)
-    val simpleFunctionProto = Proto("int64", "simpleFunction", +"Long", IrSimpleFunction)
-    val simpleFunctionSymbolListProto = Proto("int64", "simpleFunctionSymbol", +"Long", IrSimpleFunctionSymbol, fieldKind = FieldKind.REPEATED)
-    val functionProto = Proto("int64", "function", +"Long", IrFunction)
-    val fieldProto = Proto("int64", "field", +"Long", IrField)
+    val simpleFunctionProto = Proto("int64", "simpleFunction", +"Long", IrSimpleFunctionSymbol)
+    val simpleFunctionSymbolListProto =
+        Proto("int64", "simpleFunctionSymbol", +"Long", IrSimpleFunctionSymbol, fieldKind = FieldKind.REPEATED)
+    val functionProto = Proto("int64", "function", +"Long", IrFunctionSymbol)
+    val fieldProto = Proto("int64", "field", +"Long", IrFieldSymbol)
 
     val visibilityProto = Proto(null, "visibility", +"Long", DescriptorVisibility)
     val modalityProto = Proto(null, "modality", +"Long", descriptorType("Modality"))
@@ -185,6 +175,79 @@ internal object PersistentIrGenerator {
         modalityProto
     )
 
+    // Fields
+    val lastModified = +"override var lastModified: Int = factory.stageController.currentStage"
+    val loweredUpTo = +"override var loweredUpTo: Int = factory.stageController.currentStage"
+    val values = +"override var values: Array<" + Carrier + ">? = null"
+    val createdOn = +"override val createdOn: Int = factory.stageController.currentStage"
+
+    val parentField = +"override var parentField: " + IrDeclarationParent + "? = null"
+    val originField = +"override var originField: " + IrDeclarationOrigin + " = origin"
+    val removedOn = +"override var removedOn: Int = Int.MAX_VALUE"
+    val annotationsField = +"override var annotationsField: List<" + IrConstructorCall + "> = emptyList()"
+
+    val commonFields = lines(
+        lastModified,
+        loweredUpTo,
+        values,
+        createdOn,
+        id,
+        parentField,
+        originField,
+        removedOn,
+        annotationsField,
+    )
+
+    val typeParametersField = Field(
+        "typeParameters",
+        +"List<" + IrTypeParameter + ">",
+        typeParameterListProto,
+        fieldType = +"List<" + IrTypeParameterSymbol + ">",
+        fieldToPropValueConversion = +".map { it.owner }",
+        propToFieldValueConversion = +".map { it.symbol }"
+    )
+
+    val valueParametersField = Field(
+        "valueParameters",
+        +"List<" + IrValueParameter + ">",
+        valueParameterListProto,
+        fieldType = +"List<" + IrValueParameterSymbol + ">",
+        fieldToPropValueConversion = +".map { it.owner }",
+        propToFieldValueConversion = +".map { it.symbol }"
+    )
+
+    val dispatchReceiverParameterField = Field(
+        "dispatchReceiverParameter",
+        IrValueParameter + "?",
+        valueParameterProto,
+        fieldType = IrValueParameterSymbol + "?",
+        fieldToPropValueConversion = +"?.owner",
+        propToFieldValueConversion = +"?.symbol"
+    )
+
+    val extensionReceiverParameterField = Field(
+        "extensionReceiverParameter",
+        IrValueParameter + "?",
+        valueParameterProto,
+        fieldType = IrValueParameterSymbol + "?",
+        fieldToPropValueConversion = +"?.owner",
+        propToFieldValueConversion = +"?.symbol"
+    )
+
+
+    fun Field.toPersistentField(initializer: E, modifier: String = "override") =
+        persistentField(
+            name,
+            propType,
+            initializer,
+            lateinit,
+            modifier,
+            fieldType = fieldType,
+            fieldToPropValueConversion = fieldToPropValueConversion,
+            propToFieldValueConversion = propToFieldValueConversion
+        )
+
+    fun Field.toBody() = body(propType, lateinit, name)
 
     val protoMessages = mutableListOf<String>()
 
@@ -209,7 +272,7 @@ internal object PersistentIrGenerator {
             sb.append(";\n")
         }
 
-        if (fields.any { it.proto != null && it.proto.protoPrefix == null}) {
+        if (fields.any { it.proto != null && it.proto.protoPrefix == null }) {
             sb.append("    optional int64 flags = ${protoFields.size + 1} [default = 0];\n")
         }
 
@@ -287,7 +350,7 @@ internal object PersistentIrGenerator {
         allProto.forEach { p ->
             if (p.entityName !in seenEntities) {
                 seenEntities += p.entityName
-                list += +"abstract fun serialize${p.entityName.capitalize()}(proto: "+ p.irType +"): " + p.protoType
+                list += +"abstract fun serialize${p.entityName.capitalize()}(proto: " + p.irType + "): " + p.protoType
             }
         }
     }
@@ -349,12 +412,22 @@ internal object PersistentIrGenerator {
         +"    ${name}Carrier",
     )
 
-    fun persistentField(name: String, type: E, initializer: E, lateinit: Boolean = false, modifier: String = "override", isBody: Boolean = false): E = lines(
-        +"override var ${name}Field: " + type + "${if (lateinit) "?" else ""} = " + initializer,
+    fun persistentField(
+        name: String,
+        type: E,
+        initializer: E,
+        lateinit: Boolean = false,
+        modifier: String = "override",
+        isBody: Boolean = false,
+        fieldType: E = type,
+        fieldToPropValueConversion: E = id,
+        propToFieldValueConversion: E = id,
+    ): E = lines(
+        +"override var ${name}Field: " + fieldType + "${if (lateinit) "?" else ""} = " + initializer,
         id,
         +"$modifier var $name: " + type,
         lines(
-            +"get() = getCarrier().${name}Field${if (lateinit) "!!" else ""}",
+            +"get() = getCarrier().${name}Field${if (lateinit) "!!" else ""}" + fieldToPropValueConversion,
             +"set(v) " + block(
                 +"if (${if (lateinit) "getCarrier().${name}Field" else name} !== v) " + block(
                     (if (isBody) lines(
@@ -362,7 +435,7 @@ internal object PersistentIrGenerator {
                             +"v.container = this"
                         ),
                         id
-                    ) else id) + "setCarrier().${name}Field = v"
+                    ) else id) + "setCarrier().${name}Field = v" + propToFieldValueConversion
                 )
             )
         ).indent()
@@ -380,7 +453,7 @@ internal object PersistentIrGenerator {
     fun carriers(name: String, vararg fields: Field): E = lines(
         id,
         +"internal interface ${name}Carrier : DeclarationCarrier" + block(
-            *(fields.map { +"var ${it.name}Field: " + it.type + if (it.lateinit) "?" else "" }.toTypedArray()),
+            *(fields.map { +"var ${it.name}Field: " + it.fieldType + if (it.lateinit) "?" else "" }.toTypedArray()),
             id,
             +"override fun clone(): ${name}Carrier " + block(
                 +"return ${name}CarrierImpl(",
@@ -401,7 +474,7 @@ internal object PersistentIrGenerator {
             +"override var parentField: " + IrDeclarationParent + "?",
             +"override var originField: " + IrDeclarationOrigin,
             +"override var annotationsField: List<" + IrConstructorCall + ">",
-            *(fields.map { +"override var ${it.name}Field: " + it.type + if (it.lateinit) "?" else "" }.toTypedArray()),
+            *(fields.map { +"override var ${it.name}Field: " + it.fieldType + if (it.lateinit) "?" else "" }.toTypedArray()),
         ).join(separator = ",\n").indent(),
         +") : ${name}Carrier",
         id,
@@ -415,7 +488,8 @@ internal object PersistentIrGenerator {
         return block(*(fn.flatMap { listOf(id, it) }.toTypedArray()))
     }
 
-    fun import(name: String, pkg: String, alias: String = name): E = { import("$pkg.$name${ if (alias != name) " as $alias" else ""}").text(alias) }
+    fun import(name: String, pkg: String, alias: String = name): E =
+        { import("$pkg.$name${if (alias != name) " as $alias" else ""}").text(alias) }
 
     fun descriptorType(name: String): E = import(name, "org.jetbrains.kotlin.descriptors")
 
@@ -432,8 +506,6 @@ internal object PersistentIrGenerator {
     infix operator fun E.plus(e: String): E = this + (+e)
 
     operator fun String.unaryPlus(): E = { text(this@unaryPlus) }
-
-    val id: E get() = { this }
 
     fun E?.safe(): E = this ?: id
 

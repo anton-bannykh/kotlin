@@ -605,8 +605,8 @@ message PirClassCarrier {
     optional int64 parentSymbol = 2;
     optional int32 origin = 3;
     repeated IrConstructorCall annotation = 4;
-    optional IrValueParameter thisReceiver = 5;
-    repeated IrTypeParameter typeParameters = 6;
+    optional int64 thisReceiver = 5;
+    repeated int64 typeParameters = 6;
     repeated int32 superTypes = 7;
     optional int64 flags = 8 [default = 0];
 }
@@ -617,11 +617,11 @@ message PirConstructorCarrier {
     optional int32 origin = 3;
     repeated IrConstructorCall annotation = 4;
     required IrType returnTypeField = 5;
-    optional IrValueParameter dispatchReceiverParameter = 6;
-    optional IrValueParameter extensionReceiverParameter = 7;
+    optional int64 dispatchReceiverParameter = 6;
+    optional int64 extensionReceiverParameter = 7;
     optional int32 body = 8;
-    repeated IrTypeParameter typeParameters = 9;
-    repeated IrValueParameter valueParameters = 10;
+    repeated int64 typeParameters = 9;
+    repeated int64 valueParameters = 10;
     optional int64 flags = 11 [default = 0];
 }
 
@@ -657,11 +657,11 @@ message PirFunctionCarrier {
     optional int32 origin = 3;
     repeated IrConstructorCall annotation = 4;
     required IrType returnTypeField = 5;
-    optional IrValueParameter dispatchReceiverParameter = 6;
-    optional IrValueParameter extensionReceiverParameter = 7;
+    optional int64 dispatchReceiverParameter = 6;
+    optional int64 extensionReceiverParameter = 7;
     optional int32 body = 8;
-    repeated IrTypeParameter typeParameters = 9;
-    repeated IrValueParameter valueParameters = 10;
+    repeated int64 typeParameters = 9;
+    repeated int64 valueParameters = 10;
     optional int64 correspondingPropertySymbol = 11;
     repeated int64 overriddenSymbols = 12;
     optional int64 flags = 13 [default = 0];
@@ -693,7 +693,7 @@ message PirTypeAliasCarrier {
     optional int64 parentSymbol = 2;
     optional int32 origin = 3;
     repeated IrConstructorCall annotation = 4;
-    repeated IrTypeParameter typeParameters = 5;
+    repeated int64 typeParameters = 5;
     required IrType expandedType = 6;
 }
 

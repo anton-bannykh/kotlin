@@ -6,9 +6,30 @@
 package org.jetbrains.kotlin.ir.persistentIrGenerator
 
 internal fun PersistentIrGenerator.generateProperty() {
-    val backingFieldField = Field("backingField", irDeclaration("IrField") + "?", fieldProto)
-    val getterField = Field("getter", irDeclaration("IrSimpleFunction") + "?", simpleFunctionProto)
-    val setterField = Field("setter", irDeclaration("IrSimpleFunction") + "?", simpleFunctionProto)
+    val backingFieldField = Field(
+        "backingField",
+        IrField + "?",
+        fieldProto,
+        fieldType = IrFieldSymbol + "?",
+        fieldToPropValueConversion = +"?.owner",
+        propToFieldValueConversion = +"?.symbol"
+    )
+    val getterField = Field(
+        "getter",
+        IrSimpleFunction + "?",
+        simpleFunctionProto,
+        fieldType = IrSimpleFunctionSymbol + "?",
+        fieldToPropValueConversion = +"?.owner",
+        propToFieldValueConversion = +"?.symbol"
+    )
+    val setterField = Field(
+        "setter",
+        IrSimpleFunction + "?",
+        simpleFunctionProto,
+        fieldType = IrSimpleFunctionSymbol + "?",
+        fieldToPropValueConversion = +"?.owner",
+        propToFieldValueConversion = +"?.symbol"
+    )
 
     writeFile("PersistentIrPropertyCommon.kt", renderFile("org.jetbrains.kotlin.ir.declarations.persistent") {
         lines(

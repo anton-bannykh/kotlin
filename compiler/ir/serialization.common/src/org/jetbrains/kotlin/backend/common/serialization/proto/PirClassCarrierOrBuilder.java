@@ -49,27 +49,26 @@ public interface PirClassCarrierOrBuilder extends
   int getAnnotationCount();
 
   /**
-   * <code>optional .org.jetbrains.kotlin.backend.common.serialization.proto.IrValueParameter thisReceiver = 5;</code>
+   * <code>optional int64 thisReceiver = 5;</code>
    */
   boolean hasThisReceiver();
   /**
-   * <code>optional .org.jetbrains.kotlin.backend.common.serialization.proto.IrValueParameter thisReceiver = 5;</code>
+   * <code>optional int64 thisReceiver = 5;</code>
    */
-  org.jetbrains.kotlin.backend.common.serialization.proto.IrValueParameter getThisReceiver();
+  long getThisReceiver();
 
   /**
-   * <code>repeated .org.jetbrains.kotlin.backend.common.serialization.proto.IrTypeParameter typeParameters = 6;</code>
+   * <code>repeated int64 typeParameters = 6;</code>
    */
-  java.util.List<org.jetbrains.kotlin.backend.common.serialization.proto.IrTypeParameter> 
-      getTypeParametersList();
+  java.util.List<java.lang.Long> getTypeParametersList();
   /**
-   * <code>repeated .org.jetbrains.kotlin.backend.common.serialization.proto.IrTypeParameter typeParameters = 6;</code>
-   */
-  org.jetbrains.kotlin.backend.common.serialization.proto.IrTypeParameter getTypeParameters(int index);
-  /**
-   * <code>repeated .org.jetbrains.kotlin.backend.common.serialization.proto.IrTypeParameter typeParameters = 6;</code>
+   * <code>repeated int64 typeParameters = 6;</code>
    */
   int getTypeParametersCount();
+  /**
+   * <code>repeated int64 typeParameters = 6;</code>
+   */
+  long getTypeParameters(int index);
 
   /**
    * <code>repeated int32 superTypes = 7;</code>

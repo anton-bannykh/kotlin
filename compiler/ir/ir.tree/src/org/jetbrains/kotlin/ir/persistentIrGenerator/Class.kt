@@ -7,8 +7,14 @@ package org.jetbrains.kotlin.ir.persistentIrGenerator
 
 internal fun PersistentIrGenerator.generateClass() {
     val visibilityField = Field("visibility", DescriptorVisibility, visibilityProto)
-    val thisReceiverField = Field("thisReceiver", irDeclaration("IrValueParameter") + "?", valueParameterProto)
-    val typeParametersField = Field("typeParameters", +"List<" + irDeclaration("IrTypeParameter") + ">", typeParameterListProto)
+    val thisReceiverField = Field(
+        "thisReceiver",
+        IrValueParameter + "?",
+        valueParameterProto,
+        fieldType = IrValueParameterSymbol + "?",
+        fieldToPropValueConversion = +"?.owner",
+        propToFieldValueConversion = +"?.symbol"
+    )
     val superTypesField = Field("superTypes", +"List<" + import("IrType", "org.jetbrains.kotlin.ir.types") + ">", superTypeListProto)
     val modalityField = Field("modality", descriptorType("Modality"), modalityProto)
 

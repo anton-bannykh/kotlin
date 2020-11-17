@@ -16,6 +16,7 @@ import org.jetbrains.kotlin.ir.declarations.MetadataSource
 import org.jetbrains.kotlin.ir.declarations.persistent.carriers.Carrier
 import org.jetbrains.kotlin.ir.declarations.persistent.carriers.LocalDelegatedPropertyCarrier
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
+import org.jetbrains.kotlin.ir.symbols.IrFunctionSymbol
 import org.jetbrains.kotlin.ir.symbols.IrLocalDelegatedPropertySymbol
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.name.Name
@@ -74,23 +75,23 @@ internal class PersistentIrLocalDelegatedProperty(
             }
         }
 
-    override var getterField: IrFunction? = null
+    override var getterField: IrFunctionSymbol? = null
 
     override var getter: IrFunction
-        get() = getCarrier().getterField!!
+        get() = getCarrier().getterField!!.owner
         set(v) {
             if (getCarrier().getterField !== v) {
-                setCarrier().getterField = v
+                setCarrier().getterField = v.symbol
             }
         }
 
-    override var setterField: IrFunction? = null
+    override var setterField: IrFunctionSymbol? = null
 
     override var setter: IrFunction?
-        get() = getCarrier().setterField
+        get() = getCarrier().setterField?.owner
         set(v) {
             if (setter !== v) {
-                setCarrier().setterField = v
+                setCarrier().setterField = v?.symbol
             }
         }
 

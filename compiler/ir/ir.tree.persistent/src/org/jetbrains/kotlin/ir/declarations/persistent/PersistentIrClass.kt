@@ -25,6 +25,8 @@ import org.jetbrains.kotlin.ir.declarations.persistent.carriers.Carrier
 import org.jetbrains.kotlin.ir.declarations.persistent.carriers.ClassCarrier
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
+import org.jetbrains.kotlin.ir.symbols.IrTypeParameterSymbol
+import org.jetbrains.kotlin.ir.symbols.IrValueParameterSymbol
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.name.Name
 
@@ -80,13 +82,13 @@ internal class PersistentIrClass(
             }
         }
 
-    override var thisReceiverField: IrValueParameter? = null
+    override var thisReceiverField: IrValueParameterSymbol? = null
 
     override var thisReceiver: IrValueParameter?
-        get() = getCarrier().thisReceiverField
+        get() = getCarrier().thisReceiverField?.owner
         set(v) {
             if (thisReceiver !== v) {
-                setCarrier().thisReceiverField = v
+                setCarrier().thisReceiverField = v?.symbol
             }
         }
 
@@ -106,13 +108,13 @@ internal class PersistentIrClass(
             }
         }
 
-    override var typeParametersField: List<IrTypeParameter> = emptyList()
+    override var typeParametersField: List<IrTypeParameterSymbol> = emptyList()
 
     override var typeParameters: List<IrTypeParameter>
-        get() = getCarrier().typeParametersField
+        get() = getCarrier().typeParametersField.map { it.owner }
         set(v) {
             if (typeParameters !== v) {
-                setCarrier().typeParametersField = v
+                setCarrier().typeParametersField = v.map { it.symbol }
             }
         }
 
