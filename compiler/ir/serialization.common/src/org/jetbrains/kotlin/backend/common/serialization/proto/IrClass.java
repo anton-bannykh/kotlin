@@ -121,6 +121,53 @@ public final class IrClass extends
             input.popLimit(limit);
             break;
           }
+          case 56: {
+            bitField0_ |= 0x00000008;
+            thisReceiverSymbol_ = input.readInt64();
+            break;
+          }
+          case 64: {
+            if (!((mutable_bitField0_ & 0x00000080) == 0x00000080)) {
+              typeParameterSymbol_ = new java.util.ArrayList<java.lang.Long>();
+              mutable_bitField0_ |= 0x00000080;
+            }
+            typeParameterSymbol_.add(input.readInt64());
+            break;
+          }
+          case 66: {
+            int length = input.readRawVarint32();
+            int limit = input.pushLimit(length);
+            if (!((mutable_bitField0_ & 0x00000080) == 0x00000080) && input.getBytesUntilLimit() > 0) {
+              typeParameterSymbol_ = new java.util.ArrayList<java.lang.Long>();
+              mutable_bitField0_ |= 0x00000080;
+            }
+            while (input.getBytesUntilLimit() > 0) {
+              typeParameterSymbol_.add(input.readInt64());
+            }
+            input.popLimit(limit);
+            break;
+          }
+          case 72: {
+            if (!((mutable_bitField0_ & 0x00000100) == 0x00000100)) {
+              declarationSymbol_ = new java.util.ArrayList<java.lang.Long>();
+              mutable_bitField0_ |= 0x00000100;
+            }
+            declarationSymbol_.add(input.readInt64());
+            break;
+          }
+          case 74: {
+            int length = input.readRawVarint32();
+            int limit = input.pushLimit(length);
+            if (!((mutable_bitField0_ & 0x00000100) == 0x00000100) && input.getBytesUntilLimit() > 0) {
+              declarationSymbol_ = new java.util.ArrayList<java.lang.Long>();
+              mutable_bitField0_ |= 0x00000100;
+            }
+            while (input.getBytesUntilLimit() > 0) {
+              declarationSymbol_.add(input.readInt64());
+            }
+            input.popLimit(limit);
+            break;
+          }
         }
       }
     } catch (org.jetbrains.kotlin.protobuf.InvalidProtocolBufferException e) {
@@ -137,6 +184,12 @@ public final class IrClass extends
       }
       if (((mutable_bitField0_ & 0x00000020) == 0x00000020)) {
         superType_ = java.util.Collections.unmodifiableList(superType_);
+      }
+      if (((mutable_bitField0_ & 0x00000080) == 0x00000080)) {
+        typeParameterSymbol_ = java.util.Collections.unmodifiableList(typeParameterSymbol_);
+      }
+      if (((mutable_bitField0_ & 0x00000100) == 0x00000100)) {
+        declarationSymbol_ = java.util.Collections.unmodifiableList(declarationSymbol_);
       }
       try {
         unknownFieldsCodedOutput.flush();
@@ -302,6 +355,73 @@ public final class IrClass extends
   }
   private int superTypeMemoizedSerializedSize = -1;
 
+  public static final int THIS_RECEIVER_SYMBOL_FIELD_NUMBER = 7;
+  private long thisReceiverSymbol_;
+  /**
+   * <code>optional int64 this_receiver_symbol = 7;</code>
+   *
+   * <pre>
+   * for IC
+   * </pre>
+   */
+  public boolean hasThisReceiverSymbol() {
+    return ((bitField0_ & 0x00000008) == 0x00000008);
+  }
+  /**
+   * <code>optional int64 this_receiver_symbol = 7;</code>
+   *
+   * <pre>
+   * for IC
+   * </pre>
+   */
+  public long getThisReceiverSymbol() {
+    return thisReceiverSymbol_;
+  }
+
+  public static final int TYPE_PARAMETER_SYMBOL_FIELD_NUMBER = 8;
+  private java.util.List<java.lang.Long> typeParameterSymbol_;
+  /**
+   * <code>repeated int64 type_parameter_symbol = 8;</code>
+   */
+  public java.util.List<java.lang.Long>
+      getTypeParameterSymbolList() {
+    return typeParameterSymbol_;
+  }
+  /**
+   * <code>repeated int64 type_parameter_symbol = 8;</code>
+   */
+  public int getTypeParameterSymbolCount() {
+    return typeParameterSymbol_.size();
+  }
+  /**
+   * <code>repeated int64 type_parameter_symbol = 8;</code>
+   */
+  public long getTypeParameterSymbol(int index) {
+    return typeParameterSymbol_.get(index);
+  }
+
+  public static final int DECLARATION_SYMBOL_FIELD_NUMBER = 9;
+  private java.util.List<java.lang.Long> declarationSymbol_;
+  /**
+   * <code>repeated int64 declaration_symbol = 9;</code>
+   */
+  public java.util.List<java.lang.Long>
+      getDeclarationSymbolList() {
+    return declarationSymbol_;
+  }
+  /**
+   * <code>repeated int64 declaration_symbol = 9;</code>
+   */
+  public int getDeclarationSymbolCount() {
+    return declarationSymbol_.size();
+  }
+  /**
+   * <code>repeated int64 declaration_symbol = 9;</code>
+   */
+  public long getDeclarationSymbol(int index) {
+    return declarationSymbol_.get(index);
+  }
+
   private void initFields() {
     base_ = org.jetbrains.kotlin.backend.common.serialization.proto.IrDeclarationBase.getDefaultInstance();
     name_ = 0;
@@ -309,6 +429,9 @@ public final class IrClass extends
     typeParameter_ = java.util.Collections.emptyList();
     declaration_ = java.util.Collections.emptyList();
     superType_ = java.util.Collections.emptyList();
+    thisReceiverSymbol_ = 0L;
+    typeParameterSymbol_ = java.util.Collections.emptyList();
+    declarationSymbol_ = java.util.Collections.emptyList();
   }
   private byte memoizedIsInitialized = -1;
   public final boolean isInitialized() {
@@ -375,6 +498,15 @@ public final class IrClass extends
     for (int i = 0; i < superType_.size(); i++) {
       output.writeInt32NoTag(superType_.get(i));
     }
+    if (((bitField0_ & 0x00000008) == 0x00000008)) {
+      output.writeInt64(7, thisReceiverSymbol_);
+    }
+    for (int i = 0; i < typeParameterSymbol_.size(); i++) {
+      output.writeInt64(8, typeParameterSymbol_.get(i));
+    }
+    for (int i = 0; i < declarationSymbol_.size(); i++) {
+      output.writeInt64(9, declarationSymbol_.get(i));
+    }
     output.writeRawBytes(unknownFields);
   }
 
@@ -417,6 +549,28 @@ public final class IrClass extends
             .computeInt32SizeNoTag(dataSize);
       }
       superTypeMemoizedSerializedSize = dataSize;
+    }
+    if (((bitField0_ & 0x00000008) == 0x00000008)) {
+      size += org.jetbrains.kotlin.protobuf.CodedOutputStream
+        .computeInt64Size(7, thisReceiverSymbol_);
+    }
+    {
+      int dataSize = 0;
+      for (int i = 0; i < typeParameterSymbol_.size(); i++) {
+        dataSize += org.jetbrains.kotlin.protobuf.CodedOutputStream
+          .computeInt64SizeNoTag(typeParameterSymbol_.get(i));
+      }
+      size += dataSize;
+      size += 1 * getTypeParameterSymbolList().size();
+    }
+    {
+      int dataSize = 0;
+      for (int i = 0; i < declarationSymbol_.size(); i++) {
+        dataSize += org.jetbrains.kotlin.protobuf.CodedOutputStream
+          .computeInt64SizeNoTag(declarationSymbol_.get(i));
+      }
+      size += dataSize;
+      size += 1 * getDeclarationSymbolList().size();
     }
     size += unknownFields.size();
     memoizedSerializedSize = size;
@@ -524,6 +678,12 @@ public final class IrClass extends
       bitField0_ = (bitField0_ & ~0x00000010);
       superType_ = java.util.Collections.emptyList();
       bitField0_ = (bitField0_ & ~0x00000020);
+      thisReceiverSymbol_ = 0L;
+      bitField0_ = (bitField0_ & ~0x00000040);
+      typeParameterSymbol_ = java.util.Collections.emptyList();
+      bitField0_ = (bitField0_ & ~0x00000080);
+      declarationSymbol_ = java.util.Collections.emptyList();
+      bitField0_ = (bitField0_ & ~0x00000100);
       return this;
     }
 
@@ -574,6 +734,20 @@ public final class IrClass extends
         bitField0_ = (bitField0_ & ~0x00000020);
       }
       result.superType_ = superType_;
+      if (((from_bitField0_ & 0x00000040) == 0x00000040)) {
+        to_bitField0_ |= 0x00000008;
+      }
+      result.thisReceiverSymbol_ = thisReceiverSymbol_;
+      if (((bitField0_ & 0x00000080) == 0x00000080)) {
+        typeParameterSymbol_ = java.util.Collections.unmodifiableList(typeParameterSymbol_);
+        bitField0_ = (bitField0_ & ~0x00000080);
+      }
+      result.typeParameterSymbol_ = typeParameterSymbol_;
+      if (((bitField0_ & 0x00000100) == 0x00000100)) {
+        declarationSymbol_ = java.util.Collections.unmodifiableList(declarationSymbol_);
+        bitField0_ = (bitField0_ & ~0x00000100);
+      }
+      result.declarationSymbol_ = declarationSymbol_;
       result.bitField0_ = to_bitField0_;
       return result;
     }
@@ -616,6 +790,29 @@ public final class IrClass extends
         } else {
           ensureSuperTypeIsMutable();
           superType_.addAll(other.superType_);
+        }
+        
+      }
+      if (other.hasThisReceiverSymbol()) {
+        setThisReceiverSymbol(other.getThisReceiverSymbol());
+      }
+      if (!other.typeParameterSymbol_.isEmpty()) {
+        if (typeParameterSymbol_.isEmpty()) {
+          typeParameterSymbol_ = other.typeParameterSymbol_;
+          bitField0_ = (bitField0_ & ~0x00000080);
+        } else {
+          ensureTypeParameterSymbolIsMutable();
+          typeParameterSymbol_.addAll(other.typeParameterSymbol_);
+        }
+        
+      }
+      if (!other.declarationSymbol_.isEmpty()) {
+        if (declarationSymbol_.isEmpty()) {
+          declarationSymbol_ = other.declarationSymbol_;
+          bitField0_ = (bitField0_ & ~0x00000100);
+        } else {
+          ensureDeclarationSymbolIsMutable();
+          declarationSymbol_.addAll(other.declarationSymbol_);
         }
         
       }
@@ -1141,6 +1338,186 @@ public final class IrClass extends
     public Builder clearSuperType() {
       superType_ = java.util.Collections.emptyList();
       bitField0_ = (bitField0_ & ~0x00000020);
+      
+      return this;
+    }
+
+    private long thisReceiverSymbol_ ;
+    /**
+     * <code>optional int64 this_receiver_symbol = 7;</code>
+     *
+     * <pre>
+     * for IC
+     * </pre>
+     */
+    public boolean hasThisReceiverSymbol() {
+      return ((bitField0_ & 0x00000040) == 0x00000040);
+    }
+    /**
+     * <code>optional int64 this_receiver_symbol = 7;</code>
+     *
+     * <pre>
+     * for IC
+     * </pre>
+     */
+    public long getThisReceiverSymbol() {
+      return thisReceiverSymbol_;
+    }
+    /**
+     * <code>optional int64 this_receiver_symbol = 7;</code>
+     *
+     * <pre>
+     * for IC
+     * </pre>
+     */
+    public Builder setThisReceiverSymbol(long value) {
+      bitField0_ |= 0x00000040;
+      thisReceiverSymbol_ = value;
+      
+      return this;
+    }
+    /**
+     * <code>optional int64 this_receiver_symbol = 7;</code>
+     *
+     * <pre>
+     * for IC
+     * </pre>
+     */
+    public Builder clearThisReceiverSymbol() {
+      bitField0_ = (bitField0_ & ~0x00000040);
+      thisReceiverSymbol_ = 0L;
+      
+      return this;
+    }
+
+    private java.util.List<java.lang.Long> typeParameterSymbol_ = java.util.Collections.emptyList();
+    private void ensureTypeParameterSymbolIsMutable() {
+      if (!((bitField0_ & 0x00000080) == 0x00000080)) {
+        typeParameterSymbol_ = new java.util.ArrayList<java.lang.Long>(typeParameterSymbol_);
+        bitField0_ |= 0x00000080;
+       }
+    }
+    /**
+     * <code>repeated int64 type_parameter_symbol = 8;</code>
+     */
+    public java.util.List<java.lang.Long>
+        getTypeParameterSymbolList() {
+      return java.util.Collections.unmodifiableList(typeParameterSymbol_);
+    }
+    /**
+     * <code>repeated int64 type_parameter_symbol = 8;</code>
+     */
+    public int getTypeParameterSymbolCount() {
+      return typeParameterSymbol_.size();
+    }
+    /**
+     * <code>repeated int64 type_parameter_symbol = 8;</code>
+     */
+    public long getTypeParameterSymbol(int index) {
+      return typeParameterSymbol_.get(index);
+    }
+    /**
+     * <code>repeated int64 type_parameter_symbol = 8;</code>
+     */
+    public Builder setTypeParameterSymbol(
+        int index, long value) {
+      ensureTypeParameterSymbolIsMutable();
+      typeParameterSymbol_.set(index, value);
+      
+      return this;
+    }
+    /**
+     * <code>repeated int64 type_parameter_symbol = 8;</code>
+     */
+    public Builder addTypeParameterSymbol(long value) {
+      ensureTypeParameterSymbolIsMutable();
+      typeParameterSymbol_.add(value);
+      
+      return this;
+    }
+    /**
+     * <code>repeated int64 type_parameter_symbol = 8;</code>
+     */
+    public Builder addAllTypeParameterSymbol(
+        java.lang.Iterable<? extends java.lang.Long> values) {
+      ensureTypeParameterSymbolIsMutable();
+      org.jetbrains.kotlin.protobuf.AbstractMessageLite.Builder.addAll(
+          values, typeParameterSymbol_);
+      
+      return this;
+    }
+    /**
+     * <code>repeated int64 type_parameter_symbol = 8;</code>
+     */
+    public Builder clearTypeParameterSymbol() {
+      typeParameterSymbol_ = java.util.Collections.emptyList();
+      bitField0_ = (bitField0_ & ~0x00000080);
+      
+      return this;
+    }
+
+    private java.util.List<java.lang.Long> declarationSymbol_ = java.util.Collections.emptyList();
+    private void ensureDeclarationSymbolIsMutable() {
+      if (!((bitField0_ & 0x00000100) == 0x00000100)) {
+        declarationSymbol_ = new java.util.ArrayList<java.lang.Long>(declarationSymbol_);
+        bitField0_ |= 0x00000100;
+       }
+    }
+    /**
+     * <code>repeated int64 declaration_symbol = 9;</code>
+     */
+    public java.util.List<java.lang.Long>
+        getDeclarationSymbolList() {
+      return java.util.Collections.unmodifiableList(declarationSymbol_);
+    }
+    /**
+     * <code>repeated int64 declaration_symbol = 9;</code>
+     */
+    public int getDeclarationSymbolCount() {
+      return declarationSymbol_.size();
+    }
+    /**
+     * <code>repeated int64 declaration_symbol = 9;</code>
+     */
+    public long getDeclarationSymbol(int index) {
+      return declarationSymbol_.get(index);
+    }
+    /**
+     * <code>repeated int64 declaration_symbol = 9;</code>
+     */
+    public Builder setDeclarationSymbol(
+        int index, long value) {
+      ensureDeclarationSymbolIsMutable();
+      declarationSymbol_.set(index, value);
+      
+      return this;
+    }
+    /**
+     * <code>repeated int64 declaration_symbol = 9;</code>
+     */
+    public Builder addDeclarationSymbol(long value) {
+      ensureDeclarationSymbolIsMutable();
+      declarationSymbol_.add(value);
+      
+      return this;
+    }
+    /**
+     * <code>repeated int64 declaration_symbol = 9;</code>
+     */
+    public Builder addAllDeclarationSymbol(
+        java.lang.Iterable<? extends java.lang.Long> values) {
+      ensureDeclarationSymbolIsMutable();
+      org.jetbrains.kotlin.protobuf.AbstractMessageLite.Builder.addAll(
+          values, declarationSymbol_);
+      
+      return this;
+    }
+    /**
+     * <code>repeated int64 declaration_symbol = 9;</code>
+     */
+    public Builder clearDeclarationSymbol() {
+      declarationSymbol_ = java.util.Collections.emptyList();
+      bitField0_ = (bitField0_ & ~0x00000100);
       
       return this;
     }

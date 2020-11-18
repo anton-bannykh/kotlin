@@ -38,4 +38,29 @@ public interface IrTypeAliasOrBuilder extends
    * <code>repeated .org.jetbrains.kotlin.backend.common.serialization.proto.IrTypeParameter type_parameter = 3;</code>
    */
   int getTypeParameterCount();
+
+  /**
+   * <code>repeated int64 type_parameter_symbol = 4;</code>
+   *
+   * <pre>
+   * for IC
+   * </pre>
+   */
+  java.util.List<java.lang.Long> getTypeParameterSymbolList();
+  /**
+   * <code>repeated int64 type_parameter_symbol = 4;</code>
+   *
+   * <pre>
+   * for IC
+   * </pre>
+   */
+  int getTypeParameterSymbolCount();
+  /**
+   * <code>repeated int64 type_parameter_symbol = 4;</code>
+   *
+   * <pre>
+   * for IC
+   * </pre>
+   */
+  long getTypeParameterSymbol(int index);
 }

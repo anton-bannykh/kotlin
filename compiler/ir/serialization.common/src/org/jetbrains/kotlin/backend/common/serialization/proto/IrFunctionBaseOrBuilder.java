@@ -79,4 +79,60 @@ public interface IrFunctionBaseOrBuilder extends
    * <code>optional int32 body = 7;</code>
    */
   int getBody();
+
+  /**
+   * <code>repeated int64 type_parameter_symbol = 8;</code>
+   *
+   * <pre>
+   * for IC
+   * </pre>
+   */
+  java.util.List<java.lang.Long> getTypeParameterSymbolList();
+  /**
+   * <code>repeated int64 type_parameter_symbol = 8;</code>
+   *
+   * <pre>
+   * for IC
+   * </pre>
+   */
+  int getTypeParameterSymbolCount();
+  /**
+   * <code>repeated int64 type_parameter_symbol = 8;</code>
+   *
+   * <pre>
+   * for IC
+   * </pre>
+   */
+  long getTypeParameterSymbol(int index);
+
+  /**
+   * <code>optional int64 dispatch_receiver_symbol = 9;</code>
+   */
+  boolean hasDispatchReceiverSymbol();
+  /**
+   * <code>optional int64 dispatch_receiver_symbol = 9;</code>
+   */
+  long getDispatchReceiverSymbol();
+
+  /**
+   * <code>optional int64 extension_receiver_symbol = 10;</code>
+   */
+  boolean hasExtensionReceiverSymbol();
+  /**
+   * <code>optional int64 extension_receiver_symbol = 10;</code>
+   */
+  long getExtensionReceiverSymbol();
+
+  /**
+   * <code>repeated int64 value_parameter_symbol = 11;</code>
+   */
+  java.util.List<java.lang.Long> getValueParameterSymbolList();
+  /**
+   * <code>repeated int64 value_parameter_symbol = 11;</code>
+   */
+  int getValueParameterSymbolCount();
+  /**
+   * <code>repeated int64 value_parameter_symbol = 11;</code>
+   */
+  long getValueParameterSymbol(int index);
 }
