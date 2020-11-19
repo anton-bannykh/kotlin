@@ -6,7 +6,6 @@
 package org.jetbrains.kotlin.ir.serialization
 
 import org.jetbrains.kotlin.backend.common.serialization.proto.IrConstructorCall as ProtoIrConstructorCall
-import org.jetbrains.kotlin.backend.common.serialization.proto.IrType as ProtoIrType
 import org.jetbrains.kotlin.backend.common.serialization.proto.IrVariable as ProtoIrVariable
 import org.jetbrains.kotlin.backend.common.serialization.proto.PirAnonymousInitializerCarrier
 import org.jetbrains.kotlin.backend.common.serialization.proto.PirClassCarrier
@@ -54,43 +53,43 @@ import org.jetbrains.kotlin.ir.types.IrType
 
 internal abstract class IrCarrierSerializer {
 
-    abstract fun serializeParent(proto: IrDeclarationParent): Long
+    abstract fun serializeParent(value: IrDeclarationParent): Long
 
-    abstract fun serializeOrigin(proto: IrDeclarationOrigin): Int
+    abstract fun serializeOrigin(value: IrDeclarationOrigin): Int
 
-    abstract fun serializeAnnotation(proto: IrConstructorCall): ProtoIrConstructorCall
+    abstract fun serializeAnnotation(value: IrConstructorCall): ProtoIrConstructorCall
 
-    abstract fun serializeBody(proto: IrBody): Int
+    abstract fun serializeBody(value: IrBody): Int
 
-    abstract fun serializeBlockBody(proto: IrBlockBody): Int
+    abstract fun serializeBlockBody(value: IrBlockBody): Int
 
-    abstract fun serializeExpressionBody(proto: IrExpressionBody): Int
+    abstract fun serializeExpressionBody(value: IrExpressionBody): Int
 
-    abstract fun serializeValueParameter(proto: IrValueParameterSymbol): Long
+    abstract fun serializeValueParameter(value: IrValueParameterSymbol): Long
 
-    abstract fun serializeTypeParameter(proto: IrTypeParameterSymbol): Long
+    abstract fun serializeTypeParameter(value: IrTypeParameterSymbol): Long
 
-    abstract fun serializeSuperType(proto: IrType): Int
+    abstract fun serializeSuperType(value: IrType): Int
 
-    abstract fun serializeType(proto: IrType): ProtoIrType
+    abstract fun serializeType(value: IrType): Int
 
-    abstract fun serializeClass(proto: IrClassSymbol): Long
+    abstract fun serializeClass(value: IrClassSymbol): Long
 
-    abstract fun serializePropertySymbol(proto: IrPropertySymbol): Long
+    abstract fun serializePropertySymbol(value: IrPropertySymbol): Long
 
-    abstract fun serializeSimpleFunction(proto: IrSimpleFunctionSymbol): Long
+    abstract fun serializeSimpleFunction(value: IrSimpleFunctionSymbol): Long
 
-    abstract fun serializeSimpleFunctionSymbol(proto: IrSimpleFunctionSymbol): Long
+    abstract fun serializeSimpleFunctionSymbol(value: IrSimpleFunctionSymbol): Long
 
-    abstract fun serializeFunction(proto: IrFunctionSymbol): Long
+    abstract fun serializeFunction(value: IrFunctionSymbol): Long
 
-    abstract fun serializeField(proto: IrFieldSymbol): Long
+    abstract fun serializeField(value: IrFieldSymbol): Long
 
-    abstract fun serializeVariable(proto: IrVariable): ProtoIrVariable
+    abstract fun serializeVariable(value: IrVariable): ProtoIrVariable
 
-    abstract fun serializeVisibility(proto: DescriptorVisibility): Long
+    abstract fun serializeVisibility(value: DescriptorVisibility): Long
 
-    abstract fun serializeModality(proto: Modality): Long
+    abstract fun serializeModality(value: Modality): Long
 
     fun serializeAnonymousInitializerCarrier(carrier: AnonymousInitializerCarrier): PirAnonymousInitializerCarrier {
         val proto = PirAnonymousInitializerCarrier.newBuilder()

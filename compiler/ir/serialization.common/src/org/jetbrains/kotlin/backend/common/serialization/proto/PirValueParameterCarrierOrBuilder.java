@@ -58,20 +58,20 @@ public interface PirValueParameterCarrierOrBuilder extends
   int getDefaultValue();
 
   /**
-   * <code>required .org.jetbrains.kotlin.backend.common.serialization.proto.IrType type = 6;</code>
+   * <code>required int32 type = 6;</code>
    */
   boolean hasType();
   /**
-   * <code>required .org.jetbrains.kotlin.backend.common.serialization.proto.IrType type = 6;</code>
+   * <code>required int32 type = 6;</code>
    */
-  org.jetbrains.kotlin.backend.common.serialization.proto.IrType getType();
+  int getType();
 
   /**
-   * <code>optional .org.jetbrains.kotlin.backend.common.serialization.proto.IrType varargElementType = 7;</code>
+   * <code>optional int32 varargElementType = 7;</code>
    */
   boolean hasVarargElementType();
   /**
-   * <code>optional .org.jetbrains.kotlin.backend.common.serialization.proto.IrType varargElementType = 7;</code>
+   * <code>optional int32 varargElementType = 7;</code>
    */
-  org.jetbrains.kotlin.backend.common.serialization.proto.IrType getVarargElementType();
+  int getVarargElementType();
 }

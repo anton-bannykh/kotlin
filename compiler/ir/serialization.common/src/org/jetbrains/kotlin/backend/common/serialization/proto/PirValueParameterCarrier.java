@@ -81,30 +81,14 @@ public final class PirValueParameterCarrier extends
             defaultValue_ = input.readInt32();
             break;
           }
-          case 50: {
-            org.jetbrains.kotlin.backend.common.serialization.proto.IrType.Builder subBuilder = null;
-            if (((bitField0_ & 0x00000010) == 0x00000010)) {
-              subBuilder = type_.toBuilder();
-            }
-            type_ = input.readMessage(org.jetbrains.kotlin.backend.common.serialization.proto.IrType.PARSER, extensionRegistry);
-            if (subBuilder != null) {
-              subBuilder.mergeFrom(type_);
-              type_ = subBuilder.buildPartial();
-            }
+          case 48: {
             bitField0_ |= 0x00000010;
+            type_ = input.readInt32();
             break;
           }
-          case 58: {
-            org.jetbrains.kotlin.backend.common.serialization.proto.IrType.Builder subBuilder = null;
-            if (((bitField0_ & 0x00000020) == 0x00000020)) {
-              subBuilder = varargElementType_.toBuilder();
-            }
-            varargElementType_ = input.readMessage(org.jetbrains.kotlin.backend.common.serialization.proto.IrType.PARSER, extensionRegistry);
-            if (subBuilder != null) {
-              subBuilder.mergeFrom(varargElementType_);
-              varargElementType_ = subBuilder.buildPartial();
-            }
+          case 56: {
             bitField0_ |= 0x00000020;
+            varargElementType_ = input.readInt32();
             break;
           }
         }
@@ -240,32 +224,32 @@ public final class PirValueParameterCarrier extends
   }
 
   public static final int TYPE_FIELD_NUMBER = 6;
-  private org.jetbrains.kotlin.backend.common.serialization.proto.IrType type_;
+  private int type_;
   /**
-   * <code>required .org.jetbrains.kotlin.backend.common.serialization.proto.IrType type = 6;</code>
+   * <code>required int32 type = 6;</code>
    */
   public boolean hasType() {
     return ((bitField0_ & 0x00000010) == 0x00000010);
   }
   /**
-   * <code>required .org.jetbrains.kotlin.backend.common.serialization.proto.IrType type = 6;</code>
+   * <code>required int32 type = 6;</code>
    */
-  public org.jetbrains.kotlin.backend.common.serialization.proto.IrType getType() {
+  public int getType() {
     return type_;
   }
 
   public static final int VARARGELEMENTTYPE_FIELD_NUMBER = 7;
-  private org.jetbrains.kotlin.backend.common.serialization.proto.IrType varargElementType_;
+  private int varargElementType_;
   /**
-   * <code>optional .org.jetbrains.kotlin.backend.common.serialization.proto.IrType varargElementType = 7;</code>
+   * <code>optional int32 varargElementType = 7;</code>
    */
   public boolean hasVarargElementType() {
     return ((bitField0_ & 0x00000020) == 0x00000020);
   }
   /**
-   * <code>optional .org.jetbrains.kotlin.backend.common.serialization.proto.IrType varargElementType = 7;</code>
+   * <code>optional int32 varargElementType = 7;</code>
    */
-  public org.jetbrains.kotlin.backend.common.serialization.proto.IrType getVarargElementType() {
+  public int getVarargElementType() {
     return varargElementType_;
   }
 
@@ -275,8 +259,8 @@ public final class PirValueParameterCarrier extends
     origin_ = 0;
     annotation_ = java.util.Collections.emptyList();
     defaultValue_ = 0;
-    type_ = org.jetbrains.kotlin.backend.common.serialization.proto.IrType.getDefaultInstance();
-    varargElementType_ = org.jetbrains.kotlin.backend.common.serialization.proto.IrType.getDefaultInstance();
+    type_ = 0;
+    varargElementType_ = 0;
   }
   private byte memoizedIsInitialized = -1;
   public final boolean isInitialized() {
@@ -294,16 +278,6 @@ public final class PirValueParameterCarrier extends
     }
     for (int i = 0; i < getAnnotationCount(); i++) {
       if (!getAnnotation(i).isInitialized()) {
-        memoizedIsInitialized = 0;
-        return false;
-      }
-    }
-    if (!getType().isInitialized()) {
-      memoizedIsInitialized = 0;
-      return false;
-    }
-    if (hasVarargElementType()) {
-      if (!getVarargElementType().isInitialized()) {
         memoizedIsInitialized = 0;
         return false;
       }
@@ -331,10 +305,10 @@ public final class PirValueParameterCarrier extends
       output.writeInt32(5, defaultValue_);
     }
     if (((bitField0_ & 0x00000010) == 0x00000010)) {
-      output.writeMessage(6, type_);
+      output.writeInt32(6, type_);
     }
     if (((bitField0_ & 0x00000020) == 0x00000020)) {
-      output.writeMessage(7, varargElementType_);
+      output.writeInt32(7, varargElementType_);
     }
     output.writeRawBytes(unknownFields);
   }
@@ -367,11 +341,11 @@ public final class PirValueParameterCarrier extends
     }
     if (((bitField0_ & 0x00000010) == 0x00000010)) {
       size += org.jetbrains.kotlin.protobuf.CodedOutputStream
-        .computeMessageSize(6, type_);
+        .computeInt32Size(6, type_);
     }
     if (((bitField0_ & 0x00000020) == 0x00000020)) {
       size += org.jetbrains.kotlin.protobuf.CodedOutputStream
-        .computeMessageSize(7, varargElementType_);
+        .computeInt32Size(7, varargElementType_);
     }
     size += unknownFields.size();
     memoizedSerializedSize = size;
@@ -477,9 +451,9 @@ public final class PirValueParameterCarrier extends
       bitField0_ = (bitField0_ & ~0x00000008);
       defaultValue_ = 0;
       bitField0_ = (bitField0_ & ~0x00000010);
-      type_ = org.jetbrains.kotlin.backend.common.serialization.proto.IrType.getDefaultInstance();
+      type_ = 0;
       bitField0_ = (bitField0_ & ~0x00000020);
-      varargElementType_ = org.jetbrains.kotlin.backend.common.serialization.proto.IrType.getDefaultInstance();
+      varargElementType_ = 0;
       bitField0_ = (bitField0_ & ~0x00000040);
       return this;
     }
@@ -562,10 +536,10 @@ public final class PirValueParameterCarrier extends
         setDefaultValue(other.getDefaultValue());
       }
       if (other.hasType()) {
-        mergeType(other.getType());
+        setType(other.getType());
       }
       if (other.hasVarargElementType()) {
-        mergeVarargElementType(other.getVarargElementType());
+        setVarargElementType(other.getVarargElementType());
       }
       setUnknownFields(
           getUnknownFields().concat(other.unknownFields));
@@ -583,16 +557,6 @@ public final class PirValueParameterCarrier extends
       }
       for (int i = 0; i < getAnnotationCount(); i++) {
         if (!getAnnotation(i).isInitialized()) {
-          
-          return false;
-        }
-      }
-      if (!getType().isInitialized()) {
-        
-        return false;
-      }
-      if (hasVarargElementType()) {
-        if (!getVarargElementType().isInitialized()) {
           
           return false;
         }
@@ -872,123 +836,67 @@ public final class PirValueParameterCarrier extends
       return this;
     }
 
-    private org.jetbrains.kotlin.backend.common.serialization.proto.IrType type_ = org.jetbrains.kotlin.backend.common.serialization.proto.IrType.getDefaultInstance();
+    private int type_ ;
     /**
-     * <code>required .org.jetbrains.kotlin.backend.common.serialization.proto.IrType type = 6;</code>
+     * <code>required int32 type = 6;</code>
      */
     public boolean hasType() {
       return ((bitField0_ & 0x00000020) == 0x00000020);
     }
     /**
-     * <code>required .org.jetbrains.kotlin.backend.common.serialization.proto.IrType type = 6;</code>
+     * <code>required int32 type = 6;</code>
      */
-    public org.jetbrains.kotlin.backend.common.serialization.proto.IrType getType() {
+    public int getType() {
       return type_;
     }
     /**
-     * <code>required .org.jetbrains.kotlin.backend.common.serialization.proto.IrType type = 6;</code>
+     * <code>required int32 type = 6;</code>
      */
-    public Builder setType(org.jetbrains.kotlin.backend.common.serialization.proto.IrType value) {
-      if (value == null) {
-        throw new NullPointerException();
-      }
+    public Builder setType(int value) {
+      bitField0_ |= 0x00000020;
       type_ = value;
-
-      bitField0_ |= 0x00000020;
+      
       return this;
     }
     /**
-     * <code>required .org.jetbrains.kotlin.backend.common.serialization.proto.IrType type = 6;</code>
-     */
-    public Builder setType(
-        org.jetbrains.kotlin.backend.common.serialization.proto.IrType.Builder builderForValue) {
-      type_ = builderForValue.build();
-
-      bitField0_ |= 0x00000020;
-      return this;
-    }
-    /**
-     * <code>required .org.jetbrains.kotlin.backend.common.serialization.proto.IrType type = 6;</code>
-     */
-    public Builder mergeType(org.jetbrains.kotlin.backend.common.serialization.proto.IrType value) {
-      if (((bitField0_ & 0x00000020) == 0x00000020) &&
-          type_ != org.jetbrains.kotlin.backend.common.serialization.proto.IrType.getDefaultInstance()) {
-        type_ =
-          org.jetbrains.kotlin.backend.common.serialization.proto.IrType.newBuilder(type_).mergeFrom(value).buildPartial();
-      } else {
-        type_ = value;
-      }
-
-      bitField0_ |= 0x00000020;
-      return this;
-    }
-    /**
-     * <code>required .org.jetbrains.kotlin.backend.common.serialization.proto.IrType type = 6;</code>
+     * <code>required int32 type = 6;</code>
      */
     public Builder clearType() {
-      type_ = org.jetbrains.kotlin.backend.common.serialization.proto.IrType.getDefaultInstance();
-
       bitField0_ = (bitField0_ & ~0x00000020);
+      type_ = 0;
+      
       return this;
     }
 
-    private org.jetbrains.kotlin.backend.common.serialization.proto.IrType varargElementType_ = org.jetbrains.kotlin.backend.common.serialization.proto.IrType.getDefaultInstance();
+    private int varargElementType_ ;
     /**
-     * <code>optional .org.jetbrains.kotlin.backend.common.serialization.proto.IrType varargElementType = 7;</code>
+     * <code>optional int32 varargElementType = 7;</code>
      */
     public boolean hasVarargElementType() {
       return ((bitField0_ & 0x00000040) == 0x00000040);
     }
     /**
-     * <code>optional .org.jetbrains.kotlin.backend.common.serialization.proto.IrType varargElementType = 7;</code>
+     * <code>optional int32 varargElementType = 7;</code>
      */
-    public org.jetbrains.kotlin.backend.common.serialization.proto.IrType getVarargElementType() {
+    public int getVarargElementType() {
       return varargElementType_;
     }
     /**
-     * <code>optional .org.jetbrains.kotlin.backend.common.serialization.proto.IrType varargElementType = 7;</code>
+     * <code>optional int32 varargElementType = 7;</code>
      */
-    public Builder setVarargElementType(org.jetbrains.kotlin.backend.common.serialization.proto.IrType value) {
-      if (value == null) {
-        throw new NullPointerException();
-      }
+    public Builder setVarargElementType(int value) {
+      bitField0_ |= 0x00000040;
       varargElementType_ = value;
-
-      bitField0_ |= 0x00000040;
+      
       return this;
     }
     /**
-     * <code>optional .org.jetbrains.kotlin.backend.common.serialization.proto.IrType varargElementType = 7;</code>
-     */
-    public Builder setVarargElementType(
-        org.jetbrains.kotlin.backend.common.serialization.proto.IrType.Builder builderForValue) {
-      varargElementType_ = builderForValue.build();
-
-      bitField0_ |= 0x00000040;
-      return this;
-    }
-    /**
-     * <code>optional .org.jetbrains.kotlin.backend.common.serialization.proto.IrType varargElementType = 7;</code>
-     */
-    public Builder mergeVarargElementType(org.jetbrains.kotlin.backend.common.serialization.proto.IrType value) {
-      if (((bitField0_ & 0x00000040) == 0x00000040) &&
-          varargElementType_ != org.jetbrains.kotlin.backend.common.serialization.proto.IrType.getDefaultInstance()) {
-        varargElementType_ =
-          org.jetbrains.kotlin.backend.common.serialization.proto.IrType.newBuilder(varargElementType_).mergeFrom(value).buildPartial();
-      } else {
-        varargElementType_ = value;
-      }
-
-      bitField0_ |= 0x00000040;
-      return this;
-    }
-    /**
-     * <code>optional .org.jetbrains.kotlin.backend.common.serialization.proto.IrType varargElementType = 7;</code>
+     * <code>optional int32 varargElementType = 7;</code>
      */
     public Builder clearVarargElementType() {
-      varargElementType_ = org.jetbrains.kotlin.backend.common.serialization.proto.IrType.getDefaultInstance();
-
       bitField0_ = (bitField0_ & ~0x00000040);
+      varargElementType_ = 0;
+      
       return this;
     }
 

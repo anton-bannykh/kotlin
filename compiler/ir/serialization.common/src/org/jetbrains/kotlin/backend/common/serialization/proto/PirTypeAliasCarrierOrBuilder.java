@@ -62,11 +62,11 @@ public interface PirTypeAliasCarrierOrBuilder extends
   long getTypeParameters(int index);
 
   /**
-   * <code>required .org.jetbrains.kotlin.backend.common.serialization.proto.IrType expandedType = 6;</code>
+   * <code>required int32 expandedType = 6;</code>
    */
   boolean hasExpandedType();
   /**
-   * <code>required .org.jetbrains.kotlin.backend.common.serialization.proto.IrType expandedType = 6;</code>
+   * <code>required int32 expandedType = 6;</code>
    */
-  org.jetbrains.kotlin.backend.common.serialization.proto.IrType getExpandedType();
+  int getExpandedType();
 }

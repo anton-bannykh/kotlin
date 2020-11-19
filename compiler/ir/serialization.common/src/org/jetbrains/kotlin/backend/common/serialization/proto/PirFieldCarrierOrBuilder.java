@@ -49,13 +49,13 @@ public interface PirFieldCarrierOrBuilder extends
   int getAnnotationCount();
 
   /**
-   * <code>required .org.jetbrains.kotlin.backend.common.serialization.proto.IrType type = 5;</code>
+   * <code>required int32 type = 5;</code>
    */
   boolean hasType();
   /**
-   * <code>required .org.jetbrains.kotlin.backend.common.serialization.proto.IrType type = 5;</code>
+   * <code>required int32 type = 5;</code>
    */
-  org.jetbrains.kotlin.backend.common.serialization.proto.IrType getType();
+  int getType();
 
   /**
    * <code>optional int32 initializer = 6;</code>

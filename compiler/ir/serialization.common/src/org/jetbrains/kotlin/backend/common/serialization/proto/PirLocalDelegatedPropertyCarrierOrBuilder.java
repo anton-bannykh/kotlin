@@ -49,13 +49,13 @@ public interface PirLocalDelegatedPropertyCarrierOrBuilder extends
   int getAnnotationCount();
 
   /**
-   * <code>required .org.jetbrains.kotlin.backend.common.serialization.proto.IrType type = 5;</code>
+   * <code>required int32 type = 5;</code>
    */
   boolean hasType();
   /**
-   * <code>required .org.jetbrains.kotlin.backend.common.serialization.proto.IrType type = 5;</code>
+   * <code>required int32 type = 5;</code>
    */
-  org.jetbrains.kotlin.backend.common.serialization.proto.IrType getType();
+  int getType();
 
   /**
    * <code>optional .org.jetbrains.kotlin.backend.common.serialization.proto.IrVariable delegate = 6;</code>

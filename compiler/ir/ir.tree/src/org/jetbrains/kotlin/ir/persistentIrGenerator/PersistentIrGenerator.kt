@@ -5,7 +5,6 @@
 
 package org.jetbrains.kotlin.ir.persistentIrGenerator
 
-import org.jetbrains.kotlin.ir.persistentIrGenerator.PersistentIrGenerator.plus
 import java.io.File
 import java.lang.IllegalStateException
 import java.lang.StringBuilder
@@ -128,7 +127,6 @@ internal object PersistentIrGenerator {
 
     val protoValueParameterType = import("IrValueParameter", protoPackage, "ProtoIrValueParameter")
     val protoTypeParameterType = import("IrTypeParameter", protoPackage, "ProtoIrTypeParameter")
-    val protoType = import("IrType", protoPackage, "ProtoIrType")
     val protoVariable = import("IrVariable", protoPackage, "ProtoIrVariable")
     val protoIrConstructorCall = import("IrConstructorCall", protoPackage, "ProtoIrConstructorCall")
 
@@ -139,8 +137,8 @@ internal object PersistentIrGenerator {
     val valueParameterListProto = Proto("int64", "valueParameter", +"Long", IrValueParameterSymbol, fieldKind = FieldKind.REPEATED)
     val typeParameterListProto = Proto("int64", "typeParameter", +"Long", IrTypeParameterSymbol, fieldKind = FieldKind.REPEATED)
     val superTypeListProto = Proto("int32", "superType", +"Int", IrType, fieldKind = FieldKind.REPEATED)
-    val typeProto = Proto("IrType", "type", protoType, IrType, fieldKind = FieldKind.REQUIRED)
-    val optionalTypeProto = Proto("IrType", "type", protoType, IrType, fieldKind = FieldKind.OPTIONAL)
+    val typeProto = Proto("int32", "type", +"Int", IrType, fieldKind = FieldKind.REQUIRED)
+    val optionalTypeProto = Proto("int32", "type", +"Int", IrType, fieldKind = FieldKind.OPTIONAL)
     val variableProto = Proto("IrVariable", "variable", protoVariable, IrVariable)
 
     val classProto = Proto("int64", "class", +"Long", IrClassSymbol)
@@ -341,16 +339,16 @@ internal object PersistentIrGenerator {
 
     val serializerMethods = mutableListOf<E>().also { list ->
 
-        list += +"abstract fun serializeParent(proto: " + IrDeclarationParent + "): Long"
-        list += +"abstract fun serializeOrigin(proto: " + IrDeclarationOrigin + "): Int"
-        list += +"abstract fun serializeAnnotation(proto: " + IrConstructorCall + "): " + protoIrConstructorCall
+        list += +"abstract fun serializeParent(value: " + IrDeclarationParent + "): Long"
+        list += +"abstract fun serializeOrigin(value: " + IrDeclarationOrigin + "): Int"
+        list += +"abstract fun serializeAnnotation(value: " + IrConstructorCall + "): " + protoIrConstructorCall
 
         val seenEntities = mutableSetOf<String>()
 
         allProto.forEach { p ->
             if (p.entityName !in seenEntities) {
                 seenEntities += p.entityName
-                list += +"abstract fun serialize${p.entityName.capitalize()}(proto: " + p.irType + "): " + p.protoType
+                list += +"abstract fun serialize${p.entityName.capitalize()}(value: " + p.irType + "): " + p.protoType
             }
         }
     }

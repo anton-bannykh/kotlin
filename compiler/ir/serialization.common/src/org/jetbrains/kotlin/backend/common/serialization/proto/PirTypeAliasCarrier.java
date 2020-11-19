@@ -97,17 +97,9 @@ public final class PirTypeAliasCarrier extends
             input.popLimit(limit);
             break;
           }
-          case 50: {
-            org.jetbrains.kotlin.backend.common.serialization.proto.IrType.Builder subBuilder = null;
-            if (((bitField0_ & 0x00000008) == 0x00000008)) {
-              subBuilder = expandedType_.toBuilder();
-            }
-            expandedType_ = input.readMessage(org.jetbrains.kotlin.backend.common.serialization.proto.IrType.PARSER, extensionRegistry);
-            if (subBuilder != null) {
-              subBuilder.mergeFrom(expandedType_);
-              expandedType_ = subBuilder.buildPartial();
-            }
+          case 48: {
             bitField0_ |= 0x00000008;
+            expandedType_ = input.readInt32();
             break;
           }
         }
@@ -253,17 +245,17 @@ public final class PirTypeAliasCarrier extends
   }
 
   public static final int EXPANDEDTYPE_FIELD_NUMBER = 6;
-  private org.jetbrains.kotlin.backend.common.serialization.proto.IrType expandedType_;
+  private int expandedType_;
   /**
-   * <code>required .org.jetbrains.kotlin.backend.common.serialization.proto.IrType expandedType = 6;</code>
+   * <code>required int32 expandedType = 6;</code>
    */
   public boolean hasExpandedType() {
     return ((bitField0_ & 0x00000008) == 0x00000008);
   }
   /**
-   * <code>required .org.jetbrains.kotlin.backend.common.serialization.proto.IrType expandedType = 6;</code>
+   * <code>required int32 expandedType = 6;</code>
    */
-  public org.jetbrains.kotlin.backend.common.serialization.proto.IrType getExpandedType() {
+  public int getExpandedType() {
     return expandedType_;
   }
 
@@ -273,7 +265,7 @@ public final class PirTypeAliasCarrier extends
     origin_ = 0;
     annotation_ = java.util.Collections.emptyList();
     typeParameters_ = java.util.Collections.emptyList();
-    expandedType_ = org.jetbrains.kotlin.backend.common.serialization.proto.IrType.getDefaultInstance();
+    expandedType_ = 0;
   }
   private byte memoizedIsInitialized = -1;
   public final boolean isInitialized() {
@@ -294,10 +286,6 @@ public final class PirTypeAliasCarrier extends
         memoizedIsInitialized = 0;
         return false;
       }
-    }
-    if (!getExpandedType().isInitialized()) {
-      memoizedIsInitialized = 0;
-      return false;
     }
     memoizedIsInitialized = 1;
     return true;
@@ -322,7 +310,7 @@ public final class PirTypeAliasCarrier extends
       output.writeInt64(5, typeParameters_.get(i));
     }
     if (((bitField0_ & 0x00000008) == 0x00000008)) {
-      output.writeMessage(6, expandedType_);
+      output.writeInt32(6, expandedType_);
     }
     output.writeRawBytes(unknownFields);
   }
@@ -360,7 +348,7 @@ public final class PirTypeAliasCarrier extends
     }
     if (((bitField0_ & 0x00000008) == 0x00000008)) {
       size += org.jetbrains.kotlin.protobuf.CodedOutputStream
-        .computeMessageSize(6, expandedType_);
+        .computeInt32Size(6, expandedType_);
     }
     size += unknownFields.size();
     memoizedSerializedSize = size;
@@ -466,7 +454,7 @@ public final class PirTypeAliasCarrier extends
       bitField0_ = (bitField0_ & ~0x00000008);
       typeParameters_ = java.util.Collections.emptyList();
       bitField0_ = (bitField0_ & ~0x00000010);
-      expandedType_ = org.jetbrains.kotlin.backend.common.serialization.proto.IrType.getDefaultInstance();
+      expandedType_ = 0;
       bitField0_ = (bitField0_ & ~0x00000020);
       return this;
     }
@@ -553,7 +541,7 @@ public final class PirTypeAliasCarrier extends
         
       }
       if (other.hasExpandedType()) {
-        mergeExpandedType(other.getExpandedType());
+        setExpandedType(other.getExpandedType());
       }
       setUnknownFields(
           getUnknownFields().concat(other.unknownFields));
@@ -574,10 +562,6 @@ public final class PirTypeAliasCarrier extends
           
           return false;
         }
-      }
-      if (!getExpandedType().isInitialized()) {
-        
-        return false;
       }
       return true;
     }
@@ -888,63 +872,35 @@ public final class PirTypeAliasCarrier extends
       return this;
     }
 
-    private org.jetbrains.kotlin.backend.common.serialization.proto.IrType expandedType_ = org.jetbrains.kotlin.backend.common.serialization.proto.IrType.getDefaultInstance();
+    private int expandedType_ ;
     /**
-     * <code>required .org.jetbrains.kotlin.backend.common.serialization.proto.IrType expandedType = 6;</code>
+     * <code>required int32 expandedType = 6;</code>
      */
     public boolean hasExpandedType() {
       return ((bitField0_ & 0x00000020) == 0x00000020);
     }
     /**
-     * <code>required .org.jetbrains.kotlin.backend.common.serialization.proto.IrType expandedType = 6;</code>
+     * <code>required int32 expandedType = 6;</code>
      */
-    public org.jetbrains.kotlin.backend.common.serialization.proto.IrType getExpandedType() {
+    public int getExpandedType() {
       return expandedType_;
     }
     /**
-     * <code>required .org.jetbrains.kotlin.backend.common.serialization.proto.IrType expandedType = 6;</code>
+     * <code>required int32 expandedType = 6;</code>
      */
-    public Builder setExpandedType(org.jetbrains.kotlin.backend.common.serialization.proto.IrType value) {
-      if (value == null) {
-        throw new NullPointerException();
-      }
+    public Builder setExpandedType(int value) {
+      bitField0_ |= 0x00000020;
       expandedType_ = value;
-
-      bitField0_ |= 0x00000020;
+      
       return this;
     }
     /**
-     * <code>required .org.jetbrains.kotlin.backend.common.serialization.proto.IrType expandedType = 6;</code>
-     */
-    public Builder setExpandedType(
-        org.jetbrains.kotlin.backend.common.serialization.proto.IrType.Builder builderForValue) {
-      expandedType_ = builderForValue.build();
-
-      bitField0_ |= 0x00000020;
-      return this;
-    }
-    /**
-     * <code>required .org.jetbrains.kotlin.backend.common.serialization.proto.IrType expandedType = 6;</code>
-     */
-    public Builder mergeExpandedType(org.jetbrains.kotlin.backend.common.serialization.proto.IrType value) {
-      if (((bitField0_ & 0x00000020) == 0x00000020) &&
-          expandedType_ != org.jetbrains.kotlin.backend.common.serialization.proto.IrType.getDefaultInstance()) {
-        expandedType_ =
-          org.jetbrains.kotlin.backend.common.serialization.proto.IrType.newBuilder(expandedType_).mergeFrom(value).buildPartial();
-      } else {
-        expandedType_ = value;
-      }
-
-      bitField0_ |= 0x00000020;
-      return this;
-    }
-    /**
-     * <code>required .org.jetbrains.kotlin.backend.common.serialization.proto.IrType expandedType = 6;</code>
+     * <code>required int32 expandedType = 6;</code>
      */
     public Builder clearExpandedType() {
-      expandedType_ = org.jetbrains.kotlin.backend.common.serialization.proto.IrType.getDefaultInstance();
-
       bitField0_ = (bitField0_ & ~0x00000020);
+      expandedType_ = 0;
+      
       return this;
     }
 

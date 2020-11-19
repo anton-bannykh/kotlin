@@ -183,12 +183,22 @@ public final class IrFunction extends
   private long correspondingPropertySymbol_;
   /**
    * <code>optional int64 correspondingPropertySymbol = 3;</code>
+   *
+   * <pre>
+   *optional UniqId corresponding_property = 7;
+   * for IC
+   * </pre>
    */
   public boolean hasCorrespondingPropertySymbol() {
     return ((bitField0_ & 0x00000002) == 0x00000002);
   }
   /**
    * <code>optional int64 correspondingPropertySymbol = 3;</code>
+   *
+   * <pre>
+   *optional UniqId corresponding_property = 7;
+   * for IC
+   * </pre>
    */
   public long getCorrespondingPropertySymbol() {
     return correspondingPropertySymbol_;
@@ -615,18 +625,33 @@ public final class IrFunction extends
     private long correspondingPropertySymbol_ ;
     /**
      * <code>optional int64 correspondingPropertySymbol = 3;</code>
+     *
+     * <pre>
+     *optional UniqId corresponding_property = 7;
+     * for IC
+     * </pre>
      */
     public boolean hasCorrespondingPropertySymbol() {
       return ((bitField0_ & 0x00000004) == 0x00000004);
     }
     /**
      * <code>optional int64 correspondingPropertySymbol = 3;</code>
+     *
+     * <pre>
+     *optional UniqId corresponding_property = 7;
+     * for IC
+     * </pre>
      */
     public long getCorrespondingPropertySymbol() {
       return correspondingPropertySymbol_;
     }
     /**
      * <code>optional int64 correspondingPropertySymbol = 3;</code>
+     *
+     * <pre>
+     *optional UniqId corresponding_property = 7;
+     * for IC
+     * </pre>
      */
     public Builder setCorrespondingPropertySymbol(long value) {
       bitField0_ |= 0x00000004;
@@ -636,6 +661,11 @@ public final class IrFunction extends
     }
     /**
      * <code>optional int64 correspondingPropertySymbol = 3;</code>
+     *
+     * <pre>
+     *optional UniqId corresponding_property = 7;
+     * for IC
+     * </pre>
      */
     public Builder clearCorrespondingPropertySymbol() {
       bitField0_ = (bitField0_ & ~0x00000004);

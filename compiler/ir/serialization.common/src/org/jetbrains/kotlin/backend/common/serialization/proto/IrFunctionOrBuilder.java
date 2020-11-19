@@ -43,10 +43,20 @@ public interface IrFunctionOrBuilder extends
 
   /**
    * <code>optional int64 correspondingPropertySymbol = 3;</code>
+   *
+   * <pre>
+   *optional UniqId corresponding_property = 7;
+   * for IC
+   * </pre>
    */
   boolean hasCorrespondingPropertySymbol();
   /**
    * <code>optional int64 correspondingPropertySymbol = 3;</code>
+   *
+   * <pre>
+   *optional UniqId corresponding_property = 7;
+   * for IC
+   * </pre>
    */
   long getCorrespondingPropertySymbol();
 }

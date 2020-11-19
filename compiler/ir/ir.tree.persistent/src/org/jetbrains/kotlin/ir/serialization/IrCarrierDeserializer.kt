@@ -6,7 +6,6 @@
 package org.jetbrains.kotlin.ir.serialization
 
 import org.jetbrains.kotlin.backend.common.serialization.proto.IrConstructorCall as ProtoIrConstructorCall
-import org.jetbrains.kotlin.backend.common.serialization.proto.IrType as ProtoIrType
 import org.jetbrains.kotlin.backend.common.serialization.proto.IrVariable as ProtoIrVariable
 import org.jetbrains.kotlin.backend.common.serialization.proto.PirAnonymousInitializerCarrier
 import org.jetbrains.kotlin.backend.common.serialization.proto.PirClassCarrier
@@ -84,7 +83,7 @@ internal abstract class IrCarrierDeserializer {
 
     abstract fun deserializeSuperType(proto: Int): IrType
 
-    abstract fun deserializeType(proto: ProtoIrType): IrType
+    abstract fun deserializeType(proto: Int): IrType
 
     abstract fun deserializeClass(proto: Long): IrClassSymbol
 
