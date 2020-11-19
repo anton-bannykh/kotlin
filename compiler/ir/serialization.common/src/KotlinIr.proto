@@ -457,6 +457,8 @@ message IrFunction {
   required IrFunctionBase base = 1;
   repeated int64 overridden = 2 [packed=true]; // TODO: supposed to be deleted
   //optional UniqId corresponding_property = 7;
+  // for IC
+  optional int64 correspondingPropertySymbol = 3;
 }
 
 message IrConstructor {

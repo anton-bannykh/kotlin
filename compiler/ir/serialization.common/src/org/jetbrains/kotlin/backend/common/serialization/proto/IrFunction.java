@@ -87,6 +87,11 @@ public final class IrFunction extends
             input.popLimit(limit);
             break;
           }
+          case 24: {
+            bitField0_ |= 0x00000002;
+            correspondingPropertySymbol_ = input.readInt64();
+            break;
+          }
         }
       }
     } catch (org.jetbrains.kotlin.protobuf.InvalidProtocolBufferException e) {
@@ -174,9 +179,25 @@ public final class IrFunction extends
   }
   private int overriddenMemoizedSerializedSize = -1;
 
+  public static final int CORRESPONDINGPROPERTYSYMBOL_FIELD_NUMBER = 3;
+  private long correspondingPropertySymbol_;
+  /**
+   * <code>optional int64 correspondingPropertySymbol = 3;</code>
+   */
+  public boolean hasCorrespondingPropertySymbol() {
+    return ((bitField0_ & 0x00000002) == 0x00000002);
+  }
+  /**
+   * <code>optional int64 correspondingPropertySymbol = 3;</code>
+   */
+  public long getCorrespondingPropertySymbol() {
+    return correspondingPropertySymbol_;
+  }
+
   private void initFields() {
     base_ = org.jetbrains.kotlin.backend.common.serialization.proto.IrFunctionBase.getDefaultInstance();
     overridden_ = java.util.Collections.emptyList();
+    correspondingPropertySymbol_ = 0L;
   }
   private byte memoizedIsInitialized = -1;
   public final boolean isInitialized() {
@@ -209,6 +230,9 @@ public final class IrFunction extends
     for (int i = 0; i < overridden_.size(); i++) {
       output.writeInt64NoTag(overridden_.get(i));
     }
+    if (((bitField0_ & 0x00000002) == 0x00000002)) {
+      output.writeInt64(3, correspondingPropertySymbol_);
+    }
     output.writeRawBytes(unknownFields);
   }
 
@@ -235,6 +259,10 @@ public final class IrFunction extends
             .computeInt32SizeNoTag(dataSize);
       }
       overriddenMemoizedSerializedSize = dataSize;
+    }
+    if (((bitField0_ & 0x00000002) == 0x00000002)) {
+      size += org.jetbrains.kotlin.protobuf.CodedOutputStream
+        .computeInt64Size(3, correspondingPropertySymbol_);
     }
     size += unknownFields.size();
     memoizedSerializedSize = size;
@@ -334,6 +362,8 @@ public final class IrFunction extends
       bitField0_ = (bitField0_ & ~0x00000001);
       overridden_ = java.util.Collections.emptyList();
       bitField0_ = (bitField0_ & ~0x00000002);
+      correspondingPropertySymbol_ = 0L;
+      bitField0_ = (bitField0_ & ~0x00000004);
       return this;
     }
 
@@ -366,6 +396,10 @@ public final class IrFunction extends
         bitField0_ = (bitField0_ & ~0x00000002);
       }
       result.overridden_ = overridden_;
+      if (((from_bitField0_ & 0x00000004) == 0x00000004)) {
+        to_bitField0_ |= 0x00000002;
+      }
+      result.correspondingPropertySymbol_ = correspondingPropertySymbol_;
       result.bitField0_ = to_bitField0_;
       return result;
     }
@@ -384,6 +418,9 @@ public final class IrFunction extends
           overridden_.addAll(other.overridden_);
         }
         
+      }
+      if (other.hasCorrespondingPropertySymbol()) {
+        setCorrespondingPropertySymbol(other.getCorrespondingPropertySymbol());
       }
       setUnknownFields(
           getUnknownFields().concat(other.unknownFields));
@@ -571,6 +608,38 @@ public final class IrFunction extends
     public Builder clearOverridden() {
       overridden_ = java.util.Collections.emptyList();
       bitField0_ = (bitField0_ & ~0x00000002);
+      
+      return this;
+    }
+
+    private long correspondingPropertySymbol_ ;
+    /**
+     * <code>optional int64 correspondingPropertySymbol = 3;</code>
+     */
+    public boolean hasCorrespondingPropertySymbol() {
+      return ((bitField0_ & 0x00000004) == 0x00000004);
+    }
+    /**
+     * <code>optional int64 correspondingPropertySymbol = 3;</code>
+     */
+    public long getCorrespondingPropertySymbol() {
+      return correspondingPropertySymbol_;
+    }
+    /**
+     * <code>optional int64 correspondingPropertySymbol = 3;</code>
+     */
+    public Builder setCorrespondingPropertySymbol(long value) {
+      bitField0_ |= 0x00000004;
+      correspondingPropertySymbol_ = value;
+      
+      return this;
+    }
+    /**
+     * <code>optional int64 correspondingPropertySymbol = 3;</code>
+     */
+    public Builder clearCorrespondingPropertySymbol() {
+      bitField0_ = (bitField0_ & ~0x00000004);
+      correspondingPropertySymbol_ = 0L;
       
       return this;
     }

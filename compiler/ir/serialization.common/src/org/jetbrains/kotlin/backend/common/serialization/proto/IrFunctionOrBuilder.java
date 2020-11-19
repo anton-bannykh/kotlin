@@ -40,4 +40,13 @@ public interface IrFunctionOrBuilder extends
    * </pre>
    */
   long getOverridden(int index);
+
+  /**
+   * <code>optional int64 correspondingPropertySymbol = 3;</code>
+   */
+  boolean hasCorrespondingPropertySymbol();
+  /**
+   * <code>optional int64 correspondingPropertySymbol = 3;</code>
+   */
+  long getCorrespondingPropertySymbol();
 }
