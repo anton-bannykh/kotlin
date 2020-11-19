@@ -71,7 +71,7 @@ import org.jetbrains.kotlin.backend.common.serialization.proto.IrWhile as ProtoW
 import org.jetbrains.kotlin.backend.common.serialization.proto.Loop as ProtoLoop
 import org.jetbrains.kotlin.backend.common.serialization.proto.MemberAccessCommon as ProtoMemberAccessCommon
 
-internal class IrBodyDeserializer(
+class IrBodyDeserializer(
     val logger: LoggingContext,
     val builtIns: IrBuiltIns,
     val allowErrorNodes: Boolean,
@@ -193,6 +193,10 @@ internal class IrBodyDeserializer(
         val classType = declarationDeserializer.deserializeIrType(proto.classType)
         /** TODO: [createClassifierSymbolForClassReference] is internal function */
         return IrClassReferenceImpl(start, end, type, symbol, classType)
+    }
+
+    fun deserializeAnnotation(proto: ProtoConstructorCall): IrConstructorCall {
+        return deserializeConstructorCall(proto, 0, 0, builtIns.unitType) // TODO: need a proper deserialization here
     }
 
     fun deserializeConstructorCall(proto: ProtoConstructorCall, start: Int, end: Int, type: IrType): IrConstructorCall {

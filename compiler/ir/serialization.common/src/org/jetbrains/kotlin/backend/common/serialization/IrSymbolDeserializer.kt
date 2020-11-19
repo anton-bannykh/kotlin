@@ -22,7 +22,7 @@ import org.jetbrains.kotlin.backend.common.serialization.proto.FileLocalIdSignat
 import org.jetbrains.kotlin.backend.common.serialization.proto.IdSignature as ProtoIdSignature
 import org.jetbrains.kotlin.backend.common.serialization.proto.PublicIdSignature as ProtoPublicIdSignature
 
-internal class IrSymbolDeserializer(
+class IrSymbolDeserializer(
     val linker: KotlinIrLinker,
     val fileReader: IrLibraryFile,
     val fileDeserializationState: FileDeserializationState,

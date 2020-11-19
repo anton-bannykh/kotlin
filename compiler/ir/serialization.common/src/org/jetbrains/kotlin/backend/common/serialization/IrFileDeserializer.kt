@@ -25,7 +25,7 @@ import org.jetbrains.kotlin.backend.common.serialization.proto.IrConstructorCall
 import org.jetbrains.kotlin.backend.common.serialization.proto.IrDeclaration as ProtoDeclaration
 import org.jetbrains.kotlin.backend.common.serialization.proto.IrFile as ProtoFile
 
-internal class IrFileDeserializer(
+class IrFileDeserializer(
     val linker: KotlinIrLinker,
     val file: IrFile,
     private val fileReader: IrLibraryFile,
@@ -59,7 +59,7 @@ internal class IrFileDeserializer(
     }
 }
 
-internal class FileDeserializationState(
+class FileDeserializationState(
     val linker: KotlinIrLinker,
     file: IrFile,
     fileReader: IrLibraryFile,
@@ -125,7 +125,7 @@ internal class FileDeserializationState(
     }
 }
 
-internal class IrLibraryFile(private val klib: IrLibrary, private val fileIndex: Int) {
+class IrLibraryFile(private val klib: IrLibrary, private val fileIndex: Int) {
     fun irDeclaration(index: Int): ByteArray = klib.irDeclaration(index, fileIndex)
     fun type(index: Int): ByteArray = klib.type(index, fileIndex)
     fun signature(index: Int): ByteArray = klib.signature(index, fileIndex)
