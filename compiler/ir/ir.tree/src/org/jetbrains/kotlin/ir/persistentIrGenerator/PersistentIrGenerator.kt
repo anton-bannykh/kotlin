@@ -84,6 +84,7 @@ internal object PersistentIrGenerator {
 
     val IrType = import("IrType", "org.jetbrains.kotlin.ir.types")
 
+    val IrSymbol = irSymbol("IrSymbol")
     val IrPropertySymbol = irSymbol("IrPropertySymbol")
     val IrSimpleFunctionSymbol = irSymbol("IrSimpleFunctionSymbol")
     val IrFunctionSymbol = irSymbol("IrFunctionSymbol")
@@ -179,7 +180,7 @@ internal object PersistentIrGenerator {
     val values = +"override var values: Array<" + Carrier + ">? = null"
     val createdOn = +"override val createdOn: Int = factory.stageController.currentStage"
 
-    val parentField = +"override var parentField: " + IrDeclarationParent + "? = null"
+    val parentSymbolField = +"override var parentSymbolField: " + IrSymbol + "? = null"
     val originField = +"override var originField: " + IrDeclarationOrigin + " = origin"
     val removedOn = +"override var removedOn: Int = Int.MAX_VALUE"
     val annotationsField = +"override var annotationsField: List<" + IrConstructorCall + "> = emptyList()"
@@ -190,7 +191,7 @@ internal object PersistentIrGenerator {
         values,
         createdOn,
         id,
-        parentField,
+        parentSymbolField,
         originField,
         removedOn,
         annotationsField,
@@ -284,7 +285,7 @@ internal object PersistentIrGenerator {
 
     val deserializerMethods = mutableListOf<E>().also { list ->
 
-        list += +"abstract fun deserializeParent(proto: Long): " + IrDeclarationParent
+        list += +"abstract fun deserializeParentSymbol(proto: Long): " + IrSymbol
         list += +"abstract fun deserializeOrigin(proto: Int): " + IrDeclarationOrigin
         list += +"abstract fun deserializeAnnotation(proto: " + protoIrConstructorCall + "): " + IrConstructorCall
 
@@ -309,7 +310,7 @@ internal object PersistentIrGenerator {
                 +"return " + carrierImpl + "(",
                 arrayOf(
                     +"proto.lastModified",
-                    +"if (proto.hasParentSymbol()) deserializeParent(proto.parentSymbol) else null",
+                    +"if (proto.hasParentSymbol()) deserializeParentSymbol(proto.parentSymbol) else null",
                     +"deserializeOrigin(proto.origin)",
                     +"proto.annotationList.map { deserializeAnnotation(it) }",
                     *fields.map { f ->
@@ -339,7 +340,7 @@ internal object PersistentIrGenerator {
 
     val serializerMethods = mutableListOf<E>().also { list ->
 
-        list += +"abstract fun serializeParent(value: " + IrDeclarationParent + "): Long"
+        list += +"abstract fun serializeParentSymbol(value: " + IrSymbol + "): Long"
         list += +"abstract fun serializeOrigin(value: " + IrDeclarationOrigin + "): Int"
         list += +"abstract fun serializeAnnotation(value: " + IrConstructorCall + "): " + protoIrConstructorCall
 
@@ -365,7 +366,7 @@ internal object PersistentIrGenerator {
             lines(
                 +"val proto = " + returnType + ".newBuilder()",
                 +"proto.setLastModified(carrier.lastModified)",
-                +"carrier.parentField?.let { proto.setParentSymbol(serializeParent(it)) }",
+                +"carrier.parentSymbolField?.let { proto.setParentSymbol(serializeParentSymbol(it)) }",
                 +"proto.setOrigin(serializeOrigin(carrier.originField))",
                 +"proto.addAllAnnotation(carrier.annotationsField.map { serializeAnnotation(it) })",
                 *(fields.mapNotNull { f ->
@@ -457,7 +458,7 @@ internal object PersistentIrGenerator {
                 +"return ${name}CarrierImpl(",
                 arrayOf(
                     +"lastModified",
-                    +"parentField",
+                    +"parentSymbolField",
                     +"originField",
                     +"annotationsField",
                     *(fields.map { +"${it.name}Field" }.toTypedArray())
@@ -469,7 +470,7 @@ internal object PersistentIrGenerator {
         +"internal class ${name}CarrierImpl(",
         arrayOf(
             +"override val lastModified: Int",
-            +"override var parentField: " + IrDeclarationParent + "?",
+            +"override var parentSymbolField: " + IrSymbol + "?",
             +"override var originField: " + IrDeclarationOrigin,
             +"override var annotationsField: List<" + IrConstructorCall + ">",
             *(fields.map { +"override var ${it.name}Field: " + it.fieldType + if (it.lateinit) "?" else "" }.toTypedArray()),

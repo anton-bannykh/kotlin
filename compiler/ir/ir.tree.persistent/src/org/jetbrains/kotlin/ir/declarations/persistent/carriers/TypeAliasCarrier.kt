@@ -6,8 +6,8 @@
 package org.jetbrains.kotlin.ir.declarations.persistent.carriers
 
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
-import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
+import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.symbols.IrTypeParameterSymbol
 import org.jetbrains.kotlin.ir.types.IrType
 
@@ -20,7 +20,7 @@ internal interface TypeAliasCarrier : DeclarationCarrier{
     override fun clone(): TypeAliasCarrier {
         return TypeAliasCarrierImpl(
             lastModified,
-            parentField,
+            parentSymbolField,
             originField,
             annotationsField,
             typeParametersField,
@@ -31,7 +31,7 @@ internal interface TypeAliasCarrier : DeclarationCarrier{
 
 internal class TypeAliasCarrierImpl(
     override val lastModified: Int,
-    override var parentField: IrDeclarationParent?,
+    override var parentSymbolField: IrSymbol?,
     override var originField: IrDeclarationOrigin,
     override var annotationsField: List<IrConstructorCall>,
     override var typeParametersField: List<IrTypeParameterSymbol>,

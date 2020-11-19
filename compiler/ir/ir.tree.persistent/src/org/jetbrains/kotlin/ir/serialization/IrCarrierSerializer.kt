@@ -22,7 +22,6 @@ import org.jetbrains.kotlin.backend.common.serialization.proto.PirValueParameter
 import org.jetbrains.kotlin.descriptors.DescriptorVisibility
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
-import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
 import org.jetbrains.kotlin.ir.declarations.IrVariable
 import org.jetbrains.kotlin.ir.declarations.persistent.carriers.AnonymousInitializerCarrier
 import org.jetbrains.kotlin.ir.declarations.persistent.carriers.ClassCarrier
@@ -45,6 +44,7 @@ import org.jetbrains.kotlin.ir.symbols.IrFieldSymbol
 import org.jetbrains.kotlin.ir.symbols.IrFunctionSymbol
 import org.jetbrains.kotlin.ir.symbols.IrPropertySymbol
 import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
+import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.symbols.IrTypeParameterSymbol
 import org.jetbrains.kotlin.ir.symbols.IrValueParameterSymbol
 import org.jetbrains.kotlin.ir.types.IrType
@@ -53,7 +53,7 @@ import org.jetbrains.kotlin.ir.types.IrType
 
 internal abstract class IrCarrierSerializer {
 
-    abstract fun serializeParent(value: IrDeclarationParent): Long
+    abstract fun serializeParentSymbol(value: IrSymbol): Long
 
     abstract fun serializeOrigin(value: IrDeclarationOrigin): Int
 
@@ -94,7 +94,7 @@ internal abstract class IrCarrierSerializer {
     fun serializeAnonymousInitializerCarrier(carrier: AnonymousInitializerCarrier): PirAnonymousInitializerCarrier {
         val proto = PirAnonymousInitializerCarrier.newBuilder()
         proto.setLastModified(carrier.lastModified)
-        carrier.parentField?.let { proto.setParentSymbol(serializeParent(it)) }
+        carrier.parentSymbolField?.let { proto.setParentSymbol(serializeParentSymbol(it)) }
         proto.setOrigin(serializeOrigin(carrier.originField))
         proto.addAllAnnotation(carrier.annotationsField.map { serializeAnnotation(it) })
         carrier.bodyField?.let { proto.setBody(serializeBlockBody(it)) }
@@ -104,7 +104,7 @@ internal abstract class IrCarrierSerializer {
     fun serializeClassCarrier(carrier: ClassCarrier): PirClassCarrier {
         val proto = PirClassCarrier.newBuilder()
         proto.setLastModified(carrier.lastModified)
-        carrier.parentField?.let { proto.setParentSymbol(serializeParent(it)) }
+        carrier.parentSymbolField?.let { proto.setParentSymbol(serializeParentSymbol(it)) }
         proto.setOrigin(serializeOrigin(carrier.originField))
         proto.addAllAnnotation(carrier.annotationsField.map { serializeAnnotation(it) })
         carrier.thisReceiverField?.let { proto.setThisReceiver(serializeValueParameter(it)) }
@@ -117,7 +117,7 @@ internal abstract class IrCarrierSerializer {
     fun serializeConstructorCarrier(carrier: ConstructorCarrier): PirConstructorCarrier {
         val proto = PirConstructorCarrier.newBuilder()
         proto.setLastModified(carrier.lastModified)
-        carrier.parentField?.let { proto.setParentSymbol(serializeParent(it)) }
+        carrier.parentSymbolField?.let { proto.setParentSymbol(serializeParentSymbol(it)) }
         proto.setOrigin(serializeOrigin(carrier.originField))
         proto.addAllAnnotation(carrier.annotationsField.map { serializeAnnotation(it) })
         proto.setReturnTypeField(serializeType(carrier.returnTypeFieldField))
@@ -133,7 +133,7 @@ internal abstract class IrCarrierSerializer {
     fun serializeEnumEntryCarrier(carrier: EnumEntryCarrier): PirEnumEntryCarrier {
         val proto = PirEnumEntryCarrier.newBuilder()
         proto.setLastModified(carrier.lastModified)
-        carrier.parentField?.let { proto.setParentSymbol(serializeParent(it)) }
+        carrier.parentSymbolField?.let { proto.setParentSymbol(serializeParentSymbol(it)) }
         proto.setOrigin(serializeOrigin(carrier.originField))
         proto.addAllAnnotation(carrier.annotationsField.map { serializeAnnotation(it) })
         carrier.correspondingClassField?.let { proto.setCorrespondingClass(serializeClass(it)) }
@@ -144,7 +144,7 @@ internal abstract class IrCarrierSerializer {
     fun serializeErrorDeclarationCarrier(carrier: ErrorDeclarationCarrier): PirErrorDeclarationCarrier {
         val proto = PirErrorDeclarationCarrier.newBuilder()
         proto.setLastModified(carrier.lastModified)
-        carrier.parentField?.let { proto.setParentSymbol(serializeParent(it)) }
+        carrier.parentSymbolField?.let { proto.setParentSymbol(serializeParentSymbol(it)) }
         proto.setOrigin(serializeOrigin(carrier.originField))
         proto.addAllAnnotation(carrier.annotationsField.map { serializeAnnotation(it) })
         return proto.build()
@@ -153,7 +153,7 @@ internal abstract class IrCarrierSerializer {
     fun serializeFieldCarrier(carrier: FieldCarrier): PirFieldCarrier {
         val proto = PirFieldCarrier.newBuilder()
         proto.setLastModified(carrier.lastModified)
-        carrier.parentField?.let { proto.setParentSymbol(serializeParent(it)) }
+        carrier.parentSymbolField?.let { proto.setParentSymbol(serializeParentSymbol(it)) }
         proto.setOrigin(serializeOrigin(carrier.originField))
         proto.addAllAnnotation(carrier.annotationsField.map { serializeAnnotation(it) })
         proto.setType(serializeType(carrier.typeField))
@@ -165,7 +165,7 @@ internal abstract class IrCarrierSerializer {
     fun serializeFunctionCarrier(carrier: FunctionCarrier): PirFunctionCarrier {
         val proto = PirFunctionCarrier.newBuilder()
         proto.setLastModified(carrier.lastModified)
-        carrier.parentField?.let { proto.setParentSymbol(serializeParent(it)) }
+        carrier.parentSymbolField?.let { proto.setParentSymbol(serializeParentSymbol(it)) }
         proto.setOrigin(serializeOrigin(carrier.originField))
         proto.addAllAnnotation(carrier.annotationsField.map { serializeAnnotation(it) })
         proto.setReturnTypeField(serializeType(carrier.returnTypeFieldField))
@@ -183,7 +183,7 @@ internal abstract class IrCarrierSerializer {
     fun serializeLocalDelegatedPropertyCarrier(carrier: LocalDelegatedPropertyCarrier): PirLocalDelegatedPropertyCarrier {
         val proto = PirLocalDelegatedPropertyCarrier.newBuilder()
         proto.setLastModified(carrier.lastModified)
-        carrier.parentField?.let { proto.setParentSymbol(serializeParent(it)) }
+        carrier.parentSymbolField?.let { proto.setParentSymbol(serializeParentSymbol(it)) }
         proto.setOrigin(serializeOrigin(carrier.originField))
         proto.addAllAnnotation(carrier.annotationsField.map { serializeAnnotation(it) })
         proto.setType(serializeType(carrier.typeField))
@@ -196,7 +196,7 @@ internal abstract class IrCarrierSerializer {
     fun serializePropertyCarrier(carrier: PropertyCarrier): PirPropertyCarrier {
         val proto = PirPropertyCarrier.newBuilder()
         proto.setLastModified(carrier.lastModified)
-        carrier.parentField?.let { proto.setParentSymbol(serializeParent(it)) }
+        carrier.parentSymbolField?.let { proto.setParentSymbol(serializeParentSymbol(it)) }
         proto.setOrigin(serializeOrigin(carrier.originField))
         proto.addAllAnnotation(carrier.annotationsField.map { serializeAnnotation(it) })
         carrier.backingFieldField?.let { proto.setBackingField(serializeField(it)) }
@@ -208,7 +208,7 @@ internal abstract class IrCarrierSerializer {
     fun serializeTypeAliasCarrier(carrier: TypeAliasCarrier): PirTypeAliasCarrier {
         val proto = PirTypeAliasCarrier.newBuilder()
         proto.setLastModified(carrier.lastModified)
-        carrier.parentField?.let { proto.setParentSymbol(serializeParent(it)) }
+        carrier.parentSymbolField?.let { proto.setParentSymbol(serializeParentSymbol(it)) }
         proto.setOrigin(serializeOrigin(carrier.originField))
         proto.addAllAnnotation(carrier.annotationsField.map { serializeAnnotation(it) })
         proto.addAllTypeParameters(carrier.typeParametersField.map { serializeTypeParameter(it) })
@@ -219,7 +219,7 @@ internal abstract class IrCarrierSerializer {
     fun serializeTypeParameterCarrier(carrier: TypeParameterCarrier): PirTypeParameterCarrier {
         val proto = PirTypeParameterCarrier.newBuilder()
         proto.setLastModified(carrier.lastModified)
-        carrier.parentField?.let { proto.setParentSymbol(serializeParent(it)) }
+        carrier.parentSymbolField?.let { proto.setParentSymbol(serializeParentSymbol(it)) }
         proto.setOrigin(serializeOrigin(carrier.originField))
         proto.addAllAnnotation(carrier.annotationsField.map { serializeAnnotation(it) })
         proto.addAllSuperTypes(carrier.superTypesField.map { serializeSuperType(it) })
@@ -229,7 +229,7 @@ internal abstract class IrCarrierSerializer {
     fun serializeValueParameterCarrier(carrier: ValueParameterCarrier): PirValueParameterCarrier {
         val proto = PirValueParameterCarrier.newBuilder()
         proto.setLastModified(carrier.lastModified)
-        carrier.parentField?.let { proto.setParentSymbol(serializeParent(it)) }
+        carrier.parentSymbolField?.let { proto.setParentSymbol(serializeParentSymbol(it)) }
         proto.setOrigin(serializeOrigin(carrier.originField))
         proto.addAllAnnotation(carrier.annotationsField.map { serializeAnnotation(it) })
         carrier.defaultValueField?.let { proto.setDefaultValue(serializeExpressionBody(it)) }

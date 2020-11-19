@@ -25,7 +25,7 @@ internal fun PersistentIrGenerator.generateErrorDeclaration() {
                 values,
                 createdOn,
                 id,
-                parentField,
+                parentSymbolField,
                 +"override var originField: " + IrDeclarationOrigin + " = IrDeclarationOrigin.DEFINED",
                 removedOn,
                 annotationsField,

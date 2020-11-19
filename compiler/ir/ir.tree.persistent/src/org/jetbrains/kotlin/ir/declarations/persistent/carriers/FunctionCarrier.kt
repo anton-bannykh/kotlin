@@ -7,11 +7,11 @@ package org.jetbrains.kotlin.ir.declarations.persistent.carriers
 
 import org.jetbrains.kotlin.descriptors.DescriptorVisibility
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
-import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
 import org.jetbrains.kotlin.ir.expressions.IrBody
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.symbols.IrPropertySymbol
 import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
+import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.symbols.IrTypeParameterSymbol
 import org.jetbrains.kotlin.ir.symbols.IrValueParameterSymbol
 import org.jetbrains.kotlin.ir.types.IrType
@@ -32,7 +32,7 @@ internal interface FunctionCarrier : DeclarationCarrier{
     override fun clone(): FunctionCarrier {
         return FunctionCarrierImpl(
             lastModified,
-            parentField,
+            parentSymbolField,
             originField,
             annotationsField,
             returnTypeFieldField,
@@ -50,7 +50,7 @@ internal interface FunctionCarrier : DeclarationCarrier{
 
 internal class FunctionCarrierImpl(
     override val lastModified: Int,
-    override var parentField: IrDeclarationParent?,
+    override var parentSymbolField: IrSymbol?,
     override var originField: IrDeclarationOrigin,
     override var annotationsField: List<IrConstructorCall>,
     override var returnTypeFieldField: IrType,

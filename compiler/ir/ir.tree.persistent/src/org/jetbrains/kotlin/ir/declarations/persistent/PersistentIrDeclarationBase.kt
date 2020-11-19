@@ -19,10 +19,11 @@ interface PersistentIrDeclarationBase<T : DeclarationCarrier> : PersistentIrElem
 
     // TODO reduce boilerplate
     override var parent: IrDeclarationParent
-        get() = getCarrier().parentField ?: throw UninitializedPropertyAccessException("Parent not initialized: $this")
+        get() = getCarrier().parentSymbolField?.owner as? IrDeclarationParent ?: throw UninitializedPropertyAccessException("Parent not initialized: $this")
         set(p) {
-            if (getCarrier().parentField !== p) {
-                setCarrier().parentField = p
+            val symbol = (p as IrSymbolOwner).symbol
+            if (getCarrier().parentSymbolField !== symbol) {
+                setCarrier().parentSymbolField = symbol
             }
         }
 
