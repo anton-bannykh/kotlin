@@ -69,7 +69,7 @@ internal abstract class IrCarrierDeserializer {
 
     abstract fun deserializeOrigin(proto: Int): IrDeclarationOrigin
 
-    abstract fun deserializeAnnotations(proto: List<ProtoIrConstructorCall>): List<IrConstructorCall>
+    abstract fun deserializeAnnotation(proto: ProtoIrConstructorCall): IrConstructorCall
 
     abstract fun deserializeBody(proto: Int): IrBody
 
@@ -108,7 +108,7 @@ internal abstract class IrCarrierDeserializer {
             proto.lastModified,
             if (proto.hasParentSymbol()) deserializeParent(proto.parentSymbol) else null,
             deserializeOrigin(proto.origin),
-            deserializeAnnotations(proto.annotationList),
+            proto.annotationList.map { deserializeAnnotation(it) },
             if (proto.hasBody()) deserializeBlockBody(proto.body) else null
         )
     }
@@ -118,7 +118,7 @@ internal abstract class IrCarrierDeserializer {
             proto.lastModified,
             if (proto.hasParentSymbol()) deserializeParent(proto.parentSymbol) else null,
             deserializeOrigin(proto.origin),
-            deserializeAnnotations(proto.annotationList),
+            proto.annotationList.map { deserializeAnnotation(it) },
             if (proto.hasThisReceiver()) deserializeValueParameter(proto.thisReceiver) else null,
             deserializeVisibility(proto.flags),
             deserializeModality(proto.flags),
@@ -132,7 +132,7 @@ internal abstract class IrCarrierDeserializer {
             proto.lastModified,
             if (proto.hasParentSymbol()) deserializeParent(proto.parentSymbol) else null,
             deserializeOrigin(proto.origin),
-            deserializeAnnotations(proto.annotationList),
+            proto.annotationList.map { deserializeAnnotation(it) },
             deserializeType(proto.returnTypeField),
             if (proto.hasDispatchReceiverParameter()) deserializeValueParameter(proto.dispatchReceiverParameter) else null,
             if (proto.hasExtensionReceiverParameter()) deserializeValueParameter(proto.extensionReceiverParameter) else null,
@@ -148,7 +148,7 @@ internal abstract class IrCarrierDeserializer {
             proto.lastModified,
             if (proto.hasParentSymbol()) deserializeParent(proto.parentSymbol) else null,
             deserializeOrigin(proto.origin),
-            deserializeAnnotations(proto.annotationList),
+            proto.annotationList.map { deserializeAnnotation(it) },
             if (proto.hasCorrespondingClass()) deserializeClass(proto.correspondingClass) else null,
             if (proto.hasInitializerExpression()) deserializeExpressionBody(proto.initializerExpression) else null
         )
@@ -159,7 +159,7 @@ internal abstract class IrCarrierDeserializer {
             proto.lastModified,
             if (proto.hasParentSymbol()) deserializeParent(proto.parentSymbol) else null,
             deserializeOrigin(proto.origin),
-            deserializeAnnotations(proto.annotationList)
+            proto.annotationList.map { deserializeAnnotation(it) }
         )
     }
 
@@ -168,7 +168,7 @@ internal abstract class IrCarrierDeserializer {
             proto.lastModified,
             if (proto.hasParentSymbol()) deserializeParent(proto.parentSymbol) else null,
             deserializeOrigin(proto.origin),
-            deserializeAnnotations(proto.annotationList),
+            proto.annotationList.map { deserializeAnnotation(it) },
             deserializeType(proto.type),
             if (proto.hasInitializer()) deserializeExpressionBody(proto.initializer) else null,
             if (proto.hasCorrespondingPropertySymbol()) deserializePropertySymbol(proto.correspondingPropertySymbol) else null
@@ -180,7 +180,7 @@ internal abstract class IrCarrierDeserializer {
             proto.lastModified,
             if (proto.hasParentSymbol()) deserializeParent(proto.parentSymbol) else null,
             deserializeOrigin(proto.origin),
-            deserializeAnnotations(proto.annotationList),
+            proto.annotationList.map { deserializeAnnotation(it) },
             deserializeType(proto.returnTypeField),
             if (proto.hasDispatchReceiverParameter()) deserializeValueParameter(proto.dispatchReceiverParameter) else null,
             if (proto.hasExtensionReceiverParameter()) deserializeValueParameter(proto.extensionReceiverParameter) else null,
@@ -198,7 +198,7 @@ internal abstract class IrCarrierDeserializer {
             proto.lastModified,
             if (proto.hasParentSymbol()) deserializeParent(proto.parentSymbol) else null,
             deserializeOrigin(proto.origin),
-            deserializeAnnotations(proto.annotationList),
+            proto.annotationList.map { deserializeAnnotation(it) },
             deserializeType(proto.type),
             if (proto.hasDelegate()) deserializeVariable(proto.delegate) else null,
             if (proto.hasGetter()) deserializeFunction(proto.getter) else null,
@@ -211,7 +211,7 @@ internal abstract class IrCarrierDeserializer {
             proto.lastModified,
             if (proto.hasParentSymbol()) deserializeParent(proto.parentSymbol) else null,
             deserializeOrigin(proto.origin),
-            deserializeAnnotations(proto.annotationList),
+            proto.annotationList.map { deserializeAnnotation(it) },
             if (proto.hasBackingField()) deserializeField(proto.backingField) else null,
             if (proto.hasGetter()) deserializeSimpleFunction(proto.getter) else null,
             if (proto.hasSetter()) deserializeSimpleFunction(proto.setter) else null
@@ -223,7 +223,7 @@ internal abstract class IrCarrierDeserializer {
             proto.lastModified,
             if (proto.hasParentSymbol()) deserializeParent(proto.parentSymbol) else null,
             deserializeOrigin(proto.origin),
-            deserializeAnnotations(proto.annotationList),
+            proto.annotationList.map { deserializeAnnotation(it) },
             proto.typeParametersList.map { deserializeTypeParameter(it) },
             deserializeType(proto.expandedType)
         )
@@ -234,7 +234,7 @@ internal abstract class IrCarrierDeserializer {
             proto.lastModified,
             if (proto.hasParentSymbol()) deserializeParent(proto.parentSymbol) else null,
             deserializeOrigin(proto.origin),
-            deserializeAnnotations(proto.annotationList),
+            proto.annotationList.map { deserializeAnnotation(it) },
             proto.superTypesList.map { deserializeSuperType(it) }
         )
     }
@@ -244,7 +244,7 @@ internal abstract class IrCarrierDeserializer {
             proto.lastModified,
             if (proto.hasParentSymbol()) deserializeParent(proto.parentSymbol) else null,
             deserializeOrigin(proto.origin),
-            deserializeAnnotations(proto.annotationList),
+            proto.annotationList.map { deserializeAnnotation(it) },
             if (proto.hasDefaultValue()) deserializeExpressionBody(proto.defaultValue) else null,
             deserializeType(proto.type),
             if (proto.hasVarargElementType()) deserializeType(proto.varargElementType) else null

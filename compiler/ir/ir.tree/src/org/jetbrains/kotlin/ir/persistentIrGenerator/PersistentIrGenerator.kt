@@ -286,7 +286,7 @@ internal object PersistentIrGenerator {
 
         list += +"abstract fun deserializeParent(proto: Long): " + IrDeclarationParent
         list += +"abstract fun deserializeOrigin(proto: Int): " + IrDeclarationOrigin
-        list += +"abstract fun deserializeAnnotations(proto: List<" + protoIrConstructorCall + ">): List<" + IrConstructorCall + ">"
+        list += +"abstract fun deserializeAnnotation(proto: " + protoIrConstructorCall + "): " + IrConstructorCall
 
         val seenEntities = mutableSetOf<String>()
 
@@ -311,7 +311,7 @@ internal object PersistentIrGenerator {
                     +"proto.lastModified",
                     +"if (proto.hasParentSymbol()) deserializeParent(proto.parentSymbol) else null",
                     +"deserializeOrigin(proto.origin)",
-                    +"deserializeAnnotations(proto.annotationList)",
+                    +"proto.annotationList.map { deserializeAnnotation(it) }",
                     *fields.map { f ->
                         if (f.proto == null) {
                             +"null"
