@@ -42,12 +42,19 @@ message FileLocalIdSignature {
   required int64 local_id = 2;
 }
 
+message IcDeclarationSignature {
+  required int32 parent_signature = 1;
+  required int32 stage = 2;
+  required int32 index = 3;
+}
+
 message IdSignature {
   oneof idsig {
     PublicIdSignature public_sig = 1;
     FileLocalIdSignature private_sig = 2;
     AccessorIdSignature accessor_sig = 3;
     int32 scoped_local_sig = 4;
+    IcDeclarationSignature ic_sig = 5;
   }
 }
 
