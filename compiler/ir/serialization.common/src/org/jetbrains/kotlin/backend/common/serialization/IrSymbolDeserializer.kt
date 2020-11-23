@@ -21,6 +21,7 @@ import org.jetbrains.kotlin.backend.common.serialization.proto.AccessorIdSignatu
 import org.jetbrains.kotlin.backend.common.serialization.proto.FileLocalIdSignature as ProtoFileLocalIdSignature
 import org.jetbrains.kotlin.backend.common.serialization.proto.IdSignature as ProtoIdSignature
 import org.jetbrains.kotlin.backend.common.serialization.proto.PublicIdSignature as ProtoPublicIdSignature
+import org.jetbrains.kotlin.backend.common.serialization.proto.IcDeclarationSignature as ProtoIcDeclarationSignature
 
 class IrSymbolDeserializer(
     val linker: KotlinIrLinker,
@@ -199,12 +200,17 @@ class IrSymbolDeserializer(
         return IdSignature.ScopeLocalDeclaration(proto)
     }
 
+    private fun deserializeLoweredDeclarationSignature(proto: ProtoIcDeclarationSignature): IdSignature.LoweredDeclarationSignature {
+        return IdSignature.LoweredDeclarationSignature(deserializeIdSignature(proto.parentSignature), proto.stage, proto.index)
+    }
+
     private fun deserializeSignatureData(proto: ProtoIdSignature): IdSignature {
         return when (proto.idsigCase) {
             PUBLIC_SIG -> deserializePublicIdSignature(proto.publicSig)
             ACCESSOR_SIG -> deserializeAccessorIdSignature(proto.accessorSig)
             PRIVATE_SIG -> deserializeFileLocalIdSignature(proto.privateSig)
             SCOPED_LOCAL_SIG -> deserializeScopeLocalIdSignature(proto.scopedLocalSig)
+            IC_SIG -> deserializeLoweredDeclarationSignature(proto.icSig)
             else -> error("Unexpected IdSignature kind: ${proto.idsigCase}")
         }
     }

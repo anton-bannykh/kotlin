@@ -9,12 +9,15 @@ import org.jetbrains.kotlin.descriptors.*
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.expressions.IrBlockBody
+import org.jetbrains.kotlin.ir.expressions.IrBody
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.IrExpressionBody
 import org.jetbrains.kotlin.ir.expressions.persistent.PersistentIrBlockBody
 import org.jetbrains.kotlin.ir.expressions.persistent.PersistentIrExpressionBody
 import org.jetbrains.kotlin.ir.symbols.*
+import org.jetbrains.kotlin.ir.symbols.impl.IrPublicSymbolBase
 import org.jetbrains.kotlin.ir.types.IrType
+import org.jetbrains.kotlin.ir.util.IdSignature
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.serialization.deserialization.descriptors.DeserializedContainerSource
 import org.jetbrains.kotlin.types.Variance
@@ -25,6 +28,26 @@ class PersistentIrFactory : IrFactory {
 
     val allDeclarations = mutableListOf<IrDeclaration>()
 
+    val allBodies = mutableListOf<IrBody>()
+
+    val symbolToSignatureMap = mutableMapOf<IrSymbol, IdSignature>()
+
+    private fun IrDeclaration.register() {
+        // TODO Why some declarations aren't IrSymbolDeclaration?
+        if (this is IrSymbolOwner) {
+            // TODO what about local declarations? They don't seem to have public signatures...
+            if (symbol !is IrPublicSymbolBase<*>) {
+                symbolToSignatureMap[symbol] = stageController.createSignature()
+            }
+        }
+
+        allDeclarations += this
+    }
+
+    fun declarationSignature(declaration: IrDeclaration): IdSignature? {
+        return (declaration as? IrSymbolOwner)?.let { symbolToSignatureMap[it.symbol] }
+    }
+
     override fun createAnonymousInitializer(
         startOffset: Int,
         endOffset: Int,
@@ -32,7 +55,7 @@ class PersistentIrFactory : IrFactory {
         symbol: IrAnonymousInitializerSymbol,
         isStatic: Boolean,
     ): IrAnonymousInitializer =
-        PersistentIrAnonymousInitializer(startOffset, endOffset, origin, symbol, isStatic, this).also { allDeclarations += it }
+        PersistentIrAnonymousInitializer(startOffset, endOffset, origin, symbol, isStatic, this).also { it.register() }
 
     override fun createClass(
         startOffset: Int,
@@ -56,7 +79,7 @@ class PersistentIrFactory : IrFactory {
             startOffset, endOffset, origin, symbol, name, kind, visibility, modality,
             isCompanion, isInner, isData, isExternal, isInline, isExpect, isFun, source,
             this
-        ).also { allDeclarations += it }
+        ).also { it.register() }
 
     override fun createConstructor(
         startOffset: Int,
@@ -75,7 +98,7 @@ class PersistentIrFactory : IrFactory {
         PersistentIrConstructor(
             startOffset, endOffset, origin, symbol, name, visibility, returnType, isInline, isExternal, isPrimary, isExpect,
             containerSource, this
-        ).also { allDeclarations += it }
+        ).also { it.register() }
 
     override fun createEnumEntry(
         startOffset: Int,
@@ -84,14 +107,14 @@ class PersistentIrFactory : IrFactory {
         symbol: IrEnumEntrySymbol,
         name: Name,
     ): IrEnumEntry =
-        PersistentIrEnumEntry(startOffset, endOffset, origin, symbol, name, this).also { allDeclarations += it }
+        PersistentIrEnumEntry(startOffset, endOffset, origin, symbol, name, this).also { it.register() }
 
     override fun createErrorDeclaration(
         startOffset: Int,
         endOffset: Int,
         descriptor: DeclarationDescriptor,
     ): IrErrorDeclaration =
-        PersistentIrErrorDeclaration(startOffset, endOffset, descriptor, this).also { allDeclarations += it }
+        PersistentIrErrorDeclaration(startOffset, endOffset, descriptor, this).also { it.register() }
 
     override fun createField(
         startOffset: Int,
@@ -105,7 +128,7 @@ class PersistentIrFactory : IrFactory {
         isExternal: Boolean,
         isStatic: Boolean,
     ): IrField =
-        PersistentIrField(startOffset, endOffset, origin, symbol, name, type, visibility, isFinal, isExternal, isStatic, this).also { allDeclarations += it }
+        PersistentIrField(startOffset, endOffset, origin, symbol, name, type, visibility, isFinal, isExternal, isStatic, this).also { it.register() }
 
     override fun createFunction(
         startOffset: Int,
@@ -130,7 +153,7 @@ class PersistentIrFactory : IrFactory {
             startOffset, endOffset, origin, symbol, name, visibility, modality, returnType,
             isInline, isExternal, isTailrec, isSuspend, isOperator, isInfix, isExpect, isFakeOverride,
             containerSource, this
-        ).also { allDeclarations += it }
+        ).also { it.register() }
 
     override fun createFakeOverrideFunction(
         startOffset: Int,
@@ -151,7 +174,7 @@ class PersistentIrFactory : IrFactory {
         PersistentIrFakeOverrideFunction(
             startOffset, endOffset, origin, name, visibility, modality, returnType,
             isInline, isExternal, isTailrec, isSuspend, isOperator, isInfix, isExpect, this
-        ).also { allDeclarations += it }
+        ).also { it.register() }
 
     override fun createLocalDelegatedProperty(
         startOffset: Int,
@@ -164,7 +187,7 @@ class PersistentIrFactory : IrFactory {
     ): IrLocalDelegatedProperty =
         PersistentIrLocalDelegatedProperty(
             startOffset, endOffset, origin, symbol, name, type, isVar, this
-        ).also { allDeclarations += it }
+        ).also { it.register() }
 
     override fun createProperty(
         startOffset: Int,
@@ -187,7 +210,7 @@ class PersistentIrFactory : IrFactory {
             startOffset, endOffset, origin, symbol, name, visibility, modality,
             isVar, isConst, isLateinit, isDelegated, isExternal, isExpect, isFakeOverride,
             containerSource, this
-        ).also { allDeclarations += it }
+        ).also { it.register() }
 
     override fun createFakeOverrideProperty(
         startOffset: Int,
@@ -207,7 +230,7 @@ class PersistentIrFactory : IrFactory {
             startOffset, endOffset, origin, name, visibility, modality,
             isVar, isConst, isLateinit, isDelegated, isExternal, isExpect,
             this
-        ).also { allDeclarations += it }
+        ).also { it.register() }
 
     override fun createTypeAlias(
         startOffset: Int,
@@ -219,7 +242,7 @@ class PersistentIrFactory : IrFactory {
         isActual: Boolean,
         origin: IrDeclarationOrigin,
     ): IrTypeAlias =
-        PersistentIrTypeAlias(startOffset, endOffset, symbol, name, visibility, expandedType, isActual, origin, this).also { allDeclarations += it }
+        PersistentIrTypeAlias(startOffset, endOffset, symbol, name, visibility, expandedType, isActual, origin, this).also { it.register() }
 
     override fun createTypeParameter(
         startOffset: Int,
@@ -231,7 +254,7 @@ class PersistentIrFactory : IrFactory {
         isReified: Boolean,
         variance: Variance,
     ): IrTypeParameter =
-        PersistentIrTypeParameter(startOffset, endOffset, origin, symbol, name, index, isReified, variance, this).also { allDeclarations += it }
+        PersistentIrTypeParameter(startOffset, endOffset, origin, symbol, name, index, isReified, variance, this).also { it.register() }
 
     override fun createValueParameter(
         startOffset: Int,
@@ -249,44 +272,56 @@ class PersistentIrFactory : IrFactory {
     ): IrValueParameter =
         PersistentIrValueParameter(
             startOffset, endOffset, origin, symbol, name, index, type, varargElementType, isCrossinline, isNoinline, isHidden, isAssignable, this
-        ).also { allDeclarations += it }
+        ).also { it.register() }
 
     override fun createExpressionBody(
         startOffset: Int,
         endOffset: Int,
         initializer: IrExpressionBody.() -> Unit,
     ): IrExpressionBody =
-        PersistentIrExpressionBody(startOffset, endOffset, this, initializer)
+        PersistentIrExpressionBody(startOffset, endOffset, this, initializer).also {
+            allBodies += it
+        }
 
     override fun createExpressionBody(
         startOffset: Int,
         endOffset: Int,
         expression: IrExpression,
     ): IrExpressionBody =
-        PersistentIrExpressionBody(startOffset, endOffset, expression, this)
+        PersistentIrExpressionBody(startOffset, endOffset, expression, this).also {
+            allBodies += it
+        }
 
     override fun createExpressionBody(
         expression: IrExpression,
     ): IrExpressionBody =
-        PersistentIrExpressionBody(expression, this)
+        PersistentIrExpressionBody(expression, this).also {
+            allBodies += it
+        }
 
     override fun createBlockBody(
         startOffset: Int,
         endOffset: Int,
     ): IrBlockBody =
-        PersistentIrBlockBody(startOffset, endOffset, this)
+        PersistentIrBlockBody(startOffset, endOffset, this).also {
+            allBodies += it
+        }
 
     override fun createBlockBody(
         startOffset: Int,
         endOffset: Int,
         statements: List<IrStatement>,
     ): IrBlockBody =
-        PersistentIrBlockBody(startOffset, endOffset, statements, this)
+        PersistentIrBlockBody(startOffset, endOffset, statements, this).also {
+            allBodies += it
+        }
 
     override fun createBlockBody(
         startOffset: Int,
         endOffset: Int,
         initializer: IrBlockBody.() -> Unit,
     ): IrBlockBody =
-        PersistentIrBlockBody(startOffset, endOffset, this, initializer)
+        PersistentIrBlockBody(startOffset, endOffset, this, initializer).also {
+            allBodies += it
+        }
 }

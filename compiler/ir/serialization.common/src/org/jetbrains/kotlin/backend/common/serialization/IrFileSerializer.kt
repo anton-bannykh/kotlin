@@ -103,6 +103,7 @@ import org.jetbrains.kotlin.backend.common.serialization.proto.MemberAccessCommo
 import org.jetbrains.kotlin.backend.common.serialization.proto.NullableIrExpression as ProtoNullableIrExpression
 import org.jetbrains.kotlin.backend.common.serialization.proto.PublicIdSignature as ProtoPublicIdSignature
 import org.jetbrains.kotlin.backend.common.serialization.proto.AccessorIdSignature as ProtoAccessorIdSignature
+import org.jetbrains.kotlin.backend.common.serialization.proto.IcDeclarationSignature as ProtoIcDeclarationSignature
 
 open class IrFileSerializer(
     val logger: LoggingContext,
@@ -133,6 +134,8 @@ open class IrFileSerializer(
     private val protoIdSignatureArray = arrayListOf<ProtoIdSignature>()
 
     private val protoBodyArray = mutableListOf<XStatementOrExpression>()
+
+    private val topLevelDeclarations = mutableListOf<SerializedDeclaration>()
 
     sealed class XStatementOrExpression {
         abstract fun toByteArray(): ByteArray
@@ -224,6 +227,16 @@ open class IrFileSerializer(
 
     private fun serializeScopeLocalSignature(signature: IdSignature.ScopeLocalDeclaration): Int = signature.id
 
+    private fun serializeLoweredDeclarationSignature(signature: IdSignature.LoweredDeclarationSignature): ProtoIcDeclarationSignature {
+        val proto = ProtoIcDeclarationSignature.newBuilder()
+
+        proto.parentSignature = protoIdSignature(signature.parent)
+        proto.stage = signature.stage
+        proto.index = signature.index
+
+        return proto.build()
+    }
+
     private fun serializeIdSignature(idSignature: IdSignature): ProtoIdSignature {
         val proto = ProtoIdSignature.newBuilder()
         when (idSignature) {
@@ -231,6 +244,7 @@ open class IrFileSerializer(
             is IdSignature.AccessorSignature -> proto.accessorSig = serializeAccessorSignature(idSignature)
             is IdSignature.FileLocalSignature -> proto.privateSig = serializePrivateSignature(idSignature)
             is IdSignature.ScopeLocalDeclaration -> proto.scopedLocalSig = serializeScopeLocalSignature(idSignature)
+            is IdSignature.LoweredDeclarationSignature -> proto.icSig = serializeLoweredDeclarationSignature(idSignature)
         }
         return proto.build()
     }
@@ -1342,19 +1356,45 @@ open class IrFileSerializer(
         val protoDeclaration = serializeDeclaration(declaration)
 
         if (register) {
-            // TODO: save bytes into arrays
-            // in order to do that we need state
+            val byteArray = protoDeclaration.toByteArray()
+            val idSig = declarationTable.signatureByDeclaration(declaration)
+
+            // TODO: keep order similar
+            // ^ TODO what does that mean?
+            val sigIndex = protoIdSignatureMap[idSig]
+                ?: if (declaration is IrErrorDeclaration) protoIdSignature(idSig) else error("Not found ID for $idSig (${declaration.render()})")
+
+            topLevelDeclarations.add(TopLevelDeclaration(sigIndex, idSig.toString(), byteArray))
         }
 
         return protoDeclaration
     }
 
-    fun serializeDeclarationsForIC(declarations: Iterable<IrDeclaration>) {
+    fun serializeDeclarationsForIC(file: IrFile, declarations: Iterable<IrDeclaration>): SerializedIrFile {
+        val proto = ProtoFile.newBuilder()
+            .setFileEntry(serializeFileEntry(file.fileEntry))
+            .addAllFqName(serializeFqName(file.fqName.asString()))
+
+        val topLevelDeclarations = mutableListOf<SerializedDeclaration>()
+
         declarations.forEach {
             doSerializeIrDeclaration(it)
         }
 
-        // TODO return result
+        topLevelDeclarations.forEach {
+            proto.addDeclarationId(it.id)
+        }
+
+        return SerializedIrFile(
+            proto.build().toByteArray(),
+            file.fqName.asString(),
+            file.path,
+            IrMemoryArrayWriter(protoTypeArray.map { it.toByteArray() }).writeIntoMemory(),
+            IrMemoryArrayWriter(protoIdSignatureArray.map { it.toByteArray() }).writeIntoMemory(),
+            IrMemoryArrayWriter(protoStringArray.map { it.toByteArray() }).writeIntoMemory(),
+            IrMemoryArrayWriter(protoBodyArray.map { it.toByteArray() }).writeIntoMemory(),
+            IrMemoryDeclarationWriter(topLevelDeclarations).writeIntoMemory()
+        )
     }
 
     fun serializeIrFile(file: IrFile): SerializedIrFile {
