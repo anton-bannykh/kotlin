@@ -128,12 +128,20 @@ class FileDeserializationState(
     }
 }
 
-class IrLibraryFile(private val klib: IrLibrary, private val fileIndex: Int) {
-    fun irDeclaration(index: Int): ByteArray = klib.irDeclaration(index, fileIndex)
-    fun type(index: Int): ByteArray = klib.type(index, fileIndex)
-    fun signature(index: Int): ByteArray = klib.signature(index, fileIndex)
-    fun string(index: Int): ByteArray = klib.string(index, fileIndex)
-    fun body(index: Int): ByteArray = klib.body(index, fileIndex)
+abstract class IrLibraryFile {
+    abstract fun irDeclaration(index: Int): ByteArray
+    abstract fun type(index: Int): ByteArray
+    abstract fun signature(index: Int): ByteArray
+    abstract fun string(index: Int): ByteArray
+    abstract fun body(index: Int): ByteArray
+}
+
+class IrLibraryFileFromKlib(private val klib: IrLibrary, private val fileIndex: Int): IrLibraryFile() {
+    override fun irDeclaration(index: Int): ByteArray = klib.irDeclaration(index, fileIndex)
+    override fun type(index: Int): ByteArray = klib.type(index, fileIndex)
+    override fun signature(index: Int): ByteArray = klib.signature(index, fileIndex)
+    override fun string(index: Int): ByteArray = klib.string(index, fileIndex)
+    override fun body(index: Int): ByteArray = klib.body(index, fileIndex)
 }
 
 internal fun IrLibraryFile.deserializeString(index: Int): String = String(string(index))

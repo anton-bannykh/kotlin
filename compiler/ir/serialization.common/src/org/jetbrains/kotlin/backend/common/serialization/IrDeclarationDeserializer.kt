@@ -67,6 +67,7 @@ class IrDeclarationDeserializer(
     val symbolDeserializer: IrSymbolDeserializer,
     val platformFakeOverrideClassFilter: PlatformFakeOverrideClassFilter,
     val addToFakeOverrideClassQueue: (IrClass) -> Unit,
+    val icMode: Boolean = false,
 ) {
 
     val bodyDeserializer = IrBodyDeserializer(logger, builtIns, allowErrorNodes, irFactory, fileReader, this)
@@ -685,7 +686,7 @@ class IrDeclarationDeserializer(
         return declarationOriginIndex[originName] ?: object : IrDeclarationOriginImpl(originName) {}
     }
 
-    internal fun deserializeDeclaration(proto: ProtoDeclaration): IrDeclaration {
+    fun deserializeDeclaration(proto: ProtoDeclaration): IrDeclaration {
         val declaration: IrDeclaration = when (proto.declaratorCase!!) {
             IR_ANONYMOUS_INIT -> deserializeIrAnonymousInit(proto.irAnonymousInit)
             IR_CONSTRUCTOR -> deserializeIrConstructor(proto.irConstructor)

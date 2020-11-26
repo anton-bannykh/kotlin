@@ -31,7 +31,7 @@ abstract class KotlinIrLinker(
     val builtIns: IrBuiltIns,
     val symbolTable: SymbolTable,
     private val exportedDependencies: List<ModuleDescriptor>,
-    internal val deserializeFakeOverrides: Boolean
+    val deserializeFakeOverrides: Boolean
 ) : IrDeserializer {
 
     // Kotlin-MPP related data. Consider some refactoring
@@ -290,7 +290,7 @@ enum class DeserializationStrategy(
     WITH_INLINE_BODIES(false, false, false, true)
 }
 
-internal val ByteArray.codedInputStream: CodedInputStream
+val ByteArray.codedInputStream: CodedInputStream
     get() {
         val codedInputStream = CodedInputStream.newInstance(this)
         codedInputStream.setRecursionLimit(65535) // The default 64 is blatantly not enough for IR.
