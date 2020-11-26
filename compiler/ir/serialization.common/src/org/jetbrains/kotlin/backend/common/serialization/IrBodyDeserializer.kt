@@ -77,7 +77,6 @@ class IrBodyDeserializer(
     val allowErrorNodes: Boolean,
     val irFactory: IrFactory,
     val fileReader: IrLibraryFile,
-    val symbolDeserializer: IrSymbolDeserializer,
     val declarationDeserializer: IrDeclarationDeserializer,
 ) {
 

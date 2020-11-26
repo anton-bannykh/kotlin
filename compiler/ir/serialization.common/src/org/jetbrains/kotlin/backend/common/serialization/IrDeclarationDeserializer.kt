@@ -8,6 +8,7 @@ package org.jetbrains.kotlin.backend.common.serialization
 import org.jetbrains.kotlin.backend.common.LoggingContext
 import org.jetbrains.kotlin.backend.common.ir.ir2string
 import org.jetbrains.kotlin.backend.common.lower.InnerClassesSupport
+import org.jetbrains.kotlin.backend.common.overrides.PlatformFakeOverrideClassFilter
 import org.jetbrains.kotlin.backend.common.serialization.encodings.*
 import org.jetbrains.kotlin.backend.common.serialization.proto.IrDeclaration.DeclaratorCase.*
 import org.jetbrains.kotlin.backend.common.serialization.proto.IrType.KindCase.*
@@ -53,7 +54,6 @@ import org.jetbrains.kotlin.backend.common.serialization.proto.IrVariable as Pro
 
 
 class IrDeclarationDeserializer(
-    val linker: KotlinIrLinker,
     val logger: LoggingContext,
     val builtIns: IrBuiltIns,
     val symbolTable: SymbolTable,
@@ -65,11 +65,11 @@ class IrDeclarationDeserializer(
     val deserializeInlineFunctions: Boolean,
     protected var deserializeBodies: Boolean,
     val symbolDeserializer: IrSymbolDeserializer,
+    val platformFakeOverrideClassFilter: PlatformFakeOverrideClassFilter,
+    val addToFakeOverrideClassQueue: (IrClass) -> Unit,
 ) {
 
-    val bodyDeserializer = IrBodyDeserializer(logger, builtIns, allowErrorNodes, irFactory, fileReader, symbolDeserializer, this)
-
-    private val platformFakeOverrideClassFilter = linker.fakeOverrideBuilder.platformSpecificClassFilter
+    val bodyDeserializer = IrBodyDeserializer(logger, builtIns, allowErrorNodes, irFactory, fileReader, this)
 
     private fun deserializeName(index: Int): Name {
         val name = fileReader.deserializeString(index)
@@ -242,8 +242,7 @@ class IrDeclarationDeserializer(
                 val descriptor = (symbol as IrTypeParameterSymbol).descriptor
                 declareGlobalTypeParameterFromLinker(descriptor, sig, factory)
             } else {
-                val symbolData = BinarySymbolData
-                    .decode(proto.base.symbol)
+                val symbolData = BinarySymbolData.decode(proto.base.symbol)
                 sig = symbolDeserializer.deserializeIdSignature(symbolData.signatureId)
                 val descriptor = WrappedTypeParameterDescriptor()
                 declareScopedTypeParameterFromLinker(descriptor, sig, factory)
@@ -318,7 +317,7 @@ class IrDeclarationDeserializer(
 
                 if (!deserializeFakeOverrides) {
                     if (symbol.isPublicApi) {
-                        linker.fakeOverrideClassQueue.add(this)
+                        addToFakeOverrideClassQueue(this)
                     }
                 }
             }

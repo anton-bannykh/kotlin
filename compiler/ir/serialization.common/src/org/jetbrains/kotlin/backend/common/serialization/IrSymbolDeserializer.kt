@@ -24,12 +24,12 @@ import org.jetbrains.kotlin.backend.common.serialization.proto.PublicIdSignature
 import org.jetbrains.kotlin.backend.common.serialization.proto.IcDeclarationSignature as ProtoIcDeclarationSignature
 
 class IrSymbolDeserializer(
-    val linker: KotlinIrLinker,
+    val symbolTable: ReferenceSymbolTable,
     val fileReader: IrLibraryFile,
-    val fileDeserializationState: FileDeserializationState,
     val actuals: List<Actual>,
-    private val moduleDeserializer: IrModuleDeserializer,
-    private val handleNoModuleDeserializerFound: (IdSignature) -> IrModuleDeserializer,
+    val enqueueLocalTopLevelDeclaration: (IdSignature) -> Unit,
+    val handleExpectActualMapping: (IdSignature, IrSymbol) -> IrSymbol,
+    val deserializePublicSymbol: (IdSignature, BinarySymbolData.SymbolKind) -> IrSymbol,
 ) {
 
     val deserializedSymbols = mutableMapOf<IdSignature, IrSymbol>()
@@ -42,37 +42,7 @@ class IrSymbolDeserializer(
         }
     }
 
-    private fun handleExpectActualMapping(idSig: IdSignature, rawSymbol: IrSymbol): IrSymbol {
-
-        // Actual signature
-        if (idSig in linker.expectUniqIdToActualUniqId.values) {
-            linker.actualSymbols[idSig] = rawSymbol
-        }
-
-        // Expect signature
-        linker.expectUniqIdToActualUniqId[idSig]?.let { actualSig ->
-            assert(idSig.run { IdSignature.Flags.IS_EXPECT.test() })
-
-            val referencingSymbol = wrapInDelegatedSymbol(rawSymbol)
-
-            linker.expectSymbols[idSig] = referencingSymbol
-
-            // Trigger actual symbol deserialization
-            linker.topLevelActualUniqItToDeserializer[actualSig]?.let { moduleDeserializer -> // Not null if top-level
-                val actualSymbol = linker.actualSymbols[actualSig]
-                // Check if
-                if (actualSymbol == null || !actualSymbol.isBound) {
-                    moduleDeserializer.addModuleReachableTopLevel(actualSig)
-                }
-            }
-
-            return referencingSymbol
-        }
-
-        return rawSymbol
-    }
-
-    private fun referenceDeserializedSymbol(symbolKind: BinarySymbolData.SymbolKind, idSig: IdSignature): IrSymbol = linker.symbolTable.run {
+    private fun referenceDeserializedSymbol(symbolKind: BinarySymbolData.SymbolKind, idSig: IdSignature): IrSymbol = symbolTable.run {
         when (symbolKind) {
             BinarySymbolData.SymbolKind.ANONYMOUS_INIT_SYMBOL -> IrAnonymousInitializerSymbolImpl(WrappedClassDescriptor())
             BinarySymbolData.SymbolKind.CLASS_SYMBOL -> referenceClassFromLinker(WrappedClassDescriptor(), idSig)
@@ -93,28 +63,6 @@ class IrSymbolDeserializer(
         }
     }
 
-    fun deserializeExpectActualMapping() {
-        actuals.forEach {
-            val expectSymbol = parseSymbolData(it.expectSymbol)
-            val actualSymbol = parseSymbolData(it.actualSymbol)
-
-            val expect = deserializeIdSignature(expectSymbol.signatureId)
-            val actual = deserializeIdSignature(actualSymbol.signatureId)
-
-            assert(linker.expectUniqIdToActualUniqId[expect] == null) {
-                "Expect signature $expect is already actualized by ${linker.expectUniqIdToActualUniqId[expect]}, while we try to record $actual"
-            }
-            linker.expectUniqIdToActualUniqId[expect] = actual
-            // Non-null only for topLevel declarations.
-            getModuleForTopLevelId(actual)?.let { md -> linker.topLevelActualUniqItToDeserializer[actual] = md }
-        }
-    }
-
-    private fun getModuleForTopLevelId(idSignature: IdSignature): IrModuleDeserializer? {
-        if (idSignature in moduleDeserializer) return moduleDeserializer
-        return moduleDeserializer.moduleDependencies.firstOrNull { idSignature in it }
-    }
-
     fun referenceLocalIrSymbol(symbol: IrSymbol, signature: IdSignature) {
         assert(signature.isLocal)
         deserializedSymbols.putIfAbsent(signature, symbol)
@@ -123,22 +71,14 @@ class IrSymbolDeserializer(
     private fun deserializeIrSymbolData(idSignature: IdSignature, symbolKind: BinarySymbolData.SymbolKind): IrSymbol {
         if (idSignature.isLocal) {
             if (idSignature.hasTopLevel) {
-                fileDeserializationState.addIdSignature(idSignature.topLevelSignature())
+                enqueueLocalTopLevelDeclaration(idSignature.topLevelSignature())
             }
             return deserializedSymbols.getOrPut(idSignature) {
                 referenceDeserializedSymbol(symbolKind, idSignature)
             }
         }
 
-        return findModuleDeserializer(idSignature).deserializeIrSymbol(idSignature, symbolKind)
-    }
-
-    private fun findModuleDeserializer(idSig: IdSignature): IrModuleDeserializer {
-        assert(idSig.isPublic)
-
-        val topLevelSig = idSig.topLevelSignature()
-        if (topLevelSig in moduleDeserializer) return moduleDeserializer
-        return moduleDeserializer.moduleDependencies.firstOrNull { topLevelSig in it } ?: handleNoModuleDeserializerFound(idSig)
+        return deserializePublicSymbol(idSignature, symbolKind)
     }
 
     fun deserializeIrSymbolToDeclare(code: Long): Pair<IrSymbol, IdSignature> {

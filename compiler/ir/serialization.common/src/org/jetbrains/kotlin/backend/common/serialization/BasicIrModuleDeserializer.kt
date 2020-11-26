@@ -58,6 +58,23 @@ abstract class BasicIrModuleDeserializer(
         fileDeserializers.forEach { it.symbolDeserializer.deserializeExpectActualMapping() }
     }
 
+    private fun IrSymbolDeserializer.deserializeExpectActualMapping() {
+        actuals.forEach {
+            val expectSymbol = parseSymbolData(it.expectSymbol)
+            val actualSymbol = parseSymbolData(it.actualSymbol)
+
+            val expect = deserializeIdSignature(expectSymbol.signatureId)
+            val actual = deserializeIdSignature(actualSymbol.signatureId)
+
+            assert(linker.expectUniqIdToActualUniqId[expect] == null) {
+                "Expect signature $expect is already actualized by ${linker.expectUniqIdToActualUniqId[expect]}, while we try to record $actual"
+            }
+            linker.expectUniqIdToActualUniqId[expect] = actual
+            // Non-null only for topLevel declarations.
+            findModuleDeserializerForTopLevelId(actual)?.let { md -> linker.topLevelActualUniqItToDeserializer[actual] = md }
+        }
+    }
+
     // TODO: fix to topLevel checker
     override fun contains(idSig: IdSignature): Boolean = idSig in moduleReversedFileIndex
 
@@ -143,4 +160,9 @@ internal class ModuleDeserializationState(val linker: KotlinIrLinker, val module
             filesWithPendingTopLevels.remove(pendingFileDeserializationState)
         }
     }
+}
+
+fun IrModuleDeserializer.findModuleDeserializerForTopLevelId(idSignature: IdSignature): IrModuleDeserializer? {
+    if (idSignature in this) return this
+    return moduleDependencies.firstOrNull { idSignature in it }
 }

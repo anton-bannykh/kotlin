@@ -5,16 +5,10 @@
 
 package org.jetbrains.kotlin.backend.common.serialization
 
-import org.jetbrains.kotlin.backend.common.LoggingContext
-import org.jetbrains.kotlin.backend.common.overrides.FakeOverrideBuilder
-import org.jetbrains.kotlin.backend.common.serialization.encodings.*
-import org.jetbrains.kotlin.backend.common.serialization.proto.Actual
 import org.jetbrains.kotlin.descriptors.ModuleDescriptor
 import org.jetbrains.kotlin.descriptors.impl.EmptyPackageFragmentDescriptor
 import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.declarations.impl.IrFileImpl
-import org.jetbrains.kotlin.ir.descriptors.*
-import org.jetbrains.kotlin.ir.symbols.*
 import org.jetbrains.kotlin.ir.symbols.impl.IrFileSymbolImpl
 import org.jetbrains.kotlin.ir.util.*
 import org.jetbrains.kotlin.library.IrLibrary
@@ -26,7 +20,6 @@ import org.jetbrains.kotlin.backend.common.serialization.proto.IrDeclaration as 
 import org.jetbrains.kotlin.backend.common.serialization.proto.IrFile as ProtoFile
 
 class IrFileDeserializer(
-    val linker: KotlinIrLinker,
     val file: IrFile,
     private val fileReader: IrLibraryFile,
     fileProto: ProtoFile,
@@ -71,10 +64,18 @@ class FileDeserializationState(
     handleNoModuleDeserializerFound: (IdSignature) -> IrModuleDeserializer,
 ) {
 
-    val symbolDeserializer = IrSymbolDeserializer(linker, fileReader, this, fileProto.actualsList, moduleDeserializer, handleNoModuleDeserializerFound)
+    val symbolDeserializer =
+        IrSymbolDeserializer(linker.symbolTable, fileReader, fileProto.actualsList, ::addIdSignature, linker::handleExpectActualMapping) { idSig, symbolKind ->
+            assert(idSig.isPublic)
+
+            val topLevelSig = idSig.topLevelSignature()
+            val actualModuleDeserializer =
+                moduleDeserializer.findModuleDeserializerForTopLevelId(topLevelSig) ?: handleNoModuleDeserializerFound(idSig)
+
+            actualModuleDeserializer.deserializeIrSymbol(idSig, symbolKind)
+        }
 
     private val declarationDeserializer = IrDeclarationDeserializer(
-        linker,
         linker.logger,
         linker.builtIns,
         linker.symbolTable,
@@ -86,9 +87,11 @@ class FileDeserializationState(
         deserializeInlineFunctions,
         deserializeBodies,
         symbolDeserializer,
+        linker.fakeOverrideBuilder.platformSpecificClassFilter,
+        linker.fakeOverrideClassQueue::add,
     )
 
-    val fileDeserializer = IrFileDeserializer(linker, file, fileReader, fileProto, symbolDeserializer, declarationDeserializer)
+    val fileDeserializer = IrFileDeserializer(file, fileReader, fileProto, symbolDeserializer, declarationDeserializer)
 
     private val reachableTopLevels = LinkedHashSet<IdSignature>()
 

@@ -180,6 +180,36 @@ abstract class KotlinIrLinker(
         // symbolTable.noUnboundLeft("unbound after fake overrides:")
     }
 
+    fun handleExpectActualMapping(idSig: IdSignature, rawSymbol: IrSymbol): IrSymbol {
+
+        // Actual signature
+        if (idSig in expectUniqIdToActualUniqId.values) {
+            actualSymbols[idSig] = rawSymbol
+        }
+
+        // Expect signature
+        expectUniqIdToActualUniqId[idSig]?.let { actualSig ->
+            assert(idSig.run { IdSignature.Flags.IS_EXPECT.test() })
+
+            val referencingSymbol = wrapInDelegatedSymbol(rawSymbol)
+
+            expectSymbols[idSig] = referencingSymbol
+
+            // Trigger actual symbol deserialization
+            topLevelActualUniqItToDeserializer[actualSig]?.let { moduleDeserializer -> // Not null if top-level
+                val actualSymbol = actualSymbols[actualSig]
+                // Check if
+                if (actualSymbol == null || !actualSymbol.isBound) {
+                    moduleDeserializer.addModuleReachableTopLevel(actualSig)
+                }
+            }
+
+            return referencingSymbol
+        }
+
+        return rawSymbol
+    }
+
     // The issue here is that an expect can not trigger its actual deserialization by reachability
     // because the expect can not see the actual higher in the module dependency dag.
     // So we force deserialization of actuals for all deserialized expect symbols here.
