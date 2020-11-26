@@ -60,6 +60,11 @@ class JsIrLinker(
             .map { it.moduleFragment }
             .filter { it.descriptor !== currentModule }
 
+
+    fun moduleDeserializer(moduleDescriptor: ModuleDescriptor): IrModuleDeserializer {
+        return deserializersForModules[moduleDescriptor]!!
+    }
+
     class JsFePluginContext(
         override val moduleDescriptor: ModuleDescriptor,
         override val bindingContext: BindingContext,

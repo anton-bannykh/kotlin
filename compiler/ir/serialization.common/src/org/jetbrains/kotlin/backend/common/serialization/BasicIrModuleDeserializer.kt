@@ -38,6 +38,10 @@ abstract class BasicIrModuleDeserializer(
         moduleDescriptor.allDependencyModules.filter { it != moduleDescriptor }.map { resolveModuleDeserializer(it) }
     }
 
+    override fun fileDeserializers(): Collection<IrFileDeserializer> {
+        return fileDeserializers
+    }
+
     override fun init(delegate: IrModuleDeserializer) {
         val fileCount = klib.fileCount()
 
