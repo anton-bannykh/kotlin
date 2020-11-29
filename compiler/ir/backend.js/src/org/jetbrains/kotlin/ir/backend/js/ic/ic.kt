@@ -54,6 +54,7 @@ fun prepareIcCaches(
         symbolTable.noUnboundLeft("Unbound symbols at the end of linker")
 
         // This won't work incrementally
+        // TODO don't move
         moveBodilessDeclarationsToSeparatePlace(context, moduleFragment)
 
         // TODO should be done incrementally
@@ -61,7 +62,14 @@ fun prepareIcCaches(
 
         lowerPreservingIcData(listOf(moduleFragment), irFactory, context)
 
-        IcSerializer(emptyLoggingContext, context.irBuiltIns, context.mapping).serializeDeclarations(irFactory.allDeclarations)
+        IcSerializer(
+            emptyLoggingContext,
+            context.irBuiltIns,
+            context.mapping,
+            irFactory,
+            deserializer,
+            moduleFragment
+        ).serializeDeclarations(irFactory.allDeclarations)
     }
 }
 

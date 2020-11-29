@@ -32,9 +32,9 @@ open class IdSignatureSerializer(val mangler: KotlinMangler.IrMangler) : IdSigna
     private var scopeIndex: Int = 0
     lateinit var table: DeclarationTable
 
-    fun reset() {
-        localIndex = 0
-        scopeIndex = 0
+    fun reset(newLocalIndex: Long = 0L, newScopeIndex: Int = 0) {
+        localIndex = newLocalIndex
+        scopeIndex = newScopeIndex
     }
 
     private inner class PublicIdSigBuilder : IdSignatureBuilder<IrDeclaration>(), IrElementVisitorVoid {

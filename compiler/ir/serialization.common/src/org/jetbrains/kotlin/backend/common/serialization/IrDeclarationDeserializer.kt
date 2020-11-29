@@ -59,7 +59,7 @@ class IrDeclarationDeserializer(
     val symbolTable: SymbolTable,
     val irFactory: IrFactory,
     val fileReader: IrLibraryFile,
-    file: IrFile,
+    val file: IrFile,
     val deserializeFakeOverrides: Boolean,
     val allowErrorNodes: Boolean,
     val deserializeInlineFunctions: Boolean,
@@ -67,6 +67,7 @@ class IrDeclarationDeserializer(
     val symbolDeserializer: IrSymbolDeserializer,
     val platformFakeOverrideClassFilter: PlatformFakeOverrideClassFilter,
     val addToFakeOverrideClassQueue: (IrClass) -> Unit,
+    val captureBodyIndex: (IrFile, IrBody, Int) -> Unit,
     val icMode: Boolean = false,
 ) {
 
@@ -448,13 +449,17 @@ class IrDeclarationDeserializer(
         } else {
             val errorType = IrErrorTypeImpl(null, emptyList(), Variance.INVARIANT)
             IrErrorExpressionImpl(-1, -1, errorType, "Expression body is not deserialized yet")
-        })
+        }).also {
+            captureBodyIndex(file, it, index)
+        }
     }
 
     fun deserializeStatementBody(index: Int): IrElement {
         return if (deserializeBodies) {
             val bodyData = loadStatementBodyProto(index)
-            bodyDeserializer.deserializeStatement(bodyData)
+            bodyDeserializer.deserializeStatement(bodyData).also {
+                captureBodyIndex(file, it as IrBody, index)
+            }
         } else {
             val errorType = IrErrorTypeImpl(null, emptyList(), Variance.INVARIANT)
             irFactory.createBlockBody(

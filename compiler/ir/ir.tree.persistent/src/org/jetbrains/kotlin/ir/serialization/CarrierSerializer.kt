@@ -23,15 +23,15 @@ import org.jetbrains.kotlin.ir.declarations.persistent.carriers.ErrorDeclaration
 class CarrierSerializer(val fileSerializer: IrFileSerializer) {
     private val serializerImpl = IrCarrierSerializerImpl(fileSerializer)
 
-    fun serializeCarriers(declarations: Iterable<IrDeclaration>): SerializedCarriers {
+    fun <T : PersistentIrElementBase<*>> serializeCarriers(elements: Iterable<T>): SerializedCarriers {
         TODO()
     }
 
-    private fun serializeCarriers(declaration: IrDeclaration) {
+    private fun serializeCarriers(element: IrDeclaration) {
         // TODO save bytes
-        if (declaration is PersistentIrElementBase<*>) {
+        if (element is PersistentIrElementBase<*>) {
             with (serializerImpl) {
-                declaration.values?.forEach {
+                element.values?.forEach {
                     when (it) {
                         is AnonymousInitializerCarrier -> serializeAnonymousInitializerCarrier(it)
                         is ClassCarrier -> serializeClassCarrier(it)
@@ -45,7 +45,7 @@ class CarrierSerializer(val fileSerializer: IrFileSerializer) {
                         is TypeAliasCarrier -> serializeTypeAliasCarrier(it)
                         is TypeParameterCarrier -> serializeTypeParameterCarrier(it)
                         is ValueParameterCarrier -> serializeValueParameterCarrier(it)
-                        else -> error("unknown Carrier")
+                        else -> error("unknown Carrier") // TODO bodies
                     }
                 }
             }

@@ -8,26 +8,39 @@ package org.jetbrains.kotlin.ir.backend.js.ic
 import org.jetbrains.kotlin.backend.common.LoggingContext
 import org.jetbrains.kotlin.backend.common.serialization.DeclarationTable
 import org.jetbrains.kotlin.backend.common.serialization.signature.IdSignatureSerializer
+import org.jetbrains.kotlin.descriptors.ModuleDescriptor
 import org.jetbrains.kotlin.ir.backend.js.JsMapping
 import org.jetbrains.kotlin.ir.backend.js.SerializedMappings
 import org.jetbrains.kotlin.ir.backend.js.lower.serialization.ir.JsGlobalDeclarationTable
 import org.jetbrains.kotlin.ir.backend.js.lower.serialization.ir.JsIrFileSerializer
+import org.jetbrains.kotlin.ir.backend.js.lower.serialization.ir.JsIrLinker
 import org.jetbrains.kotlin.ir.backend.js.lower.serialization.ir.JsManglerIr
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
+import org.jetbrains.kotlin.ir.declarations.IrErrorDeclaration
+import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
 import org.jetbrains.kotlin.ir.declarations.persistent.PersistentIrDeclarationBase
 import org.jetbrains.kotlin.ir.declarations.persistent.PersistentIrFactory
 import org.jetbrains.kotlin.ir.descriptors.IrBuiltIns
+import org.jetbrains.kotlin.ir.descriptors.WrappedErrorDescriptor
+import org.jetbrains.kotlin.ir.expressions.IrBlockBody
+import org.jetbrains.kotlin.ir.expressions.IrBody
+import org.jetbrains.kotlin.ir.expressions.IrExpressionBody
+import org.jetbrains.kotlin.ir.expressions.impl.IrErrorExpressionImpl
 import org.jetbrains.kotlin.ir.serialization.CarrierSerializer
 import org.jetbrains.kotlin.ir.serialization.SerializedCarriers
+import org.jetbrains.kotlin.ir.types.impl.IrErrorTypeImpl
 import org.jetbrains.kotlin.ir.util.IdSignature
 import org.jetbrains.kotlin.ir.util.file
 import org.jetbrains.kotlin.library.SerializedIrFile
+import org.jetbrains.kotlin.types.Variance
 
 class IcSerializer(
     val logger: LoggingContext,
     irBuiltIns: IrBuiltIns,
     val mappings: JsMapping,
     val irFactory: PersistentIrFactory,
+    val linker: JsIrLinker,
+    val module: IrModuleFragment
 ) {
 
     private val signaturer = IdSignatureSerializer(JsManglerIr)
@@ -36,6 +49,10 @@ class IcSerializer(
     fun serializeDeclarations(declarations: Iterable<IrDeclaration>): SerializedIcData {
 
         // TODO serialize body carriers and new bodies as well
+        val moduleDeserializer = linker.moduleDeserializer(module.descriptor)
+
+        val fileToDeserializer = moduleDeserializer.fileDeserializers().associateBy { it.file }
+
 
         val icData = declarations.groupBy {
             // TODO don't move declarations or effects outside the original file
@@ -43,7 +60,34 @@ class IcSerializer(
             it.file
         }.entries.map { (file, declarations) ->
 
-            val fileSerializer = JsIrFileSerializer(logger, IcDeclarationTable(globalDeclarationTable), mutableMapOf(), skipExpects = true, icMode = true)
+            val fileDeserializer = fileToDeserializer[file]!!
+
+            val maxFileLocalIndex = fileDeserializer.reversedSignatureIndex.keys.filterIsInstance<IdSignature.FileLocalSignature>().maxOf { it.id }
+            val maxScopeLocalIndex = fileDeserializer.reversedSignatureIndex.keys.filterIsInstance<IdSignature.ScopeLocalDeclaration>().maxOf { it.id }
+
+            val icDeclarationTable = IcDeclarationTable(globalDeclarationTable, irFactory, maxFileLocalIndex + 1, maxScopeLocalIndex + 1)
+            val fileSerializer = JsIrFileSerializer(logger, icDeclarationTable, mutableMapOf(), skipExpects = true, icMode = true)
+
+            // Serialize old bodies as they have probably changed.
+            // Need to keep the order same as before.
+            val bodies = (linker.bodyToIndex[file] ?: emptyMap())
+            val indexToBody = mutableMapOf<Int, IrBody>()
+            bodies.entries.forEach { (k, v) -> indexToBody[v] = k }
+
+            val maxIndex = indexToBody.keys.maxOrNull() ?: -1
+            for (i in 0..maxIndex) {
+                val body = indexToBody[i] ?: run {
+                    val errorType = IrErrorTypeImpl(null, emptyList(), Variance.INVARIANT)
+                    irFactory.createBlockBody(
+                        -1, -1, listOf(IrErrorExpressionImpl(-1, -1, errorType, "Statement body is not deserialized yet"))
+                    )
+                }
+                if (body is IrExpressionBody) {
+                    fileSerializer.serializeIrExpressionBody(body.expression)
+                } else {
+                    fileSerializer.serializeIrStatementBody(body)
+                }
+            }
 
             // Only save newly created declarations
             val newDeclarations = declarations.filter { d ->
@@ -52,7 +96,7 @@ class IcSerializer(
 
             val serializedIrFile = fileSerializer.serializeDeclarationsForIC(file, newDeclarations)
 
-            val serializedCarriers = CarrierSerializer(fileSerializer).serializeCarriers(declarations)
+            val serializedCarriers = CarrierSerializer(fileSerializer).serializeCarriers(declarations.filterIsInstance<PersistentIrDeclarationBase<*>>())
 
             val serializedMappings = mappings.serializeMappings(declarations)
 
@@ -67,7 +111,17 @@ class IcSerializer(
     }
 
     // Returns precomputed signatures for the newly created declarations. Delegates to the default table otherwise.
-    inner class IcDeclarationTable(globalDeclarationTable: JsGlobalDeclarationTable) : DeclarationTable(globalDeclarationTable) {
+    class IcDeclarationTable(
+        globalDeclarationTable: JsGlobalDeclarationTable,
+        val irFactory: PersistentIrFactory,
+        newLocalIndex: Long,
+        newScopeIndex: Int,
+    ) : DeclarationTable(globalDeclarationTable) {
+
+        init {
+            signaturer.reset(newLocalIndex, newScopeIndex)
+        }
+
         override fun isExportedDeclaration(declaration: IrDeclaration): Boolean {
             if (declaration is PersistentIrDeclarationBase<*>) return true
             return super.isExportedDeclaration(declaration)

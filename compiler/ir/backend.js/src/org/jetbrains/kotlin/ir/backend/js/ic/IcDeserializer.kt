@@ -48,12 +48,6 @@ class IcDeserializer(
             }
         }
 
-        fun IdSignature.enqueue() {
-            assert(this.isPublic)
-            val icDeserializer = publicSignatureToIcFileDeserializer[this] ?: error("Couldn't find file deserializer for signature $this")
-            enqueue(icDeserializer)
-        }
-
         val pathToIcFileData = icData.files.associateBy {
             it.file.path
         }
@@ -92,7 +86,9 @@ class IcDeserializer(
             // Deserialize the declaration
             val declaration = icFileDeserializer.deserializeDeclaration(signature)
 
-            //    deserialize related mappings
+            // TODO declaration to be deserialized
+            context.mapping.deserializeMappings(icFileDeserializer.icFileData.mappings)
+
             //    deserialize related carriers
         }
     }
@@ -130,6 +126,7 @@ class IcDeserializer(
             symbolDeserializer,
             DefaultFakeOverrideClassFilter,
             { /* Don't care about fake overrides */ },
+            { _, _, _, -> }, // Don't need to capture bodies?
         )
 
         private val protoFile: ProtoFile = ProtoFile.parseFrom(icFileData.file.fileData.codedInputStream, ExtensionRegistryLite.newInstance())

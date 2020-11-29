@@ -51,7 +51,7 @@ abstract class GlobalDeclarationTable(
 
 open class DeclarationTable(private val globalDeclarationTable: GlobalDeclarationTable) {
     private val table = mutableMapOf<IrDeclaration, IdSignature>()
-    private val signaturer = globalDeclarationTable.signaturer.also {
+    protected val signaturer = globalDeclarationTable.signaturer.also {
         it.reset()
         it.table = this
     }

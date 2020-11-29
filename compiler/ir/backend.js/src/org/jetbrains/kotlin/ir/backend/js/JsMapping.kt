@@ -72,8 +72,31 @@ class JsMapping(private val irFactory: IrFactory) : DefaultMapping() {
         }
     }
 
+    private inner class JsMappingCollectionDelegate<K: IrDeclaration, V: IrDeclaration> : Mapping.Delegate<K, Collection<V>>() {
+        init {
+
+        }
+
+        private val map: MutableMap<IrSymbol, Collection<IrSymbol>> = mutableMapOf()
+
+        override operator fun get(key: K): Collection<V>? {
+            irFactory.stageController.lazyLower(key)
+            return map[(key as IrSymbolOwner).symbol]?.map { it.owner as V }
+        }
+
+        override operator fun set(key: K, value: Collection<V>?) {
+            irFactory.stageController.lazyLower(key)
+            if (value == null) {
+                map.remove((key as IrSymbolOwner).symbol)
+            } else {
+                map[(key as IrSymbolOwner).symbol] = value.map { (it as IrSymbolOwner).symbol }
+            }
+        }
+    }
+
     fun serializeMappings(declarations: Iterable<IrDeclaration>): SerializedMappings {
         allMappings.forEach { mapping ->
+            mapping.serializeFor(declarations)
             // TODO mapping.serializeFor(dec
         }
 
