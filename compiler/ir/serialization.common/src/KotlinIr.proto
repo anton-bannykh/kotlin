@@ -443,6 +443,7 @@ message IrDeclarationBase {
   required int64 coordinates = 3;
   optional int64 flags = 4 [default = 0];
   repeated IrConstructorCall annotation = 5;
+  optional int64 parent_symbol = 6;
 }
 
 message IrFunctionBase {
@@ -543,6 +544,7 @@ message IrTypeAlias {
 
 message IrErrorDeclaration {
   required int64 coordinates = 1;
+  optional int64 parent_symbol = 2;
 }
 
 message IrEnumEntry {

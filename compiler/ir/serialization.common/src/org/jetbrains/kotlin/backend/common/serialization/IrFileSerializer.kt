@@ -1029,6 +1029,9 @@ open class IrFileSerializer(
             addAllAnnotation(serializeAnnotations(declaration.annotations))
             flags?.let { setFlags(it) }
             originName = serializeIrDeclarationOrigin(declaration.origin)
+            if (symbolReferencesOnly) {
+                parentSymbol = serializeIrSymbol((declaration.parent as IrSymbolOwner).symbol)
+            }
             build()
         }
     }
@@ -1078,7 +1081,6 @@ open class IrFileSerializer(
             function.valueParameters.forEach {
                 proto.addValueParameterSymbol(serializeIrDeclarationAndSymbol(it))
             }
-            // TODO correspondingProperty
         } else {
             function.typeParameters.forEach {
                 proto.addTypeParameter(serializeIrTypeParameter(it))
@@ -1377,6 +1379,7 @@ open class IrFileSerializer(
 
         val topLevelDeclarations = mutableListOf<SerializedDeclaration>()
 
+        // TODO sort by parents
         declarations.forEach {
             doSerializeIrDeclaration(it)
         }
