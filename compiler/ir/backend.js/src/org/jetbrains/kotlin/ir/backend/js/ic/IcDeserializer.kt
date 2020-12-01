@@ -13,6 +13,7 @@ import org.jetbrains.kotlin.ir.backend.js.lower.serialization.ir.JsIrLinker
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
 import org.jetbrains.kotlin.ir.declarations.path
+import org.jetbrains.kotlin.ir.serialization.CarrierDeserializer
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.util.IdSignature
 import org.jetbrains.kotlin.library.SerializedIrFile
@@ -86,10 +87,11 @@ class IcDeserializer(
             // Deserialize the declaration
             val declaration = icFileDeserializer.deserializeDeclaration(signature)
 
+            icFileDeserializer.injectCarriers(declaration)
+
             // TODO declaration to be deserialized
             context.mapping.deserializeMappings(icFileDeserializer.icFileData.mappings)
 
-            //    deserialize related carriers
         }
     }
 
@@ -131,6 +133,8 @@ class IcDeserializer(
 
         private val protoFile: ProtoFile = ProtoFile.parseFrom(icFileData.file.fileData.codedInputStream, ExtensionRegistryLite.newInstance())
 
+        private val carrierDeserializer = CarrierDeserializer(declarationDeserializer, icFileData.carriers)
+
         val reversedSignatureIndex: Map<IdSignature, Int> = protoFile.declarationIdList.map { symbolDeserializer.deserializeIdSignature(it) to it }.toMap()
 
         val visited = HashSet<IdSignature>()
@@ -151,6 +155,10 @@ class IcDeserializer(
         fun deserializeIrSymbol(idSig: IdSignature, symbolKind: BinarySymbolData.SymbolKind): IrSymbol {
             enqueueLocalTopLevelDeclaration(idSig)
             return symbolDeserializer.deserializeIrSymbol(idSig, symbolKind)
+        }
+
+        fun injectCarriers(declaration: IrDeclaration) {
+            carrierDeserializer.injectCarriers(declaration)
         }
     }
 }
