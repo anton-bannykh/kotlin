@@ -20,6 +20,7 @@ import org.jetbrains.kotlin.ir.backend.js.transformers.irToJs.IrModuleToJsTransf
 import org.jetbrains.kotlin.ir.backend.js.utils.NameTables
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
+import org.jetbrains.kotlin.ir.declarations.IrSymbolOwner
 import org.jetbrains.kotlin.ir.declarations.StageController
 import org.jetbrains.kotlin.ir.declarations.persistent.PersistentIrFactory
 import org.jetbrains.kotlin.ir.util.ExternalDependenciesGenerator
@@ -165,14 +166,12 @@ class WholeWorldStageController : StageController() {
     }
 
     override fun createSignature(): IdSignature {
-        // TODO create LoweredDeclarationSignature
-        return IdSignature.LoweredDeclarationSignature(TODO("${currentDeclaration!!}"), currentStage, index)
+        return IdSignature.LoweredDeclarationSignature((currentDeclaration as IrSymbolOwner).symbol.signature, currentStage, index)
     }
 }
 
 fun lowerPreservingIcData(allModules: Iterable<IrModuleFragment>, irFactory: PersistentIrFactory, context: JsIrBackendContext) {
     val controller = WholeWorldStageController()
-
     irFactory.stageController = controller
 
     // TODO what about other lowering?

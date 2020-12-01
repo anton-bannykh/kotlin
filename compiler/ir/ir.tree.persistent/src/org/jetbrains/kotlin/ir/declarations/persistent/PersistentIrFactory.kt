@@ -37,7 +37,9 @@ class PersistentIrFactory : IrFactory {
         if (this is IrSymbolOwner) {
             // TODO what about local declarations? They don't seem to have public signatures...
             if (symbol !is IrPublicSymbolBase<*>) {
-                symbolToSignatureMap[symbol] = stageController.createSignature()
+                stageController.createSignature()?.let {
+                    symbolToSignatureMap[symbol] = it
+                }
             }
         }
 
