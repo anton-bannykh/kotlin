@@ -56,13 +56,4 @@ public interface IrDeclarationBaseOrBuilder extends
    * <code>repeated .org.jetbrains.kotlin.backend.common.serialization.proto.IrConstructorCall annotation = 5;</code>
    */
   int getAnnotationCount();
-
-  /**
-   * <code>optional int64 parent_symbol = 6;</code>
-   */
-  boolean hasParentSymbol();
-  /**
-   * <code>optional int64 parent_symbol = 6;</code>
-   */
-  long getParentSymbol();
 }

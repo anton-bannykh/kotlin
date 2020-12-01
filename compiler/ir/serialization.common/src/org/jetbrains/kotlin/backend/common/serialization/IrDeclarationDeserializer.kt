@@ -68,7 +68,7 @@ class IrDeclarationDeserializer(
     val platformFakeOverrideClassFilter: PlatformFakeOverrideClassFilter,
     val addToFakeOverrideClassQueue: (IrClass) -> Unit,
     val captureBodyIndex: (IrFile, IrBody, Int) -> Unit,
-    val icMode: Boolean = false,
+    val skipMutableState: Boolean = false,
 ) {
 
     val bodyDeserializer = IrBodyDeserializer(logger, builtIns, allowErrorNodes, irFactory, fileReader, this)
@@ -210,7 +210,9 @@ class IrDeclarationDeserializer(
                 deserializeIrDeclarationOrigin(proto.originName), proto.flags
             )
             result.annotations += deserializeAnnotations(proto.annotationList)
-            result.parent = currentParent
+            if (!skipMutableState) {
+                result.parent = currentParent
+            }
             return result
         } finally {
             eraseDelegatedSymbol(s)
@@ -305,23 +307,25 @@ class IrDeclarationDeserializer(
                     flags.isFun,
                 )
             }.usingParent {
-                typeParameters = deserializeTypeParameters(proto.typeParameterList, true)
+                if (!skipMutableState) {
+                    typeParameters = deserializeTypeParameters(proto.typeParameterList, true)
 
-                superTypes = proto.superTypeList.map { deserializeIrType(it) }
+                    superTypes = proto.superTypeList.map { deserializeIrType(it) }
 
-                proto.declarationList
-                    .filterNot { isSkippableFakeOverride(it, this) }
-                    .mapTo(declarations) { deserializeDeclaration(it) }
+                    proto.declarationList
+                        .filterNot { isSkippableFakeOverride(it, this) }
+                        .mapTo(declarations) { deserializeDeclaration(it) }
 
-                thisReceiver = deserializeIrValueParameter(proto.thisReceiver, -1)
+                    thisReceiver = deserializeIrValueParameter(proto.thisReceiver, -1)
 
-                (descriptor as? WrappedClassDescriptor)?.bind(this)
-
-                if (!deserializeFakeOverrides) {
-                    if (symbol.isPublicApi) {
-                        addToFakeOverrideClassQueue(this)
+                    if (!deserializeFakeOverrides) {
+                        if (symbol.isPublicApi) {
+                            addToFakeOverrideClassQueue(this)
+                        }
                     }
                 }
+
+                (descriptor as? WrappedClassDescriptor)?.bind(this)
             }
         }
 
@@ -340,7 +344,9 @@ class IrDeclarationDeserializer(
                     origin
                 )
             }.usingParent {
-                typeParameters = deserializeTypeParameters(proto.typeParameterList, true)
+                if (!skipMutableState) {
+                    typeParameters = deserializeTypeParameters(proto.typeParameterList, true)
+                }
 
                 (descriptor as? WrappedTypeAliasDescriptor)?.bind(this)
             }
@@ -474,18 +480,20 @@ class IrDeclarationDeserializer(
     ): T = withDeserializedIrDeclarationBase(proto.base) { symbol, idSig, startOffset, endOffset, origin, fcode ->
         symbolTable.withScope(symbol.descriptor) {
             block(symbol as IrFunctionSymbol, idSig, startOffset, endOffset, origin, fcode).usingParent {
-                typeParameters = deserializeTypeParameters(proto.typeParameterList, false)
-                val nameType = BinaryNameAndType.decode(proto.nameType)
-                returnType = deserializeIrType(nameType.typeIndex)
+                if (!skipMutableState) {
+                    typeParameters = deserializeTypeParameters(proto.typeParameterList, false)
+                    val nameType = BinaryNameAndType.decode(proto.nameType)
+                    returnType = deserializeIrType(nameType.typeIndex)
 
-                withBodyGuard {
-                    valueParameters = deserializeValueParameters(proto.valueParameterList)
-                    if (proto.hasDispatchReceiver())
-                        dispatchReceiverParameter = deserializeIrValueParameter(proto.dispatchReceiver, -1)
-                    if (proto.hasExtensionReceiver())
-                        extensionReceiverParameter = deserializeIrValueParameter(proto.extensionReceiver, -1)
-                    if (proto.hasBody()) {
-                        body = deserializeStatementBody(proto.body) as IrBody
+                    withBodyGuard {
+                        valueParameters = deserializeValueParameters(proto.valueParameterList)
+                        if (proto.hasDispatchReceiver())
+                            dispatchReceiverParameter = deserializeIrValueParameter(proto.dispatchReceiver, -1)
+                        if (proto.hasExtensionReceiver())
+                            extensionReceiverParameter = deserializeIrValueParameter(proto.extensionReceiver, -1)
+                        if (proto.hasBody()) {
+                            body = deserializeStatementBody(proto.body) as IrBody
+                        }
                     }
                 }
             }
@@ -546,10 +554,12 @@ class IrDeclarationDeserializer(
             symbolTable.declareEnumEntryFromLinker((symbol as IrEnumEntrySymbol).descriptor, uniqId) {
                 irFactory.createEnumEntry(startOffset, endOffset, origin, it, deserializeName(proto.name))
             }.apply {
-                if (proto.hasCorrespondingClass())
-                    correspondingClass = deserializeIrClass(proto.correspondingClass)
-                if (proto.hasInitializer())
-                    initializerExpression = deserializeExpressionBody(proto.initializer)
+                if (!skipMutableState) {
+                    if (proto.hasCorrespondingClass())
+                        correspondingClass = deserializeIrClass(proto.correspondingClass)
+                    if (proto.hasInitializer())
+                        initializerExpression = deserializeExpressionBody(proto.initializer)
+                }
 
                 (descriptor as? WrappedEnumEntryDescriptor)?.bind(this)
             }
@@ -625,10 +635,12 @@ class IrDeclarationDeserializer(
                 deserializeIrType(nameAndType.typeIndex),
                 flags.isVar
             ).apply {
-                delegate = deserializeIrVariable(proto.delegate)
-                getter = deserializeIrFunction(proto.getter)
-                if (proto.hasSetter())
-                    setter = deserializeIrFunction(proto.setter)
+                if (!skipMutableState) {
+                    delegate = deserializeIrVariable(proto.delegate)
+                    getter = deserializeIrFunction(proto.getter)
+                    if (proto.hasSetter())
+                        setter = deserializeIrFunction(proto.setter)
+                }
 
                 (descriptor as? WrappedVariableDescriptorWithAccessor)?.bind(this)
             }
@@ -653,25 +665,27 @@ class IrDeclarationDeserializer(
                     flags.isFakeOverride
                 )
             }.apply {
-                if (proto.hasGetter()) {
-                    getter = deserializeIrFunction(proto.getter).also {
-                        it.correspondingPropertySymbol = symbol
+                if (!skipMutableState) {
+                    if (proto.hasGetter()) {
+                        getter = deserializeIrFunction(proto.getter).also {
+                            it.correspondingPropertySymbol = symbol
+                        }
                     }
-                }
-                if (proto.hasSetter()) {
-                    setter = deserializeIrFunction(proto.setter).also {
-                        it.correspondingPropertySymbol = symbol
+                    if (proto.hasSetter()) {
+                        setter = deserializeIrFunction(proto.setter).also {
+                            it.correspondingPropertySymbol = symbol
+                        }
                     }
-                }
-                if (proto.hasBackingField()) {
-                    backingField = deserializeIrField(proto.backingField, !symbol.isPublicApi).also {
-                        // A property symbol and its field symbol share the same descriptor.
-                        // Unfortunately symbol deserialization doesn't know anything about that.
-                        // So we can end up with two wrapped property descriptors for property and its field.
-                        // In that case we need to bind the field's one here.
-                        if (descriptor != it.descriptor)
-                            (it.descriptor as? WrappedPropertyDescriptor)?.bind(this)
-                        it.correspondingPropertySymbol = symbol
+                    if (proto.hasBackingField()) {
+                        backingField = deserializeIrField(proto.backingField, !symbol.isPublicApi).also {
+                            // A property symbol and its field symbol share the same descriptor.
+                            // Unfortunately symbol deserialization doesn't know anything about that.
+                            // So we can end up with two wrapped property descriptors for property and its field.
+                            // In that case we need to bind the field's one here.
+                            if (descriptor != it.descriptor)
+                                (it.descriptor as? WrappedPropertyDescriptor)?.bind(this)
+                            it.correspondingPropertySymbol = symbol
+                        }
                     }
                 }
 

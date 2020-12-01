@@ -79,27 +79,6 @@ public final class IrTypeAlias extends
             typeParameter_.add(input.readMessage(org.jetbrains.kotlin.backend.common.serialization.proto.IrTypeParameter.PARSER, extensionRegistry));
             break;
           }
-          case 32: {
-            if (!((mutable_bitField0_ & 0x00000008) == 0x00000008)) {
-              typeParameterSymbol_ = new java.util.ArrayList<java.lang.Long>();
-              mutable_bitField0_ |= 0x00000008;
-            }
-            typeParameterSymbol_.add(input.readInt64());
-            break;
-          }
-          case 34: {
-            int length = input.readRawVarint32();
-            int limit = input.pushLimit(length);
-            if (!((mutable_bitField0_ & 0x00000008) == 0x00000008) && input.getBytesUntilLimit() > 0) {
-              typeParameterSymbol_ = new java.util.ArrayList<java.lang.Long>();
-              mutable_bitField0_ |= 0x00000008;
-            }
-            while (input.getBytesUntilLimit() > 0) {
-              typeParameterSymbol_.add(input.readInt64());
-            }
-            input.popLimit(limit);
-            break;
-          }
         }
       }
     } catch (org.jetbrains.kotlin.protobuf.InvalidProtocolBufferException e) {
@@ -110,9 +89,6 @@ public final class IrTypeAlias extends
     } finally {
       if (((mutable_bitField0_ & 0x00000004) == 0x00000004)) {
         typeParameter_ = java.util.Collections.unmodifiableList(typeParameter_);
-      }
-      if (((mutable_bitField0_ & 0x00000008) == 0x00000008)) {
-        typeParameterSymbol_ = java.util.Collections.unmodifiableList(typeParameterSymbol_);
       }
       try {
         unknownFieldsCodedOutput.flush();
@@ -205,45 +181,10 @@ public final class IrTypeAlias extends
     return typeParameter_.get(index);
   }
 
-  public static final int TYPE_PARAMETER_SYMBOL_FIELD_NUMBER = 4;
-  private java.util.List<java.lang.Long> typeParameterSymbol_;
-  /**
-   * <code>repeated int64 type_parameter_symbol = 4;</code>
-   *
-   * <pre>
-   * for IC
-   * </pre>
-   */
-  public java.util.List<java.lang.Long>
-      getTypeParameterSymbolList() {
-    return typeParameterSymbol_;
-  }
-  /**
-   * <code>repeated int64 type_parameter_symbol = 4;</code>
-   *
-   * <pre>
-   * for IC
-   * </pre>
-   */
-  public int getTypeParameterSymbolCount() {
-    return typeParameterSymbol_.size();
-  }
-  /**
-   * <code>repeated int64 type_parameter_symbol = 4;</code>
-   *
-   * <pre>
-   * for IC
-   * </pre>
-   */
-  public long getTypeParameterSymbol(int index) {
-    return typeParameterSymbol_.get(index);
-  }
-
   private void initFields() {
     base_ = org.jetbrains.kotlin.backend.common.serialization.proto.IrDeclarationBase.getDefaultInstance();
     nameType_ = 0L;
     typeParameter_ = java.util.Collections.emptyList();
-    typeParameterSymbol_ = java.util.Collections.emptyList();
   }
   private byte memoizedIsInitialized = -1;
   public final boolean isInitialized() {
@@ -285,9 +226,6 @@ public final class IrTypeAlias extends
     for (int i = 0; i < typeParameter_.size(); i++) {
       output.writeMessage(3, typeParameter_.get(i));
     }
-    for (int i = 0; i < typeParameterSymbol_.size(); i++) {
-      output.writeInt64(4, typeParameterSymbol_.get(i));
-    }
     output.writeRawBytes(unknownFields);
   }
 
@@ -308,15 +246,6 @@ public final class IrTypeAlias extends
     for (int i = 0; i < typeParameter_.size(); i++) {
       size += org.jetbrains.kotlin.protobuf.CodedOutputStream
         .computeMessageSize(3, typeParameter_.get(i));
-    }
-    {
-      int dataSize = 0;
-      for (int i = 0; i < typeParameterSymbol_.size(); i++) {
-        dataSize += org.jetbrains.kotlin.protobuf.CodedOutputStream
-          .computeInt64SizeNoTag(typeParameterSymbol_.get(i));
-      }
-      size += dataSize;
-      size += 1 * getTypeParameterSymbolList().size();
     }
     size += unknownFields.size();
     memoizedSerializedSize = size;
@@ -418,8 +347,6 @@ public final class IrTypeAlias extends
       bitField0_ = (bitField0_ & ~0x00000002);
       typeParameter_ = java.util.Collections.emptyList();
       bitField0_ = (bitField0_ & ~0x00000004);
-      typeParameterSymbol_ = java.util.Collections.emptyList();
-      bitField0_ = (bitField0_ & ~0x00000008);
       return this;
     }
 
@@ -456,11 +383,6 @@ public final class IrTypeAlias extends
         bitField0_ = (bitField0_ & ~0x00000004);
       }
       result.typeParameter_ = typeParameter_;
-      if (((bitField0_ & 0x00000008) == 0x00000008)) {
-        typeParameterSymbol_ = java.util.Collections.unmodifiableList(typeParameterSymbol_);
-        bitField0_ = (bitField0_ & ~0x00000008);
-      }
-      result.typeParameterSymbol_ = typeParameterSymbol_;
       result.bitField0_ = to_bitField0_;
       return result;
     }
@@ -480,16 +402,6 @@ public final class IrTypeAlias extends
         } else {
           ensureTypeParameterIsMutable();
           typeParameter_.addAll(other.typeParameter_);
-        }
-        
-      }
-      if (!other.typeParameterSymbol_.isEmpty()) {
-        if (typeParameterSymbol_.isEmpty()) {
-          typeParameterSymbol_ = other.typeParameterSymbol_;
-          bitField0_ = (bitField0_ & ~0x00000008);
-        } else {
-          ensureTypeParameterSymbolIsMutable();
-          typeParameterSymbol_.addAll(other.typeParameterSymbol_);
         }
         
       }
@@ -753,100 +665,6 @@ public final class IrTypeAlias extends
       ensureTypeParameterIsMutable();
       typeParameter_.remove(index);
 
-      return this;
-    }
-
-    private java.util.List<java.lang.Long> typeParameterSymbol_ = java.util.Collections.emptyList();
-    private void ensureTypeParameterSymbolIsMutable() {
-      if (!((bitField0_ & 0x00000008) == 0x00000008)) {
-        typeParameterSymbol_ = new java.util.ArrayList<java.lang.Long>(typeParameterSymbol_);
-        bitField0_ |= 0x00000008;
-       }
-    }
-    /**
-     * <code>repeated int64 type_parameter_symbol = 4;</code>
-     *
-     * <pre>
-     * for IC
-     * </pre>
-     */
-    public java.util.List<java.lang.Long>
-        getTypeParameterSymbolList() {
-      return java.util.Collections.unmodifiableList(typeParameterSymbol_);
-    }
-    /**
-     * <code>repeated int64 type_parameter_symbol = 4;</code>
-     *
-     * <pre>
-     * for IC
-     * </pre>
-     */
-    public int getTypeParameterSymbolCount() {
-      return typeParameterSymbol_.size();
-    }
-    /**
-     * <code>repeated int64 type_parameter_symbol = 4;</code>
-     *
-     * <pre>
-     * for IC
-     * </pre>
-     */
-    public long getTypeParameterSymbol(int index) {
-      return typeParameterSymbol_.get(index);
-    }
-    /**
-     * <code>repeated int64 type_parameter_symbol = 4;</code>
-     *
-     * <pre>
-     * for IC
-     * </pre>
-     */
-    public Builder setTypeParameterSymbol(
-        int index, long value) {
-      ensureTypeParameterSymbolIsMutable();
-      typeParameterSymbol_.set(index, value);
-      
-      return this;
-    }
-    /**
-     * <code>repeated int64 type_parameter_symbol = 4;</code>
-     *
-     * <pre>
-     * for IC
-     * </pre>
-     */
-    public Builder addTypeParameterSymbol(long value) {
-      ensureTypeParameterSymbolIsMutable();
-      typeParameterSymbol_.add(value);
-      
-      return this;
-    }
-    /**
-     * <code>repeated int64 type_parameter_symbol = 4;</code>
-     *
-     * <pre>
-     * for IC
-     * </pre>
-     */
-    public Builder addAllTypeParameterSymbol(
-        java.lang.Iterable<? extends java.lang.Long> values) {
-      ensureTypeParameterSymbolIsMutable();
-      org.jetbrains.kotlin.protobuf.AbstractMessageLite.Builder.addAll(
-          values, typeParameterSymbol_);
-      
-      return this;
-    }
-    /**
-     * <code>repeated int64 type_parameter_symbol = 4;</code>
-     *
-     * <pre>
-     * for IC
-     * </pre>
-     */
-    public Builder clearTypeParameterSymbol() {
-      typeParameterSymbol_ = java.util.Collections.emptyList();
-      bitField0_ = (bitField0_ & ~0x00000008);
-      
       return this;
     }
 

@@ -111,7 +111,7 @@ open class IrFileSerializer(
     private val expectDescriptorToSymbol: MutableMap<DeclarationDescriptor, IrSymbol>,
     private val bodiesOnlyForInlines: Boolean = false,
     private val skipExpects: Boolean = false,
-    private val symbolReferencesOnly: Boolean = false, // required for JS IC caches
+    private val skipMutableState: Boolean = false, // required for JS IC caches
 ) {
     private val loopIndex = mutableMapOf<IrLoop, Int>()
     private var currentLoopIndex = 0
@@ -1029,9 +1029,6 @@ open class IrFileSerializer(
             addAllAnnotation(serializeAnnotations(declaration.annotations))
             flags?.let { setFlags(it) }
             originName = serializeIrDeclarationOrigin(declaration.origin)
-            if (symbolReferencesOnly) {
-                parentSymbol = serializeIrSymbol((declaration.parent as IrSymbolOwner).symbol)
-            }
             build()
         }
     }
@@ -1068,20 +1065,7 @@ open class IrFileSerializer(
             .setBase(serializeIrDeclarationBase(function, flags))
             .setNameType(serializeNameAndType(function.name, function.returnType))
 
-        if (symbolReferencesOnly) {
-            function.typeParameters.forEach {
-                proto.addTypeParameterSymbol(serializeIrDeclarationAndSymbol(it))
-            }
-            function.dispatchReceiverParameter?.let {
-                proto.setDispatchReceiverSymbol(serializeIrDeclarationAndSymbol(it))
-            }
-            function.extensionReceiverParameter?.let {
-                proto.setExtensionReceiverSymbol(serializeIrDeclarationAndSymbol(it))
-            }
-            function.valueParameters.forEach {
-                proto.addValueParameterSymbol(serializeIrDeclarationAndSymbol(it))
-            }
-        } else {
+        if (!skipMutableState) {
             function.typeParameters.forEach {
                 proto.addTypeParameter(serializeIrTypeParameter(it))
             }
@@ -1111,9 +1095,6 @@ open class IrFileSerializer(
             proto.addOverridden(serializeIrSymbol(it))
         }
 
-        if (symbolReferencesOnly) {
-            declaration.correspondingPropertySymbol?.let { proto.correspondingPropertySymbol = serializeIrSymbol(it) }
-        }
         return proto.build()
     }
 
@@ -1127,13 +1108,10 @@ open class IrFileSerializer(
         val proto = ProtoLocalDelegatedProperty.newBuilder()
             .setBase(serializeIrDeclarationBase(variable, LocalVariableFlags.encode(variable)))
             .setNameType(serializeNameAndType(variable.name, variable.type))
-            .setDelegate(serializeIrVariable(variable.delegate))
 
-        if (symbolReferencesOnly) {
-            proto.setGetterSymbol(serializeIrDeclarationAndSymbol(variable.getter as IrSimpleFunction))
-            variable.setter?.let { proto.setGetterSymbol(serializeIrDeclarationAndSymbol(it as IrSimpleFunction)) }
-        } else {
-            proto.setGetter(serializeIrFunction(variable.getter as IrSimpleFunction)) // TODO: can it be non simple?
+        if (!skipMutableState) {
+            proto.delegate = serializeIrVariable(variable.delegate)
+            proto.getter = serializeIrFunction(variable.getter as IrSimpleFunction) // TODO: can it be non simple?
             variable.setter?.let { proto.setSetter(serializeIrFunction(it as IrSimpleFunction)) } // TODO: ditto.
         }
 
@@ -1145,11 +1123,7 @@ open class IrFileSerializer(
             .setBase(serializeIrDeclarationBase(property, PropertyFlags.encode(property)))
             .setName(serializeName(property.name))
 
-        if (symbolReferencesOnly) {
-            property.backingField?.let { proto.backingFieldSymbol = serializeIrDeclarationAndSymbol(it) }
-            property.getter?.let { proto.getterSymbol = serializeIrDeclarationAndSymbol(it) }
-            property.setter?.let { proto.setterSymbol = serializeIrDeclarationAndSymbol(it) }
-        } else {
+        if (!skipMutableState) {
             property.backingField?.let { proto.backingField = serializeIrField(it) }
             property.getter?.let { proto.getter = serializeIrFunction(it) }
             property.setter?.let { proto.setter = serializeIrFunction(it) }
@@ -1182,14 +1156,7 @@ open class IrFileSerializer(
             .setBase(serializeIrDeclarationBase(clazz, ClassFlags.encode(clazz)))
             .setName(serializeName(clazz.name))
 
-        if (symbolReferencesOnly) {
-            clazz.typeParameters.forEach {
-                proto.addTypeParameterSymbol(serializeIrDeclarationAndSymbol(it))
-            }
-
-            clazz.thisReceiver?.let { proto.thisReceiverSymbol = serializeIrDeclarationAndSymbol(it) }
-
-        } else {
+        if (!skipMutableState) {
             clazz.declarations.forEach {
                 if (memberNeedsSerialization(it)) proto.addDeclaration(serializeDeclaration(it))
             }
@@ -1199,10 +1166,10 @@ open class IrFileSerializer(
             }
 
             clazz.thisReceiver?.let { proto.thisReceiver = serializeIrValueParameter(it) }
-        }
 
-        clazz.superTypes.forEach {
-            proto.addSuperType(serializeIrType(it))
+            clazz.superTypes.forEach {
+                proto.addSuperType(serializeIrType(it))
+            }
         }
 
         return proto.build()
@@ -1215,9 +1182,7 @@ open class IrFileSerializer(
             .setNameType(serializeNameAndType(typeAlias.name, typeAlias.expandedType))
 
         typeAlias.typeParameters.forEach {
-            if (symbolReferencesOnly) {
-                proto.addTypeParameterSymbol(serializeIrDeclarationAndSymbol(it))
-            } else {
+            if (!skipMutableState) {
                 proto.addTypeParameter(serializeIrTypeParameter(it))
             }
         }
@@ -1236,13 +1201,11 @@ open class IrFileSerializer(
             .setBase(serializeIrDeclarationBase(enumEntry, null))
             .setName(serializeName(enumEntry.name))
 
-        enumEntry.initializerExpression?.let {
-            proto.initializer = serializeIrExpressionBody(it.expression)
-        }
-        enumEntry.correspondingClass?.let {
-            if (symbolReferencesOnly) {
-                proto.correspondingClassSymbol = serializeIrDeclarationAndSymbol(it)
-            } else {
+        if (!skipMutableState) {
+            enumEntry.initializerExpression?.let {
+                proto.initializer = serializeIrExpressionBody(it.expression)
+            }
+            enumEntry.correspondingClass?.let {
                 proto.correspondingClass = serializeIrClass(it)
             }
         }
@@ -1354,7 +1317,7 @@ open class IrFileSerializer(
     }
 
 
-    fun doSerializeIrDeclaration(declaration: IrDeclaration, register: Boolean = symbolReferencesOnly): ProtoDeclaration {
+    fun doSerializeIrDeclaration(declaration: IrDeclaration, register: Boolean = skipMutableState): ProtoDeclaration {
         val protoDeclaration = serializeDeclaration(declaration)
 
         if (register) {

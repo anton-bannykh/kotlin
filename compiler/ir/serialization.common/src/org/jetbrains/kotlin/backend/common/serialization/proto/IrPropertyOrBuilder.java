@@ -51,39 +51,4 @@ public interface IrPropertyOrBuilder extends
    * <code>optional .org.jetbrains.kotlin.backend.common.serialization.proto.IrFunction setter = 5;</code>
    */
   org.jetbrains.kotlin.backend.common.serialization.proto.IrFunction getSetter();
-
-  /**
-   * <code>optional int64 backing_field_symbol = 6;</code>
-   *
-   * <pre>
-   * for IC
-   * </pre>
-   */
-  boolean hasBackingFieldSymbol();
-  /**
-   * <code>optional int64 backing_field_symbol = 6;</code>
-   *
-   * <pre>
-   * for IC
-   * </pre>
-   */
-  long getBackingFieldSymbol();
-
-  /**
-   * <code>optional int64 getter_symbol = 7;</code>
-   */
-  boolean hasGetterSymbol();
-  /**
-   * <code>optional int64 getter_symbol = 7;</code>
-   */
-  long getGetterSymbol();
-
-  /**
-   * <code>optional int64 setter_symbol = 8;</code>
-   */
-  boolean hasSetterSymbol();
-  /**
-   * <code>optional int64 setter_symbol = 8;</code>
-   */
-  long getSetterSymbol();
 }

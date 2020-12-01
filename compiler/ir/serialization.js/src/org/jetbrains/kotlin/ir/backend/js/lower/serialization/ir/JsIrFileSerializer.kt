@@ -27,7 +27,7 @@ class JsIrFileSerializer(
     expectDescriptorToSymbol,
     bodiesOnlyForInlines = bodiesOnlyForInlines,
     skipExpects = skipExpects,
-    symbolReferencesOnly = icMode
+    skipMutableState = icMode
 ) {
     companion object {
         private val JS_EXPORT_FQN = FqName("kotlin.js.JsExport")

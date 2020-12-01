@@ -74,47 +74,4 @@ public interface IrClassOrBuilder extends
    * <code>repeated int32 super_type = 6 [packed = true];</code>
    */
   int getSuperType(int index);
-
-  /**
-   * <code>optional int64 this_receiver_symbol = 7;</code>
-   *
-   * <pre>
-   * for IC
-   * </pre>
-   */
-  boolean hasThisReceiverSymbol();
-  /**
-   * <code>optional int64 this_receiver_symbol = 7;</code>
-   *
-   * <pre>
-   * for IC
-   * </pre>
-   */
-  long getThisReceiverSymbol();
-
-  /**
-   * <code>repeated int64 type_parameter_symbol = 8;</code>
-   */
-  java.util.List<java.lang.Long> getTypeParameterSymbolList();
-  /**
-   * <code>repeated int64 type_parameter_symbol = 8;</code>
-   */
-  int getTypeParameterSymbolCount();
-  /**
-   * <code>repeated int64 type_parameter_symbol = 8;</code>
-   */
-  long getTypeParameterSymbol(int index);
-
-  /**
-   * <code>repeated int64 declaration_symbol = 9;</code>
-   */
-  java.util.List<java.lang.Long> getDeclarationSymbolList();
-  /**
-   * <code>repeated int64 declaration_symbol = 9;</code>
-   */
-  int getDeclarationSymbolCount();
-  /**
-   * <code>repeated int64 declaration_symbol = 9;</code>
-   */
-  long getDeclarationSymbol(int index);
 }

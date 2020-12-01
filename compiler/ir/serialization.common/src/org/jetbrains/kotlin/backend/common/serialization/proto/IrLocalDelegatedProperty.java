@@ -110,16 +110,6 @@ public final class IrLocalDelegatedProperty extends
             bitField0_ |= 0x00000010;
             break;
           }
-          case 48: {
-            bitField0_ |= 0x00000020;
-            getterSymbol_ = input.readInt64();
-            break;
-          }
-          case 56: {
-            bitField0_ |= 0x00000040;
-            setterSymbol_ = input.readInt64();
-            break;
-          }
         }
       }
     } catch (org.jetbrains.kotlin.protobuf.InvalidProtocolBufferException e) {
@@ -229,52 +219,12 @@ public final class IrLocalDelegatedProperty extends
     return setter_;
   }
 
-  public static final int GETTER_SYMBOL_FIELD_NUMBER = 6;
-  private long getterSymbol_;
-  /**
-   * <code>optional int64 getter_symbol = 6;</code>
-   *
-   * <pre>
-   * for IC
-   * </pre>
-   */
-  public boolean hasGetterSymbol() {
-    return ((bitField0_ & 0x00000020) == 0x00000020);
-  }
-  /**
-   * <code>optional int64 getter_symbol = 6;</code>
-   *
-   * <pre>
-   * for IC
-   * </pre>
-   */
-  public long getGetterSymbol() {
-    return getterSymbol_;
-  }
-
-  public static final int SETTER_SYMBOL_FIELD_NUMBER = 7;
-  private long setterSymbol_;
-  /**
-   * <code>optional int64 setter_symbol = 7;</code>
-   */
-  public boolean hasSetterSymbol() {
-    return ((bitField0_ & 0x00000040) == 0x00000040);
-  }
-  /**
-   * <code>optional int64 setter_symbol = 7;</code>
-   */
-  public long getSetterSymbol() {
-    return setterSymbol_;
-  }
-
   private void initFields() {
     base_ = org.jetbrains.kotlin.backend.common.serialization.proto.IrDeclarationBase.getDefaultInstance();
     nameType_ = 0L;
     delegate_ = org.jetbrains.kotlin.backend.common.serialization.proto.IrVariable.getDefaultInstance();
     getter_ = org.jetbrains.kotlin.backend.common.serialization.proto.IrFunction.getDefaultInstance();
     setter_ = org.jetbrains.kotlin.backend.common.serialization.proto.IrFunction.getDefaultInstance();
-    getterSymbol_ = 0L;
-    setterSymbol_ = 0L;
   }
   private byte memoizedIsInitialized = -1;
   public final boolean isInitialized() {
@@ -336,12 +286,6 @@ public final class IrLocalDelegatedProperty extends
     if (((bitField0_ & 0x00000010) == 0x00000010)) {
       output.writeMessage(5, setter_);
     }
-    if (((bitField0_ & 0x00000020) == 0x00000020)) {
-      output.writeInt64(6, getterSymbol_);
-    }
-    if (((bitField0_ & 0x00000040) == 0x00000040)) {
-      output.writeInt64(7, setterSymbol_);
-    }
     output.writeRawBytes(unknownFields);
   }
 
@@ -370,14 +314,6 @@ public final class IrLocalDelegatedProperty extends
     if (((bitField0_ & 0x00000010) == 0x00000010)) {
       size += org.jetbrains.kotlin.protobuf.CodedOutputStream
         .computeMessageSize(5, setter_);
-    }
-    if (((bitField0_ & 0x00000020) == 0x00000020)) {
-      size += org.jetbrains.kotlin.protobuf.CodedOutputStream
-        .computeInt64Size(6, getterSymbol_);
-    }
-    if (((bitField0_ & 0x00000040) == 0x00000040)) {
-      size += org.jetbrains.kotlin.protobuf.CodedOutputStream
-        .computeInt64Size(7, setterSymbol_);
     }
     size += unknownFields.size();
     memoizedSerializedSize = size;
@@ -483,10 +419,6 @@ public final class IrLocalDelegatedProperty extends
       bitField0_ = (bitField0_ & ~0x00000008);
       setter_ = org.jetbrains.kotlin.backend.common.serialization.proto.IrFunction.getDefaultInstance();
       bitField0_ = (bitField0_ & ~0x00000010);
-      getterSymbol_ = 0L;
-      bitField0_ = (bitField0_ & ~0x00000020);
-      setterSymbol_ = 0L;
-      bitField0_ = (bitField0_ & ~0x00000040);
       return this;
     }
 
@@ -530,14 +462,6 @@ public final class IrLocalDelegatedProperty extends
         to_bitField0_ |= 0x00000010;
       }
       result.setter_ = setter_;
-      if (((from_bitField0_ & 0x00000020) == 0x00000020)) {
-        to_bitField0_ |= 0x00000020;
-      }
-      result.getterSymbol_ = getterSymbol_;
-      if (((from_bitField0_ & 0x00000040) == 0x00000040)) {
-        to_bitField0_ |= 0x00000040;
-      }
-      result.setterSymbol_ = setterSymbol_;
       result.bitField0_ = to_bitField0_;
       return result;
     }
@@ -558,12 +482,6 @@ public final class IrLocalDelegatedProperty extends
       }
       if (other.hasSetter()) {
         mergeSetter(other.getSetter());
-      }
-      if (other.hasGetterSymbol()) {
-        setGetterSymbol(other.getGetterSymbol());
-      }
-      if (other.hasSetterSymbol()) {
-        setSetterSymbol(other.getSetterSymbol());
       }
       setUnknownFields(
           getUnknownFields().concat(other.unknownFields));
@@ -894,86 +812,6 @@ public final class IrLocalDelegatedProperty extends
       setter_ = org.jetbrains.kotlin.backend.common.serialization.proto.IrFunction.getDefaultInstance();
 
       bitField0_ = (bitField0_ & ~0x00000010);
-      return this;
-    }
-
-    private long getterSymbol_ ;
-    /**
-     * <code>optional int64 getter_symbol = 6;</code>
-     *
-     * <pre>
-     * for IC
-     * </pre>
-     */
-    public boolean hasGetterSymbol() {
-      return ((bitField0_ & 0x00000020) == 0x00000020);
-    }
-    /**
-     * <code>optional int64 getter_symbol = 6;</code>
-     *
-     * <pre>
-     * for IC
-     * </pre>
-     */
-    public long getGetterSymbol() {
-      return getterSymbol_;
-    }
-    /**
-     * <code>optional int64 getter_symbol = 6;</code>
-     *
-     * <pre>
-     * for IC
-     * </pre>
-     */
-    public Builder setGetterSymbol(long value) {
-      bitField0_ |= 0x00000020;
-      getterSymbol_ = value;
-      
-      return this;
-    }
-    /**
-     * <code>optional int64 getter_symbol = 6;</code>
-     *
-     * <pre>
-     * for IC
-     * </pre>
-     */
-    public Builder clearGetterSymbol() {
-      bitField0_ = (bitField0_ & ~0x00000020);
-      getterSymbol_ = 0L;
-      
-      return this;
-    }
-
-    private long setterSymbol_ ;
-    /**
-     * <code>optional int64 setter_symbol = 7;</code>
-     */
-    public boolean hasSetterSymbol() {
-      return ((bitField0_ & 0x00000040) == 0x00000040);
-    }
-    /**
-     * <code>optional int64 setter_symbol = 7;</code>
-     */
-    public long getSetterSymbol() {
-      return setterSymbol_;
-    }
-    /**
-     * <code>optional int64 setter_symbol = 7;</code>
-     */
-    public Builder setSetterSymbol(long value) {
-      bitField0_ |= 0x00000040;
-      setterSymbol_ = value;
-      
-      return this;
-    }
-    /**
-     * <code>optional int64 setter_symbol = 7;</code>
-     */
-    public Builder clearSetterSymbol() {
-      bitField0_ = (bitField0_ & ~0x00000040);
-      setterSymbol_ = 0L;
-      
       return this;
     }
 

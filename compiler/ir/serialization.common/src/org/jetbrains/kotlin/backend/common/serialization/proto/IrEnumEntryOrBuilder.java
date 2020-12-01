@@ -42,21 +42,4 @@ public interface IrEnumEntryOrBuilder extends
    * <code>optional .org.jetbrains.kotlin.backend.common.serialization.proto.IrClass corresponding_class = 4;</code>
    */
   org.jetbrains.kotlin.backend.common.serialization.proto.IrClass getCorrespondingClass();
-
-  /**
-   * <code>optional int64 corresponding_class_symbol = 5;</code>
-   *
-   * <pre>
-   * for IC
-   * </pre>
-   */
-  boolean hasCorrespondingClassSymbol();
-  /**
-   * <code>optional int64 corresponding_class_symbol = 5;</code>
-   *
-   * <pre>
-   * for IC
-   * </pre>
-   */
-  long getCorrespondingClassSymbol();
 }

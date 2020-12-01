@@ -89,11 +89,6 @@ public final class IrEnumEntry extends
             bitField0_ |= 0x00000008;
             break;
           }
-          case 40: {
-            bitField0_ |= 0x00000010;
-            correspondingClassSymbol_ = input.readInt64();
-            break;
-          }
         }
       }
     } catch (org.jetbrains.kotlin.protobuf.InvalidProtocolBufferException e) {
@@ -188,35 +183,11 @@ public final class IrEnumEntry extends
     return correspondingClass_;
   }
 
-  public static final int CORRESPONDING_CLASS_SYMBOL_FIELD_NUMBER = 5;
-  private long correspondingClassSymbol_;
-  /**
-   * <code>optional int64 corresponding_class_symbol = 5;</code>
-   *
-   * <pre>
-   * for IC
-   * </pre>
-   */
-  public boolean hasCorrespondingClassSymbol() {
-    return ((bitField0_ & 0x00000010) == 0x00000010);
-  }
-  /**
-   * <code>optional int64 corresponding_class_symbol = 5;</code>
-   *
-   * <pre>
-   * for IC
-   * </pre>
-   */
-  public long getCorrespondingClassSymbol() {
-    return correspondingClassSymbol_;
-  }
-
   private void initFields() {
     base_ = org.jetbrains.kotlin.backend.common.serialization.proto.IrDeclarationBase.getDefaultInstance();
     name_ = 0;
     initializer_ = 0;
     correspondingClass_ = org.jetbrains.kotlin.backend.common.serialization.proto.IrClass.getDefaultInstance();
-    correspondingClassSymbol_ = 0L;
   }
   private byte memoizedIsInitialized = -1;
   public final boolean isInitialized() {
@@ -261,9 +232,6 @@ public final class IrEnumEntry extends
     if (((bitField0_ & 0x00000008) == 0x00000008)) {
       output.writeMessage(4, correspondingClass_);
     }
-    if (((bitField0_ & 0x00000010) == 0x00000010)) {
-      output.writeInt64(5, correspondingClassSymbol_);
-    }
     output.writeRawBytes(unknownFields);
   }
 
@@ -288,10 +256,6 @@ public final class IrEnumEntry extends
     if (((bitField0_ & 0x00000008) == 0x00000008)) {
       size += org.jetbrains.kotlin.protobuf.CodedOutputStream
         .computeMessageSize(4, correspondingClass_);
-    }
-    if (((bitField0_ & 0x00000010) == 0x00000010)) {
-      size += org.jetbrains.kotlin.protobuf.CodedOutputStream
-        .computeInt64Size(5, correspondingClassSymbol_);
     }
     size += unknownFields.size();
     memoizedSerializedSize = size;
@@ -395,8 +359,6 @@ public final class IrEnumEntry extends
       bitField0_ = (bitField0_ & ~0x00000004);
       correspondingClass_ = org.jetbrains.kotlin.backend.common.serialization.proto.IrClass.getDefaultInstance();
       bitField0_ = (bitField0_ & ~0x00000008);
-      correspondingClassSymbol_ = 0L;
-      bitField0_ = (bitField0_ & ~0x00000010);
       return this;
     }
 
@@ -436,10 +398,6 @@ public final class IrEnumEntry extends
         to_bitField0_ |= 0x00000008;
       }
       result.correspondingClass_ = correspondingClass_;
-      if (((from_bitField0_ & 0x00000010) == 0x00000010)) {
-        to_bitField0_ |= 0x00000010;
-      }
-      result.correspondingClassSymbol_ = correspondingClassSymbol_;
       result.bitField0_ = to_bitField0_;
       return result;
     }
@@ -457,9 +415,6 @@ public final class IrEnumEntry extends
       }
       if (other.hasCorrespondingClass()) {
         mergeCorrespondingClass(other.getCorrespondingClass());
-      }
-      if (other.hasCorrespondingClassSymbol()) {
-        setCorrespondingClassSymbol(other.getCorrespondingClassSymbol());
       }
       setUnknownFields(
           getUnknownFields().concat(other.unknownFields));
@@ -688,54 +643,6 @@ public final class IrEnumEntry extends
       correspondingClass_ = org.jetbrains.kotlin.backend.common.serialization.proto.IrClass.getDefaultInstance();
 
       bitField0_ = (bitField0_ & ~0x00000008);
-      return this;
-    }
-
-    private long correspondingClassSymbol_ ;
-    /**
-     * <code>optional int64 corresponding_class_symbol = 5;</code>
-     *
-     * <pre>
-     * for IC
-     * </pre>
-     */
-    public boolean hasCorrespondingClassSymbol() {
-      return ((bitField0_ & 0x00000010) == 0x00000010);
-    }
-    /**
-     * <code>optional int64 corresponding_class_symbol = 5;</code>
-     *
-     * <pre>
-     * for IC
-     * </pre>
-     */
-    public long getCorrespondingClassSymbol() {
-      return correspondingClassSymbol_;
-    }
-    /**
-     * <code>optional int64 corresponding_class_symbol = 5;</code>
-     *
-     * <pre>
-     * for IC
-     * </pre>
-     */
-    public Builder setCorrespondingClassSymbol(long value) {
-      bitField0_ |= 0x00000010;
-      correspondingClassSymbol_ = value;
-      
-      return this;
-    }
-    /**
-     * <code>optional int64 corresponding_class_symbol = 5;</code>
-     *
-     * <pre>
-     * for IC
-     * </pre>
-     */
-    public Builder clearCorrespondingClassSymbol() {
-      bitField0_ = (bitField0_ & ~0x00000010);
-      correspondingClassSymbol_ = 0L;
-      
       return this;
     }
 

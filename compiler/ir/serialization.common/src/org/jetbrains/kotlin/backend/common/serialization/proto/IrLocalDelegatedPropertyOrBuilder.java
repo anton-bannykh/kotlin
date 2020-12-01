@@ -51,30 +51,4 @@ public interface IrLocalDelegatedPropertyOrBuilder extends
    * <code>optional .org.jetbrains.kotlin.backend.common.serialization.proto.IrFunction setter = 5;</code>
    */
   org.jetbrains.kotlin.backend.common.serialization.proto.IrFunction getSetter();
-
-  /**
-   * <code>optional int64 getter_symbol = 6;</code>
-   *
-   * <pre>
-   * for IC
-   * </pre>
-   */
-  boolean hasGetterSymbol();
-  /**
-   * <code>optional int64 getter_symbol = 6;</code>
-   *
-   * <pre>
-   * for IC
-   * </pre>
-   */
-  long getGetterSymbol();
-
-  /**
-   * <code>optional int64 setter_symbol = 7;</code>
-   */
-  boolean hasSetterSymbol();
-  /**
-   * <code>optional int64 setter_symbol = 7;</code>
-   */
-  long getSetterSymbol();
 }

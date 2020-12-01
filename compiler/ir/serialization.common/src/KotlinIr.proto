@@ -443,7 +443,6 @@ message IrDeclarationBase {
   required int64 coordinates = 3;
   optional int64 flags = 4 [default = 0];
   repeated IrConstructorCall annotation = 5;
-  optional int64 parent_symbol = 6;
 }
 
 message IrFunctionBase {
@@ -454,19 +453,12 @@ message IrFunctionBase {
   optional IrValueParameter extension_receiver = 5;
   repeated IrValueParameter value_parameter = 6;
   optional int32 body = 7;
-  // for IC
-  repeated int64 type_parameter_symbol = 8;
-  optional int64 dispatch_receiver_symbol = 9;
-  optional int64 extension_receiver_symbol = 10;
-  repeated int64 value_parameter_symbol = 11;
 }
 
 message IrFunction {
   required IrFunctionBase base = 1;
   repeated int64 overridden = 2 [packed=true]; // TODO: supposed to be deleted
   //optional UniqId corresponding_property = 7;
-  // for IC
-  optional int64 correspondingPropertySymbol = 3;
 }
 
 message IrConstructor {
@@ -485,9 +477,6 @@ message IrLocalDelegatedProperty {
   required IrVariable delegate = 3;
   optional IrFunction getter = 4;
   optional IrFunction setter = 5;
-  // for IC
-  optional int64 getter_symbol = 6;
-  optional int64 setter_symbol = 7;
 }
 
 message IrProperty {
@@ -496,10 +485,6 @@ message IrProperty {
   optional IrField backing_field = 3;
   optional IrFunction getter = 4;
   optional IrFunction setter = 5;
-  // for IC
-  optional int64 backing_field_symbol = 6;
-  optional int64 getter_symbol = 7;
-  optional int64 setter_symbol = 8;
 }
 
 message IrVariable {
@@ -528,23 +513,16 @@ message IrClass {
   repeated IrTypeParameter type_parameter = 4;
   repeated IrDeclaration declaration = 5;
   repeated int32 super_type = 6 [packed=true];
-  // for IC
-  optional int64 this_receiver_symbol = 7;
-  repeated int64 type_parameter_symbol = 8;
-  repeated int64 declaration_symbol = 9;
 }
 
 message IrTypeAlias {
   required IrDeclarationBase base = 1;
   required int64 name_type = 2;
   repeated IrTypeParameter type_parameter = 3;
-  // for IC
-  repeated int64 type_parameter_symbol = 4;
 }
 
 message IrErrorDeclaration {
   required int64 coordinates = 1;
-  optional int64 parent_symbol = 2;
 }
 
 message IrEnumEntry {
@@ -552,8 +530,6 @@ message IrEnumEntry {
   required int32 name = 2;
   optional int32 initializer = 3;
   optional IrClass corresponding_class = 4;
-  // for IC
-  optional int64 corresponding_class_symbol = 5;
 }
 
 message IrAnonymousInit {

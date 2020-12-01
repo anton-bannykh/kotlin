@@ -81,11 +81,6 @@ public final class IrDeclarationBase extends
             annotation_.add(input.readMessage(org.jetbrains.kotlin.backend.common.serialization.proto.IrConstructorCall.PARSER, extensionRegistry));
             break;
           }
-          case 48: {
-            bitField0_ |= 0x00000010;
-            parentSymbol_ = input.readInt64();
-            break;
-          }
         }
       }
     } catch (org.jetbrains.kotlin.protobuf.InvalidProtocolBufferException e) {
@@ -218,28 +213,12 @@ public final class IrDeclarationBase extends
     return annotation_.get(index);
   }
 
-  public static final int PARENT_SYMBOL_FIELD_NUMBER = 6;
-  private long parentSymbol_;
-  /**
-   * <code>optional int64 parent_symbol = 6;</code>
-   */
-  public boolean hasParentSymbol() {
-    return ((bitField0_ & 0x00000010) == 0x00000010);
-  }
-  /**
-   * <code>optional int64 parent_symbol = 6;</code>
-   */
-  public long getParentSymbol() {
-    return parentSymbol_;
-  }
-
   private void initFields() {
     symbol_ = 0L;
     originName_ = 0;
     coordinates_ = 0L;
     flags_ = 0L;
     annotation_ = java.util.Collections.emptyList();
-    parentSymbol_ = 0L;
   }
   private byte memoizedIsInitialized = -1;
   public final boolean isInitialized() {
@@ -287,9 +266,6 @@ public final class IrDeclarationBase extends
     for (int i = 0; i < annotation_.size(); i++) {
       output.writeMessage(5, annotation_.get(i));
     }
-    if (((bitField0_ & 0x00000010) == 0x00000010)) {
-      output.writeInt64(6, parentSymbol_);
-    }
     output.writeRawBytes(unknownFields);
   }
 
@@ -318,10 +294,6 @@ public final class IrDeclarationBase extends
     for (int i = 0; i < annotation_.size(); i++) {
       size += org.jetbrains.kotlin.protobuf.CodedOutputStream
         .computeMessageSize(5, annotation_.get(i));
-    }
-    if (((bitField0_ & 0x00000010) == 0x00000010)) {
-      size += org.jetbrains.kotlin.protobuf.CodedOutputStream
-        .computeInt64Size(6, parentSymbol_);
     }
     size += unknownFields.size();
     memoizedSerializedSize = size;
@@ -427,8 +399,6 @@ public final class IrDeclarationBase extends
       bitField0_ = (bitField0_ & ~0x00000008);
       annotation_ = java.util.Collections.emptyList();
       bitField0_ = (bitField0_ & ~0x00000010);
-      parentSymbol_ = 0L;
-      bitField0_ = (bitField0_ & ~0x00000020);
       return this;
     }
 
@@ -473,10 +443,6 @@ public final class IrDeclarationBase extends
         bitField0_ = (bitField0_ & ~0x00000010);
       }
       result.annotation_ = annotation_;
-      if (((from_bitField0_ & 0x00000020) == 0x00000020)) {
-        to_bitField0_ |= 0x00000010;
-      }
-      result.parentSymbol_ = parentSymbol_;
       result.bitField0_ = to_bitField0_;
       return result;
     }
@@ -504,9 +470,6 @@ public final class IrDeclarationBase extends
           annotation_.addAll(other.annotation_);
         }
         
-      }
-      if (other.hasParentSymbol()) {
-        setParentSymbol(other.getParentSymbol());
       }
       setUnknownFields(
           getUnknownFields().concat(other.unknownFields));
@@ -804,38 +767,6 @@ public final class IrDeclarationBase extends
       ensureAnnotationIsMutable();
       annotation_.remove(index);
 
-      return this;
-    }
-
-    private long parentSymbol_ ;
-    /**
-     * <code>optional int64 parent_symbol = 6;</code>
-     */
-    public boolean hasParentSymbol() {
-      return ((bitField0_ & 0x00000020) == 0x00000020);
-    }
-    /**
-     * <code>optional int64 parent_symbol = 6;</code>
-     */
-    public long getParentSymbol() {
-      return parentSymbol_;
-    }
-    /**
-     * <code>optional int64 parent_symbol = 6;</code>
-     */
-    public Builder setParentSymbol(long value) {
-      bitField0_ |= 0x00000020;
-      parentSymbol_ = value;
-      
-      return this;
-    }
-    /**
-     * <code>optional int64 parent_symbol = 6;</code>
-     */
-    public Builder clearParentSymbol() {
-      bitField0_ = (bitField0_ & ~0x00000020);
-      parentSymbol_ = 0L;
-      
       return this;
     }
 
