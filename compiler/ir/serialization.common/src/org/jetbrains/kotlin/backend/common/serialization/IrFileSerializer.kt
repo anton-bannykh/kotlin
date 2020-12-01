@@ -1342,7 +1342,6 @@ open class IrFileSerializer(
 
         val topLevelDeclarations = mutableListOf<SerializedDeclaration>()
 
-        // TODO sort by parents
         declarations.forEach {
             doSerializeIrDeclaration(it)
         }

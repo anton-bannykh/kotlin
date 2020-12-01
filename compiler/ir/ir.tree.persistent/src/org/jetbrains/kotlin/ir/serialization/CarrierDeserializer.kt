@@ -90,7 +90,7 @@ class CarrierDeserializer(
     private inline fun <reified C : Carrier> PersistentIrElementBase<C>.load(carriers: Array<C>) {
         if (carriers.isNotEmpty()) {
             val lastState = carriers.last()
-            this.values = (arrayOf(this.clone()) + carriers.dropLast(1))
+            this.values = carriers.dropLast(1).toTypedArray()
             this.setState(lastState)
         }
     }

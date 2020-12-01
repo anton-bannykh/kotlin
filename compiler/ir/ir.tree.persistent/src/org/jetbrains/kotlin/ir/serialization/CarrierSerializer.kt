@@ -74,8 +74,9 @@ private class CarrierSerializer(val fileSerializer: IrFileSerializer) {
 
     private fun serializeCarriers(element: PersistentIrElementBase<*>): ByteArray {
         val carriers = with(serializerImpl) {
-            // element contains the most recent state, but we need the changes.
-            val values = ((element.values ?: arrayOf()) + element).drop(1)
+            // Serialize all state
+            // TODO maybe skip state in the initial declarations?
+            val values = ((element.values ?: arrayOf()) + element)
             values.map {
                 when (it) {
                     is AnonymousInitializerCarrier -> serializeAnonymousInitializerCarrier(it)
