@@ -96,7 +96,7 @@ class JsMapping(private val irFactory: IrFactory) : DefaultMapping() {
 
     fun serializeMappings(declarations: Iterable<IrDeclaration>): SerializedMappings {
         allMappings.forEach { mapping ->
-            mapping.serializeFor(declarations)
+//            mapping.serializeFor(declarations)
             // TODO mapping.serializeFor(dec
         }
 

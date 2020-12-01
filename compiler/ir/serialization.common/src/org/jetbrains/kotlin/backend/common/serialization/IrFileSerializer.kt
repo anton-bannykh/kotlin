@@ -237,7 +237,7 @@ open class IrFileSerializer(
         return proto.build()
     }
 
-    private fun serializeIdSignature(idSignature: IdSignature): ProtoIdSignature {
+    fun serializeIdSignature(idSignature: IdSignature): ProtoIdSignature {
         val proto = ProtoIdSignature.newBuilder()
         when (idSignature) {
             is IdSignature.PublicSignature -> proto.publicSig = serializePublicSignature(idSignature)

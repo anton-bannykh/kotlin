@@ -22,6 +22,7 @@ import org.jetbrains.kotlin.ir.declarations.persistent.PersistentIrFactory
 import org.jetbrains.kotlin.ir.declarations.persistent.carriers.Carrier
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.IrExpressionBody
+import org.jetbrains.kotlin.ir.symbols.IrSymbol
 
 internal class PersistentIrExpressionBody private constructor(
     override val startOffset: Int,
@@ -35,7 +36,7 @@ internal class PersistentIrExpressionBody private constructor(
     override var values: Array<Carrier>? = null
     override val createdOn: Int = factory.stageController.currentStage
 
-    override var containerField: IrDeclaration? = null
+    override var containerField: IrSymbol? = null
 
     constructor(expression: IrExpression, factory: PersistentIrFactory) : this(expression.startOffset, expression.endOffset, factory, expression, null)
 

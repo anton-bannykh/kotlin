@@ -745,3 +745,8 @@ message PirValueParameterCarrier {
 }
 
 // PIR GENERATOR END
+
+message PirBodyCarrier {
+  required int32 lastModified = 1;
+  optional int64 containerFieldSymbol = 2;
+}

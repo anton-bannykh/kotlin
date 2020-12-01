@@ -50,6 +50,8 @@ internal object PersistentIrGenerator {
 
     // Imports
 
+    val codedInputStream: E = import("codedInputStream", "import org.jetbrains.kotlin.backend.common.serialization")
+
     val ClassDescriptor: E = descriptorType("ClassDescriptor")
     val DeclarationDescriptor: E = descriptorType("DeclarationDescriptor")
     val ClassConstructorDescriptor: E = descriptorType("ClassConstructorDescriptor")
@@ -305,8 +307,9 @@ internal object PersistentIrGenerator {
         val carrierImpl = import("${carrierName}CarrierImpl", carrierPackage)
 
         deserializerMethods += lines(
-            +"fun deserialize${carrierName}Carrier(proto: " + argumentType + "): " + returnType + " {",
+            +"fun deserialize${carrierName}Carrier(bytes: ByteArray): " + returnType + " {",
             lines(
+                +"val proto = " + argumentType + ".parseFrom(bytes." + codedInputStream + ", ExtensionRegistryLite.newInstance())",
                 +"return " + carrierImpl + "(",
                 arrayOf(
                     +"proto.lastModified",
