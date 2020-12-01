@@ -8,7 +8,6 @@ package org.jetbrains.kotlin.ir.backend.js.ic
 import org.jetbrains.kotlin.backend.common.LoggingContext
 import org.jetbrains.kotlin.backend.common.serialization.DeclarationTable
 import org.jetbrains.kotlin.backend.common.serialization.signature.IdSignatureSerializer
-import org.jetbrains.kotlin.descriptors.ModuleDescriptor
 import org.jetbrains.kotlin.ir.backend.js.JsMapping
 import org.jetbrains.kotlin.ir.backend.js.SerializedMappings
 import org.jetbrains.kotlin.ir.backend.js.lower.serialization.ir.JsGlobalDeclarationTable
@@ -16,18 +15,15 @@ import org.jetbrains.kotlin.ir.backend.js.lower.serialization.ir.JsIrFileSeriali
 import org.jetbrains.kotlin.ir.backend.js.lower.serialization.ir.JsIrLinker
 import org.jetbrains.kotlin.ir.backend.js.lower.serialization.ir.JsManglerIr
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
-import org.jetbrains.kotlin.ir.declarations.IrErrorDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
 import org.jetbrains.kotlin.ir.declarations.persistent.PersistentIrDeclarationBase
 import org.jetbrains.kotlin.ir.declarations.persistent.PersistentIrFactory
 import org.jetbrains.kotlin.ir.descriptors.IrBuiltIns
-import org.jetbrains.kotlin.ir.descriptors.WrappedErrorDescriptor
-import org.jetbrains.kotlin.ir.expressions.IrBlockBody
 import org.jetbrains.kotlin.ir.expressions.IrBody
 import org.jetbrains.kotlin.ir.expressions.IrExpressionBody
 import org.jetbrains.kotlin.ir.expressions.impl.IrErrorExpressionImpl
-import org.jetbrains.kotlin.ir.serialization.CarrierSerializer
 import org.jetbrains.kotlin.ir.serialization.SerializedCarriers
+import org.jetbrains.kotlin.ir.serialization.serializeCarriers
 import org.jetbrains.kotlin.ir.types.impl.IrErrorTypeImpl
 import org.jetbrains.kotlin.ir.util.IdSignature
 import org.jetbrains.kotlin.ir.util.file
@@ -71,6 +67,12 @@ class IcSerializer(
             // Serialize old bodies as they have probably changed.
             // Need to keep the order same as before.
             val bodies = (linker.bodyToIndex[file] ?: emptyMap())
+
+            // TODO add local bodies
+
+            val sortedBodyEntries = bodies.entries.sortedBy { it.value }
+
+
             val indexToBody = mutableMapOf<Int, IrBody>()
             bodies.entries.forEach { (k, v) -> indexToBody[v] = k }
 
@@ -96,7 +98,10 @@ class IcSerializer(
 
             val serializedIrFile = fileSerializer.serializeDeclarationsForIC(file, newDeclarations)
 
-            val serializedCarriers = CarrierSerializer(fileSerializer).serializeCarriers(declarations.filterIsInstance<PersistentIrDeclarationBase<*>>())
+            val serializedCarriers = fileSerializer.serializeCarriers(
+                declarations,
+                bodies.keys,
+            )
 
             val serializedMappings = mappings.serializeMappings(declarations)
 
