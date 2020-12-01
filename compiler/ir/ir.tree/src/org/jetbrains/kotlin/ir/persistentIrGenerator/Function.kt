@@ -64,6 +64,18 @@ internal fun PersistentIrGenerator.generateFunction() {
                 overriddenSymbolsField.toPersistentField(+"emptyList()"),
                 +"override var attributeOwnerId: " + IrAttributeContainer + " = this",
                 correspondingPropertySymbolField.toPersistentField(+"null"),
+                setState(
+                    "Function",
+                    returnTypeFieldField,
+                    dispatchReceiverParameterField,
+                    extensionReceiverParameterField,
+                    bodyField,
+                    visibilityField,
+                    typeParametersField,
+                    valueParametersField,
+                    correspondingPropertySymbolField,
+                    overriddenSymbolsField,
+                )
             ),
             id,
         )()

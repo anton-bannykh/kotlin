@@ -163,4 +163,20 @@ internal abstract class PersistentIrFunctionCommon(
                 setCarrier().correspondingPropertySymbolField = v
             }
         }
+
+    override fun setState(t: FunctionCarrier) {
+        lastModified = t.lastModified
+        parentSymbolField = t.parentSymbolField
+        originField = t.originField
+        annotationsField = t.annotationsField
+        returnTypeFieldField = t.returnTypeFieldField
+        dispatchReceiverParameterField = t.dispatchReceiverParameterField
+        extensionReceiverParameterField = t.extensionReceiverParameterField
+        bodyField = t.bodyField
+        visibilityField = t.visibilityField
+        typeParametersField = t.typeParametersField
+        valueParametersField = t.valueParametersField
+        correspondingPropertySymbolField = t.correspondingPropertySymbolField
+        overriddenSymbolsField = t.overriddenSymbolsField
+    }
 }

@@ -50,6 +50,13 @@ internal fun PersistentIrGenerator.generateLocalDelegatedProperty() {
                 getterField.toPersistentField(+"null"),
                 setterField.toPersistentField(+"null"),
                 +"override var metadata: " + MetadataSource + "? = null",
+                setState(
+                    "LocalDelegatedProperty",
+                    typeField,
+                    delegateField,
+                    getterField,
+                    setterField,
+                )
             ),
             id,
         )()

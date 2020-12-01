@@ -91,4 +91,14 @@ internal class PersistentIrField(
                 setCarrier().typeField = v
             }
         }
+
+    override fun setState(t: FieldCarrier) {
+        lastModified = t.lastModified
+        parentSymbolField = t.parentSymbolField
+        originField = t.originField
+        annotationsField = t.annotationsField
+        typeField = t.typeField
+        initializerField = t.initializerField
+        correspondingPropertySymbolField = t.correspondingPropertySymbolField
+    }
 }

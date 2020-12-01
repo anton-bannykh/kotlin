@@ -57,6 +57,12 @@ internal fun PersistentIrGenerator.generateProperty() {
                 setterField.toPersistentField(+"null"),
                 +"override var metadata: " + MetadataSource + "? = null",
                 +"override var attributeOwnerId: " + IrAttributeContainer + " = this",
+                setState(
+                    "Property",
+                    backingFieldField,
+                    getterField,
+                    setterField,
+                )
             ),
             id,
         )()

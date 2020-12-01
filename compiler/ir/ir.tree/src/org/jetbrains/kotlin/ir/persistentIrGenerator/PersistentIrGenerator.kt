@@ -5,6 +5,7 @@
 
 package org.jetbrains.kotlin.ir.persistentIrGenerator
 
+import org.jetbrains.kotlin.protobuf.ExtensionRegistryLite
 import java.io.File
 import java.lang.IllegalStateException
 import java.lang.StringBuilder
@@ -50,7 +51,8 @@ internal object PersistentIrGenerator {
 
     // Imports
 
-    val codedInputStream: E = import("codedInputStream", "import org.jetbrains.kotlin.backend.common.serialization")
+    val codedInputStream: E = import("codedInputStream", "org.jetbrains.kotlin.backend.common.serialization")
+    val ExtensionRegistryLite: E = import("ExtensionRegistryLite", "org.jetbrains.kotlin.protobuf")
 
     val ClassDescriptor: E = descriptorType("ClassDescriptor")
     val DeclarationDescriptor: E = descriptorType("DeclarationDescriptor")
@@ -309,7 +311,7 @@ internal object PersistentIrGenerator {
         deserializerMethods += lines(
             +"fun deserialize${carrierName}Carrier(bytes: ByteArray): " + returnType + " {",
             lines(
-                +"val proto = " + argumentType + ".parseFrom(bytes." + codedInputStream + ", ExtensionRegistryLite.newInstance())",
+                +"val proto = " + argumentType + ".parseFrom(bytes." + codedInputStream + ", " + ExtensionRegistryLite + ".newInstance())",
                 +"return " + carrierImpl + "(",
                 arrayOf(
                     +"proto.lastModified",
@@ -365,7 +367,7 @@ internal object PersistentIrGenerator {
         var flagsHandled = false
 
         serializerMethods += lines(
-            +"fun serialize${carrierName}Carrier(carrier: " + argumentType + "): " + returnType + " {",
+            +"fun serialize${carrierName}Carrier(carrier: " + argumentType + "): ByteArray {",
             lines(
                 +"val proto = " + returnType + ".newBuilder()",
                 +"proto.setLastModified(carrier.lastModified)",
@@ -400,7 +402,7 @@ internal object PersistentIrGenerator {
                         }
                     }
                 }).toTypedArray(),
-                +"return proto.build()",
+                +"return proto.build().toByteArray()",
             ).indent(),
             +"}",
         )
@@ -445,6 +447,21 @@ internal object PersistentIrGenerator {
 
     fun body(bodyType: E, lateinit: Boolean = false, fieldName: String = "body"): E =
         persistentField(fieldName, bodyType, initializer = +"null", lateinit, isBody = true)
+
+    fun setState(name: String, vararg fields: Field): E {
+        return lines(
+            +"override fun setState(t: ${name}Carrier) " + block(
+                *(arrayOf(
+                   +"lastModified = t.lastModified",
+                   +"parentSymbolField = t.parentSymbolField",
+                   +"originField = t.originField",
+                   +"annotationsField = t.annotationsField",
+                ) + (fields.map {
+                    +"${it.name}Field = t.${it.name}Field"
+                }).toTypedArray())
+            )
+        )
+    }
 
     fun descriptor(type: E) = lines(
         +"@" + ObsoleteDescriptorBasedAPI,

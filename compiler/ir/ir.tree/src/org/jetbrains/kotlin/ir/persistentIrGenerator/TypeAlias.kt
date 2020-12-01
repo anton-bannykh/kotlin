@@ -30,6 +30,7 @@ internal fun PersistentIrGenerator.generateTypeAlias() {
 
                 typeParametersField.toPersistentField(+"emptyList()"),
                 expandedTypeField.toPersistentField(+"expandedType"),
+                setState("TypeAlias", typeParametersField, expandedTypeField)
             ),
             id,
         )()

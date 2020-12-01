@@ -34,7 +34,9 @@ internal fun PersistentIrGenerator.generateEnumEntry() {
                 descriptor(ClassDescriptor),
 
                 correspondingClassField.toPersistentField(+"null"),
-                initializerExpressionField.toBody()
+                initializerExpressionField.toBody(),
+
+                setState("EnumEntry", correspondingClassField, initializerExpressionField)
             ),
             id,
         )()

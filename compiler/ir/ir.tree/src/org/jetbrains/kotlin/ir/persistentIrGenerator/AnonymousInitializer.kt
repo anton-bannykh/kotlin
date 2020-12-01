@@ -25,6 +25,7 @@ internal fun PersistentIrGenerator.generateAnonymousInitializer() {
                 commonFields,
                 descriptor(ClassDescriptor),
                 body.toBody(),
+                setState("AnonymousInitializer", body)
             ),
             id,
         )()

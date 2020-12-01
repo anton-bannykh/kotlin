@@ -96,4 +96,15 @@ internal class PersistentIrLocalDelegatedProperty(
         }
 
     override var metadata: MetadataSource? = null
+
+    override fun setState(t: LocalDelegatedPropertyCarrier) {
+        lastModified = t.lastModified
+        parentSymbolField = t.parentSymbolField
+        originField = t.originField
+        annotationsField = t.annotationsField
+        typeField = t.typeField
+        delegateField = t.delegateField
+        getterField = t.getterField
+        setterField = t.setterField
+    }
 }

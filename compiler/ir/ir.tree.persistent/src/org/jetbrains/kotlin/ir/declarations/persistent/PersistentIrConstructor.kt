@@ -147,4 +147,18 @@ internal class PersistentIrConstructor(
     @ObsoleteDescriptorBasedAPI
     override val descriptor: ClassConstructorDescriptor
         get() = symbol.descriptor
+
+    override fun setState(t: ConstructorCarrier) {
+        lastModified = t.lastModified
+        parentSymbolField = t.parentSymbolField
+        originField = t.originField
+        annotationsField = t.annotationsField
+        returnTypeFieldField = t.returnTypeFieldField
+        dispatchReceiverParameterField = t.dispatchReceiverParameterField
+        extensionReceiverParameterField = t.extensionReceiverParameterField
+        bodyField = t.bodyField
+        visibilityField = t.visibilityField
+        typeParametersField = t.typeParametersField
+        valueParametersField = t.valueParametersField
+    }
 }

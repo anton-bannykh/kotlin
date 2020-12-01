@@ -37,6 +37,7 @@ internal fun PersistentIrGenerator.generateValueParameter() {
                 defaultValueField.toBody(),
                 typeField.toPersistentField(+"type"),
                 varargElementTypeField.toPersistentField(+"varargElementType"),
+                setState("ValueParameter", defaultValueField, typeField, varargElementTypeField)
             ),
             id,
         )()

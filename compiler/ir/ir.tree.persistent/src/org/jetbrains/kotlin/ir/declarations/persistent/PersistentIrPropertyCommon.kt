@@ -84,4 +84,14 @@ internal abstract class PersistentIrPropertyCommon(
     override var metadata: MetadataSource? = null
 
     override var attributeOwnerId: IrAttributeContainer = this
+
+    override fun setState(t: PropertyCarrier) {
+        lastModified = t.lastModified
+        parentSymbolField = t.parentSymbolField
+        originField = t.originField
+        annotationsField = t.annotationsField
+        backingFieldField = t.backingFieldField
+        getterField = t.getterField
+        setterField = t.setterField
+    }
 }

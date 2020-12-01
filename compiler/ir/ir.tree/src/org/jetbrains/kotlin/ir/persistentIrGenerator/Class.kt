@@ -73,6 +73,14 @@ internal fun PersistentIrGenerator.generateClass() {
                 +"override var metadata: " + MetadataSource + "? = null",
                 modalityField.toPersistentField(+"modality"),
                 +"override var attributeOwnerId: " + IrAttributeContainer + " = this",
+                setState(
+                    "Class",
+                    thisReceiverField,
+                    visibilityField,
+                    modalityField,
+                    typeParametersField,
+                    superTypesField,
+                )
             ),
             id,
         )()
@@ -90,7 +98,8 @@ internal fun PersistentIrGenerator.generateClass() {
     })
 
     addCarrierProtoMessage(
-        "Class", thisReceiverField,
+        "Class",
+        thisReceiverField,
         visibilityField,
         modalityField,
         typeParametersField,

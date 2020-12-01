@@ -141,4 +141,16 @@ internal class PersistentIrClass(
         }
 
     override var attributeOwnerId: IrAttributeContainer = this
+
+    override fun setState(t: ClassCarrier) {
+        lastModified = t.lastModified
+        parentSymbolField = t.parentSymbolField
+        originField = t.originField
+        annotationsField = t.annotationsField
+        thisReceiverField = t.thisReceiverField
+        visibilityField = t.visibilityField
+        modalityField = t.modalityField
+        typeParametersField = t.typeParametersField
+        superTypesField = t.superTypesField
+    }
 }

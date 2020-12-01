@@ -37,6 +37,9 @@ class SerializedCarriers(
 fun IrFileSerializer.serializeCarriers(declarations: Iterable<IrDeclaration>, bodies: Iterable<IrBody>): SerializedCarriers {
     val serializer = CarrierSerializer(this)
 
+    declarations.forEach { serializer.serializeDeclarationCarrier(it) }
+    bodies.forEach { serializer.serializeBodyCarriers(it) }
+
     return serializer.build()
 }
 
@@ -57,7 +60,7 @@ private class CarrierSerializer(val fileSerializer: IrFileSerializer) {
 
     fun serializeDeclarationCarrier(declaration: IrDeclaration) {
         if (declaration is PersistentIrDeclarationBase<*>) {
-            // TODO proper signature calculations
+            // TODO proper signature calculations?
             signatures += fileSerializer.serializeIdSignature((declaration as IrSymbolOwner).symbol.signature).toByteArray()
             declarationCarriers += serializeCarriers(declaration)
         } // else -> TODO?
@@ -75,19 +78,19 @@ private class CarrierSerializer(val fileSerializer: IrFileSerializer) {
             val values = ((element.values ?: arrayOf()) + element).drop(1)
             values.map {
                 when (it) {
-                    is AnonymousInitializerCarrier -> serializeAnonymousInitializerCarrier(it).toByteArray()
-                    is ClassCarrier -> serializeClassCarrier(it).toByteArray()
-                    is ConstructorCarrier -> serializeConstructorCarrier(it).toByteArray()
-                    is EnumEntryCarrier -> serializeEnumEntryCarrier(it).toByteArray()
-                    is ErrorDeclarationCarrier -> serializeErrorDeclarationCarrier(it).toByteArray()
-                    is FieldCarrier -> serializeFieldCarrier(it).toByteArray()
-                    is FunctionCarrier -> serializeFunctionCarrier(it).toByteArray()
-                    is LocalDelegatedPropertyCarrier -> serializeLocalDelegatedPropertyCarrier(it).toByteArray()
-                    is PropertyCarrier -> serializePropertyCarrier(it).toByteArray()
-                    is TypeAliasCarrier -> serializeTypeAliasCarrier(it).toByteArray()
-                    is TypeParameterCarrier -> serializeTypeParameterCarrier(it).toByteArray()
-                    is ValueParameterCarrier -> serializeValueParameterCarrier(it).toByteArray()
-                    is BodyCarrier -> serializeBodyCarrier(it).toByteArray()
+                    is AnonymousInitializerCarrier -> serializeAnonymousInitializerCarrier(it)
+                    is ClassCarrier -> serializeClassCarrier(it)
+                    is ConstructorCarrier -> serializeConstructorCarrier(it)
+                    is EnumEntryCarrier -> serializeEnumEntryCarrier(it)
+                    is ErrorDeclarationCarrier -> serializeErrorDeclarationCarrier(it)
+                    is FieldCarrier -> serializeFieldCarrier(it)
+                    is FunctionCarrier -> serializeFunctionCarrier(it)
+                    is LocalDelegatedPropertyCarrier -> serializeLocalDelegatedPropertyCarrier(it)
+                    is PropertyCarrier -> serializePropertyCarrier(it)
+                    is TypeAliasCarrier -> serializeTypeAliasCarrier(it)
+                    is TypeParameterCarrier -> serializeTypeParameterCarrier(it)
+                    is ValueParameterCarrier -> serializeValueParameterCarrier(it)
+                    is BodyCarrier -> serializeBodyCarrier(it)
                     else -> error("unknown Carrier")
                 }
             }
@@ -96,10 +99,10 @@ private class CarrierSerializer(val fileSerializer: IrFileSerializer) {
         return IrMemoryArrayWriter(carriers).writeIntoMemory()
     }
 
-    private fun serializeBodyCarrier(bodyCarrier: BodyCarrier): PirBodyCarrier {
+    private fun serializeBodyCarrier(bodyCarrier: BodyCarrier): ByteArray {
         val proto = PirBodyCarrier.newBuilder()
         proto.lastModified = bodyCarrier.lastModified
         bodyCarrier.containerField?.let { proto.containerFieldSymbol = serializerImpl.fileSerializer.serializeIrSymbol(it) }
-        return proto.build()
+        return proto.build().toByteArray()
     }
 }

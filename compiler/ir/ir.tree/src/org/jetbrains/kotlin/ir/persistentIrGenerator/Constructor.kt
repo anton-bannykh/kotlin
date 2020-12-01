@@ -57,7 +57,17 @@ internal fun PersistentIrGenerator.generateConstructor() {
                 bodyField.toBody(),
                 +"override var metadata: " + MetadataSource + "? = null",
                 visibilityField.toPersistentField(+"visibility"),
-                descriptor(ClassConstructorDescriptor)
+                descriptor(ClassConstructorDescriptor),
+                setState(
+                    "Constructor",
+                    returnTypeFieldField,
+                    dispatchReceiverParameterField,
+                    extensionReceiverParameterField,
+                    bodyField,
+                    visibilityField,
+                    typeParametersField,
+                    valueParametersField,
+                )
             ),
             id,
         )()

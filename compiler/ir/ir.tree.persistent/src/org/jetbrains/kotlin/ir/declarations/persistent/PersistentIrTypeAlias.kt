@@ -73,4 +73,13 @@ internal class PersistentIrTypeAlias(
                 setCarrier().expandedTypeField = v
             }
         }
+
+    override fun setState(t: TypeAliasCarrier) {
+        lastModified = t.lastModified
+        parentSymbolField = t.parentSymbolField
+        originField = t.originField
+        annotationsField = t.annotationsField
+        typeParametersField = t.typeParametersField
+        expandedTypeField = t.expandedTypeField
+    }
 }

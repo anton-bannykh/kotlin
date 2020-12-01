@@ -13,7 +13,6 @@ package org.jetbrains.kotlin.ir.serialization
 import org.jetbrains.kotlin.backend.common.serialization.IrDeclarationDeserializer
 import org.jetbrains.kotlin.backend.common.serialization.codedInputStream
 import org.jetbrains.kotlin.backend.common.serialization.proto.PirBodyCarrier
-import org.jetbrains.kotlin.backend.common.serialization.proto.PirClassCarrier
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrSymbolOwner
 import org.jetbrains.kotlin.ir.declarations.persistent.*
@@ -24,10 +23,8 @@ import org.jetbrains.kotlin.ir.declarations.persistent.carriers.BodyCarrierImpl
 import org.jetbrains.kotlin.ir.declarations.persistent.carriers.Carrier
 import org.jetbrains.kotlin.ir.declarations.persistent.carriers.DeclarationCarrier
 import org.jetbrains.kotlin.ir.expressions.IrBody
-import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.util.IdSignature
 import org.jetbrains.kotlin.library.impl.IrArrayMemoryReader
-import org.jetbrains.kotlin.protobuf.CodedInputStream
 import org.jetbrains.kotlin.protobuf.ExtensionRegistryLite
 
 import org.jetbrains.kotlin.backend.common.serialization.proto.IdSignature as ProtoIdSignature
@@ -49,33 +46,22 @@ class CarrierDeserializer(
     private val declarationReader = IrArrayMemoryReader(serializedCarriers.declarationCarriers)
     private val bodyReader = IrArrayMemoryReader(serializedCarriers.bodyCarriers)
 
-    private fun load(symbol: IrSymbol): CodedInputStream = TODO()
-
-    private inline fun <reified C : DeclarationCarrier> PersistentIrDeclarationBase<C>.load(fn: (ByteArray) -> C) {
-        val index = signatureToIndex[(this as IrSymbolOwner).symbol.signature]!!
-
-        val bodyCarriers = declarationReader.tableItemBytes(index)
-
-        load(IrArrayMemoryReader(bodyCarriers).mapToArray(fn))
-    }
-
-    private inline fun <reified C : Carrier> PersistentIrElementBase<C>.load(carriers: Array<C>) {
-        if (carriers.isNotEmpty()) {
-            val lastState = carriers.last()
-            this.values = (arrayOf(this.clone()) + carriers.dropLast(1))
-            this.setState(lastState)
-        }
-    }
-
     fun injectCarriers(declaration: IrDeclaration) {
         if (declaration is PersistentIrDeclarationBase<*>) {
-            val symbol = (declaration as IrSymbolOwner).symbol
-
             when (declaration) {
                 is PersistentIrAnonymousInitializer -> declaration.load(carrierDeserializerImpl::deserializeAnonymousInitializerCarrier)
-
-                is PersistentIrClass -> PirClassCarrier.parseFrom(load(symbol), ExtensionRegistryLite.newInstance())
-                else -> TODO()
+                is PersistentIrClass -> declaration.load(carrierDeserializerImpl::deserializeClassCarrier)
+                is PersistentIrConstructor -> declaration.load(carrierDeserializerImpl::deserializeConstructorCarrier)
+                is PersistentIrEnumEntry -> declaration.load(carrierDeserializerImpl::deserializeEnumEntryCarrier)
+                is PersistentIrErrorDeclaration -> declaration.load(carrierDeserializerImpl::deserializeErrorDeclarationCarrier)
+                is PersistentIrField -> declaration.load(carrierDeserializerImpl::deserializeFieldCarrier)
+                is PersistentIrFunctionCommon -> declaration.load(carrierDeserializerImpl::deserializeFunctionCarrier)
+                is PersistentIrLocalDelegatedProperty -> declaration.load(carrierDeserializerImpl::deserializeLocalDelegatedPropertyCarrier)
+                is PersistentIrPropertyCommon -> declaration.load(carrierDeserializerImpl::deserializePropertyCarrier)
+                is PersistentIrTypeAlias -> declaration.load(carrierDeserializerImpl::deserializeTypeAliasCarrier)
+                is PersistentIrTypeParameter -> declaration.load(carrierDeserializerImpl::deserializeTypeParameterCarrier)
+                is PersistentIrValueParameter -> declaration.load(carrierDeserializerImpl::deserializeValueParameterCarrier)
+                else -> error("unknown declaration type: ${declaration::class.qualifiedName}")
             }
         }
     }
@@ -90,6 +76,22 @@ class CarrierDeserializer(
             }
 
             body.load(carriers)
+        }
+    }
+
+    private inline fun <reified C : DeclarationCarrier> PersistentIrDeclarationBase<C>.load(fn: (ByteArray) -> C) {
+        val index = signatureToIndex[(this as IrSymbolOwner).symbol.signature]!!
+
+        val bodyCarriers = declarationReader.tableItemBytes(index)
+
+        load(IrArrayMemoryReader(bodyCarriers).mapToArray(fn))
+    }
+
+    private inline fun <reified C : Carrier> PersistentIrElementBase<C>.load(carriers: Array<C>) {
+        if (carriers.isNotEmpty()) {
+            val lastState = carriers.last()
+            this.values = (arrayOf(this.clone()) + carriers.dropLast(1))
+            this.setState(lastState)
         }
     }
 

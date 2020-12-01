@@ -72,4 +72,13 @@ internal class PersistentIrEnumEntry(
                 setCarrier().initializerExpressionField = v
             }
         }
+
+    override fun setState(t: EnumEntryCarrier) {
+        lastModified = t.lastModified
+        parentSymbolField = t.parentSymbolField
+        originField = t.originField
+        annotationsField = t.annotationsField
+        correspondingClassField = t.correspondingClassField
+        initializerExpressionField = t.initializerExpressionField
+    }
 }

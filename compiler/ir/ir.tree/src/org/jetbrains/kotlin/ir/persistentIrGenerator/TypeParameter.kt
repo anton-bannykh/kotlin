@@ -28,6 +28,7 @@ internal fun PersistentIrGenerator.generateTypeParameter() {
                 commonFields,
                 descriptor(descriptorType("TypeParameterDescriptor")),
                 superTypesField.toPersistentField(+"emptyList()"),
+                setState("TypeParameter", superTypesField)
             ),
             id,
         )()

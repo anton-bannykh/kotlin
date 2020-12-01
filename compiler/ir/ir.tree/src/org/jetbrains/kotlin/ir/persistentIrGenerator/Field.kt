@@ -35,6 +35,7 @@ internal fun PersistentIrGenerator.generateField() {
                 correspondingPropertySymbolField.toPersistentField(+"null"),
                 +"override var metadata: " + MetadataSource + "? = null",
                 typeField.toPersistentField(+"type"),
+                setState("Field", typeField, initializerField, correspondingPropertySymbolField)
             ),
             id,
         )()
