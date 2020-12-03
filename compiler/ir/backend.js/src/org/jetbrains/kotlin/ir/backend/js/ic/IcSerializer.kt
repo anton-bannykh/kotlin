@@ -103,12 +103,14 @@ class IcSerializer(
                 bodies.keys,
             )
 
-            val serializedMappings = mappings.serializeMappings(declarations)
+            val serializedMappings = mappings.serializeMappings(declarations) { symbol ->
+                fileSerializer.serializeIrSymbol(symbol)
+            }
 
             SerializedIcDataForFile(
                 serializedIrFile,
                 serializedCarriers,
-                serializedMappings
+                serializedMappings,
             )
         }
 

@@ -90,7 +90,9 @@ class IcDeserializer(
             icFileDeserializer.injectCarriers(declaration)
 
             // TODO declaration to be deserialized
-            context.mapping.deserializeMappings(icFileDeserializer.icFileData.mappings)
+            context.mapping.deserializeMappings(icFileDeserializer.icFileData.mappings) {
+                icFileDeserializer.deserializeIrSymbol(it)
+            }
 
         }
     }
@@ -150,6 +152,10 @@ class IcDeserializer(
             val declarationStream = fileReader.irDeclaration(idSigIndex).codedInputStream
             val declarationProto = ProtoIrDeclaration.parseFrom(declarationStream, ExtensionRegistryLite.newInstance())
             return declarationDeserializer.deserializeDeclaration(declarationProto)
+        }
+
+        fun deserializeIrSymbol(code: Long): IrSymbol {
+            return symbolDeserializer.deserializeIrSymbol(code)
         }
 
         fun deserializeIrSymbol(idSig: IdSignature, symbolKind: BinarySymbolData.SymbolKind): IrSymbol {
