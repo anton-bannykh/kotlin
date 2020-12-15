@@ -8,7 +8,6 @@ package org.jetbrains.kotlin.ir.declarations.persistent
 import org.jetbrains.kotlin.descriptors.VariableDescriptorWithAccessors
 import org.jetbrains.kotlin.ir.ObsoleteDescriptorBasedAPI
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
-import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
 import org.jetbrains.kotlin.ir.declarations.IrLocalDelegatedProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrVariable
@@ -17,6 +16,8 @@ import org.jetbrains.kotlin.ir.declarations.persistent.carriers.Carrier
 import org.jetbrains.kotlin.ir.declarations.persistent.carriers.LocalDelegatedPropertyCarrier
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.symbols.IrLocalDelegatedPropertySymbol
+import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
+import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.name.Name
 
@@ -45,7 +46,7 @@ internal class PersistentIrLocalDelegatedProperty(
     override var values: Array<Carrier>? = null
     override val createdOn: Int = factory.stageController.currentStage
 
-    override var parentField: IrDeclarationParent? = null
+    override var parentSymbolField: IrSymbol? = null
     override var originField: IrDeclarationOrigin = origin
     override var removedOn: Int = Int.MAX_VALUE
     override var annotationsField: List<IrConstructorCall> = emptyList()
@@ -74,33 +75,36 @@ internal class PersistentIrLocalDelegatedProperty(
             }
         }
 
-    override var getterField: IrSimpleFunction? = null
+    override var getterField: IrSimpleFunctionSymbol? = null
 
     override var getter: IrSimpleFunction
-        get() = getCarrier().getterField!!
+        get() = getCarrier().getterField!!.owner
         set(v) {
             if (getCarrier().getterField !== v) {
-                setCarrier().getterField = v
+                setCarrier().getterField = v.symbol
             }
         }
 
-    override var setterField: IrSimpleFunction? = null
+    override var setterField: IrSimpleFunctionSymbol? = null
 
     override var setter: IrSimpleFunction?
-        get() = getCarrier().setterField
+        get() = getCarrier().setterField?.owner
         set(v) {
             if (setter !== v) {
-                setCarrier().setterField = v
+                setCarrier().setterField = v?.symbol
             }
         }
 
-    override var metadataField: MetadataSource? = null
+    override var metadata: MetadataSource? = null
 
-    override var metadata: MetadataSource?
-        get() = getCarrier().metadataField
-        set(v) {
-            if (metadata !== v) {
-                setCarrier().metadataField = v
-            }
-        }
+    override fun setState(t: LocalDelegatedPropertyCarrier) {
+        lastModified = t.lastModified
+        parentSymbolField = t.parentSymbolField
+        originField = t.originField
+        annotationsField = t.annotationsField
+        typeField = t.typeField
+        delegateField = t.delegateField
+        getterField = t.getterField
+        setterField = t.setterField
+    }
 }
