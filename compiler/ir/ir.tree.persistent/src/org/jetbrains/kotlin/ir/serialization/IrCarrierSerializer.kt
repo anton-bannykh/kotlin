@@ -41,7 +41,6 @@ import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.expressions.IrExpressionBody
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.symbols.IrFieldSymbol
-import org.jetbrains.kotlin.ir.symbols.IrFunctionSymbol
 import org.jetbrains.kotlin.ir.symbols.IrPropertySymbol
 import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
@@ -80,8 +79,6 @@ internal abstract class IrCarrierSerializer {
     abstract fun serializeSimpleFunction(value: IrSimpleFunctionSymbol): Long
 
     abstract fun serializeSimpleFunctionSymbol(value: IrSimpleFunctionSymbol): Long
-
-    abstract fun serializeFunction(value: IrFunctionSymbol): Long
 
     abstract fun serializeField(value: IrFieldSymbol): Long
 
@@ -188,8 +185,8 @@ internal abstract class IrCarrierSerializer {
         proto.addAllAnnotation(carrier.annotationsField.map { serializeAnnotation(it) })
         proto.setType(serializeType(carrier.typeField))
         carrier.delegateField?.let { proto.setDelegate(serializeVariable(it)) }
-        carrier.getterField?.let { proto.setGetter(serializeFunction(it)) }
-        carrier.setterField?.let { proto.setSetter(serializeFunction(it)) }
+        carrier.getterField?.let { proto.setGetter(serializeSimpleFunction(it)) }
+        carrier.setterField?.let { proto.setSetter(serializeSimpleFunction(it)) }
         return proto.build().toByteArray()
     }
 

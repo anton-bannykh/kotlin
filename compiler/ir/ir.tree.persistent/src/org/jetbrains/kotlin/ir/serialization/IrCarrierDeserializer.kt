@@ -54,7 +54,6 @@ import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.expressions.IrExpressionBody
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.symbols.IrFieldSymbol
-import org.jetbrains.kotlin.ir.symbols.IrFunctionSymbol
 import org.jetbrains.kotlin.ir.symbols.IrPropertySymbol
 import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
@@ -94,8 +93,6 @@ internal abstract class IrCarrierDeserializer {
     abstract fun deserializeSimpleFunction(proto: Long): IrSimpleFunctionSymbol
 
     abstract fun deserializeSimpleFunctionSymbol(proto: Long): IrSimpleFunctionSymbol
-
-    abstract fun deserializeFunction(proto: Long): IrFunctionSymbol
 
     abstract fun deserializeField(proto: Long): IrFieldSymbol
 

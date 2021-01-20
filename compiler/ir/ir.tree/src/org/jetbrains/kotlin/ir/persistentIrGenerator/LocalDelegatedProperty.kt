@@ -11,17 +11,17 @@ internal fun PersistentIrGenerator.generateLocalDelegatedProperty() {
     val getterField = Field(
         "getter",
         IrSimpleFunction,
-        functionProto,
+        simpleFunctionProto,
         lateinit = true,
-        fieldType = IrFunctionSymbol,
+        fieldType = IrSimpleFunctionSymbol,
         fieldToPropValueConversion = +".owner",
         propToFieldValueConversion = +".symbol"
     )
     val setterField = Field(
         "setter",
         IrSimpleFunction + "?",
-        functionProto,
-        fieldType = IrFunctionSymbol + "?",
+        simpleFunctionProto,
+        fieldType = IrSimpleFunctionSymbol + "?",
         fieldToPropValueConversion = +"?.owner",
         propToFieldValueConversion = +"?.symbol"
     )
