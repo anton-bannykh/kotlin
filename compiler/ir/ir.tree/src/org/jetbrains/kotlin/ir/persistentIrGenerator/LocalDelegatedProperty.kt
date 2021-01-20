@@ -8,8 +8,8 @@ package org.jetbrains.kotlin.ir.persistentIrGenerator
 internal fun PersistentIrGenerator.generateLocalDelegatedProperty() {
     val typeField = Field("type", IrType)
     val delegateField = Field("delegate", irDeclaration("IrVariable"), lateinit = true)
-    val getterField = Field("getter", irDeclaration("IrFunction"), lateinit = true)
-    val setterField = Field("setter", irDeclaration("IrFunction") + "?")
+    val getterField = Field("getter", irDeclaration("IrSimpleFunction"), lateinit = true)
+    val setterField = Field("setter", irDeclaration("IrSimpleFunction") + "?")
     val metadataField = Field("metadata", MetadataSource + "?")
 
     writeFile("PersistentIrLocalDelegatedProperty.kt", renderFile("org.jetbrains.kotlin.ir.declarations.persistent") {

@@ -15,9 +15,13 @@ internal fun PersistentIrGenerator.generateErrorDeclaration() {
             arrayOf(
                 startOffset,
                 endOffset,
-                +"override val descriptor: " + DeclarationDescriptor
+                +"private val _descriptor: " + DeclarationDescriptor + "?"
             ).join(separator = ",\n").indent(),
             +") : " + baseClasses("ErrorDeclaration") + " " + block(
+                lines(
+                    +"override val descriptor: " + DeclarationDescriptor,
+                    +"    get() = _descriptor ?: this." + import("toIrBasedDescriptor", "org.jetbrains.kotlin.ir.descriptors") + "()"
+                ),
                 id,
                 lastModified,
                 loweredUpTo,
