@@ -53,8 +53,8 @@ internal fun PersistentIrGenerator.generateProperty() {
             +") : " + baseClasses("Property") + " " + blockSpaced(
                 commonFields,
                 backingFieldField.toPersistentField(+"null"),
-                getterField.toPersistentField(+"null"),
-                setterField.toPersistentField(+"null"),
+                propertyAccessor("getter"),
+                propertyAccessor("setter"),
                 +"override var metadata: " + MetadataSource + "? = null",
                 +"override var attributeOwnerId: " + IrAttributeContainer + " = this",
                 setState(
@@ -82,5 +82,35 @@ internal fun PersistentIrGenerator.generateProperty() {
         backingFieldField,
         getterField,
         setterField,
+    )
+}
+
+internal fun PersistentIrGenerator.propertyAccessor(name: String): E {
+    return lines(
+        +"private var _${name}Field: " + IrSimpleFunction + "? = null",
+        id,
+        +"override var ${name}Field: " + IrSimpleFunctionSymbol + "?",
+        lines(
+            +"get() = _${name}Field?.symbol",
+            +"set(s) " + block(
+                +"_${name}Field = s?.owner"
+            )
+        ).indent(),
+        id,
+        +"override var ${name}: IrSimpleFunction?",
+        lines(
+            +"get() = getCarrier().let " + block(
+                +"if (it === this) _${name}Field else ${name}Field?.owner"
+            ),
+            +"set(v) " + block(
+                +"val gc = getCarrier()",
+                +"if (gc !== this || _${name}Field == v) return",
+                id,
+                +"val sc = setCarrier()",
+                +"if (sc !== this) error(\"Modification may happen only to the current instance\")",
+                id,
+                +"_${name}Field = v"
+            )
+        ).indent()
     )
 }
