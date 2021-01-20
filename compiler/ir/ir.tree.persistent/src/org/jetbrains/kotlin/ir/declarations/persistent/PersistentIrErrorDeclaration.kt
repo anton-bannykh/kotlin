@@ -26,7 +26,7 @@ internal class PersistentIrErrorDeclaration(
 ) : IrErrorDeclaration(),
     PersistentIrDeclarationBase<ErrorDeclarationCarrier>,
     ErrorDeclarationCarrier {
-override val descriptor: DeclarationDescriptor
+    override val descriptor: DeclarationDescriptor
         get() = _descriptor ?: this.toIrBasedDescriptor()
 
     override var lastModified: Int = stageController.currentStage
