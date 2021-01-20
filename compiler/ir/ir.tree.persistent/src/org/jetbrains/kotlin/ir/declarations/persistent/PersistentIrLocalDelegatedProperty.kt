@@ -8,6 +8,7 @@ package org.jetbrains.kotlin.ir.declarations.persistent
 import org.jetbrains.kotlin.descriptors.VariableDescriptorWithAccessors
 import org.jetbrains.kotlin.ir.ObsoleteDescriptorBasedAPI
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
+import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
 import org.jetbrains.kotlin.ir.declarations.IrLocalDelegatedProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrVariable
@@ -17,7 +18,6 @@ import org.jetbrains.kotlin.ir.declarations.persistent.carriers.LocalDelegatedPr
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.symbols.IrLocalDelegatedPropertySymbol
 import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
-import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.name.Name
 
@@ -46,7 +46,7 @@ internal class PersistentIrLocalDelegatedProperty(
     override var values: Array<Carrier>? = null
     override val createdOn: Int = factory.stageController.currentStage
 
-    override var parentSymbolField: IrSymbol? = null
+    override var parentField: IrDeclarationParent? = null
     override var originField: IrDeclarationOrigin = origin
     override var removedOn: Int = Int.MAX_VALUE
     override var annotationsField: List<IrConstructorCall> = emptyList()

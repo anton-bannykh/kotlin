@@ -182,7 +182,7 @@ internal object PersistentIrGenerator {
     val values = +"override var values: Array<" + Carrier + ">? = null"
     val createdOn = +"override val createdOn: Int = factory.stageController.currentStage"
 
-    val parentSymbolField = +"override var parentSymbolField: " + IrSymbol + "? = null"
+    val parentField = +"override var parentField: " + IrDeclarationParent + "? = null"
     val originField = +"override var originField: " + IrDeclarationOrigin + " = origin"
     val removedOn = +"override var removedOn: Int = Int.MAX_VALUE"
     val annotationsField = +"override var annotationsField: List<" + IrConstructorCall + "> = emptyList()"
@@ -193,7 +193,7 @@ internal object PersistentIrGenerator {
         values,
         createdOn,
         id,
-        parentSymbolField,
+        parentField,
         originField,
         removedOn,
         annotationsField,

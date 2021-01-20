@@ -18,14 +18,29 @@ import org.jetbrains.kotlin.ir.symbols.IrSymbol
 interface PersistentIrDeclarationBase<T : DeclarationCarrier> : PersistentIrElementBase<T>, IrDeclaration, DeclarationCarrier {
     var removedOn: Int
 
+    var parentField: IrDeclarationParent?
+
+    override var parentSymbolField: IrSymbol?
+        get() = (parentField as IrSymbolOwner).symbol
+        set(s) {
+            if (s != null) {
+                parentField = s.owner as IrDeclarationParent
+            }
+        }
+
     // TODO reduce boilerplate
     override var parent: IrDeclarationParent
-        get() = getCarrier().parentSymbolField?.owner as? IrDeclarationParent ?: throw UninitializedPropertyAccessException("Parent not initialized: $this")
+        get() = getCarrier().let {
+            (if (it === this) parentField else it.parentSymbolField?.owner as? IrDeclarationParent) ?: throw UninitializedPropertyAccessException("Parent not initialized: $this")
+        }
         set(p) {
-            val symbol = (p as IrSymbolOwner).symbol
-            if (getCarrier().parentSymbolField !== symbol) {
-                setCarrier().parentSymbolField = symbol
-            }
+            val gc = getCarrier()
+            if (gc !== this || parentField == p) return
+
+            val sc = setCarrier()
+            if (sc !== this) error("Modification may happen only to the current instance")
+
+            parentField = p
         }
 
     override var origin: IrDeclarationOrigin

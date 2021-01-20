@@ -34,11 +34,11 @@ class PersistentIrFactory : IrFactory {
 
     private fun IrDeclaration.register() {
         // TODO what about local declarations? They don't seem to have public signatures...
-        if (symbol !is IrPublicSymbolBase<*>) {
-            stageController.createSignature()?.let {
-                symbolToSignatureMap[symbol] = it
-            }
-        }
+//        if (symbol !is IrPublicSymbolBase<*>) {
+//            stageController.createSignature()?.let {
+//                symbolToSignatureMap[symbol] = it
+//            }
+//        }
 
         allDeclarations += this
     }

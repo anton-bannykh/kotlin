@@ -8,6 +8,7 @@ package org.jetbrains.kotlin.ir.declarations.persistent
 import org.jetbrains.kotlin.descriptors.DescriptorVisibility
 import org.jetbrains.kotlin.ir.declarations.IrAttributeContainer
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
+import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
 import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
@@ -17,7 +18,6 @@ import org.jetbrains.kotlin.ir.declarations.persistent.carriers.PropertyCarrier
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.symbols.IrFieldSymbol
 import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
-import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.serialization.deserialization.descriptors.DeserializedContainerSource
 
@@ -46,7 +46,7 @@ internal abstract class PersistentIrPropertyCommon(
     override var values: Array<Carrier>? = null
     override val createdOn: Int = factory.stageController.currentStage
 
-    override var parentSymbolField: IrSymbol? = null
+    override var parentField: IrDeclarationParent? = null
     override var originField: IrDeclarationOrigin = origin
     override var removedOn: Int = Int.MAX_VALUE
     override var annotationsField: List<IrConstructorCall> = emptyList()
@@ -61,24 +61,48 @@ internal abstract class PersistentIrPropertyCommon(
             }
         }
 
-    override var getterField: IrSimpleFunctionSymbol? = null
+    private var _getterField: IrSimpleFunction? = null
 
-    override var getter: IrSimpleFunction?
-        get() = getCarrier().getterField?.owner
-        set(v) {
-            if (getter !== v) {
-                setCarrier().getterField = v?.symbol
-            }
+    override var getterField: IrSimpleFunctionSymbol?
+        get() = _getterField?.symbol
+        set(s) {
+            _getterField = s?.owner
         }
 
-    override var setterField: IrSimpleFunctionSymbol? = null
+    override var getter: IrSimpleFunction?
+        get() = getCarrier().let {
+            if (it === this) _getterField else getterField?.owner
+        }
+        set(v) {
+            val gc = getCarrier()
+            if (gc !== this || _getterField == v) return
+
+            val sc = setCarrier()
+            if (sc !== this) error("Modification may happen only to the current instance")
+
+            _getterField = v
+        }
+
+    private var _setterField: IrSimpleFunction? = null
+
+    override var setterField: IrSimpleFunctionSymbol?
+        get() = _setterField?.symbol
+        set(s) {
+            _setterField = s?.owner
+        }
 
     override var setter: IrSimpleFunction?
-        get() = getCarrier().setterField?.owner
+        get() = getCarrier().let {
+            if (it === this) _setterField else setterField?.owner
+        }
         set(v) {
-            if (setter !== v) {
-                setCarrier().setterField = v?.symbol
-            }
+            val gc = getCarrier()
+            if (gc !== this || _setterField == v) return
+
+            val sc = setCarrier()
+            if (sc !== this) error("Modification may happen only to the current instance")
+
+            _setterField = v
         }
 
     override var metadata: MetadataSource? = null
