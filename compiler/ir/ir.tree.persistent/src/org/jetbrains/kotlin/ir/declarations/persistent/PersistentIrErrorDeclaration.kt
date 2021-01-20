@@ -35,6 +35,7 @@ internal class PersistentIrErrorDeclaration(
 ) : PersistentIrDeclarationBase<ErrorDeclarationCarrier>, IrErrorDeclaration(), ErrorDeclarationCarrier {
     override val descriptor: DeclarationDescriptor
         get() = _descriptor ?: this.toIrBasedDescriptor()
+
     override var lastModified: Int = stageController.currentStage
     override var loweredUpTo: Int = stageController.currentStage
     override var values: Array<Carrier>? = null
