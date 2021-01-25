@@ -82,7 +82,6 @@ class FileDeserializationState(
         linker.symbolTable.irFactory,
         fileReader,
         file,
-        linker.deserializeFakeOverrides,
         allowErrorNodes,
         deserializeInlineFunctions,
         deserializeBodies,

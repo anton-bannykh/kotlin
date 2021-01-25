@@ -1264,7 +1264,6 @@ open class IrFileSerializer(
 
     fun memberNeedsSerialization(member: IrDeclaration): Boolean {
         assert(member.parent is IrClass)
-        if (FakeOverrideControl.serializeFakeOverrides) return true
         if (backendSpecificSerializeAllMembers(member.parent as IrClass)) return true
         // TODO: we can, probably, maintain a privacy bit while traversing the tree
         // instead of running the parent hierarchy for isExported every time.

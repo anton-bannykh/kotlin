@@ -8,7 +8,7 @@ package org.jetbrains.kotlin.backend.common.serialization
 import org.jetbrains.kotlin.backend.common.LoggingContext
 import org.jetbrains.kotlin.backend.common.ir.ir2string
 import org.jetbrains.kotlin.backend.common.lower.InnerClassesSupport
-import org.jetbrains.kotlin.backend.common.overrides.PlatformFakeOverrideClassFilter
+import org.jetbrains.kotlin.backend.common.overrides.FakeOverrideClassFilter
 import org.jetbrains.kotlin.backend.common.serialization.encodings.*
 import org.jetbrains.kotlin.backend.common.serialization.proto.IrDeclaration.DeclaratorCase.*
 import org.jetbrains.kotlin.backend.common.serialization.proto.IrType.KindCase.*
@@ -60,12 +60,11 @@ class IrDeclarationDeserializer(
     val irFactory: IrFactory,
     val fileReader: IrLibraryFile,
     val file: IrFile,
-    val deserializeFakeOverrides: Boolean,
     val allowErrorNodes: Boolean,
     val deserializeInlineFunctions: Boolean,
     protected var deserializeBodies: Boolean,
     val symbolDeserializer: IrSymbolDeserializer,
-    val platformFakeOverrideClassFilter: PlatformFakeOverrideClassFilter,
+    val platformFakeOverrideClassFilter: FakeOverrideClassFilter,
     val addToFakeOverrideClassQueue: (IrClass) -> Unit,
     val captureBodyIndex: (IrFile, IrBody, Int) -> Unit,
     val skipMutableState: Boolean = false,
@@ -318,10 +317,8 @@ class IrDeclarationDeserializer(
 
                     thisReceiver = deserializeIrValueParameter(proto.thisReceiver, -1)
 
-                    if (!deserializeFakeOverrides) {
-                        if (symbol.isPublicApi) {
-                            addToFakeOverrideClassQueue(this)
-                        }
+                    if (symbol.isPublicApi) {
+                        addToFakeOverrideClassQueue(this)
                     }
                 }
 
@@ -731,7 +728,6 @@ class IrDeclarationDeserializer(
     // Depending on deserialization strategy we either deserialize public api fake overrides
     // or reconstruct them after IR linker completes.
     private fun isSkippableFakeOverride(proto: ProtoDeclaration, parent: IrClass): Boolean {
-        if (deserializeFakeOverrides) return false
         if (!platformFakeOverrideClassFilter.constructFakeOverrides(parent)) return false
 
         val symbol = when (proto.declaratorCase!!) {
