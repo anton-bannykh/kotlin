@@ -31,6 +31,8 @@ import org.jetbrains.kotlin.descriptors.DeclarationDescriptor
 import org.jetbrains.kotlin.descriptors.ModuleDescriptor
 import org.jetbrains.kotlin.descriptors.impl.ModuleDescriptorImpl
 import org.jetbrains.kotlin.incremental.components.LookupTracker
+import org.jetbrains.kotlin.ir.backend.js.ic.IcSymbolTable
+import org.jetbrains.kotlin.ir.backend.js.ic.SerializedIcData
 import org.jetbrains.kotlin.ir.backend.js.lower.serialization.ir.JsIrLinker
 import org.jetbrains.kotlin.ir.backend.js.lower.serialization.ir.JsIrModuleSerializer
 import org.jetbrains.kotlin.ir.backend.js.lower.serialization.ir.JsManglerDesc
@@ -141,9 +143,9 @@ fun generateKLib(
     }
 
     val depsDescriptors =
-        ModulesStructure(project, MainModule.SourceFiles(files), analyzer, configuration, allDependencies, friendDependencies)
+        ModulesStructure(project, MainModule.SourceFiles(files), analyzer, configuration, allDependencies, friendDependencies, EmptyLoweringsCacheProvider)
 
-    val (psi2IrContext, hasErrors) = runAnalysisAndPreparePsi2Ir(depsDescriptors, irFactory, errorPolicy)
+    val (psi2IrContext, hasErrors) = runAnalysisAndPreparePsi2Ir(depsDescriptors, errorPolicy, SymbolTable(IdSignatureDescriptor(JsManglerDesc), irFactory))
     val irBuiltIns = psi2IrContext.irBuiltIns
     val functionFactory = IrFunctionFactory(irBuiltIns, psi2IrContext.symbolTable)
     irBuiltIns.functionFactory = functionFactory
@@ -203,7 +205,8 @@ data class IrModuleInfo(
     val allDependencies: List<IrModuleFragment>,
     val bultins: IrBuiltIns,
     val symbolTable: SymbolTable,
-    val deserializer: JsIrLinker
+    val deserializer: JsIrLinker,
+    val loweredIrLoaded: Set<IrModuleFragment> = emptySet(),
 )
 
 private fun sortDependencies(dependencies: List<KotlinLibrary>, mapping: Map<KotlinLibrary, ModuleDescriptor>): Collection<KotlinLibrary> {
@@ -215,6 +218,14 @@ private fun sortDependencies(dependencies: List<KotlinLibrary>, mapping: Map<Kot
     }.reversed()
 }
 
+interface LoweringsCacheProvider {
+    fun cacheByPath(path: String): SerializedIcData?
+}
+
+object EmptyLoweringsCacheProvider : LoweringsCacheProvider {
+    override fun cacheByPath(path: String): SerializedIcData? = null
+}
+
 fun loadIr(
     project: Project,
     mainModule: MainModule,
@@ -223,22 +234,35 @@ fun loadIr(
     allDependencies: KotlinLibraryResolveResult,
     friendDependencies: List<KotlinLibrary>,
     irFactory: IrFactory,
+    loweringsCacheProvider: LoweringsCacheProvider? = null,
 ): IrModuleInfo {
-    val depsDescriptors = ModulesStructure(project, mainModule, analyzer, configuration, allDependencies, friendDependencies)
+    val depsDescriptors = ModulesStructure(project, mainModule, analyzer, configuration, allDependencies, friendDependencies, loweringsCacheProvider ?: EmptyLoweringsCacheProvider)
     val errorPolicy = configuration.get(JSConfigurationKeys.ERROR_TOLERANCE_POLICY) ?: ErrorTolerancePolicy.DEFAULT
     val messageLogger = configuration.get(IrMessageLogger.IR_MESSAGE_LOGGER) ?: IrMessageLogger.None
 
+    val signaturer = IdSignatureDescriptor(JsManglerDesc)
+    val symbolTable = if (loweringsCacheProvider == null) SymbolTable(signaturer, irFactory) else IcSymbolTable(signaturer, irFactory)
+
     when (mainModule) {
         is MainModule.SourceFiles -> {
-            val (psi2IrContext, _) = runAnalysisAndPreparePsi2Ir(depsDescriptors, irFactory, errorPolicy)
+            val (psi2IrContext, _) = runAnalysisAndPreparePsi2Ir(depsDescriptors, errorPolicy, symbolTable)
             val irBuiltIns = psi2IrContext.irBuiltIns
-            val symbolTable = psi2IrContext.symbolTable
             val functionFactory = IrFunctionFactory(irBuiltIns, symbolTable)
             irBuiltIns.functionFactory = functionFactory
             val feContext = psi2IrContext.run {
                 JsIrLinker.JsFePluginContext(moduleDescriptor, symbolTable, typeTranslator, irBuiltIns)
             }
-            val irLinker = JsIrLinker(psi2IrContext.moduleDescriptor, messageLogger, irBuiltIns, symbolTable, functionFactory, feContext, null)
+            val irLinker = JsIrLinker(
+                psi2IrContext.moduleDescriptor,
+                messageLogger,
+                irBuiltIns,
+                symbolTable,
+                functionFactory,
+                feContext,
+                null,
+                depsDescriptors.loweredIcData,
+                loweringsCacheProvider != null
+            )
             val deserializedModuleFragments = sortDependencies(allDependencies.getFullList(), depsDescriptors.descriptors).map {
                 irLinker.deserializeIrModuleHeader(depsDescriptors.getModuleDescriptor(it), it)
             }
@@ -257,19 +281,26 @@ fun loadIr(
 
             irBuiltIns.knownBuiltins.forEach { it.acceptVoid(mangleChecker) }
 
-            return IrModuleInfo(moduleFragment, deserializedModuleFragments, irBuiltIns, symbolTable, irLinker)
+            return IrModuleInfo(moduleFragment, deserializedModuleFragments, irBuiltIns, symbolTable, irLinker, depsDescriptors.modulesWithCaches(deserializedModuleFragments))
         }
         is MainModule.Klib -> {
             val moduleDescriptor = depsDescriptors.getModuleDescriptor(mainModule.lib)
-            val mangler = JsManglerDesc
-            val signaturer = IdSignatureDescriptor(mangler)
-            val symbolTable = SymbolTable(signaturer, irFactory)
             val typeTranslator =
                 TypeTranslatorImpl(symbolTable, depsDescriptors.compilerConfiguration.languageVersionSettings, moduleDescriptor)
             val irBuiltIns = IrBuiltIns(moduleDescriptor.builtIns, typeTranslator, symbolTable)
             val functionFactory = IrFunctionFactory(irBuiltIns, symbolTable)
             val irLinker =
-                JsIrLinker(null, messageLogger, irBuiltIns, symbolTable, functionFactory, null, null)
+                JsIrLinker(
+                    null,
+                    messageLogger,
+                    irBuiltIns,
+                    symbolTable,
+                    functionFactory,
+                    null,
+                    null,
+                    depsDescriptors.loweredIcData,
+                    loweringsCacheProvider != null
+                )
 
             val deserializedModuleFragments = sortDependencies(allDependencies.getFullList(), depsDescriptors.descriptors).map {
                 val strategy =
@@ -288,22 +319,21 @@ fun loadIr(
             ExternalDependenciesGenerator(symbolTable, listOf(irLinker)).generateUnboundSymbolsAsDependencies()
             irLinker.postProcess()
 
-            return IrModuleInfo(moduleFragment, deserializedModuleFragments, irBuiltIns, symbolTable, irLinker)
+            return IrModuleInfo(moduleFragment, deserializedModuleFragments, irBuiltIns, symbolTable, irLinker, depsDescriptors.modulesWithCaches(deserializedModuleFragments))
         }
     }
 }
 
 private fun runAnalysisAndPreparePsi2Ir(
     depsDescriptors: ModulesStructure,
-    irFactory: IrFactory,
-    errorIgnorancePolicy: ErrorTolerancePolicy
+    errorIgnorancePolicy: ErrorTolerancePolicy,
+    symbolTable: SymbolTable,
 ): Pair<GeneratorContext, Boolean> {
     val analysisResult = depsDescriptors.runAnalysis(errorIgnorancePolicy)
     val psi2Ir = Psi2IrTranslator(
         depsDescriptors.compilerConfiguration.languageVersionSettings,
         Psi2IrConfiguration(errorIgnorancePolicy.allowErrors)
     )
-    val symbolTable = SymbolTable(IdSignatureDescriptor(JsManglerDesc), irFactory)
     return psi2Ir.createGeneratorContext(analysisResult.moduleDescriptor, analysisResult.bindingContext, symbolTable) to analysisResult.hasErrors
 }
 
@@ -372,7 +402,8 @@ private class ModulesStructure(
     private val analyzer: AbstractAnalyzerWithCompilerReport,
     val compilerConfiguration: CompilerConfiguration,
     val allDependencies: KotlinLibraryResolveResult,
-    private val friendDependencies: List<KotlinLibrary>
+    private val friendDependencies: List<KotlinLibrary>,
+    private val loweringsCacheProvider: LoweringsCacheProvider,
 ) {
     val moduleDependencies: Map<KotlinLibrary, List<KotlinLibrary>> = run {
         val transitives = allDependencies.getFullResolvedList()
@@ -430,6 +461,8 @@ private class ModulesStructure(
     // TODO: these are roughly equivalent to KlibResolvedModuleDescriptorsFactoryImpl. Refactor me.
     val descriptors = mutableMapOf<KotlinLibrary, ModuleDescriptorImpl>()
 
+    val loweredIcData = mutableMapOf<ModuleDescriptor, SerializedIcData>()
+
     fun getModuleDescriptor(current: KotlinLibrary): ModuleDescriptorImpl = descriptors.getOrPut(current) {
         val isBuiltIns = current.unresolvedDependencies.isEmpty()
 
@@ -446,7 +479,16 @@ private class ModulesStructure(
 
         val dependencies = moduleDependencies.getValue(current).map { getModuleDescriptor(it) }
         md.setDependencies(listOf(md) + dependencies)
+
+        loweringsCacheProvider.cacheByPath(current.libraryFile.absolutePath)?.let { icData ->
+            loweredIcData[md] = icData
+        }
+
         md
+    }
+
+    fun modulesWithCaches(allModules: Iterable<IrModuleFragment>): Set<IrModuleFragment> {
+        return allModules.filter { it.descriptor in loweredIcData }.toSet()
     }
 
     val builtInModuleDescriptor =

@@ -9,8 +9,10 @@ dependencies {
     compile(project(":compiler:ir.serialization.common"))
     compile(project(":js:js.frontend"))
     implementation(project(":compiler:ir.backend.common"))
+    compile(project(":compiler:ir.tree.persistent"))
 
     compileOnly(intellijCoreDep()) { includeJars("intellij-core") }
+    implementation(kotlin("reflect"))
 }
 
 sourceSets {
