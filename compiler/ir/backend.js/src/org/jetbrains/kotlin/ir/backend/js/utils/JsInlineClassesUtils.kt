@@ -26,8 +26,8 @@ class JsInlineClassesUtils(val context: JsIrBackendContext) : InlineClassesUtils
         klass.isInline
 
     override val boxIntrinsic: IrSimpleFunctionSymbol
-        get() = context.intrinsics.jsBoxIntrinsic
+        get() = context.jsIrBuiltIns.jsBoxIntrinsic
 
     override val unboxIntrinsic: IrSimpleFunctionSymbol
-        get() = context.intrinsics.jsUnboxIntrinsic
+        get() = context.jsIrBuiltIns.jsUnboxIntrinsic
 }

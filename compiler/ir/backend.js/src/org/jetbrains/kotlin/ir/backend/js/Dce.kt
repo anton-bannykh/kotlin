@@ -105,8 +105,8 @@ private fun buildRoots(modules: Iterable<IrModuleFragment>, context: JsIrBackend
 
 private fun DceRuntimeDiagnostic.unreachableDeclarationMethod(context: JsIrBackendContext) =
     when (this) {
-        DceRuntimeDiagnostic.LOG -> context.intrinsics.jsUnreachableDeclarationLog
-        DceRuntimeDiagnostic.EXCEPTION -> context.intrinsics.jsUnreachableDeclarationException
+        DceRuntimeDiagnostic.LOG -> context.jsIrBuiltIns.jsUnreachableDeclarationLog
+        DceRuntimeDiagnostic.EXCEPTION -> context.jsIrBuiltIns.jsUnreachableDeclarationException
     }
 
 private fun processUselessDeclarations(
@@ -376,7 +376,7 @@ fun usefulDeclarations(roots: Iterable<IrDeclaration>, context: JsIrBackendConte
                     super.visitCall(expression)
 
                     when (expression.symbol) {
-                        context.intrinsics.jsBoxIntrinsic -> {
+                        context.jsIrBuiltIns.jsBoxIntrinsic -> {
                             val inlineClass = context.inlineClassesUtils.getInlinedClass(expression.getTypeArgument(0)!!)!!
                             val constructor = inlineClass.declarations.filterIsInstance<IrConstructor>().single { it.isPrimary }
                             constructor.enqueue("intrinsic: jsBoxIntrinsic")
@@ -386,7 +386,7 @@ fun usefulDeclarations(roots: Iterable<IrDeclaration>, context: JsIrBackendConte
                             ref.enqueue("intrinsic: jsClass")
                             referencedJsClasses += ref
                         }
-                        context.intrinsics.jsGetKClassFromExpression -> {
+                        context.jsIrBuiltIns.jsGetKClassFromExpression -> {
                             val ref = expression.getTypeArgument(0)?.classOrNull ?: context.irBuiltIns.anyClass
                             referencedJsClassesFromExpressions += ref.owner
                         }
@@ -395,13 +395,13 @@ fun usefulDeclarations(roots: Iterable<IrDeclaration>, context: JsIrBackendConte
                             classToCreate.enqueue("intrinsic: jsObjectCreate")
                             constructedClasses += classToCreate
                         }
-                        context.intrinsics.jsEquals -> {
+                        context.jsIrBuiltIns.jsEquals -> {
                             equalsMethod.enqueue("intrinsic: jsEquals")
                         }
-                        context.intrinsics.jsToString -> {
+                        context.jsIrBuiltIns.jsToString -> {
                             toStringMethod.enqueue("intrinsic: jsToString")
                         }
-                        context.intrinsics.jsHashCode -> {
+                        context.jsIrBuiltIns.jsHashCode -> {
                             hashCodeMethod.enqueue("intrinsic: jsHashCode")
                         }
                         context.intrinsics.jsPlus -> {
@@ -409,7 +409,7 @@ fun usefulDeclarations(roots: Iterable<IrDeclaration>, context: JsIrBackendConte
                                 toStringMethod.enqueue("intrinsic: jsPlus")
                             }
                         }
-                        context.intrinsics.jsConstruct -> {
+                        context.jsIrBuiltIns.jsConstruct -> {
                             val callType = expression.getTypeArgument(0)!!
                             val constructor = callType.getClass()!!.primaryConstructor
                             constructor!!.enqueue("ctor call from jsConstruct-intrinsic")

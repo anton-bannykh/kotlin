@@ -44,15 +44,15 @@ class TypeOperatorLowering(val context: JsIrBackendContext) : BodyLoweringPass {
 
     private val eqeq = context.irBuiltIns.eqeqSymbol
 
-    private val isInterfaceSymbol get() = context.intrinsics.isInterfaceSymbol
-    private val isArraySymbol get() = context.intrinsics.isArraySymbol
-    private val isSuspendFunctionSymbol = context.intrinsics.isSuspendFunctionSymbol
+    private val isInterfaceSymbol get() = context.jsIrBuiltIns.isInterfaceSymbol
+    private val isArraySymbol get() = context.jsIrBuiltIns.isArraySymbol
+    private val isSuspendFunctionSymbol = context.jsIrBuiltIns.isSuspendFunctionSymbol
 
     //    private val isCharSymbol get() = context.intrinsics.isCharSymbol
-    private val isObjectSymbol get() = context.intrinsics.isObjectSymbol
+    private val isObjectSymbol get() = context.jsIrBuiltIns.isObjectSymbol
 
     private val instanceOfIntrinsicSymbol = context.intrinsics.jsInstanceOf
-    private val typeOfIntrinsicSymbol = context.intrinsics.jsTypeOf
+    private val typeOfIntrinsicSymbol = context.jsIrBuiltIns.jsTypeOf
     private val jsClassIntrinsicSymbol = context.intrinsics.jsClass
 
     private val stringMarker get() = JsIrBuilder.buildString(context.irBuiltIns.stringType, "string")
@@ -317,16 +317,16 @@ class TypeOperatorLowering(val context: JsIrBackendContext) : BodyLoweringPass {
                 JsIrBuilder.buildCall(isArraySymbol).apply { putValueArgument(0, argument) }
 
             private fun generateNumberCheck(argument: IrExpression) =
-                JsIrBuilder.buildCall(context.intrinsics.isNumberSymbol).apply { putValueArgument(0, argument) }
+                JsIrBuilder.buildCall(context.jsIrBuiltIns.isNumberSymbol).apply { putValueArgument(0, argument) }
 
             private fun generateComparableCheck(argument: IrExpression) =
-                JsIrBuilder.buildCall(context.intrinsics.isComparableSymbol).apply { putValueArgument(0, argument) }
+                JsIrBuilder.buildCall(context.jsIrBuiltIns.isComparableSymbol).apply { putValueArgument(0, argument) }
 
             private fun generateCharSequenceCheck(argument: IrExpression) =
-                JsIrBuilder.buildCall(context.intrinsics.isCharSequenceSymbol).apply { putValueArgument(0, argument) }
+                JsIrBuilder.buildCall(context.jsIrBuiltIns.isCharSequenceSymbol).apply { putValueArgument(0, argument) }
 
             private fun generatePrimitiveArrayTypeCheck(argument: IrExpression, toType: IrType): IrExpression {
-                val f = context.intrinsics.isPrimitiveArray[toType.getPrimitiveArrayElementType()]!!
+                val f = context.jsIrBuiltIns.isPrimitiveArray[toType.getPrimitiveArrayElementType()]!!
                 return JsIrBuilder.buildCall(f).apply { putValueArgument(0, argument) }
             }
 
@@ -368,7 +368,7 @@ class TypeOperatorLowering(val context: JsIrBackendContext) : BodyLoweringPass {
                 val casted = when {
                     toType.isByte() -> maskOp(argument(), byteMask, lit24)
                     toType.isShort() -> maskOp(argument(), shortMask, lit16)
-                    toType.isLong() -> JsIrBuilder.buildCall(context.intrinsics.jsToLong).apply {
+                    toType.isLong() -> JsIrBuilder.buildCall(context.jsIrBuiltIns.jsToLong).apply {
                         putValueArgument(0, argument())
                     }
                     else -> error("Unreachable execution (coercion to non-Integer type")

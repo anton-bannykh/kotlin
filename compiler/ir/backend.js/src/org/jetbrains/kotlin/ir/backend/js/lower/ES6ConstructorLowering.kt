@@ -124,7 +124,7 @@ class ES6ConstructorLowering(val context: JsIrBackendContext) : BodyLoweringPass
                     getElements(constructor)
                 )
 
-                return JsIrBuilder.buildCall(context.intrinsics.jsConstruct).apply {
+                return JsIrBuilder.buildCall(context.jsIrBuiltIns.jsConstruct).apply {
                     putValueArgument(0, callType)
                     putValueArgument(1, newTarget)
                     putValueArgument(2, args)
@@ -284,7 +284,7 @@ class ES6ConstructorLowering(val context: JsIrBackendContext) : BodyLoweringPass
 
         if (superCtor.parentAsClass.defaultType.isAny()) {
             //superType is Any, and we have default primary --> create call to default primary
-            return JsIrBuilder.buildCall(context.intrinsics.jsConstruct, context.irBuiltIns.nothingType).apply {
+            return JsIrBuilder.buildCall(context.jsIrBuiltIns.jsConstruct, context.irBuiltIns.nothingType).apply {
                 arguments.elements.clear()
                 arguments.addElement(JsIrBuilder.buildGetValue(boxSymbol!!))
 
@@ -296,7 +296,7 @@ class ES6ConstructorLowering(val context: JsIrBackendContext) : BodyLoweringPass
             }
         }
 
-        return JsIrBuilder.buildCall(context.intrinsics.jsConstruct, context.irBuiltIns.nothingType).apply {
+        return JsIrBuilder.buildCall(context.jsIrBuiltIns.jsConstruct, context.irBuiltIns.nothingType).apply {
             putValueArgument(0, callType)
             putValueArgument(1, resultType)
             putValueArgument(2, arguments)

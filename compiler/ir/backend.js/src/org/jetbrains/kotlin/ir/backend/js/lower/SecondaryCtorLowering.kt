@@ -104,7 +104,7 @@ class SecondaryConstructorLowering(val context: JsIrBackendContext) : Declaratio
                 )
 
                 statements += tmp
-                statements += JsIrBuilder.buildCall(context.intrinsics.captureStack).also { call ->
+                statements += JsIrBuilder.buildCall(context.jsIrBuiltIns.captureStack).also { call ->
                     call.putValueArgument(0, JsIrBuilder.buildGetValue(tmp.symbol))
                     call.putValueArgument(
                         1,

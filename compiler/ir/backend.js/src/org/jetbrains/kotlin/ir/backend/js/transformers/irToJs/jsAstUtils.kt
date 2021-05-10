@@ -256,7 +256,7 @@ fun argumentsWithVarargAsSingleArray(
                         is JsArrayLiteral -> argument
                         is JsNew -> argument.arguments.firstOrNull() as? JsArrayLiteral
                         else -> null
-                    } ?: if (valueArgument is IrCall && valueArgument.symbol == context.staticContext.backendContext.intrinsics.arrayConcat)
+                    } ?: if (valueArgument is IrCall && valueArgument.symbol == context.staticContext.backendContext.jsIrBuiltIns.arrayConcat)
                         argument
                     else
                         JsInvocation(JsNameRef("call", JsNameRef("slice", JsArrayLiteral())), argument)

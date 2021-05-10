@@ -41,7 +41,7 @@ class CallsLowering(val context: JsIrBackendContext) : BodyLoweringPass {
 
             override fun visitFunctionAccess(expression: IrFunctionAccessExpression, data: IrDeclaration): IrElement {
                 val call = super.visitFunctionAccess(expression, data)
-                val doNotIntrinsify = data.hasAnnotation(context.intrinsics.doNotIntrinsifyAnnotationSymbol)
+                val doNotIntrinsify = data.hasAnnotation(context.jsIrBuiltIns.doNotIntrinsifyAnnotationSymbol)
                 if (call is IrFunctionAccessExpression) {
                     for (transformer in transformers) {
                         val newCall = transformer.transformFunctionAccess(call, doNotIntrinsify)

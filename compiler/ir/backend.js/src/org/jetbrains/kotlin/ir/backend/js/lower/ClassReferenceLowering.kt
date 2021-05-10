@@ -25,6 +25,7 @@ import org.jetbrains.kotlin.types.*
 
 class ClassReferenceLowering(val context: JsIrBackendContext) : BodyLoweringPass {
     private val intrinsics = context.intrinsics
+    private val jsIrBuiltIns = context.jsIrBuiltIns
 
     private val primitiveClassesObject = context.primitiveClassesObject
 
@@ -73,7 +74,7 @@ class ClassReferenceLowering(val context: JsIrBackendContext) : BodyLoweringPass
         if (primitiveKClass != null)
             return JsIrBuilder.buildBlock(returnType, listOf(argument, primitiveKClass))
 
-        return JsIrBuilder.buildCall(intrinsics.jsGetKClassFromExpression, returnType, listOf(typeArgument)).apply {
+        return JsIrBuilder.buildCall(jsIrBuiltIns.jsGetKClassFromExpression, returnType, listOf(typeArgument)).apply {
             putValueArgument(0, argument)
         }
     }
@@ -111,7 +112,7 @@ class ClassReferenceLowering(val context: JsIrBackendContext) : BodyLoweringPass
     }
 
     private fun callGetKClass(
-        returnType: IrType = intrinsics.jsGetKClass.owner.returnType,
+        returnType: IrType = jsIrBuiltIns.jsGetKClass.owner.returnType,
         typeArgument: IrType
     ): IrCall {
         val primitiveKClass =
@@ -120,7 +121,7 @@ class ClassReferenceLowering(val context: JsIrBackendContext) : BodyLoweringPass
         if (primitiveKClass != null)
             return primitiveKClass
 
-        return JsIrBuilder.buildCall(intrinsics.jsGetKClass, returnType, listOf(typeArgument))
+        return JsIrBuilder.buildCall(jsIrBuiltIns.jsGetKClass, returnType, listOf(typeArgument))
             .apply {
                 putValueArgument(0, callJsClass(typeArgument))
             }
@@ -146,7 +147,7 @@ class ClassReferenceLowering(val context: JsIrBackendContext) : BodyLoweringPass
     }
 
     private fun createDynamicType(): IrExpression {
-        return buildCall(context.intrinsics.createDynamicKType!!)
+        return buildCall(context.jsIrBuiltIns.createDynamicKType!!)
     }
 
     private fun createSimpleKType(type: IrSimpleType, visitedTypeParams: MutableSet<IrTypeParameter>): IrExpression {
@@ -166,7 +167,7 @@ class ClassReferenceLowering(val context: JsIrBackendContext) : BodyLoweringPass
         )
         val isMarkedNullable = JsIrBuilder.buildBoolean(context.irBuiltIns.booleanType, type.isMarkedNullable())
         return buildCall(
-            context.intrinsics.createKType!!,
+            context.jsIrBuiltIns.createKType!!,
             kClassifier,
             arguments,
             isMarkedNullable
@@ -175,13 +176,13 @@ class ClassReferenceLowering(val context: JsIrBackendContext) : BodyLoweringPass
 
     private fun createKTypeProjection(tp: IrTypeArgument, visitedTypeParams: MutableSet<IrTypeParameter>): IrExpression {
         if (tp !is IrTypeProjection) {
-            return buildCall(context.intrinsics.getStarKTypeProjection!!)
+            return buildCall(context.jsIrBuiltIns.getStarKTypeProjection!!)
         }
 
         val factoryName = when (tp.variance) {
-            Variance.INVARIANT -> context.intrinsics.createInvariantKTypeProjection!!
-            Variance.IN_VARIANCE -> context.intrinsics.createContravariantKTypeProjection!!
-            Variance.OUT_VARIANCE -> context.intrinsics.createCovariantKTypeProjection!!
+            Variance.INVARIANT -> context.jsIrBuiltIns.createInvariantKTypeProjection!!
+            Variance.IN_VARIANCE -> context.jsIrBuiltIns.createContravariantKTypeProjection!!
+            Variance.OUT_VARIANCE -> context.jsIrBuiltIns.createCovariantKTypeProjection!!
         }
 
         val kType = createKType(tp.type, visitedTypeParams)
@@ -220,7 +221,7 @@ class ClassReferenceLowering(val context: JsIrBackendContext) : BodyLoweringPass
         // }
 
         return buildCall(
-            context.intrinsics.createKTypeParameter!!,
+            context.jsIrBuiltIns.createKTypeParameter!!,
             name,
             upperBounds,
             variance

@@ -18,6 +18,7 @@ import org.jetbrains.kotlin.ir.backend.js.ir.JsIrBuilder
 import org.jetbrains.kotlin.ir.backend.js.lower.JsInnerClassesSupport
 import org.jetbrains.kotlin.ir.backend.js.utils.*
 import org.jetbrains.kotlin.ir.builders.declarations.addFunction
+import org.jetbrains.kotlin.ir.builders.declarations.addTypeParameter
 import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.declarations.impl.IrExternalPackageFragmentImpl
 import org.jetbrains.kotlin.ir.declarations.impl.IrFileImpl
@@ -61,9 +62,9 @@ class JsIrBackendContext(
     override var inVerbosePhase: Boolean = false
 
     override fun isSideEffectFree(call: IrCall): Boolean =
-        call.symbol in intrinsics.primitiveToLiteralConstructor.values ||
+        call.symbol in jsIrBuiltIns.primitiveToLiteralConstructor.values ||
                 call.symbol == intrinsics.arrayLiteral ||
-                call.symbol == intrinsics.arrayConcat
+                call.symbol == jsIrBuiltIns.arrayConcat
 
     val devMode = configuration[JSConfigurationKeys.DEVELOPER_MODE] ?: false
     val errorPolicy = configuration[JSConfigurationKeys.ERROR_TOLERANCE_POLICY] ?: ErrorTolerancePolicy.DEFAULT
@@ -161,8 +162,9 @@ class JsIrBackendContext(
     private val coroutinePackage = module.getPackage(COROUTINE_PACKAGE_FQNAME)
     private val coroutineIntrinsicsPackage = module.getPackage(COROUTINE_INTRINSICS_PACKAGE_FQNAME)
 
-    val dynamicType: IrDynamicType = IrDynamicTypeImpl(null, emptyList(), Variance.INVARIANT)
-    val intrinsics = JsIntrinsics(irBuiltIns, this)
+    val intrinsics = JsIntrinsics(irBuiltIns, irFactory)
+    val dynamicType: IrDynamicType get() = intrinsics.dynamicType
+    val jsIrBuiltIns = JsIrBuiltIns(this)
 
     override val sharedVariablesManager = JsSharedVariablesManager(this)
 
@@ -350,6 +352,7 @@ class JsIrBackendContext(
             }
         }.toMap()
     }
+
 
     private fun findClass(memberScope: MemberScope, name: Name): ClassDescriptor =
         memberScope.getContributedClassifier(name, NoLookupLocation.FROM_BACKEND) as ClassDescriptor

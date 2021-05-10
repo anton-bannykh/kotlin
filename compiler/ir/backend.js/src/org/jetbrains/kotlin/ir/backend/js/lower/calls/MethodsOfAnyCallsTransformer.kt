@@ -21,6 +21,7 @@ import org.jetbrains.kotlin.name.Name
 
 class MethodsOfAnyCallsTransformer(context: JsIrBackendContext) : CallsTransformer {
     private val intrinsics = context.intrinsics
+    private val jsIrBuiltIns = context.jsIrBuiltIns
     private val nameToTransformer: Map<Name, (IrFunctionAccessExpression) -> IrExpression>
 
     init {
@@ -29,9 +30,9 @@ class MethodsOfAnyCallsTransformer(context: JsIrBackendContext) : CallsTransform
             put(Name.identifier("toString")) { call ->
                 if (shouldReplaceToStringWithRuntimeCall(call)) {
                     if ((call as IrCall).isSuperToAny()) {
-                        irCall(call, intrinsics.jsAnyToString, receiversAsArguments = true)
+                        irCall(call, jsIrBuiltIns.jsAnyToString, receiversAsArguments = true)
                     } else {
-                        irCall(call, intrinsics.jsToString, receiversAsArguments = true)
+                        irCall(call, jsIrBuiltIns.jsToString, receiversAsArguments = true)
                     }
                 } else {
                     call
@@ -41,9 +42,9 @@ class MethodsOfAnyCallsTransformer(context: JsIrBackendContext) : CallsTransform
             put(Name.identifier("hashCode")) { call ->
                 if (call.symbol.owner.isFakeOverriddenFromAny()) {
                     if ((call as IrCall).isSuperToAny()) {
-                        irCall(call, intrinsics.jsGetObjectHashCode, receiversAsArguments = true)
+                        irCall(call, jsIrBuiltIns.jsGetObjectHashCode, receiversAsArguments = true)
                     } else {
-                        irCall(call, intrinsics.jsHashCode, receiversAsArguments = true)
+                        irCall(call, jsIrBuiltIns.jsHashCode, receiversAsArguments = true)
                     }
                 } else {
                     call

@@ -41,12 +41,12 @@ private class VarargTransformer(
     private fun List<IrExpression>.toArrayLiteral(type: IrType, varargElementType: IrType): IrExpression {
 
         // TODO: Use symbols when builtins symbol table is fixes
-        val primitiveType = context.intrinsics.primitiveArrays
+        val primitiveType = context.jsIrBuiltIns.primitiveArrays
             .mapKeys { it.key }[type.classifierOrNull]
 
         val intrinsic =
             if (primitiveType != null)
-                context.intrinsics.primitiveToLiteralConstructor.getValue(primitiveType)
+                context.jsIrBuiltIns.primitiveToLiteralConstructor.getValue(primitiveType)
             else
                 context.intrinsics.arrayLiteral
 
@@ -163,14 +163,14 @@ private class VarargTransformer(
 
         val arrayLiteral =
             segments.toArrayLiteral(
-                IrSimpleTypeImpl(context.intrinsics.array, false, emptyList(), emptyList()), // TODO: Substitution
+                IrSimpleTypeImpl(context.jsIrBuiltIns.array, false, emptyList(), emptyList()), // TODO: Substitution
                 context.irBuiltIns.anyType
             )
 
-        val concatFun = if (arrayInfo.primitiveArrayType.classifierOrNull in context.intrinsics.primitiveArrays.keys) {
-            context.intrinsics.primitiveArrayConcat
+        val concatFun = if (arrayInfo.primitiveArrayType.classifierOrNull in context.jsIrBuiltIns.primitiveArrays.keys) {
+            context.jsIrBuiltIns.primitiveArrayConcat
         } else {
-            context.intrinsics.arrayConcat
+            context.jsIrBuiltIns.arrayConcat
         }
 
         val res = IrCallImpl(
@@ -201,7 +201,7 @@ private class VarargTransformer(
             val elementType = arrayInfo.primitiveElementType
             val copyFunction =
                 if (elementType.isChar() || elementType.isBoolean() || elementType.isLong())
-                    context.intrinsics.taggedArrayCopy
+                    context.jsIrBuiltIns.taggedArrayCopy
                 else
                     context.intrinsics.jsArraySlice
 

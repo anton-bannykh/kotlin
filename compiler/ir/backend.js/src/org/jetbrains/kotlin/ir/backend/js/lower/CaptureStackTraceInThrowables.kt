@@ -30,7 +30,7 @@ class CaptureStackTraceInThrowables(val context: JsIrBackendContext) : BodyLower
         if (!klass.isSubclassOf(context.irBuiltIns.throwableClass.owner))
             return
 
-        (irBody as IrBlockBody).statements += JsIrBuilder.buildCall(context.intrinsics.captureStack).also { call ->
+        (irBody as IrBlockBody).statements += JsIrBuilder.buildCall(context.jsIrBuiltIns.captureStack).also { call ->
             call.putValueArgument(0, JsIrBuilder.buildGetValue(klass.thisReceiver!!.symbol))
             call.putValueArgument(
                 1,

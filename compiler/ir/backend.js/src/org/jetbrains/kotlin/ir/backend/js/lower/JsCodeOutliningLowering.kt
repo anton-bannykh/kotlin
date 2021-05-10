@@ -44,7 +44,7 @@ import java.lang.IllegalStateException
 class JsCodeOutliningLowering(val backendContext: JsIrBackendContext) : BodyLoweringPass {
     override fun lower(irBody: IrBody, container: IrDeclaration) {
         // Fast path to avoid tracking locals scopes for bodies without js() calls
-        if (!irBody.containsCallsTo(backendContext.intrinsics.jsCode))
+        if (!irBody.containsCallsTo(backendContext.jsIrBuiltIns.jsCode))
             return
 
         val replacer = JsCodeOutlineTransformer(backendContext, container)
@@ -130,7 +130,7 @@ private class JsCodeOutlineTransformer(
     }
 
     fun outlineJsCodeIfNeeded(expression: IrCall): IrExpression? {
-        if (expression.symbol != backendContext.intrinsics.jsCode)
+        if (expression.symbol != backendContext.jsIrBuiltIns.jsCode)
             return null
 
         val jsCodeArg = expression.getValueArgument(0) ?: error("Expected js code string")
@@ -198,7 +198,7 @@ private class JsCodeOutlineTransformer(
 
         with(backendContext.createIrBuilder(container.symbol)) {
             // Add @JsFun("function (used_local1, used_local2, ..) { ... }") annotation to outlined function
-            val jsFunCtor = backendContext.intrinsics.jsFunAnnotationSymbol.constructors.single()
+            val jsFunCtor = backendContext.jsIrBuiltIns.jsFunAnnotationSymbol.constructors.single()
             val jsFunCall =
                 irCall(jsFunCtor).apply {
                     putValueArgument(0, irString(newFun.toString()))

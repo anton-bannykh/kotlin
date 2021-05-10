@@ -29,6 +29,7 @@ class JsIntrinsicTransformers(backendContext: JsIrBackendContext) {
 
     init {
         val intrinsics = backendContext.intrinsics
+        val jsIrBuiltIns = backendContext.jsIrBuiltIns
 
         transformers = mutableMapOf()
 
@@ -78,7 +79,7 @@ class JsIntrinsicTransformers(backendContext: JsIrBackendContext) {
 
             binOp(intrinsics.jsInstanceOf, JsBinaryOperator.INSTANCEOF)
 
-            prefixOp(intrinsics.jsTypeOf, JsUnaryOperator.TYPEOF)
+            prefixOp(jsIrBuiltIns.jsTypeOf, JsUnaryOperator.TYPEOF)
 
             add(intrinsics.jsObjectCreate) { call, context ->
                 val classToCreate = call.getTypeArgument(0)!!.classifierOrFail.owner as IrClass
@@ -115,9 +116,9 @@ class JsIntrinsicTransformers(backendContext: JsIrBackendContext) {
                 typeArgument.getClassRef(context)
             }
 
-            addIfNotNull(intrinsics.jsCode) { _, _ -> error("Should not be called") }
+            addIfNotNull(jsIrBuiltIns.jsCode) { _, _ -> error("Should not be called") }
 
-            add(intrinsics.jsGetContinuation) { _, context: JsGenerationContext ->
+            add(jsIrBuiltIns.jsGetContinuation) { _, context: JsGenerationContext ->
                 context.continuation
             }
 
@@ -126,7 +127,7 @@ class JsIntrinsicTransformers(backendContext: JsIrBackendContext) {
                 args[0]
             }
 
-            add(intrinsics.jsCoroutineContext) { _, context: JsGenerationContext ->
+            add(jsIrBuiltIns.jsCoroutineContext) { _, context: JsGenerationContext ->
                 val contextGetter = backendContext.coroutineGetContext
                 val getterName = context.getNameForStaticFunction(contextGetter.owner)
                 val continuation = context.continuation
@@ -162,22 +163,22 @@ class JsIntrinsicTransformers(backendContext: JsIrBackendContext) {
             }
 
             for ((type, prefix) in intrinsics.primitiveToTypedArrayMap) {
-                add(intrinsics.primitiveToSizeConstructor[type]!!) { call, context ->
+                add(jsIrBuiltIns.primitiveToSizeConstructor[type]!!) { call, context ->
                     JsNew(JsNameRef("${prefix}Array"), translateCallArguments(call, context))
                 }
-                add(intrinsics.primitiveToLiteralConstructor[type]!!) { call, context ->
+                add(jsIrBuiltIns.primitiveToLiteralConstructor[type]!!) { call, context ->
                     JsNew(JsNameRef("${prefix}Array"), translateCallArguments(call, context))
                 }
             }
 
-            add(intrinsics.jsBoxIntrinsic) { call, context ->
+            add(jsIrBuiltIns.jsBoxIntrinsic) { call, context ->
                 val arg = translateCallArguments(call, context).single()
                 val inlineClass = icUtils.getInlinedClass(call.getTypeArgument(0)!!)!!
                 val constructor = inlineClass.declarations.filterIsInstance<IrConstructor>().single { it.isPrimary }
                 JsNew(context.getNameForConstructor(constructor).makeRef(), listOf(arg))
             }
 
-            add(intrinsics.jsUnboxIntrinsic) { call, context ->
+            add(jsIrBuiltIns.jsUnboxIntrinsic) { call, context ->
                 val arg = translateCallArguments(call, context).single()
                 val inlineClass = icUtils.getInlinedClass(call.getTypeArgument(1)!!)!!
                 val field = getInlineClassBackingField(inlineClass)
