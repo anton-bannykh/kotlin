@@ -354,6 +354,24 @@ class JsIrBackendContext(
     }
 
 
+    val jsClass = defineJsClassIntrinsic().symbol
+
+    private fun defineJsClassIntrinsic(): IrSimpleFunction {
+        return irFactory.addFunction(intrinsics.externalPackageFragment) {
+            name = Name.identifier("jsClass")
+            origin = JsLoweredDeclarationOrigin.JS_INTRINSICS_STUB
+            isInline = true
+        }.apply {
+            val typeParameter = addTypeParameter {
+                name = Name.identifier("T")
+                isReified = true
+                superTypes += irBuiltIns.anyType
+            }
+            returnType = jsIrBuiltIns.jsClassClassSymbol.typeWithParameters(listOf(typeParameter))
+//            returnType = dynamicType
+        }
+    }
+
     private fun findClass(memberScope: MemberScope, name: Name): ClassDescriptor =
         memberScope.getContributedClassifier(name, NoLookupLocation.FROM_BACKEND) as ClassDescriptor
 

@@ -115,7 +115,7 @@ class ES6ConstructorLowering(val context: JsIrBackendContext) : BodyLoweringPass
 
         if (superCtor.hasStrictSignature()) {
             fun createNewSuperCall(): IrCall {
-                val callType = JsIrBuilder.buildCall(context.intrinsics.jsClass, context.dynamicType, listOf(superCtor.returnType))
+                val callType = JsIrBuilder.buildCall(context.jsClass, context.dynamicType, listOf(superCtor.returnType))
                 val newTarget = JsIrBuilder.buildCall(context.intrinsics.jsNewTarget)
                 val args = IrVarargImpl(
                     UNDEFINED_OFFSET, UNDEFINED_OFFSET,
@@ -273,7 +273,7 @@ class ES6ConstructorLowering(val context: JsIrBackendContext) : BodyLoweringPass
         resultTypeSymbol: IrVariableSymbol,
         boxSymbol: IrVariableSymbol? = null
     ): IrCall {
-        val callType = JsIrBuilder.buildCall(context.intrinsics.jsClass, context.dynamicType, listOf(superCtor.returnType))
+        val callType = JsIrBuilder.buildCall(context.jsClass, context.dynamicType, listOf(superCtor.returnType))
         val resultType = JsIrBuilder.buildGetValue(resultTypeSymbol)
         val arguments = IrVarargImpl(
             UNDEFINED_OFFSET, UNDEFINED_OFFSET,
@@ -288,7 +288,7 @@ class ES6ConstructorLowering(val context: JsIrBackendContext) : BodyLoweringPass
                 arguments.elements.clear()
                 arguments.addElement(JsIrBuilder.buildGetValue(boxSymbol!!))
 
-                putValueArgument(0, JsIrBuilder.buildCall(context.intrinsics.jsClass, context.dynamicType, listOf(constructor.returnType)))
+                putValueArgument(0, JsIrBuilder.buildCall(context.jsClass, context.dynamicType, listOf(constructor.returnType)))
                 putValueArgument(1, resultType)
                 putValueArgument(2, arguments)
 

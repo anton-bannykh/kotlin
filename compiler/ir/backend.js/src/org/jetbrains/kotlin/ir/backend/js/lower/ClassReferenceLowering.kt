@@ -128,7 +128,7 @@ class ClassReferenceLowering(val context: JsIrBackendContext) : BodyLoweringPass
     }
 
     private fun callJsClass(type: IrType) =
-        JsIrBuilder.buildCall(intrinsics.jsClass, typeArguments = listOf(type))
+        JsIrBuilder.buildCall(context.jsClass, typeArguments = listOf(type))
 
     private fun buildCall(name: IrSimpleFunctionSymbol, vararg args: IrExpression): IrExpression =
         JsIrBuilder.buildCall(name).apply {

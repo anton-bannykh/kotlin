@@ -35,7 +35,7 @@ class ExternalEnumUsagesLowering(val context: JsIrBackendContext) : BodyLowering
         }
 
     private fun classAsReceiver(irClass: IrClass): IrExpression {
-        val intrinsic = context.intrinsics.jsClass
+        val intrinsic = context.jsClass
         return JsIrBuilder.buildCall(intrinsic, context.irBuiltIns.anyType, listOf(irClass.defaultType))
     }
 

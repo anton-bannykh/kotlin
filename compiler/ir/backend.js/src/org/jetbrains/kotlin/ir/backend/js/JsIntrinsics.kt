@@ -100,10 +100,6 @@ class JsIntrinsics(private val irBuiltIns: IrBuiltIns, private val irFactory: Ir
     val jsOpenInitializerBox = binOp("openInitializerBox")
     val es6DefaultType = defineEs6DefaultTypeIntrinsic().symbol
 
-    // Coroutines
-
-    val jsClass = defineJsClassIntrinsic().symbol
-
     val unreachable = defineUnreachableIntrinsic()
 
 
@@ -255,22 +251,6 @@ class JsIntrinsics(private val irBuiltIns: IrBuiltIns, private val irFactory: Ir
             name = Name.identifier(Namer.UNREACHABLE_NAME)
             origin = JsLoweredDeclarationOrigin.JS_INTRINSICS_STUB
             returnType = irBuiltIns.nothingType
-        }
-    }
-
-    private fun defineJsClassIntrinsic(): IrSimpleFunction {
-        return irFactory.addFunction(externalPackageFragment) {
-            name = Name.identifier("jsClass")
-            origin = JsLoweredDeclarationOrigin.JS_INTRINSICS_STUB
-            isInline = true
-        }.apply {
-//            val typeParameter = addTypeParameter {
-//                name = Name.identifier("T")
-//                isReified = true
-//                superTypes += irBuiltIns.anyType
-//            }
-//            returnType = jsClassClassSymbol.typeWithParameters(listOf(typeParameter))
-            returnType = dynamicType
         }
     }
 

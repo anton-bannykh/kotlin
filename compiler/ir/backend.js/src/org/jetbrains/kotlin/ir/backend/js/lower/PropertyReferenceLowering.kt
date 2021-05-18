@@ -29,7 +29,7 @@ class PropertyReferenceLowering(private val context: JsIrBackendContext) : BodyL
 
     private val referenceBuilderSymbol = context.kpropertyBuilder
     private val localDelegateBuilderSymbol = context.klocalDelegateBuilder
-    private val jsClassSymbol = context.intrinsics.jsClass
+    private val jsClassSymbol = context.jsClass
 
     private val throwISE = context.throwISEsymbol
 

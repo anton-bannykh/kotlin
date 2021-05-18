@@ -381,7 +381,7 @@ fun usefulDeclarations(roots: Iterable<IrDeclaration>, context: JsIrBackendConte
                             val constructor = inlineClass.declarations.filterIsInstance<IrConstructor>().single { it.isPrimary }
                             constructor.enqueue("intrinsic: jsBoxIntrinsic")
                         }
-                        context.intrinsics.jsClass -> {
+                        context.jsClass -> {
                             val ref = expression.getTypeArgument(0)!!.classifierOrFail.owner as IrDeclaration
                             ref.enqueue("intrinsic: jsClass")
                             referencedJsClasses += ref

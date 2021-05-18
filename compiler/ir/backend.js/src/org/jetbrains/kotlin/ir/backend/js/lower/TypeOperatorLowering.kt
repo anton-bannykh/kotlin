@@ -53,7 +53,7 @@ class TypeOperatorLowering(val context: JsIrBackendContext) : BodyLoweringPass {
 
     private val instanceOfIntrinsicSymbol = context.intrinsics.jsInstanceOf
     private val typeOfIntrinsicSymbol = context.jsIrBuiltIns.jsTypeOf
-    private val jsClassIntrinsicSymbol = context.intrinsics.jsClass
+    private val jsClassIntrinsicSymbol = context.jsClass
 
     private val stringMarker get() = JsIrBuilder.buildString(context.irBuiltIns.stringType, "string")
     private val booleanMarker get() = JsIrBuilder.buildString(context.irBuiltIns.stringType, "boolean")

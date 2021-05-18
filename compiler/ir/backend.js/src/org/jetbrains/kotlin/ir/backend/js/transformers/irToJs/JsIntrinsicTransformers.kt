@@ -88,7 +88,7 @@ class JsIntrinsicTransformers(backendContext: JsIrBackendContext) {
                 JsInvocation(Namer.JS_OBJECT_CREATE_FUNCTION, prototype)
             }
 
-            add(intrinsics.jsClass) { call, context ->
+            add(backendContext.jsClass) { call, context ->
                 val typeArgument = call.getTypeArgument(0)
                 typeArgument?.getClassRef(context)
                     ?: error("Type argument of jsClass must be statically known class, but " + typeArgument?.render())
