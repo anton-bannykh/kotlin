@@ -22,6 +22,7 @@ import org.jetbrains.kotlin.ir.builders.declarations.addTypeParameter
 import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.declarations.impl.IrExternalPackageFragmentImpl
 import org.jetbrains.kotlin.ir.declarations.impl.IrFileImpl
+import org.jetbrains.kotlin.ir.declarations.persistent.PersistentIrFactory
 import org.jetbrains.kotlin.ir.descriptors.IrBuiltIns
 import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.symbols.*
@@ -48,7 +49,8 @@ class JsIrBackendContext(
     override val es6mode: Boolean = false,
     val dceRuntimeDiagnostic: DceRuntimeDiagnostic? = null,
     val propertyLazyInitialization: Boolean = false,
-    override val mapping: JsMapping = JsMapping(symbolTable.irFactory)
+    override val mapping: JsMapping = JsMapping(symbolTable.irFactory),
+    val intrinsics: JsIntrinsics = JsIntrinsics(irBuiltIns, symbolTable.irFactory),
 ) : JsCommonBackendContext {
     val fileToInitializationFuns: MutableMap<IrFile, IrSimpleFunction?> = mutableMapOf()
     val fileToInitializerPureness: MutableMap<IrFile, Boolean> = mutableMapOf()
@@ -162,7 +164,6 @@ class JsIrBackendContext(
     private val coroutinePackage = module.getPackage(COROUTINE_PACKAGE_FQNAME)
     private val coroutineIntrinsicsPackage = module.getPackage(COROUTINE_INTRINSICS_PACKAGE_FQNAME)
 
-    val intrinsics = JsIntrinsics(irBuiltIns, irFactory)
     val dynamicType: IrDynamicType get() = intrinsics.dynamicType
     val jsIrBuiltIns = JsIrBuiltIns(this)
 
@@ -357,18 +358,26 @@ class JsIrBackendContext(
     val jsClass = defineJsClassIntrinsic().symbol
 
     private fun defineJsClassIntrinsic(): IrSimpleFunction {
-        return irFactory.addFunction(intrinsics.externalPackageFragment) {
-            name = Name.identifier("jsClass")
-            origin = JsLoweredDeclarationOrigin.JS_INTRINSICS_STUB
-            isInline = true
-        }.apply {
-            val typeParameter = addTypeParameter {
-                name = Name.identifier("T")
-                isReified = true
-                superTypes += irBuiltIns.anyType
+
+        fun doWithIntrinsicSignature(fn: () -> IrSimpleFunction): IrSimpleFunction {
+            return if (irFactory is PersistentIrFactory) {
+                irFactory.withIntrinsicSignature("jsClass", fn)
+            } else fn()
+        }
+
+        return doWithIntrinsicSignature {
+            irFactory.addFunction(intrinsics.externalPackageFragment) {
+                name = Name.identifier("jsClass")
+                origin = JsLoweredDeclarationOrigin.JS_INTRINSICS_STUB
+                isInline = true
+            }.apply {
+                val typeParameter = addTypeParameter {
+                    name = Name.identifier("T")
+                    isReified = true
+                    superTypes += irBuiltIns.anyType
+                }
+                returnType = jsIrBuiltIns.jsClassClassSymbol.typeWithParameters(listOf(typeParameter))
             }
-            returnType = jsIrBuiltIns.jsClassClassSymbol.typeWithParameters(listOf(typeParameter))
-//            returnType = dynamicType
         }
     }
 

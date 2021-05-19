@@ -244,8 +244,9 @@ private fun prepareIr(
         is MainModule.Klib -> dependencyModules
     }
 
-    val context = irFactory.withIntrinsicSignature("jsIntrinsics") {
-        JsIrBackendContext(
+    val intrinsics = irFactory.withIntrinsicSignature("jsIntrinsics") { JsIntrinsics(irBuiltIns, irFactory) }
+
+    val context = JsIrBackendContext(
             moduleDescriptor,
             irBuiltIns,
             symbolTable,
@@ -256,8 +257,8 @@ private fun prepareIr(
             dceRuntimeDiagnostic = dceRuntimeDiagnostic,
             propertyLazyInitialization = propertyLazyInitialization,
             mapping = deserializer.mapping,
+            intrinsics = intrinsics
         )
-    }
 
     // Load declarations referenced during `context` initialization
     val irProviders = listOf(deserializer)
