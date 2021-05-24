@@ -35,11 +35,7 @@ class PersistentIrFactory : IrFactory {
     private fun IrDeclaration.register() {
         allDeclarations += this
 
-        if (this is IrFakeOverrideProperty || this is IrFakeOverrideFunction) return
-
-        val parentSig = stageController.currentDeclaration?.let { declarationSignature(it) } ?: intrinsicSig ?: return
-
-        val newSignature = stageController.createSignature(parentSig) ?: return
+        val newSignature = (this as? PersistentIrDeclarationBase<*>)?.signature ?: currentSignature(this) ?: return
 
         symbolToSignatureMap[symbol] = newSignature
     }
@@ -56,7 +52,15 @@ class PersistentIrFactory : IrFactory {
     }
 
     fun declarationSignature(declaration: IrDeclaration): IdSignature? {
-        return symbolToSignatureMap[declaration.symbol] ?: declaration.symbol.signature
+        return (declaration as? PersistentIrDeclarationBase<*>)?.signature ?: declaration.symbol.signature
+    }
+
+    fun currentSignature(declaration: IrDeclaration): IdSignature? {
+        if (declaration is IrFakeOverrideProperty || declaration is IrFakeOverrideFunction) return null
+
+        val parentSig = stageController.currentDeclaration?.let { declarationSignature(it) } ?: intrinsicSig ?: return null
+
+        return stageController.createSignature(parentSig)
     }
 
     override fun createAnonymousInitializer(
