@@ -35,9 +35,10 @@ class PersistentIrFactory : IrFactory {
     private fun IrDeclaration.register() {
         allDeclarations += this
 
-        val newSignature = (this as? PersistentIrDeclarationBase<*>)?.signature ?: currentSignature(this) ?: return
-
-        symbolToSignatureMap[symbol] = newSignature
+        if (intrinsicSig != null) {
+            val newSignature = (this as? PersistentIrDeclarationBase<*>)?.signature ?: currentSignature(this) ?: return
+            symbolToSignatureMap[symbol] = newSignature
+        }
     }
 
     private var intrinsicSig: IdSignature? = null
