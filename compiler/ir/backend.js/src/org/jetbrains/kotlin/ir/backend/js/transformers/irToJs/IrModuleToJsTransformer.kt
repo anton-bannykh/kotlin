@@ -39,7 +39,6 @@ class IrModuleToJsTransformer(
         val additionalPackages = with(backendContext) {
             externalPackageFragment.values + listOf(
                 bodilessBuiltInsPackageFragment,
-                intrinsics.externalPackageFragment
             ) + packageLevelJsModules
         }
 
