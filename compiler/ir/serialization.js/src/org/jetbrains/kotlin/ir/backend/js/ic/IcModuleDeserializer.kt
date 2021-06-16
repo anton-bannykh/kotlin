@@ -82,23 +82,6 @@ class IcModuleDeserializer(
     }
 
     override fun postProcess() {
-        // This is needed to link functional types' type parameters
-        (linker.symbolTable as IcSymbolTable).let { icSymbolTable ->
-            icSymbolTable.typeParameterSymbols().forEach {
-                val typeParameter = it.owner
-
-                val filePath = typeParameter.fileOrNull?.path ?: ""
-
-                val idSig = IdSignature.GlobalFileLocalSignature(
-                    globalDeclarationTable.computeSignatureByDeclaration(typeParameter.parent as IrDeclaration),
-                    1000_000_000_000L + typeParameter.index,
-                    filePath
-                )
-
-                icSymbolTable.saveTypeParameterSignature(idSig, it)
-            }
-        }
-
         val pathToIcFileData = icData.files.associateBy {
             it.file.path
         }
@@ -150,7 +133,7 @@ class IcModuleDeserializer(
             if (signature is IdSignature.FileSignature) continue
 
             // Deserialize the declaration
-            val declaration = if (symbol.isBound) symbol.owner as IrDeclaration else icFileDeserializer.deserializeDeclaration(signature)
+            val declaration = if (symbol.isBound) symbol.owner as IrDeclaration else icFileDeserializer.deserializeDeclaration(signature) ?: continue
 
             icFileDeserializer.injectCarriers(declaration, signature)
 

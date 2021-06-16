@@ -84,6 +84,7 @@ class IrModuleDeserializerWithBuiltIns(
     }.toMap()
 
     private fun checkIsFunctionInterface(idSig: IdSignature): Boolean {
+        if (idSig is IdSignature.GlobalFileLocalSignature) return checkIsFunctionInterface(idSig.container)
         val publicSig = idSig.asPublic()
         return publicSig != null &&
                 publicSig.packageFqName in functionalPackages &&
@@ -94,7 +95,7 @@ class IrModuleDeserializerWithBuiltIns(
     override operator fun contains(idSig: IdSignature): Boolean {
         if (idSig in irBuiltInsMap) return true
 
-        return checkIsFunctionInterface(idSig) || idSig in delegate
+        return checkIsFunctionInterface(idSig) || idSig in delegate || idSig is IdSignature.GlobalFileLocalSignature && checkIsFunctionInterface(idSig.container)
     }
 
     override fun referenceSimpleFunctionByLocalSignature(file: IrFile, idSignature: IdSignature) : IrSimpleFunctionSymbol =
@@ -118,6 +119,18 @@ class IrModuleDeserializerWithBuiltIns(
     }
 
     private fun resolveFunctionalInterface(idSig: IdSignature, symbolKind: BinarySymbolData.SymbolKind): IrSymbol {
+        if (idSig is IdSignature.GlobalFileLocalSignature) {
+            val containerSymbolKind = when (idSig.container.asPublic()!!.nameSegments.size) {
+                1 -> BinarySymbolData.SymbolKind.CLASS_SYMBOL
+                3 -> BinarySymbolData.SymbolKind.FUNCTION_SYMBOL
+                else -> error("Cannot infer symbolKind")
+            }
+
+            val declaration = resolveFunctionalInterface(idSig.container, containerSymbolKind).owner as IrTypeParametersContainer
+
+            return declaration.typeParameters[(idSig.id - 1000_000_000_000L).toInt()].symbol
+        }
+
         val publicSig = idSig.asPublic() ?: error("$idSig has to be public")
 
         val fqnParts = publicSig.nameSegments
@@ -166,6 +179,10 @@ class IrModuleDeserializerWithBuiltIns(
 
     override fun deserializeIrSymbol(idSig: IdSignature, symbolKind: BinarySymbolData.SymbolKind): IrSymbol {
         irBuiltInsMap[idSig]?.let { return it }
+
+        if (idSig.toString().startsWith("public kotlin/Function2|null[0]:1000000000002")) {
+            11
+        }
 
         if (checkIsFunctionInterface(idSig)) return resolveFunctionalInterface(idSig, symbolKind)
 

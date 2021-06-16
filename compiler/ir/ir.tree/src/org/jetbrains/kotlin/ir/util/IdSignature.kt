@@ -219,7 +219,7 @@ sealed class IdSignature {
     }
 
     class GlobalFileLocalSignature(val container: IdSignature, val id: Long, val filePath: String) : IdSignature() {
-        override val isPublic: Boolean get() = false
+        override val isPublic: Boolean get() = true
 
         override fun packageFqName(): FqName = container.packageFqName()
 

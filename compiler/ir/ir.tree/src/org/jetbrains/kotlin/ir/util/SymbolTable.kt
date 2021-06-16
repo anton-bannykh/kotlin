@@ -911,7 +911,7 @@ open class SymbolTable(
         symbolFactory: () -> IrTypeParameterSymbol,
         typeParameterFactory: (IrTypeParameterSymbol) -> IrTypeParameter
     ): IrTypeParameter {
-        require(sig.isLocal)
+//        require(sig.isLocal)
         return typeParameterFactory(symbolFactory())
     }
 

@@ -135,8 +135,9 @@ class IcFileDeserializer(
         idSig.enqueue(deser, symbol)
     }
 
-    fun deserializeDeclaration(idSig: IdSignature): IrDeclaration {
-        val idSigIndex = reversedSignatureIndex[idSig] ?: error("Not found Idx for $idSig")
+    fun deserializeDeclaration(idSig: IdSignature): IrDeclaration? {
+        val idSigIndex = reversedSignatureIndex[idSig] ?: return null
+//            error("Not found Idx for $idSig")
         val declarationStream = fileReader.irDeclaration(idSigIndex).codedInputStream
         val declarationProto = org.jetbrains.kotlin.backend.common.serialization.proto.IrDeclaration.parseFrom(declarationStream, ExtensionRegistryLite.newInstance())
         return declarationDeserializer.deserializeDeclaration(declarationProto)
