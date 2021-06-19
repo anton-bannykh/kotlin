@@ -32,8 +32,6 @@ class IcModuleDeserializer(
     val wrapped: IrModuleDeserializer,
 ) : IrModuleDeserializer(wrapped.moduleDescriptor) {
 
-    private val globalDeclarationTable = JsGlobalDeclarationTable(linker.builtIns, IdSignatureClashTracker.DEFAULT_TRACKER)
-
     val fileQueue = ArrayDeque<IcFileDeserializer>()
     val signatureQueue = ArrayDeque<IdSignature>()
     val symbolQueue = ArrayDeque<IrSymbol>()
@@ -108,7 +106,6 @@ class IcModuleDeserializer(
         }
 
         // Add all signatures withing the module to a queue ( declarations and bodies )
-        println("==== Enqueue ====")
         for (icDeserializer in icDeserializers) {
             val currentFilePath = icDeserializer.fileDeserializer.file.path
 
