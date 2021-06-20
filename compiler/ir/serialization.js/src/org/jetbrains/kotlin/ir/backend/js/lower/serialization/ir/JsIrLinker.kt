@@ -47,17 +47,21 @@ class JsIrLinker(
         get() = this is KotlinLibrary && this.containsErrorCode
 
     override fun createModuleDeserializer(moduleDescriptor: ModuleDescriptor, klib: IrLibrary?, strategy: DeserializationStrategy): IrModuleDeserializer {
+        require(klib != null) { "Expecting kotlin library" }
         loweredIcData[moduleDescriptor]?.let { loweredIcData ->
             return IcModuleDeserializer(
                 symbolTable.irFactory as PersistentIrFactory,
                 mapping,
                 this,
                 loweredIcData,
-                // TODO: embed
-                JsModuleDeserializer(moduleDescriptor, klib ?: error("Expecting kotlin library"), strategy, klib.libContainsErrorCode)
+                moduleDescriptor,
+                klib,
+                strategy,
+                containsErrorCode = klib.libContainsErrorCode,
+                useGlobalSignatures = useGlobalSignatures
             )
         }
-        return JsModuleDeserializer(moduleDescriptor, klib ?: error("Expecting kotlin library"), strategy, klib.libContainsErrorCode)
+        return JsModuleDeserializer(moduleDescriptor, klib, strategy, klib.libContainsErrorCode)
     }
 
     val mapping: JsMapping by lazy { JsMapping(symbolTable.irFactory) }

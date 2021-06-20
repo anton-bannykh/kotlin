@@ -163,7 +163,7 @@ internal fun IrLibraryFile.deserializeString(index: Int): String = WobblyTF8.dec
 internal fun IrLibraryFile.deserializeFqName(fqn: List<Int>): String =
     fqn.joinToString(".", transform = ::deserializeString)
 
-internal fun IrLibraryFile.createFile(module: IrModuleFragment, fileProto: ProtoFile): IrFile {
+fun IrLibraryFile.createFile(module: IrModuleFragment, fileProto: ProtoFile): IrFile {
     val fileName = fileProto.fileEntry.name
     val fileEntry = NaiveSourceBasedFileEntryImpl(fileName, fileProto.fileEntry.lineStartOffsetsList.toIntArray())
     val fqName = FqName(deserializeFqName(fileProto.fqNameList))

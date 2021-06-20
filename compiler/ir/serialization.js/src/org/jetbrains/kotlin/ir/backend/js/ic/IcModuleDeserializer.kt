@@ -5,15 +5,14 @@
 
 package org.jetbrains.kotlin.ir.backend.js.ic
 
-import org.jetbrains.kotlin.backend.common.serialization.DeserializationStrategy
-import org.jetbrains.kotlin.backend.common.serialization.IdSignatureClashTracker
-import org.jetbrains.kotlin.backend.common.serialization.IrFileDeserializer
-import org.jetbrains.kotlin.backend.common.serialization.IrModuleDeserializer
+import org.jetbrains.kotlin.backend.common.serialization.*
 import org.jetbrains.kotlin.backend.common.serialization.encodings.BinarySymbolData
+import org.jetbrains.kotlin.descriptors.ModuleDescriptor
 import org.jetbrains.kotlin.ir.backend.js.JsMapping
 import org.jetbrains.kotlin.ir.backend.js.lower.serialization.ir.JsGlobalDeclarationTable
 import org.jetbrains.kotlin.ir.backend.js.lower.serialization.ir.JsIrLinker
 import org.jetbrains.kotlin.ir.declarations.*
+import org.jetbrains.kotlin.ir.declarations.impl.IrModuleFragmentImpl
 import org.jetbrains.kotlin.ir.declarations.persistent.PersistentIrFactory
 import org.jetbrains.kotlin.ir.symbols.IrPropertySymbol
 import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
@@ -23,14 +22,139 @@ import org.jetbrains.kotlin.ir.util.fileOrNull
 import org.jetbrains.kotlin.ir.util.isEffectivelyExternal
 import org.jetbrains.kotlin.library.IrLibrary
 import org.jetbrains.kotlin.library.impl.IrLongArrayMemoryReader
+import org.jetbrains.kotlin.protobuf.ExtensionRegistryLite
 
 class IcModuleDeserializer(
     val irFactory: PersistentIrFactory,
     val mapping: JsMapping,
     val linker: JsIrLinker,
     val icData: SerializedIcData,
-    val wrapped: IrModuleDeserializer,
-) : IrModuleDeserializer(wrapped.moduleDescriptor) {
+    moduleDescriptor: ModuleDescriptor,
+    override val klib: IrLibrary,
+    override val strategy: DeserializationStrategy,
+    private val containsErrorCode: Boolean = false,
+    private val useGlobalSignatures: Boolean = false,
+) : IrModuleDeserializer(moduleDescriptor) {
+
+    private val fileToDeserializerMap = mutableMapOf<IrFile, IrFileDeserializer>()
+
+    private val moduleDeserializationState = IcModuleDeserializationState(linker, this)
+
+    internal val moduleReversedFileIndex = mutableMapOf<IdSignature, FileDeserializationState>()
+
+    override val moduleDependencies by lazy {
+        moduleDescriptor.allDependencyModules.filter { it != moduleDescriptor }.map { linker.resolveModuleDeserializer(it, null) }
+    }
+
+    override fun fileDeserializers(): Collection<IrFileDeserializer> {
+        return fileToDeserializerMap.values
+    }
+
+    override fun init(delegate: IrModuleDeserializer) {
+        actualDeserializer = delegate
+
+        val fileCount = klib.fileCount()
+
+        val files = ArrayList<IrFile>(fileCount)
+
+        for (i in 0 until fileCount) {
+            val fileStream = klib.file(i).codedInputStream
+            val fileProto = org.jetbrains.kotlin.backend.common.serialization.proto.IrFile.parseFrom(fileStream, ExtensionRegistryLite.newInstance())
+            files.add(deserializeIrFile(fileProto, i, delegate, containsErrorCode))
+        }
+
+        moduleFragment.files.addAll(files)
+
+        fileToDeserializerMap.values.forEach { it.symbolDeserializer.deserializeExpectActualMapping() }
+    }
+
+    private fun IrSymbolDeserializer.deserializeExpectActualMapping() {
+        actuals.forEach {
+            val expectSymbol = parseSymbolData(it.expectSymbol)
+            val actualSymbol = parseSymbolData(it.actualSymbol)
+
+            val expect = deserializeIdSignature(expectSymbol.signatureId)
+            val actual = deserializeIdSignature(actualSymbol.signatureId)
+
+            assert(linker.expectUniqIdToActualUniqId[expect] == null) {
+                "Expect signature $expect is already actualized by ${linker.expectUniqIdToActualUniqId[expect]}, while we try to record $actual"
+            }
+            linker.expectUniqIdToActualUniqId[expect] = actual
+            // Non-null only for topLevel declarations.
+            findModuleDeserializerForTopLevelId(actual)?.let { md -> linker.topLevelActualUniqItToDeserializer[actual] = md }
+        }
+    }
+
+    override fun referenceSimpleFunctionByLocalSignature(file: IrFile, idSignature: IdSignature) : IrSimpleFunctionSymbol =
+        fileToDeserializerMap[file]?.symbolDeserializer?.referenceSimpleFunctionByLocalSignature(idSignature)
+            ?: error("No deserializer for file $file in module ${moduleDescriptor.name}")
+
+    override fun referencePropertyByLocalSignature(file: IrFile, idSignature: IdSignature): IrPropertySymbol =
+        fileToDeserializerMap[file]?.symbolDeserializer?.referencePropertyByLocalSignature(idSignature)
+            ?: error("No deserializer for file $file in module ${moduleDescriptor.name}")
+
+    // TODO: fix to topLevel checker
+    override fun contains(idSig: IdSignature): Boolean = idSig in moduleReversedFileIndex
+
+    override fun deserializeIrSymbol(idSig: IdSignature, symbolKind: BinarySymbolData.SymbolKind): IrSymbol {
+        assert(idSig.isPublic)
+
+        val topLevelSignature = idSig.topLevelSignature()
+        val fileLocalDeserializationState = moduleReversedFileIndex[topLevelSignature]
+            ?: error("No file for $topLevelSignature (@ $idSig) in module $moduleDescriptor")
+
+        fileLocalDeserializationState.addIdSignature(topLevelSignature)
+        moduleDeserializationState.enqueueFile(fileLocalDeserializationState)
+
+        return fileLocalDeserializationState.fileDeserializer.symbolDeserializer.deserializeIrSymbol(idSig, symbolKind).also {
+            linker.deserializedSymbols.add(it)
+        }
+    }
+
+    override val moduleFragment: IrModuleFragment = IrModuleFragmentImpl(moduleDescriptor, linker.builtIns, emptyList())
+
+    private fun deserializeIrFile(fileProto: org.jetbrains.kotlin.backend.common.serialization.proto.IrFile, fileIndex: Int, moduleDeserializer: IrModuleDeserializer, allowErrorNodes: Boolean): IrFile {
+
+        val fileReader = IrLibraryFileFromKlib(moduleDeserializer.klib, fileIndex)
+        val file = fileReader.createFile(moduleFragment, fileProto)
+
+        val fileDeserializationState = FileDeserializationState(
+            linker,
+            file,
+            fileReader,
+            fileProto,
+            strategy.needBodies,
+            allowErrorNodes,
+            strategy.inlineBodies,
+            moduleDeserializer,
+            useGlobalSignatures,
+            linker::handleNoModuleDeserializerFound
+        )
+
+        fileToDeserializerMap[file] = fileDeserializationState.fileDeserializer
+
+        val topLevelDeclarations = fileDeserializationState.fileDeserializer.reversedSignatureIndex.keys
+        topLevelDeclarations.forEach {
+            moduleReversedFileIndex.putIfAbsent(it, fileDeserializationState) // TODO Why not simple put?
+        }
+
+        if (strategy.theWholeWorld) {
+            fileDeserializationState.enqueueAllDeclarations()
+        }
+        if (strategy.theWholeWorld || strategy.explicitlyExported) {
+            moduleDeserializationState.enqueueFile(fileDeserializationState)
+        }
+
+        return file
+    }
+
+    override fun addModuleReachableTopLevel(idSig: IdSignature) {
+        moduleDeserializationState.addIdSignature(idSig)
+    }
+
+    override fun deserializeReachableDeclarations() {
+        moduleDeserializationState.deserializeReachableDeclarations()
+    }
 
     val fileQueue = ArrayDeque<IcFileDeserializer>()
     val signatureQueue = ArrayDeque<IdSignature>()
@@ -48,36 +172,7 @@ class IcModuleDeserializer(
         }
     }
 
-    override fun contains(idSig: IdSignature): Boolean {
-        return wrapped.contains(idSig)
-    }
-
-    override fun deserializeIrSymbol(idSig: IdSignature, symbolKind: BinarySymbolData.SymbolKind): IrSymbol {
-        return wrapped.deserializeIrSymbol(idSig, symbolKind)
-    }
-
-    override fun referenceSimpleFunctionByLocalSignature(file: IrFile, idSignature: IdSignature): IrSimpleFunctionSymbol {
-        return wrapped.referenceSimpleFunctionByLocalSignature(file, idSignature)
-    }
-
-    override fun referencePropertyByLocalSignature(file: IrFile, idSignature: IdSignature): IrPropertySymbol {
-        return wrapped.referencePropertyByLocalSignature(file, idSignature)
-    }
-
-    override fun declareIrSymbol(symbol: IrSymbol) {
-        wrapped.declareIrSymbol(symbol)
-    }
-
-    override fun init() {
-        wrapped.init(this)
-    }
-
     private lateinit var actualDeserializer: IrModuleDeserializer
-
-    override fun init(delegate: IrModuleDeserializer) {
-        actualDeserializer = delegate
-        wrapped.init(delegate)
-    }
 
     override fun postProcess() {
         val pathToIcFileData = icData.files.associateBy {
@@ -174,27 +269,33 @@ class IcModuleDeserializer(
             }
         }
     }
+}
 
-    override fun addModuleReachableTopLevel(idSig: IdSignature) {
-        wrapped.addModuleReachableTopLevel(idSig)
+private class IcModuleDeserializationState(val linker: KotlinIrLinker, val moduleDeserializer: IcModuleDeserializer) {
+    private val filesWithPendingTopLevels = mutableSetOf<FileDeserializationState>()
+
+    fun enqueueFile(fileDeserializationState: FileDeserializationState) {
+        filesWithPendingTopLevels.add(fileDeserializationState)
+        linker.modulesWithReachableTopLevels.add(moduleDeserializer)
     }
 
-    override val klib: IrLibrary
-        get() = wrapped.klib
+    fun addIdSignature(key: IdSignature) {
+        val fileLocalDeserializationState = moduleDeserializer.moduleReversedFileIndex[key] ?: error("No file found for key $key")
+        fileLocalDeserializationState.addIdSignature(key)
 
-    override val strategy: DeserializationStrategy
-        get() = wrapped.strategy
-
-    override val moduleDependencies: Collection<IrModuleDeserializer>
-        get() = wrapped.moduleDependencies
-
-    override val isCurrent: Boolean
-        get() = wrapped.isCurrent
-
-    override fun fileDeserializers(): Collection<IrFileDeserializer> {
-        return wrapped.fileDeserializers()
+        enqueueFile(fileLocalDeserializationState)
     }
 
-    override val moduleFragment: IrModuleFragment
-        get() = wrapped.moduleFragment
+    fun deserializeReachableDeclarations() {
+        while (filesWithPendingTopLevels.isNotEmpty()) {
+            val pendingFileDeserializationState = filesWithPendingTopLevels.first()
+
+            pendingFileDeserializationState.fileDeserializer.deserializeFileImplicitDataIfFirstUse()
+            pendingFileDeserializationState.deserializeAllFileReachableTopLevel()
+
+            filesWithPendingTopLevels.remove(pendingFileDeserializationState)
+        }
+    }
+
+    override fun toString(): String = moduleDeserializer.klib.toString()
 }
