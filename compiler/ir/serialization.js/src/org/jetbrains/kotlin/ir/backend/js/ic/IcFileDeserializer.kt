@@ -9,10 +9,12 @@ import org.jetbrains.kotlin.ir.backend.js.JsStatementOrigins
 import org.jetbrains.kotlin.backend.common.overrides.DefaultFakeOverrideClassFilter
 import org.jetbrains.kotlin.backend.common.serialization.*
 import org.jetbrains.kotlin.backend.common.serialization.encodings.BinarySymbolData
+import org.jetbrains.kotlin.descriptors.ModuleDescriptor
 import org.jetbrains.kotlin.backend.common.serialization.proto.IrFile as ProtoIrFile
 import org.jetbrains.kotlin.ir.backend.js.JsMappingState
 import org.jetbrains.kotlin.ir.backend.js.lower.serialization.ir.JsIrLinker
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
+import org.jetbrains.kotlin.ir.declarations.IrFile
 import org.jetbrains.kotlin.ir.declarations.path
 import org.jetbrains.kotlin.ir.expressions.IrStatementOriginImpl
 import org.jetbrains.kotlin.ir.serialization.CarrierDeserializer
@@ -28,29 +30,88 @@ import org.jetbrains.kotlin.protobuf.ExtensionRegistryLite
 
 class IcFileDeserializer(
     val linker: JsIrLinker,
-    val fileDeserializer: IrFileDeserializer,
+    file: IrFile,
+    originalFileReader: IrLibraryFile,
+    fileProto: org.jetbrains.kotlin.backend.common.serialization.proto.IrFile,
+    deserializeBodies: Boolean,
+    allowErrorNodes: Boolean,
+    deserializeInlineFunctions: Boolean,
+    val moduleDeserializer: IrModuleDeserializer,
+    useGlobalSignatures: Boolean,
+    handleNoModuleDeserializerFound: (IdSignature, ModuleDescriptor, Collection<IrModuleDeserializer>) -> IrModuleDeserializer,
+    val originalEnqueue: IdSignature.(IcFileDeserializer) -> Unit,
     val icFileData: SerializedIcDataForFile,
     val pathToFileSymbol: (String) -> IrFileSymbol,
     val mappingState: JsMappingState,
-    val moduleDeserializer: IrModuleDeserializer,
     val publicSignatureToIcFileDeserializer: MutableMap<IdSignature, IcFileDeserializer>,
     val enqueue: IdSignature.(IcFileDeserializer) -> Unit,
-    val fileDeserializationState: IcFileDeserializationState,
 ) {
 
-    private val fileReader = FileReaderFromSerializedIrFile(icFileData.file)
+    val originalSymbolDeserializer =
+        IrSymbolDeserializer(
+            linker.symbolTable,
+            originalFileReader,
+            file.path,
+            fileProto.actualsList,
+            { idSig, _ -> idSig.originalEnqueue(this) },
+            linker::handleExpectActualMapping,
+            useGlobalSignatures = useGlobalSignatures,
+        ) { idSig, symbolKind ->
+            assert(idSig.isPublic)
+
+            val topLevelSig = idSig.topLevelSignature()
+            val actualModuleDeserializer =
+                moduleDeserializer.findModuleDeserializerForTopLevelId(topLevelSig) ?: handleNoModuleDeserializerFound(
+                    idSig,
+                    moduleDeserializer.moduleDescriptor,
+                    moduleDeserializer.moduleDependencies
+                )
+
+            actualModuleDeserializer.deserializeIrSymbol(idSig, symbolKind)
+        }
+
+    private val originalDeclarationDeserializer = IrDeclarationDeserializer(
+        linker.builtIns,
+        linker.symbolTable,
+        linker.symbolTable.irFactory,
+        originalFileReader,
+        file,
+        allowErrorNodes,
+        deserializeInlineFunctions,
+        deserializeBodies,
+        originalSymbolDeserializer,
+        linker.fakeOverrideBuilder.platformSpecificClassFilter,
+        linker.fakeOverrideBuilder,
+    )
+
+    val originalFileDeserializer = IrFileDeserializer(file, originalFileReader, fileProto, originalSymbolDeserializer, originalDeclarationDeserializer)
+
+    val originalVisited = HashSet<IdSignature>()
+
+    // Explicitly exported declarations (e.g. top-level initializers) must be deserialized before all other declarations.
+    // Thus we schedule their deserialization in deserializer's constructor.
+    val explicitlyExportedToCompiler: Collection<IdSignature> = fileProto.explicitlyExportedToCompilerList.map {
+        val symbolData = originalSymbolDeserializer.parseSymbolData(it)
+        originalSymbolDeserializer.deserializeIdSignature(symbolData.signatureId)
+    }
+
+    fun allOriginalDeclarationSignatures(): Collection<IdSignature> = originalFileDeserializer.reversedSignatureIndex.keys
+
+    // IC data processing starts here
+
+    private val icFileReader = FileReaderFromSerializedIrFile(icFileData.file)
 
     val symbolDeserializer = IrSymbolDeserializer(
         linker.symbolTable,
-        fileReader,
-        fileDeserializer.file.path,
+        icFileReader,
+        originalFileDeserializer.file.path,
         emptyList(),
         { idSig, symbol -> enqueueLocalTopLevelDeclaration(idSig, symbol) },
         { _, s -> s },
         pathToFileSymbol,
         enqueueAllDeclarations = true,
         useGlobalSignatures = true,
-        deserializedSymbols = fileDeserializer.symbolDeserializer.deserializedSymbols,
+        deserializedSymbols = originalFileDeserializer.symbolDeserializer.deserializedSymbols,
         ::deserializePublicSymbol
     )
 
@@ -58,8 +119,8 @@ class IcFileDeserializer(
         linker.builtIns,
         linker.symbolTable,
         linker.symbolTable.irFactory,
-        fileReader,
-        fileDeserializer.file,
+        icFileReader,
+        originalFileDeserializer.file,
         allowErrorNodes = true,
         deserializeInlineFunctions = true,
         deserializeBodies = true,
@@ -92,7 +153,7 @@ class IcFileDeserializer(
     }
 
     init {
-        fileDeserializer.reversedSignatureIndex.keys.forEach {
+        originalFileDeserializer.reversedSignatureIndex.keys.forEach {
             publicSignatureToIcFileDeserializer[it] = this
         }
 
@@ -136,7 +197,7 @@ class IcFileDeserializer(
     fun deserializeDeclaration(idSig: IdSignature): IrDeclaration? {
         val idSigIndex = reversedSignatureIndex[idSig] ?: return null
 //            error("Not found Idx for $idSig")
-        val declarationStream = fileReader.irDeclaration(idSigIndex).codedInputStream
+        val declarationStream = icFileReader.irDeclaration(idSigIndex).codedInputStream
         val declarationProto = org.jetbrains.kotlin.backend.common.serialization.proto.IrDeclaration.parseFrom(declarationStream, ExtensionRegistryLite.newInstance())
         return declarationDeserializer.deserializeDeclaration(declarationProto)
     }
