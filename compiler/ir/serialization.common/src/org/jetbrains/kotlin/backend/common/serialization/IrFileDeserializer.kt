@@ -33,7 +33,7 @@ class IrFileDeserializer(
 
     private var annotations: List<ProtoConstructorCall>? = fileProto.annotationList
 
-    internal fun deserializeDeclaration(idSig: IdSignature): IrDeclaration {
+    fun deserializeDeclaration(idSig: IdSignature): IrDeclaration {
         return declarationDeserializer.deserializeDeclaration(loadTopLevelDeclarationProto(idSig)).also {
             file.declarations += it
         }
