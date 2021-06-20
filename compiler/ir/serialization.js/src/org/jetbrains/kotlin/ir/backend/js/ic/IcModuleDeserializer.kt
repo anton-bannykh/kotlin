@@ -25,6 +25,8 @@ import org.jetbrains.kotlin.library.IrLibrary
 import org.jetbrains.kotlin.library.impl.IrLongArrayMemoryReader
 import org.jetbrains.kotlin.protobuf.ExtensionRegistryLite
 
+import org.jetbrains.kotlin.backend.common.serialization.proto.IrFile as ProtoFile
+
 class IcModuleDeserializer(
     val irFactory: PersistentIrFactory,
     val mapping: JsMapping,
@@ -52,15 +54,13 @@ class IcModuleDeserializer(
     }
 
     override fun init(delegate: IrModuleDeserializer) {
-        actualDeserializer = delegate
-
         val fileCount = klib.fileCount()
 
         val files = ArrayList<IrFile>(fileCount)
 
         for (i in 0 until fileCount) {
             val fileStream = klib.file(i).codedInputStream
-            val fileProto = org.jetbrains.kotlin.backend.common.serialization.proto.IrFile.parseFrom(fileStream, ExtensionRegistryLite.newInstance())
+            val fileProto = ProtoFile.parseFrom(fileStream, ExtensionRegistryLite.newInstance())
             files.add(deserializeIrFile(fileProto, i, delegate, containsErrorCode))
         }
 
@@ -122,7 +122,7 @@ class IcModuleDeserializer(
 
     private val pathToFileSymbol = mutableMapOf<String, IrFileSymbol>()
 
-    private fun deserializeIrFile(fileProto: org.jetbrains.kotlin.backend.common.serialization.proto.IrFile, fileIndex: Int, moduleDeserializer: IrModuleDeserializer, allowErrorNodes: Boolean): IrFile {
+    private fun deserializeIrFile(fileProto: ProtoFile, fileIndex: Int, moduleDeserializer: IrModuleDeserializer, allowErrorNodes: Boolean): IrFile {
 
         val fileReader = IrLibraryFileFromKlib(moduleDeserializer.klib, fileIndex)
         val file = fileReader.createFile(moduleFragment, fileProto)
@@ -161,7 +161,7 @@ class IcModuleDeserializer(
                 linker, fileDeserializationState.fileDeserializer, icFileData,
                 pathToFileSymbol = { p -> pathToFileSymbol[p]!! },
                 mapping.state,
-                actualDeserializer,
+                moduleDeserializer,
                 publicSignatureToIcFileDeserializer,
                 { fileDeserializer -> enqueue(fileDeserializer) },
             )
@@ -191,8 +191,6 @@ class IcModuleDeserializer(
             icDeserializer.visited += this
         }
     }
-
-    private lateinit var actualDeserializer: IrModuleDeserializer
 
     override fun postProcess() {
         // Add all signatures withing the module to a queue ( declarations and bodies )
