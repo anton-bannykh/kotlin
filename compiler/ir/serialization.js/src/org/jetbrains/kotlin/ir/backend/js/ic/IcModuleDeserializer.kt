@@ -163,7 +163,7 @@ class IcModuleDeserializer(
                 mapping.state,
                 actualDeserializer,
                 publicSignatureToIcFileDeserializer,
-                { fileDeserializer, symbol -> enqueue(fileDeserializer, symbol) },
+                { fileDeserializer -> enqueue(fileDeserializer) },
             )
         }
 
@@ -180,16 +180,14 @@ class IcModuleDeserializer(
 
     val fileQueue = ArrayDeque<IcFileDeserializer>()
     val signatureQueue = ArrayDeque<IdSignature>()
-    val symbolQueue = ArrayDeque<IrSymbol>()
 
     val icDeserializers = mutableListOf<IcFileDeserializer>()
     val classToDeclarationSymbols = mutableMapOf<IrClass, List<IrSymbol>>()
 
-    fun IdSignature.enqueue(icDeserializer: IcFileDeserializer, symbol: IrSymbol) {
+    fun IdSignature.enqueue(icDeserializer: IcFileDeserializer) {
         if (this !in icDeserializer.visited) {
             fileQueue.addLast(icDeserializer)
             signatureQueue.addLast(this)
-            symbolQueue += symbol
             icDeserializer.visited += this
         }
     }
@@ -201,14 +199,14 @@ class IcModuleDeserializer(
         for (icDeserializer in icDeserializers) {
             val currentFilePath = icDeserializer.fileDeserializer.file.path
 
-            icDeserializer.fileDeserializer.symbolDeserializer.deserializedSymbols.entries.forEach { (idSig, symbol) ->
+            icDeserializer.fileDeserializer.symbolDeserializer.deserializedSymbols.keys.forEach { idSig ->
                 if (idSig.isPublic) {
-                    idSig.enqueue(icDeserializer, symbol)
+                    idSig.enqueue(icDeserializer)
                 } else {
                     if (idSig is IdSignature.GlobalFileLocalSignature && idSig.filePath == currentFilePath ||
                         idSig is IdSignature.GlobalScopeLocalDeclaration && idSig.filePath == currentFilePath
                     ) {
-                        idSig.enqueue(icDeserializer, symbol)
+                        idSig.enqueue(icDeserializer)
                     }
                 }
             }
@@ -217,12 +215,12 @@ class IcModuleDeserializer(
         while (signatureQueue.isNotEmpty()) {
             val icFileDeserializer = fileQueue.removeFirst()
             val signature = signatureQueue.removeFirst()
-            val symbol = symbolQueue.removeFirst()
 
             if (signature is IdSignature.FileSignature) continue
 
+            val symbol = icFileDeserializer.symbolDeserializer.deserializedSymbols[signature]
             // Deserialize the declaration
-            val declaration = if (symbol.isBound) symbol.owner as IrDeclaration else icFileDeserializer.deserializeDeclaration(signature) ?: continue
+            val declaration = if (symbol?.isBound == true) symbol.owner as IrDeclaration else icFileDeserializer.deserializeDeclaration(signature) ?: continue
 
             icFileDeserializer.injectCarriers(declaration, signature)
 

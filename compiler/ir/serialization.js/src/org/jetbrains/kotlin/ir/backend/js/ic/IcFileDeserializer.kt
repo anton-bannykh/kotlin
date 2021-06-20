@@ -34,7 +34,7 @@ class IcFileDeserializer(
     val mappingState: JsMappingState,
     val moduleDeserializer: IrModuleDeserializer,
     val publicSignatureToIcFileDeserializer: MutableMap<IdSignature, IcFileDeserializer>,
-    val enqueue: IdSignature.(IcFileDeserializer, IrSymbol) -> Unit,
+    val enqueue: IdSignature.(IcFileDeserializer) -> Unit,
 ) {
 
     private val fileReader = FileReaderFromSerializedIrFile(icFileData.file)
@@ -129,7 +129,7 @@ class IcFileDeserializer(
     private fun enqueueLocalTopLevelDeclaration(idSig: IdSignature, symbol: IrSymbol) {
         // We only care about declarations from IC cache. They all are in the map.
         val deser = publicSignatureToIcFileDeserializer[idSig] ?: return
-        idSig.enqueue(deser, symbol)
+        idSig.enqueue(deser)
     }
 
     fun deserializeDeclaration(idSig: IdSignature): IrDeclaration? {
@@ -146,7 +146,7 @@ class IcFileDeserializer(
 
     fun deserializeIrSymbol(idSig: IdSignature, symbolKind: BinarySymbolData.SymbolKind): IrSymbol {
         return symbolDeserializer.deserializeIrSymbol(idSig, symbolKind).also { symbol ->
-            idSig.enqueue(this, symbol)
+            idSig.enqueue(this)
         }
     }
 
