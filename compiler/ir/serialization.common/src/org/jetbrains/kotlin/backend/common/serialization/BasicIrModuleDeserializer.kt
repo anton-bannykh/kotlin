@@ -140,18 +140,21 @@ abstract class BasicIrModuleDeserializer(
         return file
     }
 
-    // TODO useless
     override fun addModuleReachableTopLevel(idSig: IdSignature) {
         moduleDeserializationState.addIdSignature(idSig)
     }
+
+    override fun deserializeReachableDeclarations() {
+        moduleDeserializationState.deserializeReachableDeclarations()
+    }
 }
 
-internal class ModuleDeserializationState(val linker: KotlinIrLinker, val moduleDeserializer: BasicIrModuleDeserializer) {
+private class ModuleDeserializationState(val linker: KotlinIrLinker, val moduleDeserializer: BasicIrModuleDeserializer) {
     private val filesWithPendingTopLevels = mutableSetOf<FileDeserializationState>()
 
     fun enqueueFile(fileDeserializationState: FileDeserializationState) {
         filesWithPendingTopLevels.add(fileDeserializationState)
-        linker.modulesWithReachableTopLevels.add(this)
+        linker.modulesWithReachableTopLevels.add(moduleDeserializer)
     }
 
     fun addIdSignature(key: IdSignature) {
