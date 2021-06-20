@@ -35,6 +35,7 @@ class IcFileDeserializer(
     val moduleDeserializer: IrModuleDeserializer,
     val publicSignatureToIcFileDeserializer: MutableMap<IdSignature, IcFileDeserializer>,
     val enqueue: IdSignature.(IcFileDeserializer) -> Unit,
+    val fileDeserializationState: IcFileDeserializationState,
 ) {
 
     private val fileReader = FileReaderFromSerializedIrFile(icFileData.file)
