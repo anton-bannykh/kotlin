@@ -50,9 +50,11 @@ class IcFileDeserializer(
         enqueueAllDeclarations = true,
         useGlobalSignatures = true,
         ::deserializePublicSymbol,
-    ).also {
+    )
+
+    fun init() {
         for ((idSig, symbol) in fileDeserializer.symbolDeserializer.deserializedSymbols.entries) {
-            it.deserializedSymbols[idSig] = symbol
+            symbolDeserializer.deserializedSymbols[idSig] = symbol
         }
     }
 

@@ -14,6 +14,7 @@ import org.jetbrains.kotlin.ir.backend.js.lower.serialization.ir.JsIrLinker
 import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.declarations.impl.IrModuleFragmentImpl
 import org.jetbrains.kotlin.ir.declarations.persistent.PersistentIrFactory
+import org.jetbrains.kotlin.ir.symbols.IrFileSymbol
 import org.jetbrains.kotlin.ir.symbols.IrPropertySymbol
 import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
@@ -113,6 +114,14 @@ class IcModuleDeserializer(
 
     override val moduleFragment: IrModuleFragment = IrModuleFragmentImpl(moduleDescriptor, linker.builtIns, emptyList())
 
+    private val pathToIcFileData = icData.files.associateBy {
+        it.file.path
+    }
+
+    private val publicSignatureToIcFileDeserializer = mutableMapOf<IdSignature, IcFileDeserializer>()
+
+    private val pathToFileSymbol = mutableMapOf<String, IrFileSymbol>()
+
     private fun deserializeIrFile(fileProto: org.jetbrains.kotlin.backend.common.serialization.proto.IrFile, fileIndex: Int, moduleDeserializer: IrModuleDeserializer, allowErrorNodes: Boolean): IrFile {
 
         val fileReader = IrLibraryFileFromKlib(moduleDeserializer.klib, fileIndex)
@@ -145,6 +154,19 @@ class IcModuleDeserializer(
             moduleDeserializationState.enqueueFile(fileDeserializationState)
         }
 
+        pathToFileSymbol[file.path] = file.symbol
+
+        pathToIcFileData[file.path]?.let { icFileData ->
+            icDeserializers += IcFileDeserializer(
+                linker, fileDeserializationState.fileDeserializer, icFileData,
+                pathToFileSymbol = { p -> pathToFileSymbol[p]!! },
+                mapping.state,
+                actualDeserializer,
+                publicSignatureToIcFileDeserializer,
+                { fileDeserializer, symbol -> enqueue(fileDeserializer, symbol) },
+            )
+        }
+
         return file
     }
 
@@ -175,30 +197,7 @@ class IcModuleDeserializer(
     private lateinit var actualDeserializer: IrModuleDeserializer
 
     override fun postProcess() {
-        val pathToIcFileData = icData.files.associateBy {
-            it.file.path
-        }
-
-        val moduleDeserializer = linker.moduleDeserializer(moduleDescriptor)
-
-        val fileDeserializers = moduleDeserializer.fileDeserializers()
-
-        val pathToFileSymbol = fileDeserializers.map { it.file.path to it.file.symbol }.toMap()
-
-        val publicSignatureToIcFileDeserializer = mutableMapOf<IdSignature, IcFileDeserializer>()
-
-        icDeserializers += fileDeserializers.mapNotNull { fd ->
-            pathToIcFileData[fd.file.path]?.let { icFileData ->
-                IcFileDeserializer(
-                    linker, fd, icFileData,
-                    pathToFileSymbol = { p -> pathToFileSymbol[p]!! },
-                    mapping.state,
-                    moduleDeserializer,
-                    publicSignatureToIcFileDeserializer,
-                    { fileDeserializer, symbol -> enqueue(fileDeserializer, symbol) },
-                )
-            }
-        }
+        icDeserializers.forEach { it.init() }
 
         // Add all signatures withing the module to a queue ( declarations and bodies )
         for (icDeserializer in icDeserializers) {
