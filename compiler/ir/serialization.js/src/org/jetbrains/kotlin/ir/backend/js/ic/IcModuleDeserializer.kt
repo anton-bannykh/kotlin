@@ -41,8 +41,6 @@ class IcModuleDeserializer(
 
     private val fileToDeserializerMap = mutableMapOf<IrFile, IrFileDeserializer>()
 
-    private val moduleDeserializationState = IcModuleDeserializationState(linker, this)
-
     internal val moduleReversedFileIndex = mutableMapOf<IdSignature, IcFileDeserializationState>()
 
     override val moduleDependencies by lazy {
@@ -104,8 +102,8 @@ class IcModuleDeserializer(
         val fileLocalDeserializationState = moduleReversedFileIndex[topLevelSignature]
             ?: error("No file for $topLevelSignature (@ $idSig) in module $moduleDescriptor")
 
-        fileLocalDeserializationState.addIdSignature(topLevelSignature)
-        moduleDeserializationState.enqueueFile(fileLocalDeserializationState)
+        topLevelSignature.originalEnqueue(fileLocalDeserializationState)
+        linker.modulesWithReachableTopLevels.add(this)
 
         return fileLocalDeserializationState.fileDeserializer.symbolDeserializer.deserializeIrSymbol(idSig, symbolKind).also {
             linker.deserializedSymbols.add(it)
@@ -137,7 +135,8 @@ class IcModuleDeserializer(
             strategy.inlineBodies,
             moduleDeserializer,
             useGlobalSignatures,
-            linker::handleNoModuleDeserializerFound
+            linker::handleNoModuleDeserializerFound,
+            { fs -> originalEnqueue(fs) }
         )
 
         fileToDeserializerMap[file] = fileDeserializationState.fileDeserializer
@@ -148,10 +147,10 @@ class IcModuleDeserializer(
         }
 
         if (strategy.theWholeWorld) {
-            fileDeserializationState.enqueueAllDeclarations()
+            fileDeserializationState.allDeclarationSignatures().forEach { it.originalEnqueue(fileDeserializationState) }
         }
         if (strategy.theWholeWorld || strategy.explicitlyExported) {
-            moduleDeserializationState.enqueueFile(fileDeserializationState)
+            linker.modulesWithReachableTopLevels.add(this)
         }
 
         pathToFileSymbol[file.path] = file.symbol
@@ -171,11 +170,33 @@ class IcModuleDeserializer(
     }
 
     override fun addModuleReachableTopLevel(idSig: IdSignature) {
-        moduleDeserializationState.addIdSignature(idSig)
+        val fileLocalDeserializationState = moduleReversedFileIndex[idSig] ?: error("No file found for key $idSig")
+        idSig.originalEnqueue(fileLocalDeserializationState)
     }
 
     override fun deserializeReachableDeclarations() {
-        moduleDeserializationState.deserializeReachableDeclarations()
+        while (!originalSignatureQueue.isEmpty()) {
+            val signature = originalSignatureQueue.removeFirst()
+            val pendingFileDeserializationState = originalFileQueue.removeFirst()
+
+            pendingFileDeserializationState.fileDeserializer.deserializeFileImplicitDataIfFirstUse()
+
+            val existedSymbol = pendingFileDeserializationState.symbolDeserializer.deserializedSymbols[signature]
+            if (existedSymbol == null || !existedSymbol.isBound) {
+                pendingFileDeserializationState.fileDeserializer.deserializeDeclaration(signature)
+            }
+        }
+    }
+
+    val originalFileQueue = ArrayDeque<IcFileDeserializationState>()
+    val originalSignatureQueue = ArrayDeque<IdSignature>()
+
+    fun IdSignature.originalEnqueue(fileState: IcFileDeserializationState) {
+        if (this !in fileState.visited) {
+            originalFileQueue.addLast(fileState)
+            originalSignatureQueue.addLast(this)
+            fileState.visited += this
+        }
     }
 
     val fileQueue = ArrayDeque<IcFileDeserializer>()
@@ -264,35 +285,6 @@ class IcModuleDeserializer(
     }
 }
 
-private class IcModuleDeserializationState(val linker: KotlinIrLinker, val moduleDeserializer: IcModuleDeserializer) {
-    private val filesWithPendingTopLevels = mutableSetOf<IcFileDeserializationState>()
-
-    fun enqueueFile(fileDeserializationState: IcFileDeserializationState) {
-        filesWithPendingTopLevels.add(fileDeserializationState)
-        linker.modulesWithReachableTopLevels.add(moduleDeserializer)
-    }
-
-    fun addIdSignature(key: IdSignature) {
-        val fileLocalDeserializationState = moduleDeserializer.moduleReversedFileIndex[key] ?: error("No file found for key $key")
-        fileLocalDeserializationState.addIdSignature(key)
-
-        enqueueFile(fileLocalDeserializationState)
-    }
-
-    fun deserializeReachableDeclarations() {
-        while (filesWithPendingTopLevels.isNotEmpty()) {
-            val pendingFileDeserializationState = filesWithPendingTopLevels.first()
-
-            pendingFileDeserializationState.fileDeserializer.deserializeFileImplicitDataIfFirstUse()
-            pendingFileDeserializationState.deserializeAllFileReachableTopLevel()
-
-            filesWithPendingTopLevels.remove(pendingFileDeserializationState)
-        }
-    }
-
-    override fun toString(): String = moduleDeserializer.klib.toString()
-}
-
 class IcFileDeserializationState(
     val linker: KotlinIrLinker,
     file: IrFile,
@@ -304,6 +296,7 @@ class IcFileDeserializationState(
     moduleDeserializer: IrModuleDeserializer,
     useGlobalSignatures: Boolean,
     handleNoModuleDeserializerFound: (IdSignature, ModuleDescriptor, Collection<IrModuleDeserializer>) -> IrModuleDeserializer,
+    val enqueue: IdSignature.(IcFileDeserializationState) -> Unit,
 ) {
 
     val symbolDeserializer =
@@ -312,7 +305,7 @@ class IcFileDeserializationState(
             fileReader,
             file.path,
             fileProto.actualsList,
-            { idSig, _ -> addIdSignature(idSig) },
+            { idSig, _ -> idSig.enqueue(this) },
             linker::handleExpectActualMapping,
             useGlobalSignatures = useGlobalSignatures,
         ) { idSig, symbolKind ->
@@ -345,7 +338,7 @@ class IcFileDeserializationState(
 
     val fileDeserializer = IrFileDeserializer(file, fileReader, fileProto, symbolDeserializer, declarationDeserializer)
 
-    private val reachableTopLevels = LinkedHashSet<IdSignature>()
+    val visited = HashSet<IdSignature>()
 
     init {
         // Explicitly exported declarations (e.g. top-level initializers) must be deserialized before all other declarations.
@@ -354,28 +347,9 @@ class IcFileDeserializationState(
             val symbolData = symbolDeserializer.parseSymbolData(it)
             val sig = symbolDeserializer.deserializeIdSignature(symbolData.signatureId)
             assert(!sig.isPackageSignature())
-            addIdSignature(sig.topLevelSignature())
+            sig.topLevelSignature().enqueue(this)
         }
     }
 
-    fun addIdSignature(key: IdSignature) {
-        reachableTopLevels.add(key)
-    }
-
-    fun enqueueAllDeclarations() {
-        reachableTopLevels.addAll(fileDeserializer.reversedSignatureIndex.keys)
-    }
-
-    fun deserializeAllFileReachableTopLevel() {
-        while (reachableTopLevels.isNotEmpty()) {
-            val reachableKey = reachableTopLevels.first()
-
-            val existedSymbol = symbolDeserializer.deserializedSymbols[reachableKey]
-            if (existedSymbol == null || !existedSymbol.isBound) {
-                fileDeserializer.deserializeDeclaration(reachableKey)
-            }
-
-            reachableTopLevels.remove(reachableKey)
-        }
-    }
+    fun allDeclarationSignatures(): Collection<IdSignature> = fileDeserializer.reversedSignatureIndex.keys
 }
