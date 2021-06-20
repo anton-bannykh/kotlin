@@ -197,8 +197,6 @@ class IcModuleDeserializer(
     private lateinit var actualDeserializer: IrModuleDeserializer
 
     override fun postProcess() {
-        icDeserializers.forEach { it.init() }
-
         // Add all signatures withing the module to a queue ( declarations and bodies )
         for (icDeserializer in icDeserializers) {
             val currentFilePath = icDeserializer.fileDeserializer.file.path

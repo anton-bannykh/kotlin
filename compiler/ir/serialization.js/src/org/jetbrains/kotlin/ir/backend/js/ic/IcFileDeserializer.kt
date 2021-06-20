@@ -49,14 +49,9 @@ class IcFileDeserializer(
         pathToFileSymbol,
         enqueueAllDeclarations = true,
         useGlobalSignatures = true,
-        ::deserializePublicSymbol,
+        deserializedSymbols = fileDeserializer.symbolDeserializer.deserializedSymbols,
+        ::deserializePublicSymbol
     )
-
-    fun init() {
-        for ((idSig, symbol) in fileDeserializer.symbolDeserializer.deserializedSymbols.entries) {
-            symbolDeserializer.deserializedSymbols[idSig] = symbol
-        }
-    }
 
     private val declarationDeserializer = IrDeclarationDeserializer(
         linker.builtIns,

@@ -33,10 +33,9 @@ class IrSymbolDeserializer(
     val pathToFileSymbol: (String) -> IrFileSymbol = { error("indexToFileSymbol not provided") },
     private val enqueueAllDeclarations: Boolean = false,
     private val useGlobalSignatures: Boolean = false,
+    val deserializedSymbols: MutableMap<IdSignature, IrSymbol> = mutableMapOf(), // Per-file signature cache. TODO: do we really need it?
     val deserializePublicSymbol: (IdSignature, BinarySymbolData.SymbolKind) -> IrSymbol,
 ) {
-
-    val deserializedSymbols = mutableMapOf<IdSignature, IrSymbol>()
 
     fun deserializeIrSymbol(idSig: IdSignature, symbolKind: BinarySymbolData.SymbolKind): IrSymbol {
         return deserializedSymbols.getOrPut(idSig) {
