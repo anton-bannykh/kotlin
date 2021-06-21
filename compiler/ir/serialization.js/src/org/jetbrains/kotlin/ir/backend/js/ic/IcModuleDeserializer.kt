@@ -100,7 +100,7 @@ class IcModuleDeserializer(
         val icDeserializer = moduleReversedFileIndex[topLevelSignature]
             ?: error("No file for $topLevelSignature (@ $idSig) in module $moduleDescriptor")
 
-        topLevelSignature.originalEnqueue(icDeserializer)
+        idSig.originalEnqueue(icDeserializer)
         linker.modulesWithReachableTopLevels.add(this)
 
         return icDeserializer.originalFileDeserializer.symbolDeserializer.deserializeIrSymbol(idSig, symbolKind).also {
@@ -177,12 +177,16 @@ class IcModuleDeserializer(
             val signature = originalSignatureQueue.removeFirst()
             val fileDeserializer = originalFileQueue.removeFirst()
 
+            signature.enqueue(fileDeserializer)
+
             fileDeserializer.originalFileDeserializer.deserializeFileImplicitDataIfFirstUse()
 
+            val topLevelSignature = if (!signature.isLocal || signature.hasTopLevel) signature.topLevelSignature() else continue
+
             // TODO Is this check needed?
-            val existedSymbol = fileDeserializer.originalSymbolDeserializer.deserializedSymbols[signature]
+            val existedSymbol = fileDeserializer.originalSymbolDeserializer.deserializedSymbols[topLevelSignature]
             if (existedSymbol == null || !existedSymbol.isBound) {
-                fileDeserializer.originalFileDeserializer.deserializeDeclaration(signature)
+                fileDeserializer.originalFileDeserializer.deserializeDeclaration(topLevelSignature)
             }
         }
     }
@@ -213,24 +217,7 @@ class IcModuleDeserializer(
     }
 
     override fun postProcess() {
-        // Add all signatures withing the module to a queue ( declarations and bodies )
-        for (icDeserializer in icDeserializers) {
-            val currentFilePath = icDeserializer.originalFileDeserializer.file.path
-
-            icDeserializer.originalFileDeserializer.symbolDeserializer.deserializedSymbols.keys.forEach { idSig ->
-                if (idSig.isPublic) {
-                    idSig.enqueue(icDeserializer)
-                } else {
-                    if (idSig is IdSignature.GlobalFileLocalSignature && idSig.filePath == currentFilePath ||
-                        idSig is IdSignature.GlobalScopeLocalDeclaration && idSig.filePath == currentFilePath
-                    ) {
-                        idSig.enqueue(icDeserializer)
-                    }
-                }
-            }
-        }
-
-        while (signatureQueue.isNotEmpty()) {
+         while (signatureQueue.isNotEmpty()) {
             val icFileDeserializer = fileQueue.removeFirst()
             val signature = signatureQueue.removeFirst()
 

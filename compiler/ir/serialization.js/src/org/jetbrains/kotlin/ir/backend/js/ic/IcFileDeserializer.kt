@@ -56,6 +56,7 @@ class IcFileDeserializer(
             { idSig, _ -> idSig.originalEnqueue(this) },
             linker::handleExpectActualMapping,
             useGlobalSignatures = useGlobalSignatures,
+            enqueueAllDeclarations = true
         ) { idSig, symbolKind ->
             assert(idSig.isPublic)
 
