@@ -82,7 +82,7 @@ class IcModuleDeserializer(
         }
     }
 
-    override fun referenceSimpleFunctionByLocalSignature(file: IrFile, idSignature: IdSignature) : IrSimpleFunctionSymbol =
+    override fun referenceSimpleFunctionByLocalSignature(file: IrFile, idSignature: IdSignature): IrSimpleFunctionSymbol =
         fileToDeserializerMap[file]?.symbolDeserializer?.referenceSimpleFunctionByLocalSignature(idSignature)
             ?: error("No deserializer for file $file in module ${moduleDescriptor.name}")
 
@@ -118,7 +118,12 @@ class IcModuleDeserializer(
 
     private val pathToFileSymbol = mutableMapOf<String, IrFileSymbol>()
 
-    private fun deserializeIrFile(fileProto: ProtoFile, fileIndex: Int, moduleDeserializer: IrModuleDeserializer, allowErrorNodes: Boolean): IrFile {
+    private fun deserializeIrFile(
+        fileProto: ProtoFile,
+        fileIndex: Int,
+        moduleDeserializer: IrModuleDeserializer,
+        allowErrorNodes: Boolean
+    ): IrFile {
 
         val fileReader = IrLibraryFileFromKlib(moduleDeserializer.klib, fileIndex)
         val file = fileReader.createFile(moduleFragment, fileProto)
@@ -179,15 +184,7 @@ class IcModuleDeserializer(
 
             signature.enqueue(fileDeserializer)
 
-            fileDeserializer.originalFileDeserializer.deserializeFileImplicitDataIfFirstUse()
-
-            val topLevelSignature = if (!signature.isLocal || signature.hasTopLevel) signature.topLevelSignature() else continue
-
-            // TODO Is this check needed?
-            val existedSymbol = fileDeserializer.originalSymbolDeserializer.deserializedSymbols[topLevelSignature]
-            if (existedSymbol == null || !existedSymbol.isBound) {
-                fileDeserializer.originalFileDeserializer.deserializeDeclaration(topLevelSignature)
-            }
+            fileDeserializer.deserializeAnyDeclaration(signature)
         }
     }
 
@@ -217,15 +214,11 @@ class IcModuleDeserializer(
     }
 
     override fun postProcess() {
-         while (signatureQueue.isNotEmpty()) {
+        while (signatureQueue.isNotEmpty()) {
             val icFileDeserializer = fileQueue.removeFirst()
             val signature = signatureQueue.removeFirst()
 
-            if (signature is IdSignature.FileSignature) continue
-
-            val symbol = icFileDeserializer.symbolDeserializer.deserializedSymbols[signature]
-            // Deserialize the declaration
-            val declaration = if (symbol?.isBound == true) symbol.owner as IrDeclaration else icFileDeserializer.deserializeDeclaration(signature) ?: continue
+            val declaration = icFileDeserializer.deserializeDeclaration(signature) ?: continue
 
             icFileDeserializer.injectCarriers(declaration, signature)
 

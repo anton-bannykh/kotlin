@@ -196,11 +196,44 @@ class IcFileDeserializer(
     }
 
     fun deserializeDeclaration(idSig: IdSignature): IrDeclaration? {
+        cachedDeclaration(idSig)?.let { return it }
+
         val idSigIndex = reversedSignatureIndex[idSig] ?: return null
 //            error("Not found Idx for $idSig")
         val declarationStream = icFileReader.irDeclaration(idSigIndex).codedInputStream
         val declarationProto = org.jetbrains.kotlin.backend.common.serialization.proto.IrDeclaration.parseFrom(declarationStream, ExtensionRegistryLite.newInstance())
         return declarationDeserializer.deserializeDeclaration(declarationProto)
+    }
+
+    // Return declaration iff it was already deserialized
+    private fun cachedDeclaration(idSig: IdSignature): IrDeclaration? {
+        val symbol = symbolDeserializer.deserializedSymbols[idSig] // Same map is used for both symbol deserializers
+
+        if (symbol != null && symbol.isBound) return symbol.owner as? IrDeclaration
+
+        return null
+    }
+
+    fun deserializeAnyDeclaration(idSig: IdSignature): IrDeclaration? {
+        if (idSig is IdSignature.FileSignature) return null // TODO: is it needed
+
+        cachedDeclaration(idSig)?.let { return it }
+
+        // TODO fast path?
+        val maybeTopLevel = if (!idSig.isLocal || idSig.hasTopLevel) idSig.topLevelSignature() else idSig
+
+        if (maybeTopLevel in originalFileDeserializer.reversedSignatureIndex.keys) {
+            originalFileDeserializer.deserializeFileImplicitDataIfFirstUse()
+            originalFileDeserializer.deserializeDeclaration(maybeTopLevel)
+
+            // At this point the declaration should've been deserialized
+            return cachedDeclaration(idSig) // Will be null in case of fake overrides
+        } else if (maybeTopLevel in reversedSignatureIndex) {
+            return deserializeDeclaration(maybeTopLevel)
+        }
+
+        // TODO: error?
+        return null
     }
 
     fun deserializeIrSymbol(code: Long): IrSymbol {
