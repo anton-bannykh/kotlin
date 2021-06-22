@@ -6,6 +6,7 @@
 package org.jetbrains.kotlin.ir.backend.js.lower.serialization.ir
 
 import org.jetbrains.kotlin.backend.common.overrides.FakeOverrideBuilder
+import org.jetbrains.kotlin.backend.common.overrides.FakeOverrideClassFilter
 import org.jetbrains.kotlin.backend.common.serialization.*
 import org.jetbrains.kotlin.backend.common.serialization.signature.IdSignatureSerializer
 import org.jetbrains.kotlin.descriptors.ModuleDescriptor
@@ -14,6 +15,7 @@ import org.jetbrains.kotlin.ir.backend.js.ic.IcModuleDeserializer
 import org.jetbrains.kotlin.ir.backend.js.ic.IdSignatureSerializerWithForIC
 import org.jetbrains.kotlin.ir.backend.js.ic.SerializedIcData
 import org.jetbrains.kotlin.ir.builders.TranslationPluginContext
+import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
 import org.jetbrains.kotlin.ir.declarations.persistent.PersistentIrFactory
 import org.jetbrains.kotlin.ir.descriptors.IrAbstractFunctionFactory
@@ -35,7 +37,20 @@ class JsIrLinker(
     private val useGlobalSignatures: Boolean = false,
 ) : KotlinIrLinker(currentModule, messageLogger, builtIns, symbolTable, emptyList()) {
 
+    private val fakeOverrideExclusionSet = mutableSetOf<IrClass>()
+
+    private val customFakeOverrideFilter = object : FakeOverrideClassFilter {
+        override fun needToConstructFakeOverrides(clazz: IrClass): Boolean {
+            return clazz !in fakeOverrideExclusionSet
+        }
+    }
+
+    fun excludeFromFakeOverrideConstruction(clazz: IrClass) {
+        fakeOverrideExclusionSet += clazz
+    }
+
     override val fakeOverrideBuilder = FakeOverrideBuilder(this, symbolTable, JsManglerIr, builtIns,
+                                                           platformSpecificClassFilter = customFakeOverrideFilter,
                                                            signatureSerializerFactory = { publicSignatureBuilder, table ->
         if (useGlobalSignatures) IdSignatureSerializerWithForIC(publicSignatureBuilder, table) else IdSignatureSerializer(publicSignatureBuilder, table)
     })

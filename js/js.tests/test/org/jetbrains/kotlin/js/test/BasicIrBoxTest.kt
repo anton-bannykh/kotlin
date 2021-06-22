@@ -49,7 +49,7 @@ abstract class BasicIrBoxTest(
 
     private fun getBoolean(s: String, default: Boolean) = System.getProperty(s)?.let { parseBoolean(it) } ?: default
 
-    private val runIcMode: Boolean = getBoolean("kotlin.js.ir.icMode")
+    private val runIcMode: Boolean = true//getBoolean("kotlin.js.ir.icMode")
 
     private val runPerModuleMode: Boolean = runIcMode || getBoolean("kotlin.js.ir.perModuleMode")
 

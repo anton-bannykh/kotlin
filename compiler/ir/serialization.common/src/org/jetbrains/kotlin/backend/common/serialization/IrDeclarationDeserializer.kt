@@ -66,6 +66,7 @@ class IrDeclarationDeserializer(
     private val platformFakeOverrideClassFilter: FakeOverrideClassFilter,
     private val fakeOverrideBuilder: FakeOverrideBuilder,
     private val skipMutableState: Boolean = false,
+    private val queueFakeOverrides: Boolean = true,
     additionalStatementOriginIndex: Map<String, IrStatementOrigin> = emptyMap(),
     allowErrorStatementOrigins: Boolean = false,
 ) {
@@ -326,7 +327,9 @@ class IrDeclarationDeserializer(
 
                     thisReceiver = deserializeIrValueParameter(proto.thisReceiver, -1)
 
-                    fakeOverrideBuilder.enqueueClass(this, signature)
+//                    if (queueFakeOverrides || this.isExternal) {
+                        fakeOverrideBuilder.enqueueClass(this, signature)
+//                    }
                 }
             }
         }

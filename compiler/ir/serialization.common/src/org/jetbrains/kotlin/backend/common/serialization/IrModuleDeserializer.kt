@@ -72,7 +72,8 @@ abstract class IrModuleDeserializer(val moduleDescriptor: ModuleDescriptor) {
 class IrModuleDeserializerWithBuiltIns(
     builtIns: IrBuiltIns,
     private val functionFactory: IrAbstractFunctionFactory,
-    private val delegate: IrModuleDeserializer
+    private val delegate: IrModuleDeserializer,
+    private val linker: KotlinIrLinker,
 ) : IrModuleDeserializer(delegate.moduleDescriptor) {
 
     init {
@@ -124,6 +125,8 @@ class IrModuleDeserializerWithBuiltIns(
         }
     }
 
+    private val constructedClasses = mutableSetOf<IdSignature>()
+
     private fun resolveFunctionalInterface(idSig: IdSignature, symbolKind: BinarySymbolData.SymbolKind): IrSymbol {
         if (idSig is IdSignature.GlobalFileLocalSignature) {
             val containerSymbolKind = when (idSig.container.asPublic()!!.nameSegments.size) {
@@ -160,6 +163,14 @@ class IrModuleDeserializerWithBuiltIns(
             }
         }
 
+        val functionClassSignature = functionClass.symbol.signature!!
+        // TODO fix on the FakeOverrideBuilder's side?
+        if (functionClassSignature !in constructedClasses) {
+            println(functionClassSignature)
+            constructedClasses += functionClassSignature
+            linker.fakeOverrideBuilder.enqueueClass(functionClass, functionClassSignature)
+        }
+
         return when (fqnParts.size) {
             1 -> functionClass.symbol.also { assert(symbolKind == BinarySymbolData.SymbolKind.CLASS_SYMBOL) }
             2 -> {
@@ -186,7 +197,7 @@ class IrModuleDeserializerWithBuiltIns(
     override fun deserializeIrSymbol(idSig: IdSignature, symbolKind: BinarySymbolData.SymbolKind): IrSymbol {
         irBuiltInsMap[idSig]?.let { return it }
 
-        if (idSig.toString().startsWith("public kotlin/Function2|null[0]:1000000000002")) {
+        if (idSig.toString().startsWith("public kotlin/Function.equals|4638265728071529943[0]")) {
             11
         }
 

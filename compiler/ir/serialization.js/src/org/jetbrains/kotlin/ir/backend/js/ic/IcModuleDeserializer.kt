@@ -18,9 +18,11 @@ import org.jetbrains.kotlin.ir.symbols.IrPropertySymbol
 import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.util.IdSignature
+import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
 import org.jetbrains.kotlin.ir.util.isEffectivelyExternal
 import org.jetbrains.kotlin.library.IrLibrary
 import org.jetbrains.kotlin.library.impl.IrLongArrayMemoryReader
+import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.protobuf.ExtensionRegistryLite
 
 import org.jetbrains.kotlin.backend.common.serialization.proto.IrFile as ProtoFile
@@ -180,11 +182,35 @@ class IcModuleDeserializer(
     override fun deserializeReachableDeclarations() {
         while (!originalSignatureQueue.isEmpty()) {
             val signature = originalSignatureQueue.removeFirst()
-            val fileDeserializer = originalFileQueue.removeFirst()
+            val icFileDeserializer = originalFileQueue.removeFirst()
 
-            signature.enqueue(fileDeserializer)
+            if (signature.toString().startsWith("public kotlin/Throwable.hashCode|3409210261493131192")) {
+                println("seen in deserializer")
+            }
 
-            fileDeserializer.deserializeAnyDeclaration(signature)
+            val declaration = icFileDeserializer.deserializeAnyDeclaration(signature)
+
+            if (declaration is IrClass && !declaration.isExternal && declaration.fqNameWhenAvailable != FqName("kotlin.Function")) {
+                linker.excludeFromFakeOverrideConstruction(declaration)
+            }
+
+
+//            val declaration = icFileDeserializer.cachedDeclaration(signature)
+
+//            if (declaration == null) {
+                signature.enqueue(icFileDeserializer)
+//            } else {
+//                icFileDeserializer.injectCarriers(declaration, signature)
+//
+//                icFileDeserializer.mappingsDeserializer(signature, declaration)
+//
+//                // Make sure all members are loaded
+//                if (declaration is IrClass) {
+//                    icFileDeserializer.loadClassOrder(signature)?.let {
+//                        classToDeclarationSymbols[declaration] = it
+//                    }
+//                }
+//            }
         }
     }
 
@@ -192,6 +218,11 @@ class IcModuleDeserializer(
     val originalSignatureQueue = ArrayDeque<IdSignature>()
 
     fun IdSignature.originalEnqueue(fileDeserializer: IcFileDeserializer) {
+
+        if (this.toString().startsWith("public kotlin/Throwable.hashCode|3409210261493131192")) {
+            println("seen in queue")
+        }
+
         if (this !in fileDeserializer.originalVisited) {
             originalFileQueue.addLast(fileDeserializer)
             originalSignatureQueue.addLast(this)
@@ -214,11 +245,26 @@ class IcModuleDeserializer(
     }
 
     override fun postProcess() {
+//        println("postprocessing started")
+
         while (signatureQueue.isNotEmpty()) {
             val icFileDeserializer = fileQueue.removeFirst()
             val signature = signatureQueue.removeFirst()
 
-            val declaration = icFileDeserializer.deserializeDeclaration(signature) ?: continue
+            val declaration = icFileDeserializer.deserializeDeclaration(signature)
+
+//            if (signature.toString().startsWith("public kotlin.reflect/KClassifier.toString|-1522858123163872138")) {
+//                println("seen in postProcessing")
+//            }
+
+
+//            val anyDeclaration = icFileDeserializer.deserializeAnyDeclaration(signature)
+//
+//            if (anyDeclaration !== declaration) {
+//                error("$signature")
+//            }
+
+            if (declaration == null) continue
 
             icFileDeserializer.injectCarriers(declaration, signature)
 
@@ -261,5 +307,7 @@ class IcModuleDeserializer(
                 }
             }
         }
+
+//        println("postprocessing ended")
     }
 }
