@@ -80,7 +80,7 @@ class IrBodyDeserializer(
     private val fileReader: IrLibraryFile,
     private val declarationDeserializer: IrDeclarationDeserializer,
     private val statementOriginIndex: Map<String, IrStatementOrigin>,
-    private val allowErrorStatementOrigins: Boolean,
+    private val allowErrorStatementOrigins: Boolean, // TODO: support InlinerExpressionLocationHint
 ) {
 
     private val fileLoops = mutableMapOf<Int, IrLoop>()
