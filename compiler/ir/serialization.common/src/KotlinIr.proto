@@ -63,6 +63,7 @@ message IdSignature {
     FileLocalIdSignature private_sig = 2;
     AccessorIdSignature accessor_sig = 3;
     int32 scoped_local_sig = 4;
+    // Experimental IC signatures below. Id numbers 100+ are chosen due to KLIB compatibility considerations.
     LoweredIdSignature ic_sig = 105;
     FileSignature file_sig = 106;
     ScopeLocalIdSignature external_scoped_local_sig = 107;
