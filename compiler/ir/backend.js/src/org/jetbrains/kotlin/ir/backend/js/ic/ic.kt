@@ -20,6 +20,8 @@ import org.jetbrains.kotlin.ir.util.*
 import org.jetbrains.kotlin.js.config.DceRuntimeDiagnostic
 import org.jetbrains.kotlin.library.KotlinLibrary
 import org.jetbrains.kotlin.library.resolver.KotlinLibraryResolveResult
+import org.jetbrains.kotlin.library.resolver.KotlinResolvedLibrary
+import org.jetbrains.kotlin.library.resolver.TopologicalLibraryOrder
 import org.jetbrains.kotlin.name.FqName
 import java.io.PrintWriter
 
@@ -34,23 +36,39 @@ fun prepareIcCaches(
     configuration: CompilerConfiguration,
     allDependencies: KotlinLibraryResolveResult,
 ) {
-    val irFactory = PersistentIrFactory()
-    val controller = WholeWorldStageController()
-    irFactory.stageController = controller
+    val sortedDependencies = allDependencies.getFullResolvedList(TopologicalLibraryOrder)
 
-    // only process stdlib for now
-    val stdlibResolved = findStdlib(allDependencies)
-    val stdlibKlib = stdlibResolved.getFullList().single()
+    // TODO: foreach
+    sortedDependencies.forEach { resolvedLibrary ->
+        val dependencies = resolvedLibrary.allDependencies().toSet()
+        val resolveResult = allDependencies.filterRoots { it in dependencies || it == resolvedLibrary }
 
-//    icCache.clear()
+        prepareSingleLibraryIcCache(project, analyzer, configuration, resolvedLibrary.library, resolveResult)
+    }
+}
 
-    icCache.computeIfAbsent(stdlibKlib.libraryFile.absolutePath) {
+private fun prepareSingleLibraryIcCache(
+    project: Project,
+    analyzer: AbstractAnalyzerWithCompilerReport,
+    configuration: CompilerConfiguration,
+    library: KotlinLibrary,
+    dependencies: KotlinLibraryResolveResult,
+) {
+    if (dependencies.getFullList().size > 1) {
+        return // TODO
+    }
+
+    icCache.computeIfAbsent(library.libraryFile.absolutePath) {
+        val irFactory = PersistentIrFactory()
+        val controller = WholeWorldStageController()
+        irFactory.stageController = controller
+
         val (context, deserializer, allModules) = prepareIr(
             project,
-            MainModule.Klib(stdlibKlib),
+            MainModule.Klib(library),
             analyzer,
             configuration,
-            stdlibResolved,
+            dependencies,
             emptyList(),
             emptySet(),
             null,
@@ -79,18 +97,25 @@ fun prepareIcCaches(
     }
 }
 
-private fun findStdlib(allDependencies: KotlinLibraryResolveResult): KotlinLibraryResolveResult {
-    var result: KotlinLibraryResolveResult? = null
+private fun KotlinResolvedLibrary.allDependencies(): List<KotlinResolvedLibrary> {
+    val visited = mutableSetOf<KotlinResolvedLibrary>()
 
-    allDependencies.forEach { klib, _ ->
-        val resolvedLib = allDependencies.filterRoots {
-            it.library == klib
+    val result = mutableListOf<KotlinResolvedLibrary>()
+
+    fun KotlinResolvedLibrary.dfs() {
+        visited += this
+
+        resolvedDependencies.forEach {
+            if (it !in visited) {
+                it.dfs()
+                result += it
+            }
         }
-
-        if (resolvedLib.getFullList().size == 1) result = resolvedLib
     }
 
-    return result!!
+    dfs()
+
+    return result
 }
 
 private fun dumpIr(module: IrModuleFragment, fileName: String) {
