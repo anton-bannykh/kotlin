@@ -5,13 +5,15 @@
 
 package org.jetbrains.kotlin.ir.backend.js.ic
 
+import org.jetbrains.kotlin.ir.backend.js.SerializedMapping
 import org.jetbrains.kotlin.ir.backend.js.SerializedMappings
 import org.jetbrains.kotlin.ir.serialization.SerializedCarriers
 import org.jetbrains.kotlin.library.SerializedIrFile
 import org.jetbrains.kotlin.library.impl.IrArrayMemoryReader
-import org.jetbrains.kotlin.library.impl.IrArrayWriter
 import org.jetbrains.kotlin.library.impl.IrMemoryArrayWriter
+import org.jetbrains.kotlin.library.impl.toArray
 import java.io.File
+import java.nio.charset.Charset
 
 class SerializedIcData(
     val files: Collection<SerializedIcDataForFile>,
@@ -33,50 +35,76 @@ class SerializedOrder(
 fun SerializedIcData.writeTo(dir: File) {
     if (!dir.mkdirs()) error("Failed to create output dir: ${dir.absolutePath}")
 
+    files.forEach {
+        val fqnPath = it.file.fqName
+        val fileId = it.file.path.hashCode().toString(Character.MAX_RADIX)
+        val irFileDirectory = "$fqnPath.$fileId.file"
+        val fileDir = File(dir, irFileDirectory)
 
+        assert(!fileDir.exists())
+        if (!fileDir.mkdirs()) error("Failed to create output dir for file ${fileDir.absolutePath}")
 
-    files.sortedBy { it.file.path }.let { files ->
         // .file
-        IrArrayWriter(files.map { it.file.fileData }).writeIntoFile(File(dir, "file.fileData").absolutePath)
-        IrArrayWriter(files.map { it.file.declarations }).writeIntoFile(File(dir, "file.declarations").absolutePath)
-        IrArrayWriter(files.map { it.file.types }).writeIntoFile(File(dir, "file.types").absolutePath)
-        IrArrayWriter(files.map { it.file.signatures }).writeIntoFile(File(dir, "file.signatures").absolutePath)
-        IrArrayWriter(files.map { it.file.strings }).writeIntoFile(File(dir, "file.strings").absolutePath)
-        IrArrayWriter(files.map { it.file.bodies }).writeIntoFile(File(dir, "file.bodies").absolutePath)
+        File(fileDir, "file.fileData").writeBytes(it.file.fileData)
+        File(fileDir, "file.path").writeBytes(it.file.path.toByteArray(Charsets.UTF_8))
+        File(fileDir, "file.declarations").writeBytes(it.file.declarations)
+        File(fileDir, "file.types").writeBytes(it.file.types)
+        File(fileDir, "file.signatures").writeBytes(it.file.signatures)
+        File(fileDir, "file.strings").writeBytes(it.file.strings)
+        File(fileDir, "file.bodies").writeBytes(it.file.bodies)
         // .carriers
-        IrArrayWriter(files.map { it.carriers.signatures }).writeIntoFile(File(dir, "carriers.signatures").absolutePath)
-        IrArrayWriter(files.map { it.carriers.declarationCarriers }).writeIntoFile(File(dir, "carriers.declarationCarriers").absolutePath)
-        IrArrayWriter(files.map { it.carriers.bodyCarriers }).writeIntoFile(File(dir, "carriers.bodyCarriers").absolutePath)
-        IrArrayWriter(files.map { it.carriers.removedOn }).writeIntoFile(File(dir, "carriers.removedOn").absolutePath)
+        File(fileDir, "carriers.signatures").writeBytes(it.carriers.signatures)
+        File(fileDir, "carriers.declarationCarriers").writeBytes(it.carriers.declarationCarriers)
+        File(fileDir, "carriers.bodyCarriers").writeBytes(it.carriers.bodyCarriers)
+        File(fileDir, "carriers.removedOn").writeBytes(it.carriers.removedOn)
         // .mappings
-        IrArrayWriter(files.map { it.mappings.keyBytes() }).writeIntoFile(File(dir, "mappings.keys").absolutePath)
-        IrArrayWriter(files.map { it.mappings.valueBytes() }).writeIntoFile(File(dir, "mappings.values").absolutePath)
+        File(fileDir, "mappings.keys").writeBytes(it.mappings.keyBytes())
+        File(fileDir, "mappings.values").writeBytes(it.mappings.valueBytes())
         // .order
-        IrArrayWriter(files.map { it.order.topLevelSignatures }).writeIntoFile(File(dir, "order.topLevelSignatures").absolutePath)
-        IrArrayWriter(files.map { it.order.containerSignatures }).writeIntoFile(File(dir, "order.containerSignatures").absolutePath)
-        IrArrayWriter(files.map { it.order.declarationSignatures }).writeIntoFile(File(dir, "order.declarationSignatures").absolutePath)
+        File(fileDir, "order.topLevelSignatures").writeBytes(it.order.topLevelSignatures)
+        File(fileDir, "order.containerSignatures").writeBytes(it.order.containerSignatures)
+        File(fileDir, "order.declarationSignatures").writeBytes(it.order.declarationSignatures)
     }
 }
 
 private fun SerializedMappings.keyBytes() = IrMemoryArrayWriter(mappings.map { it.keys }).writeIntoMemory()
 private fun SerializedMappings.valueBytes() = IrMemoryArrayWriter(mappings.map { it.values }).writeIntoMemory()
 
-
 fun File.readIcData(): SerializedIcData {
     if (!this.isDirectory) error("Directory doesn't exist: ${this.absolutePath}")
 
-    // .file
-    val fileFileDataReader = IrArrayMemoryReader(File(this, "file.fileData").readBytes())
-    val fileDeclarationsReader = IrArrayMemoryReader(File(this, "file.declarations").readBytes())
-    val fileTypesReader = IrArrayMemoryReader(File(this, "file.types").readBytes())
-    val fileSignaturesReader = IrArrayMemoryReader(File(this, "file.signatures").readBytes())
-    val fileStringsReader = IrArrayMemoryReader(File(this, "file.strings").readBytes())
-    val fileBodiesReader = IrArrayMemoryReader(File(this, "file.bodies").readBytes())
-    // .carriers
-    val carriersSignaturesReader = IrArrayMemoryReader(File(this, "carriers.signatures").readBytes())
-    val carriersDeclarationCarriersReader = IrArrayMemoryReader(File(this, "carriers.declarationCarriers").readBytes())
-    val carriersBodyCarriersReader = IrArrayMemoryReader(File(this, "carriers.bodyCarriers").readBytes())
-    val carriersRemovedOnReader = IrArrayMemoryReader(File(this, "carriers.removedOn").readBytes())
-    // .mappings
-    val mappings
+    return SerializedIcData(this.listFiles()!!.map { fileDir ->
+        assert(fileDir.isDirectory)
+
+        val file = SerializedIrFile(
+            fileData = File(fileDir, "file.fileData").readBytes(),
+            fqName = fileDir.name.split('.').dropLast(2).joinToString(separator = "."),
+            path = File(fileDir, "file.path").readBytes().toString(Charsets.UTF_8),
+            types = File(fileDir, "file.types").readBytes(),
+            signatures = File(fileDir, "file.signatures").readBytes(),
+            strings = File(fileDir, "file.strings").readBytes(),
+            bodies = File(fileDir, "file.bodies").readBytes(),
+            declarations = File(fileDir, "file.declarations").readBytes()
+        )
+
+        val carriers = SerializedCarriers(
+            signatures = File(fileDir, "carriers.signatures").readBytes(),
+            declarationCarriers = File(fileDir, "carriers.declarationCarriers").readBytes(),
+            bodyCarriers = File(fileDir, "carriers.bodyCarriers").readBytes(),
+            removedOn = File(fileDir, "carriers.removedOn").readBytes(),
+        )
+
+        val mappingKeys = IrArrayMemoryReader(File(fileDir, "mappings.keys").readBytes()).toArray()
+        val mappingValues = IrArrayMemoryReader(File(fileDir, "mappings.keys").readBytes()).toArray()
+        assert(mappingKeys.size == mappingValues.size)
+        val mappings = SerializedMappings(mappingKeys.zip(mappingValues).map { (k, v) -> SerializedMapping(k, v) })
+
+        val order = SerializedOrder(
+            topLevelSignatures = File(fileDir, "order.topLevelSignatures").readBytes(),
+            containerSignatures = File(fileDir, "order.containerSignatures").readBytes(),
+            declarationSignatures = File(fileDir, "order.declarationSignatures").readBytes(),
+        )
+
+        SerializedIcDataForFile(file, carriers, mappings, order)
+    })
 }
