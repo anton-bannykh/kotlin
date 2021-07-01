@@ -39,6 +39,8 @@ import org.jetbrains.kotlin.incremental.js.IncrementalDataProvider
 import org.jetbrains.kotlin.incremental.js.IncrementalNextRoundChecker
 import org.jetbrains.kotlin.incremental.js.IncrementalResultsConsumer
 import org.jetbrains.kotlin.ir.backend.js.*
+import org.jetbrains.kotlin.ir.backend.js.ic.buildCache
+import org.jetbrains.kotlin.ir.backend.js.ic.checkCaches
 import org.jetbrains.kotlin.ir.declarations.impl.IrFactoryImpl
 import org.jetbrains.kotlin.ir.declarations.persistent.PersistentIrFactory
 import org.jetbrains.kotlin.js.config.*
@@ -192,6 +194,23 @@ class K2JsIrCompiler : CLICompiler<K2JSCompilerArguments>() {
             it.libraryFile.absolutePath in friendAbsolutePaths
         }
 
+        val icCaches = configureLibraries(arguments.cacheDirectories)
+
+        if (arguments.irBuildCache) {
+            messageCollector.report(WARNING, "Building cache")
+            messageCollector.report(WARNING, "to: ${outputFilePath}")
+            messageCollector.report(WARNING, arguments.cacheDirectories ?: "")
+            messageCollector.report(WARNING, resolvedLibraries.getFullList().map { it.libraryName }.toString())
+
+
+            if (arguments.includes != null) {
+//                File(File(outputFilePath), "info").writeText(File(arguments.includes).absolutePath)
+                buildCache(outputFilePath, arguments.includes!!)
+            } else {
+                messageCollector.report(WARNING, "includes == null")
+            }
+        }
+
         if (arguments.irProduceKlibDir || arguments.irProduceKlibFile) {
             if (arguments.irProduceKlibFile) {
                 require(outputFile.extension == KLIB_FILE_EXTENSION) { "Please set up .klib file as output" }
@@ -212,6 +231,11 @@ class K2JsIrCompiler : CLICompiler<K2JSCompilerArguments>() {
         }
 
         if (arguments.irProduceJs) {
+            messageCollector.report(WARNING,"Produce executable:")
+            messageCollector.report(WARNING, arguments.cacheDirectories ?: "")
+
+            checkCaches(resolvedLibraries, icCaches)
+
             val phaseConfig = createPhaseConfig(jsPhases, arguments, messageCollector)
 
             val includes = arguments.includes

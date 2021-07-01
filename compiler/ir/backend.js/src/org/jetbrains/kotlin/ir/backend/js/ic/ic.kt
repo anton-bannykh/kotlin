@@ -79,7 +79,7 @@ private fun prepareSingleLibraryIcCache(
             useStdlibCache = false,
         )
 
-        val moduleFragment = allModules.single()
+        val moduleFragment = allModules.last()
 
         moveBodilessDeclarationsToSeparatePlace(context, moduleFragment)
 
