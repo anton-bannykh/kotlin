@@ -53,6 +53,8 @@ abstract class BasicIrBoxTest(
 
     private val lowerPerModule: Boolean = runIcMode || getBoolean("kotlin.js.ir.lowerPerModule")
 
+    private val klibMainModule: Boolean = getBoolean("kotlin.js.ir.klibMainModule")
+
     override val skipRegularMode: Boolean = getBoolean("kotlin.js.ir.skipRegularMode")
 
     override val runIrDce: Boolean = !lowerPerModule && getBoolean("kotlin.js.ir.dce", true)
@@ -106,12 +108,33 @@ abstract class BasicIrBoxTest(
 
         val allKlibPaths = (runtimeKlibs + transitiveLibraries.map {
             compilationCache[it] ?: error("Can't find compiled module for dependency $it")
-        }).map { File(it).absolutePath }
+        }).map { File(it).absolutePath }.toMutableList()
+
+        val klibPath = outputFile.absolutePath.replace("_v5.js", "/")
+
+        if (isMainModule && klibMainModule) {
+            val resolvedLibraries = jsResolveLibraries(allKlibPaths, emptyList(), messageCollectorLogger(MessageCollector.NONE))
+
+            generateKLib(
+                project = config.project,
+                files = filesToCompile,
+                analyzer = AnalyzerWithCompilerReport(config.configuration),
+                configuration = config.configuration,
+                allDependencies = resolvedLibraries,
+                friendDependencies = emptyList(),
+                irFactory = IrFactoryImpl,
+                outputKlibPath = klibPath,
+                nopack = true,
+                null
+            )
+
+            allKlibPaths += File(klibPath).absolutePath
+        }
 
         val resolvedLibraries = jsResolveLibraries(allKlibPaths, emptyList(), messageCollectorLogger(MessageCollector.NONE))
 
         val actualOutputFile = outputFile.absolutePath.let {
-            if (!isMainModule) it.replace("_v5.js", "/") else it
+            if (!isMainModule) klibPath else it
         }
 
         if (isMainModule) {
@@ -134,11 +157,18 @@ abstract class BasicIrBoxTest(
                 PhaseConfig(jsPhases)
             }
 
+            val mainModule = if (!klibMainModule) {
+                MainModule.SourceFiles(filesToCompile)
+            } else {
+                val mainLib = resolvedLibraries.getFullList().find { it.libraryFile.absolutePath == File(klibPath).absolutePath }!!
+                MainModule.Klib(mainLib)
+            }
+
             if (!skipRegularMode) {
                 val irFactory = if (lowerPerModule) PersistentIrFactory() else IrFactoryImpl
                 val compiledModule = compile(
                     project = config.project,
-                    mainModule = MainModule.SourceFiles(filesToCompile),
+                    mainModule = mainModule,
                     analyzer = AnalyzerWithCompilerReport(config.configuration),
                     configuration = config.configuration,
                     phaseConfig = phaseConfig,
@@ -170,7 +200,7 @@ abstract class BasicIrBoxTest(
             if (runIrPir && !skipDceDriven) {
                 compile(
                     project = config.project,
-                    mainModule = MainModule.SourceFiles(filesToCompile),
+                    mainModule = mainModule,
                     analyzer = AnalyzerWithCompilerReport(config.configuration),
                     configuration = config.configuration,
                     phaseConfig = phaseConfig,
