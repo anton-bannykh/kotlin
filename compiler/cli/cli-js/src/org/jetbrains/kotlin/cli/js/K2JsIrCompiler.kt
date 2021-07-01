@@ -249,8 +249,6 @@ class K2JsIrCompiler : CLICompiler<K2JSCompilerArguments>() {
             messageCollector.report(WARNING,"Produce executable:")
             messageCollector.report(WARNING, arguments.cacheDirectories ?: "")
 
-            checkCaches(resolvedLibraries, icCaches)
-
             val phaseConfig = createPhaseConfig(jsPhases, arguments, messageCollector)
 
             val includes = arguments.includes
