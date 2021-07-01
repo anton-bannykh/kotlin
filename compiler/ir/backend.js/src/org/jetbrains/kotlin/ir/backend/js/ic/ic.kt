@@ -38,63 +38,63 @@ fun prepareIcCaches(
 ) {
     val sortedDependencies = allDependencies.getFullResolvedList(TopologicalLibraryOrder)
 
-    // TODO: foreach
     sortedDependencies.forEach { resolvedLibrary ->
         val dependencies = resolvedLibrary.allDependencies().toSet()
         val resolveResult = allDependencies.filterRoots { it in dependencies || it == resolvedLibrary }
 
-        prepareSingleLibraryIcCache(project, analyzer, configuration, resolvedLibrary.library, resolveResult)
+        // TODO don't filter out
+        if (resolveResult.getFullList().size == 1) {
+            icCache.computeIfAbsent(resolvedLibrary.library.libraryFile.absolutePath) {
+                prepareSingleLibraryIcCache(project, analyzer, configuration, resolvedLibrary.library, resolveResult)
+            }
+        }
     }
 }
 
-private fun prepareSingleLibraryIcCache(
+fun prepareSingleLibraryIcCache(
     project: Project,
     analyzer: AbstractAnalyzerWithCompilerReport,
     configuration: CompilerConfiguration,
     library: KotlinLibrary,
     dependencies: KotlinLibraryResolveResult,
-) {
-    if (dependencies.getFullList().size > 1) {
-        return // TODO
-    }
+    friendDependencies: List<KotlinLibrary> = emptyList(),
+    exportedDeclarations: Set<FqName> = emptySet(),
+): SerializedIcData {
+    val irFactory = PersistentIrFactory()
+    val controller = WholeWorldStageController()
+    irFactory.stageController = controller
 
-    icCache.computeIfAbsent(library.libraryFile.absolutePath) {
-        val irFactory = PersistentIrFactory()
-        val controller = WholeWorldStageController()
-        irFactory.stageController = controller
+    val (context, deserializer, allModules) = prepareIr(
+        project,
+        MainModule.Klib(library),
+        analyzer,
+        configuration,
+        dependencies,
+        friendDependencies,
+        exportedDeclarations,
+        null,
+        false,
+        false,
+        irFactory,
+        useGlobalSignatures = true,
+        useStdlibCache = false,
+    )
 
-        val (context, deserializer, allModules) = prepareIr(
-            project,
-            MainModule.Klib(library),
-            analyzer,
-            configuration,
-            dependencies,
-            emptyList(),
-            emptySet(),
-            null,
-            false,
-            false,
-            irFactory,
-            useGlobalSignatures = true,
-            useStdlibCache = false,
-        )
+    val moduleFragment = allModules.last()
 
-        val moduleFragment = allModules.last()
+    moveBodilessDeclarationsToSeparatePlace(context, moduleFragment)
 
-        moveBodilessDeclarationsToSeparatePlace(context, moduleFragment)
+    generateTests(context, moduleFragment)
 
-        generateTests(context, moduleFragment)
+    lowerPreservingIcData(moduleFragment, context, controller)
 
-        lowerPreservingIcData(moduleFragment, context, controller)
-
-        IcSerializer(
-            context.irBuiltIns,
-            context.mapping,
-            irFactory,
-            deserializer,
-            moduleFragment
-        ).serializeDeclarations(irFactory.allDeclarations)
-    }
+    return IcSerializer(
+        context.irBuiltIns,
+        context.mapping,
+        irFactory,
+        deserializer,
+        moduleFragment
+    ).serializeDeclarations(irFactory.allDeclarations)
 }
 
 private fun KotlinResolvedLibrary.allDependencies(): List<KotlinResolvedLibrary> {

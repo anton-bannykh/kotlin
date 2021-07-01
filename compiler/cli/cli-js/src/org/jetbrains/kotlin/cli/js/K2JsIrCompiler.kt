@@ -203,12 +203,27 @@ class K2JsIrCompiler : CLICompiler<K2JSCompilerArguments>() {
             messageCollector.report(WARNING, resolvedLibraries.getFullList().map { it.libraryName }.toString())
 
 
-            if (arguments.includes != null) {
-//                File(File(outputFilePath), "info").writeText(File(arguments.includes).absolutePath)
-                buildCache(outputFilePath, arguments.includes!!)
-            } else {
-                messageCollector.report(WARNING, "includes == null")
+            val includes = arguments.includes!!
+
+            // TODO: deduplicate
+            val mainModule = run {
+                if (sourcesFiles.isNotEmpty()) {
+                    messageCollector.report(ERROR, "Source files are not supported when -Xinclude is present")
+                }
+                val allLibraries = resolvedLibraries.getFullList()
+                val mainLib = allLibraries.find { it.libraryFile.absolutePath == File(includes).absolutePath }!!
+                MainModule.Klib(mainLib)
             }
+
+            buildCache(
+                cachePath = outputFilePath,
+                project = projectJs,
+                mainModule = mainModule,
+                analyzer = AnalyzerWithCompilerReport(config.configuration),
+                configuration = config.configuration,
+                allDependencies = resolvedLibraries,
+                friendDependencies = friendDependencies,
+            )
         }
 
         if (arguments.irProduceKlibDir || arguments.irProduceKlibFile) {

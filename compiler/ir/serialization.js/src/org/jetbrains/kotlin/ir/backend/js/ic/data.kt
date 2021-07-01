@@ -33,7 +33,8 @@ class SerializedOrder(
 )
 
 fun SerializedIcData.writeTo(dir: File) {
-    if (!dir.mkdirs()) error("Failed to create output dir: ${dir.absolutePath}")
+    if (!dir.exists()) error("Directory doesn't exist: ${dir.absolutePath}")
+    if (!dir.isDirectory) error("Not a directory: ${dir.absolutePath}")
 
     files.forEach {
         val fqnPath = it.file.fqName

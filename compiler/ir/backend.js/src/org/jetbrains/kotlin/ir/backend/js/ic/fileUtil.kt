@@ -5,17 +5,36 @@
 
 package org.jetbrains.kotlin.ir.backend.js.ic
 
+import com.intellij.openapi.project.Project
+import org.jetbrains.kotlin.analyzer.AbstractAnalyzerWithCompilerReport
+import org.jetbrains.kotlin.config.CompilerConfiguration
+import org.jetbrains.kotlin.ir.backend.js.MainModule
+import org.jetbrains.kotlin.library.KotlinLibrary
 import org.jetbrains.kotlin.library.resolver.KotlinLibraryResolveResult
+import org.jetbrains.kotlin.name.FqName
 import java.io.File
 
 // TODO more parameters for lowerings
 fun buildCache(
     cachePath: String,
-    klibPath: String,
+    project: Project,
+    mainModule: MainModule.Klib,
+    analyzer: AbstractAnalyzerWithCompilerReport,
+    configuration: CompilerConfiguration,
+    allDependencies: KotlinLibraryResolveResult,
+    friendDependencies: List<KotlinLibrary>,
+    exportedDeclarations: Set<FqName> = emptySet(),
 ) {
+
+    val icData = if (allDependencies.getFullList().size == 1) {
+        prepareSingleLibraryIcCache(project, analyzer, configuration, mainModule.lib, allDependencies, friendDependencies, exportedDeclarations)
+    } else null
+
+    icData?.writeTo(File(cachePath))
+
     // TODO md5
     // TODO perform lowerings
-    CacheInfo(cachePath, File(klibPath).absolutePath).save()
+    CacheInfo(cachePath, mainModule.lib.libraryFile.absolutePath).save()
 }
 
 fun checkCaches(
