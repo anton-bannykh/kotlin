@@ -53,7 +53,7 @@ abstract class BasicIrBoxTest(
 
     private val lowerPerModule: Boolean = runIcMode || getBoolean("kotlin.js.ir.lowerPerModule")
 
-    private val klibMainModule: Boolean = getBoolean("kotlin.js.ir.klibMainModule")
+    private val klibMainModule: Boolean = runIcMode || getBoolean("kotlin.js.ir.klibMainModule")
 
     override val skipRegularMode: Boolean = getBoolean("kotlin.js.ir.skipRegularMode")
 
@@ -102,7 +102,7 @@ abstract class BasicIrBoxTest(
     ) {
         val filesToCompile = units.map { (it as TranslationUnit.SourceFile).file }
 
-        val runtimeKlibs = if (needsFullIrRuntime || runIcMode) listOf(fullRuntimeKlib, kotlinTestKLib) else listOf(defaultRuntimeKlib)
+        val runtimeKlibs = if (needsFullIrRuntime) listOf(fullRuntimeKlib, kotlinTestKLib) else listOf(defaultRuntimeKlib)
 
         val transitiveLibraries = config.configuration[JSConfigurationKeys.TRANSITIVE_LIBRARIES]!!.map { File(it).name }
 
