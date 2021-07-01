@@ -148,6 +148,7 @@ fun compile(
             allModules.forEach {
                 lowerPreservingIcData(it, context, controller)
             }
+            irFactory.stageController = object : StageController(irFactory.stageController.currentStage) {}
         } else {
             jsPhases.invokeToplevel(phaseConfig, context, allModules)
         }

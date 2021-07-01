@@ -213,6 +213,8 @@ fun icCompile(
         moduleToName = moduleToName,
     )
 
+    irFactory.stageController = object : StageController(irFactory.stageController.currentStage) {}
+
     return transformer.generateModule(allModules)
 }
 
