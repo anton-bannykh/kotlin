@@ -28,6 +28,12 @@ fun buildCache(
     friendDependencies: List<KotlinLibrary>,
     exportedDeclarations: Set<FqName> = emptySet(),
 ) {
+    // TODO: also hash dependencies
+    val md5 = mainModule.lib.libraryFile.javaFile().md5()
+    val oldCacheInfo = CacheInfo.load(cachePath)
+    if (oldCacheInfo != null && md5 == oldCacheInfo.md5) return
+
+    // TODO: clean
 
     // TODO: lower all the klibs
     val icData = if (allDependencies.getFullList().size == 1) {
@@ -36,7 +42,7 @@ fun buildCache(
 
     icData?.writeTo(File(cachePath))
 
-    CacheInfo(cachePath, mainModule.lib.libraryFile.absolutePath, mainModule.lib.libraryFile.javaFile().md5(), icData != null).save()
+    CacheInfo(cachePath, mainModule.lib.libraryFile.absolutePath, md5, icData != null).save()
 }
 
 private fun File.md5(): ULong {
@@ -74,7 +80,7 @@ fun checkCaches(
 ): Map<String, SerializedIcData> {
     val allLibs = allDependencies.getFullList().map { it.libraryFile.absolutePath }.toSet()
 
-    val caches = cachePaths.map { CacheInfo.load(it)}
+    val caches = cachePaths.map { CacheInfo.load(it)!! }
 
     val missedLibs = allLibs - caches.map { it.libPath }
     if (!missedLibs.isEmpty()) {
@@ -105,7 +111,11 @@ data class CacheInfo(val path: String, val libPath: String, val md5: ULong, val 
     }
 
     companion object {
-        fun load(path: String): CacheInfo {
+        fun load(path: String): CacheInfo? {
+            val info = File(File(path), "info")
+
+            if (!info.isFile) return null
+
             val (libPath, md5, hasIcData) = File(File(path), "info").readLines()
 
             return CacheInfo(path, libPath, md5.toULong(16), hasIcData == "true")
