@@ -57,6 +57,7 @@ fun compile(
     baseClassIntoMetadata: Boolean = false,
     lowerPerModule: Boolean = false,
     useStdlibCache: Boolean = false,
+    icCachePaths: List<String> = emptyList(),
 ): CompilerResult {
 
     if (lowerPerModule) {
@@ -77,6 +78,7 @@ fun compile(
             relativeRequirePath,
             propertyLazyInitialization,
             useStdlibCache,
+            icCachePaths,
         )
     }
 

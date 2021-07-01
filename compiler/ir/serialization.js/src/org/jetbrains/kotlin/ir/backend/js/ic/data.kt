@@ -42,8 +42,10 @@ fun SerializedIcData.writeTo(dir: File) {
         val irFileDirectory = "$fqnPath.$fileId.file"
         val fileDir = File(dir, irFileDirectory)
 
-        assert(!fileDir.exists())
-        if (!fileDir.mkdirs()) error("Failed to create output dir for file ${fileDir.absolutePath}")
+        // TODO: just rewrite?
+        if (!fileDir.exists()) {
+            if (!fileDir.mkdirs()) error("Failed to create output dir for file ${fileDir.absolutePath}")
+        }
 
         // .file
         File(fileDir, "file.fileData").writeBytes(it.file.fileData)
@@ -74,9 +76,7 @@ private fun SerializedMappings.valueBytes() = IrMemoryArrayWriter(mappings.map {
 fun File.readIcData(): SerializedIcData {
     if (!this.isDirectory) error("Directory doesn't exist: ${this.absolutePath}")
 
-    return SerializedIcData(this.listFiles()!!.map { fileDir ->
-        assert(fileDir.isDirectory)
-
+    return SerializedIcData(this.listFiles()!!.filter { it.isDirectory}.map { fileDir ->
         val file = SerializedIrFile(
             fileData = File(fileDir, "file.fileData").readBytes(),
             fqName = fileDir.name.split('.').dropLast(2).joinToString(separator = "."),
@@ -96,7 +96,7 @@ fun File.readIcData(): SerializedIcData {
         )
 
         val mappingKeys = IrArrayMemoryReader(File(fileDir, "mappings.keys").readBytes()).toArray()
-        val mappingValues = IrArrayMemoryReader(File(fileDir, "mappings.keys").readBytes()).toArray()
+        val mappingValues = IrArrayMemoryReader(File(fileDir, "mappings.values").readBytes()).toArray()
         assert(mappingKeys.size == mappingValues.size)
         val mappings = SerializedMappings(mappingKeys.zip(mappingValues).map { (k, v) -> SerializedMapping(k, v) })
 

@@ -156,7 +156,12 @@ fun icCompile(
     relativeRequirePath: Boolean = false,
     propertyLazyInitialization: Boolean,
     useStdlibCache: Boolean,
+    icCachePaths: List<String> = emptyList()
 ): CompilerResult {
+
+    if (!icCachePaths.isEmpty()) {
+        icCache += checkCaches(allDependencies, icCachePaths)
+    }
 
     if (useStdlibCache) {
         // Lower and save stdlib IC data if needed
