@@ -27,13 +27,19 @@ fun buildCache(
     allDependencies: KotlinLibraryResolveResult,
     friendDependencies: List<KotlinLibrary>,
     exportedDeclarations: Set<FqName> = emptySet(),
+    forceClean: Boolean = false,
 ) {
     // TODO: also hash dependencies
     val md5 = mainModule.lib.libraryFile.javaFile().md5()
-    val oldCacheInfo = CacheInfo.load(cachePath)
-    if (oldCacheInfo != null && md5 == oldCacheInfo.md5) return
 
-    // TODO: clean
+    if (!forceClean) {
+        val oldCacheInfo = CacheInfo.load(cachePath)
+        if (oldCacheInfo != null && md5 == oldCacheInfo.md5) return
+    }
+
+    val icDir = File(cachePath)
+    icDir.deleteRecursively()
+    icDir.mkdirs()
 
     // TODO: lower all the klibs
     val icData = if (allDependencies.getFullList().size == 1) {
