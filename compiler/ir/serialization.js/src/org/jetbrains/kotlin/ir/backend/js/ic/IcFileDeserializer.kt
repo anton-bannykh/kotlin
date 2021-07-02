@@ -152,10 +152,6 @@ class IcFileDeserializer(
     }
 
     init {
-        originalFileDeserializer.reversedSignatureIndex.keys.forEach {
-            publicSignatureToIcFileDeserializer[it] = this
-        }
-
         reversedSignatureIndex.keys.forEach {
             publicSignatureToIcFileDeserializer[it] = this
         }
@@ -181,10 +177,13 @@ class IcFileDeserializer(
 
 
     private fun deserializePublicSymbol(idSig: IdSignature, kind: BinarySymbolData.SymbolKind) : IrSymbol {
-        return if (moduleDeserializer.contains(idSig)) moduleDeserializer.deserializeIrSymbol(idSig, kind) else null ?: run {
-            val fileDeserializer = publicSignatureToIcFileDeserializer[idSig.topLevelSignature()] ?: error("file deserializer not found: $idSig")
-            fileDeserializer.deserializeIrSymbol(idSig, kind)
+        publicSignatureToIcFileDeserializer[idSig]?.let { fileDeserializer ->
+            return fileDeserializer.deserializeIrSymbol(idSig, kind)
         }
+
+        if (moduleDeserializer.contains(idSig.topLevelSignature())) return moduleDeserializer.deserializeIrSymbol(idSig, kind)
+
+        error("file deserializer not found: $idSig")
     }
 
     private fun enqueueLocalTopLevelDeclaration(idSig: IdSignature) {
