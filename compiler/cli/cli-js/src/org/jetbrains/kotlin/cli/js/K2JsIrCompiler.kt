@@ -316,7 +316,7 @@ class K2JsIrCompiler : CLICompiler<K2JSCompilerArguments>() {
                 baseClassIntoMetadata = arguments.irBaseClassInMetadata,
                 lowerPerModule = !icCaches.isEmpty(),
                 useStdlibCache = !icCaches.isEmpty(),
-                icCachePaths = icCaches,
+                icCache = if (!icCaches.isEmpty()) checkCaches(resolvedLibraries, icCaches) else emptyMap(),
             )
 
             val jsCode = if (arguments.irDce && !arguments.irDceDriven) compiledModule.dceJsCode!! else compiledModule.jsCode!!

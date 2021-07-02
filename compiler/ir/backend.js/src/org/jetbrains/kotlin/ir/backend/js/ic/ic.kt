@@ -21,35 +21,8 @@ import org.jetbrains.kotlin.js.config.DceRuntimeDiagnostic
 import org.jetbrains.kotlin.library.KotlinLibrary
 import org.jetbrains.kotlin.library.resolver.KotlinLibraryResolveResult
 import org.jetbrains.kotlin.library.resolver.KotlinResolvedLibrary
-import org.jetbrains.kotlin.library.resolver.TopologicalLibraryOrder
 import org.jetbrains.kotlin.name.FqName
 import java.io.PrintWriter
-
-// TODO test purpose only
-// klib path -> ic data
-val icCache = mutableMapOf<String, SerializedIcData>()
-
-// TODO change API to support not only stdlib
-fun prepareIcCaches(
-    project: Project,
-    analyzer: AbstractAnalyzerWithCompilerReport,
-    configuration: CompilerConfiguration,
-    allDependencies: KotlinLibraryResolveResult,
-) {
-    val sortedDependencies = allDependencies.getFullResolvedList(TopologicalLibraryOrder)
-
-    sortedDependencies.forEach { resolvedLibrary ->
-        val dependencies = resolvedLibrary.allDependencies().toSet()
-        val resolveResult = allDependencies.filterRoots { it in dependencies || it == resolvedLibrary }
-
-        // TODO don't filter out
-        if (resolveResult.getFullList().size == 1) {
-            icCache.computeIfAbsent(resolvedLibrary.library.libraryFile.absolutePath) {
-                prepareSingleLibraryIcCache(project, analyzer, configuration, resolvedLibrary.library, resolveResult)
-            }
-        }
-    }
-}
 
 fun prepareSingleLibraryIcCache(
     project: Project,
@@ -78,6 +51,7 @@ fun prepareSingleLibraryIcCache(
         irFactory,
         useGlobalSignatures = true,
         useStdlibCache = false,
+        icCache = emptyMap(), // TODO inject dependency caches here
     )
 
     val moduleFragment = allModules.last()
@@ -156,17 +130,8 @@ fun icCompile(
     relativeRequirePath: Boolean = false,
     propertyLazyInitialization: Boolean,
     useStdlibCache: Boolean,
-    icCachePaths: List<String> = emptyList()
+    icCache: Map<String, SerializedIcData> = emptyMap()
 ): CompilerResult {
-
-    if (!icCachePaths.isEmpty()) {
-        icCache += checkCaches(allDependencies, icCachePaths)
-    }
-
-    if (useStdlibCache) {
-        // Lower and save stdlib IC data if needed
-        prepareIcCaches(project, analyzer, configuration, allDependencies)
-    }
 
     val irFactory = PersistentIrFactory()
     val controller = WholeWorldStageController()
@@ -186,11 +151,8 @@ fun icCompile(
         irFactory,
         useStdlibCache,
         useStdlibCache,
+        icCache,
     )
-
-//    if (useStdlibCache) {
-//        loadIrForIc(deserializer, allModules.first(), context)
-//    }
 
     val modulesToLower = allModules.filter { it !in loweredIrLoaded }
 
@@ -255,6 +217,7 @@ private fun prepareIr(
     irFactory: PersistentIrFactory,
     useGlobalSignatures: Boolean,
     useStdlibCache: Boolean,
+    icCache: Map<String, SerializedIcData>,
 ): PreparedIr {
     val cacheProvider: LoweringsCacheProvider? = when {
         useStdlibCache -> object : LoweringsCacheProvider {

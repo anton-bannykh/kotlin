@@ -11,6 +11,7 @@ import org.jetbrains.kotlin.backend.common.lower
 import org.jetbrains.kotlin.backend.common.phaser.PhaseConfig
 import org.jetbrains.kotlin.backend.common.phaser.invokeToplevel
 import org.jetbrains.kotlin.config.CompilerConfiguration
+import org.jetbrains.kotlin.ir.backend.js.ic.SerializedIcData
 import org.jetbrains.kotlin.ir.backend.js.ic.icCompile
 import org.jetbrains.kotlin.ir.backend.js.lower.generateTests
 import org.jetbrains.kotlin.ir.backend.js.lower.moveBodilessDeclarationsToSeparatePlace
@@ -57,7 +58,7 @@ fun compile(
     baseClassIntoMetadata: Boolean = false,
     lowerPerModule: Boolean = false,
     useStdlibCache: Boolean = false,
-    icCachePaths: List<String> = emptyList(),
+    icCache: Map<String, SerializedIcData> = emptyMap(),
 ): CompilerResult {
 
     if (lowerPerModule) {
@@ -78,7 +79,7 @@ fun compile(
             relativeRequirePath,
             propertyLazyInitialization,
             useStdlibCache,
-            icCachePaths,
+            icCache,
         )
     }
 
