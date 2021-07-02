@@ -116,8 +116,6 @@ class IcModuleDeserializer(
 
     private val publicSignatureToIcFileDeserializer = mutableMapOf<IdSignature, IcFileDeserializer>()
 
-    private val pathToFileSymbol = mutableMapOf<String, IrFileSymbol>()
-
     private fun deserializeIrFile(
         fileProto: ProtoFile,
         fileIndex: Int,
@@ -127,8 +125,6 @@ class IcModuleDeserializer(
 
         val fileReader = IrLibraryFileFromKlib(moduleDeserializer.klib, fileIndex)
         val file = fileReader.createFile(moduleFragment, fileProto)
-
-        pathToFileSymbol[file.path] = file.symbol
 
         val icFileData = pathToIcFileData[file.path]!!
 
@@ -145,7 +141,6 @@ class IcModuleDeserializer(
             linker::handleNoModuleDeserializerFound,
             { fileDeserializer -> originalEnqueue(fileDeserializer) },
             icFileData,
-            pathToFileSymbol = { p -> pathToFileSymbol[p]!! },
             mapping.state,
             publicSignatureToIcFileDeserializer,
             { fileDeserializer -> enqueue(fileDeserializer) },

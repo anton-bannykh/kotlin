@@ -41,7 +41,6 @@ class IcFileDeserializer(
     handleNoModuleDeserializerFound: (IdSignature, ModuleDescriptor, Collection<IrModuleDeserializer>) -> IrModuleDeserializer,
     val originalEnqueue: IdSignature.(IcFileDeserializer) -> Unit,
     val icFileData: SerializedIcDataForFile,
-    val pathToFileSymbol: (String) -> IrFileSymbol,
     val mappingState: JsMappingState,
     val publicSignatureToIcFileDeserializer: MutableMap<IdSignature, IcFileDeserializer>,
     val enqueue: IdSignature.(IcFileDeserializer) -> Unit,
