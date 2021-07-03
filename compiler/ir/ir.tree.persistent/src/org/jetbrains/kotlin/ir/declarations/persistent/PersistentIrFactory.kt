@@ -31,6 +31,11 @@ class PersistentIrFactory : IrFactory {
     val allBodies = mutableListOf<IrBody>()
 
     private fun IrDeclaration.register() {
+
+//        if ((this as? PersistentIrDeclarationBase<*>)?.createdOn != 0 && declarationSignature(this) == null) {
+//            error("no signature")
+//        }
+
         allDeclarations += this
     }
 
@@ -39,8 +44,6 @@ class PersistentIrFactory : IrFactory {
     }
 
     fun currentSignature(declaration: IrDeclaration): IdSignature? {
-        if (declaration is IrFakeOverrideProperty || declaration is IrFakeOverrideFunction) return null
-
         val parentSig = stageController.currentDeclaration?.let { declarationSignature(it) } ?: return null
 
         return stageController.createSignature(parentSig)

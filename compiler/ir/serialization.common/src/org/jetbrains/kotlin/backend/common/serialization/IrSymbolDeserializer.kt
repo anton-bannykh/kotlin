@@ -10,10 +10,7 @@ import org.jetbrains.kotlin.backend.common.serialization.proto.Actual
 import org.jetbrains.kotlin.backend.common.serialization.proto.IdSignature.IdsigCase.*
 import org.jetbrains.kotlin.ir.declarations.path
 import org.jetbrains.kotlin.ir.symbols.*
-import org.jetbrains.kotlin.ir.symbols.impl.IrAnonymousInitializerSymbolImpl
-import org.jetbrains.kotlin.ir.symbols.impl.IrLocalDelegatedPropertySymbolImpl
-import org.jetbrains.kotlin.ir.symbols.impl.IrValueParameterSymbolImpl
-import org.jetbrains.kotlin.ir.symbols.impl.IrVariableSymbolImpl
+import org.jetbrains.kotlin.ir.symbols.impl.*
 import org.jetbrains.kotlin.ir.util.*
 import org.jetbrains.kotlin.protobuf.CodedInputStream
 import org.jetbrains.kotlin.protobuf.ExtensionRegistryLite
@@ -47,7 +44,7 @@ class IrSymbolDeserializer(
 
     private fun referenceDeserializedSymbol(symbolKind: BinarySymbolData.SymbolKind, idSig: IdSignature): IrSymbol = symbolTable.run {
         when (symbolKind) {
-            BinarySymbolData.SymbolKind.ANONYMOUS_INIT_SYMBOL -> IrAnonymousInitializerSymbolImpl()
+            BinarySymbolData.SymbolKind.ANONYMOUS_INIT_SYMBOL -> IrAnonymousInitializerPublicSymbolImpl(idSig)
             BinarySymbolData.SymbolKind.CLASS_SYMBOL -> referenceClassFromLinker(idSig)
             BinarySymbolData.SymbolKind.CONSTRUCTOR_SYMBOL -> referenceConstructorFromLinker(idSig)
             BinarySymbolData.SymbolKind.TYPE_PARAMETER_SYMBOL -> referenceTypeParameterFromLinker(idSig)
@@ -58,8 +55,8 @@ class IrSymbolDeserializer(
             BinarySymbolData.SymbolKind.TYPEALIAS_SYMBOL -> referenceTypeAliasFromLinker(idSig)
             BinarySymbolData.SymbolKind.PROPERTY_SYMBOL -> referencePropertyFromLinker(idSig)
             BinarySymbolData.SymbolKind.VARIABLE_SYMBOL -> IrVariableSymbolImpl()
-            BinarySymbolData.SymbolKind.VALUE_PARAMETER_SYMBOL -> IrValueParameterSymbolImpl()
-            BinarySymbolData.SymbolKind.RECEIVER_PARAMETER_SYMBOL -> IrValueParameterSymbolImpl()
+            BinarySymbolData.SymbolKind.VALUE_PARAMETER_SYMBOL -> IrValueParameterPublicSymbolImpl(idSig)
+            BinarySymbolData.SymbolKind.RECEIVER_PARAMETER_SYMBOL -> IrValueParameterPublicSymbolImpl(idSig)
             BinarySymbolData.SymbolKind.LOCAL_DELEGATED_PROPERTY_SYMBOL ->
                 IrLocalDelegatedPropertySymbolImpl()
             BinarySymbolData.SymbolKind.FILE_SYMBOL -> (idSig as IdSignature.FileSignature).symbol

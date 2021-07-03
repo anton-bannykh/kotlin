@@ -37,7 +37,7 @@ class IcSerializer(
     val module: IrModuleFragment
 ) {
 
-    private val globalDeclarationTable = JsGlobalDeclarationTable(irBuiltIns, IdSignatureClashTracker.DEFAULT_TRACKER)
+    private val globalDeclarationTable = JsGlobalDeclarationTable(irBuiltIns)
 
     fun serializeDeclarations(moduleDeclarations: Iterable<IrDeclaration>): SerializedIcData {
 
