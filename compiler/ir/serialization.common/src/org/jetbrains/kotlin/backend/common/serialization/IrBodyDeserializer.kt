@@ -173,7 +173,10 @@ class IrBodyDeserializer(
         }
     }
 
-    private fun cntToReturnableBlockSymbol(upCnt: Int) = returnableBlockStack[returnableBlockStack.size - upCnt]
+    private fun cntToReturnableBlockSymbol(upCnt: Int) = if (upCnt > returnableBlockStack.size) {
+        IrReturnableBlockSymbolImpl()
+//        error("sdfds")
+    } else returnableBlockStack[returnableBlockStack.size - upCnt]
 
     private fun deserializeReturnableBlock(proto: ProtoReturnableBlock, start: Int, end: Int, type: IrType): IrReturnableBlock {
 

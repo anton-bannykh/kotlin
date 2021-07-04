@@ -769,6 +769,10 @@ open class IrFileSerializer(
             var t = returnableBlockStack.size - 1
             while (t >= 0 && returnableBlockStack[t] != targetBlock) --t
 
+            /*if (t < 0) {
+                error("Unable to serialize return target")
+            }*/
+
             val proto = ProtoReturnableBlockReturn.newBuilder()
                 .setUpCnt(returnableBlockStack.size - t)
                 .setValue(serializeExpression(expression.value))
