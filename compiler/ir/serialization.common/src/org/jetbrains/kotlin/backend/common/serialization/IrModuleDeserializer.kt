@@ -80,10 +80,23 @@ class IrModuleDeserializerWithBuiltIns(
 //        assert(builtIns.builtIns.builtInsModule === delegate.moduleDescriptor)
     }
 
-    private val irBuiltInsMap = builtIns.knownBuiltins.map {
-        val symbol = (it as IrSymbolOwner).symbol
-        symbol.signature to symbol
-    }.toMap()
+    private val irBuiltInsMap = builtIns.knownBuiltins.let { builtIns ->
+        val result = mutableMapOf<IdSignature, IrSymbol>()
+
+        builtIns.forEach {
+            val symbol = (it as IrSymbolOwner).symbol
+            result[symbol.signature!!] = symbol
+
+            val declaration = symbol.owner
+            if (declaration is IrSimpleFunction) {
+                declaration.typeParameters.forEachIndexed { i, tp ->
+                    result[IdSignature.GlobalFileLocalSignature(symbol.signature!!, 1000_000_000_000L + i, "")] = tp.symbol
+                }
+            }
+        }
+
+        result
+    }
 
     private fun checkIsFunctionInterface(idSig: IdSignature): Boolean {
         if (idSig is IdSignature.GlobalFileLocalSignature) return checkIsFunctionInterface(idSig.container)
