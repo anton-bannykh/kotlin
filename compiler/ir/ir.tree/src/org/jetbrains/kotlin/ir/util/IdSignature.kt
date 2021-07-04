@@ -257,7 +257,7 @@ sealed class IdSignature {
 
         override fun packageFqName(): FqName = error("Is not supported for Local ID")
 
-        override fun render(): String = "#$id"
+        override fun render(): String = "#$id from ${filePath.split('/').last()}"
 
         override fun equals(other: Any?): Boolean =
             other is GlobalScopeLocalDeclaration && id == other.id && filePath == other.filePath
