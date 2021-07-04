@@ -299,6 +299,22 @@ fun loadIr(
                 TypeTranslatorImpl(symbolTable, depsDescriptors.compilerConfiguration.languageVersionSettings, moduleDescriptor)
             val irBuiltIns = IrBuiltIns(moduleDescriptor.builtIns, typeTranslator, symbolTable)
             val functionFactory = IrFunctionFactory(irBuiltIns, symbolTable)
+
+            val loweredIcData = if (loweringsCacheProvider == null) emptyMap() else {
+                val result = mutableMapOf<ModuleDescriptor, SerializedIcData>()
+
+                for (lib in depsDescriptors.moduleDependencies.keys) {
+                    val path = lib.libraryFile.absolutePath
+                    val icData = loweringsCacheProvider.cacheByPath(path)
+                    if (icData != null) {
+                        val moduleDescriptor = depsDescriptors.getModuleDescriptor(lib)
+                        result[moduleDescriptor] = icData
+                    }
+                }
+
+                result
+            }
+
             val irLinker =
                 JsIrLinker(
                     null,
@@ -308,7 +324,7 @@ fun loadIr(
                     functionFactory,
                     null,
                     null,
-                    depsDescriptors.loweredIcData,
+                    loweredIcData,
                     loweringsCacheProvider != null
                 )
 

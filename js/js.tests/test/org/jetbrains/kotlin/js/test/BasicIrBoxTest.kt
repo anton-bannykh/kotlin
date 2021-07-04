@@ -179,7 +179,7 @@ abstract class BasicIrBoxTest(
                     val map = mutableMapOf<String, SerializedIcData>()
                     for (klibPath in allKlibPaths) {
                         // TODO: enable for all the libs
-                        if (klibPath != File(defaultRuntimeKlib).absolutePath && klibPath != File(fullRuntimeKlib).absolutePath) continue
+//                        if (klibPath != File(defaultRuntimeKlib).absolutePath && klibPath != File(fullRuntimeKlib).absolutePath) continue
 
                         val icData = predefinedKlibHasIcCache[klibPath] ?: prepareSingleLibraryIcCache(
                             project = project,
@@ -187,7 +187,8 @@ abstract class BasicIrBoxTest(
                             configuration = config.configuration,
                             library = resolvedLibraries.getFullList()
                                 .single { it.libraryFile.absolutePath == File(klibPath).absolutePath },
-                            dependencies = resolvedLibraries.filterRoots { it.library.libraryFile.absolutePath == File(klibPath).absolutePath }
+                            dependencies = resolvedLibraries.filterRoots { it.library.libraryFile.absolutePath == File(klibPath).absolutePath },
+                            icCache = map
                         )
 
                         if (klibPath in predefinedKlibHasIcCache) {

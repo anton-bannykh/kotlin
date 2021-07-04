@@ -38,7 +38,7 @@ class IcFileDeserializer(
     deserializeInlineFunctions: Boolean,
     val moduleDeserializer: IrModuleDeserializer,
     useGlobalSignatures: Boolean,
-    handleNoModuleDeserializerFound: (IdSignature, ModuleDescriptor, Collection<IrModuleDeserializer>) -> IrModuleDeserializer,
+    val handleNoModuleDeserializerFound: (IdSignature, ModuleDescriptor, Collection<IrModuleDeserializer>) -> IrModuleDeserializer,
     val originalEnqueue: IdSignature.(IcFileDeserializer) -> Unit,
     val icFileData: SerializedIcDataForFile,
     val mappingState: JsMappingState,
@@ -177,13 +177,25 @@ class IcFileDeserializer(
 
 
     private fun deserializePublicSymbol(idSig: IdSignature, kind: BinarySymbolData.SymbolKind) : IrSymbol {
-        publicSignatureToIcFileDeserializer[idSig]?.let { fileDeserializer ->
-            return fileDeserializer.deserializeIrSymbol(idSig, kind)
-        }
+//        publicSignatureToIcFileDeserializer[idSig]?.let { fileDeserializer ->
+//            return fileDeserializer.deserializeIrSymbol(idSig, kind)
+//        }
 
-        if (moduleDeserializer.contains(idSig.topLevelSignature())) return moduleDeserializer.deserializeIrSymbol(idSig, kind)
+        // TODO: reference lowered declarations cross-module
+        val topLevelSig = idSig.topLevelSignature()
+        val actualModuleDeserializer =
+            moduleDeserializer.findModuleDeserializerForTopLevelId(topLevelSig) ?:
+                error("deserializer not found: $idSig")/*handleNoModuleDeserializerFound(
+                idSig,
+                moduleDeserializer.moduleDescriptor,
+                moduleDeserializer.moduleDependencies
+            )*/
 
-        error("file deserializer not found: $idSig")
+        return actualModuleDeserializer.deserializeIrSymbol(idSig, kind)
+
+//        if (moduleDeserializer.contains(idSig.topLevelSignature())) return moduleDeserializer.deserializeIrSymbol(idSig, kind)
+
+//        error("file deserializer not found: $idSig")
     }
 
     private fun enqueueLocalTopLevelDeclaration(idSig: IdSignature) {

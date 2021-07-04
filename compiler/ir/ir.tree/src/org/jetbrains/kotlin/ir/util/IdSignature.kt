@@ -268,7 +268,7 @@ sealed class IdSignature {
     class LoweredDeclarationSignature(val original: IdSignature, val stage: Int, val index: Int): IdSignature() {
         override val isPublic: Boolean get() = true
 
-        override val hasTopLevel: Boolean get() = false
+        override val hasTopLevel: Boolean get() = true
 
         override fun topLevelSignature(): IdSignature = this
 

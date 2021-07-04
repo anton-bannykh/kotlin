@@ -32,6 +32,7 @@ fun prepareSingleLibraryIcCache(
     dependencies: KotlinLibraryResolveResult,
     friendDependencies: List<KotlinLibrary> = emptyList(),
     exportedDeclarations: Set<FqName> = emptySet(),
+    icCache: Map<String, SerializedIcData> = emptyMap(),
 ): SerializedIcData {
     val irFactory = PersistentIrFactory()
     val controller = WholeWorldStageController()
@@ -50,8 +51,8 @@ fun prepareSingleLibraryIcCache(
         false,
         irFactory,
         useGlobalSignatures = true,
-        useStdlibCache = false,
-        icCache = emptyMap(), // TODO inject dependency caches here
+        useStdlibCache = true,
+        icCache = icCache
     )
 
     val moduleFragment = allModules.last()
@@ -162,7 +163,7 @@ fun icCompile(
     }
 
     // TODO should be done incrementally
-    generateTests(context, allModules.last())
+//    generateTests(context, allModules.last())
 
     modulesToLower.forEach {
         lowerPreservingIcData(it, context, controller)

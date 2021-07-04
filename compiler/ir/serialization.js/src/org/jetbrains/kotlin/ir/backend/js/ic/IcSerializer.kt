@@ -101,7 +101,7 @@ class IcSerializer(
 
             // Only save newly created declarations
             val newDeclarations = fileDeclarations.filter { d ->
-                d is PersistentIrDeclarationBase<*> && (d.createdOn > 0 || d.isFakeOverride || (d is IrValueParameter || d is IrTypeParameter) && (d.parent as IrDeclaration).isFakeOverride)
+                d is PersistentIrDeclarationBase<*> && (d.createdOn > 0 || /*d.isFakeOverride ||*/ (d is IrValueParameter || d is IrTypeParameter) && (d.parent as IrDeclaration).isFakeOverride)
             }
 
             val serializedCarriers = fileSerializer.serializeCarriers(

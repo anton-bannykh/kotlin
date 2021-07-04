@@ -40,6 +40,7 @@ class IcModuleDeserializer(
     private val fileToDeserializerMap = mutableMapOf<IrFile, IrFileDeserializer>()
 
     internal val moduleReversedFileIndex = mutableMapOf<IdSignature, IcFileDeserializer>()
+    internal val icModuleReversedFileIndex = mutableMapOf<IdSignature, IcFileDeserializer>()
 
     override val moduleDependencies by lazy {
         moduleDescriptor.allDependencyModules.filter { it != moduleDescriptor }.map { linker.resolveModuleDeserializer(it, null) }
@@ -91,10 +92,15 @@ class IcModuleDeserializer(
             ?: error("No deserializer for file $file in module ${moduleDescriptor.name}")
 
     // TODO: fix to topLevel checker
-    override fun contains(idSig: IdSignature): Boolean = idSig in moduleReversedFileIndex
+    override fun contains(idSig: IdSignature): Boolean = idSig in moduleReversedFileIndex || idSig in icModuleReversedFileIndex
 
     override fun deserializeIrSymbol(idSig: IdSignature, symbolKind: BinarySymbolData.SymbolKind): IrSymbol {
         assert(idSig.isPublic)
+
+        if (idSig in icModuleReversedFileIndex) {
+            val icDeserializer = icModuleReversedFileIndex[idSig]!!
+            return icDeserializer.deserializeIrSymbol(idSig, symbolKind)
+        }
 
         val topLevelSignature = idSig.topLevelSignature()
         val icDeserializer = moduleReversedFileIndex[topLevelSignature]
@@ -155,6 +161,12 @@ class IcModuleDeserializer(
         val topLevelDeclarations = icDeserializer.originalFileDeserializer.reversedSignatureIndex.keys
         topLevelDeclarations.forEach {
             moduleReversedFileIndex.putIfAbsent(it, icDeserializer) // TODO Why not simple put?
+        }
+
+        icDeserializer.reversedSignatureIndex.keys.forEach {
+            if (it in icModuleReversedFileIndex) error("Duplicate signature $it in both ${icModuleReversedFileIndex[it]!!.originalFileDeserializer.file.path} and in ${file.path}")
+
+            icModuleReversedFileIndex[it] = icDeserializer
         }
 
         if (strategy.theWholeWorld) {
