@@ -91,6 +91,8 @@ class IrDeclarationDeserializer(
         return ProtoType.parseFrom(readType(index), ExtensionRegistryLite.newInstance())
     }
 
+    fun deserializeNullableIrType(index: Int): IrType? = if (index == -1) null else deserializeIrType(index)
+
     fun deserializeIrType(index: Int): IrType {
         return irTypeCache.getOrPut(index) {
             val typeData = loadTypeProto(index)
