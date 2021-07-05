@@ -507,7 +507,7 @@ message IrField {
 message IrLocalDelegatedProperty {
   required IrDeclarationBase base = 1;
   required int64 name_type = 2;
-  required IrVariable delegate = 3;
+  optional IrVariable delegate = 3;
   optional IrFunction getter = 4;
   optional IrFunction setter = 5;
 }

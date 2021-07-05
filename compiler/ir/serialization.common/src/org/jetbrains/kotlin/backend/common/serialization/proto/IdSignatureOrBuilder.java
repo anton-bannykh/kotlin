@@ -45,10 +45,18 @@ public interface IdSignatureOrBuilder extends
 
   /**
    * <code>optional .org.jetbrains.kotlin.backend.common.serialization.proto.LoweredIdSignature ic_sig = 105;</code>
+   *
+   * <pre>
+   * Experimental IC signatures below. Id numbers 100+ are chosen due to KLIB compatibility considerations.
+   * </pre>
    */
   boolean hasIcSig();
   /**
    * <code>optional .org.jetbrains.kotlin.backend.common.serialization.proto.LoweredIdSignature ic_sig = 105;</code>
+   *
+   * <pre>
+   * Experimental IC signatures below. Id numbers 100+ are chosen due to KLIB compatibility considerations.
+   * </pre>
    */
   org.jetbrains.kotlin.backend.common.serialization.proto.LoweredIdSignature getIcSig();
 
