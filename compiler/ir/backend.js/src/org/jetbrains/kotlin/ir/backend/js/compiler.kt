@@ -144,6 +144,7 @@ fun compile(
         )
         return transformer.generateModule(allModules)
     } else {
+        // TODO is this reachable when lowerPerModule == true?
         if (lowerPerModule) {
             val controller = WholeWorldStageController()
             check(irFactory is PersistentIrFactory)

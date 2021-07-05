@@ -63,7 +63,7 @@ abstract class BasicIrBoxTest(
 
     private val lowerPerModule: Boolean = runIcMode || getBoolean("kotlin.js.ir.lowerPerModule")
 
-    private val klibMainModule: Boolean = runIcMode || getBoolean("kotlin.js.ir.klibMainModule")
+    private val klibMainModule: Boolean = false || getBoolean("kotlin.js.ir.klibMainModule")
 
     override val skipRegularMode: Boolean = getBoolean("kotlin.js.ir.skipRegularMode")
 

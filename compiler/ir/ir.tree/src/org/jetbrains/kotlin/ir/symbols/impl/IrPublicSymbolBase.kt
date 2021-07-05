@@ -95,6 +95,7 @@ class IrTypeParameterPublicSymbolImpl(sig: IdSignature, descriptor: TypeParamete
     IrBindablePublicSymbolBase<TypeParameterDescriptor, IrTypeParameter>(sig, descriptor),
     IrTypeParameterSymbol
 
+// TODO: make internal and move to deserializer
 class IrAnonymousInitializerPublicSymbolImpl(sig: IdSignature, descriptor: ClassDescriptor? = null) :
     IrBindablePublicSymbolBase<ClassDescriptor, IrAnonymousInitializer>(sig, descriptor),
     IrAnonymousInitializerSymbol

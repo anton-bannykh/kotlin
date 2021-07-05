@@ -43,6 +43,7 @@ class PersistentIrFactory : IrFactory {
         return (declaration as? PersistentIrDeclarationBase<*>)?.signature ?: declaration.symbol.signature
     }
 
+    // TODO: make internal
     fun currentSignature(declaration: IrDeclaration): IdSignature? {
         val parentSig = stageController.currentDeclaration?.let { declarationSignature(it) } ?: return null
 

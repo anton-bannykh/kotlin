@@ -59,7 +59,7 @@ fun prepareSingleLibraryIcCache(
 
     moveBodilessDeclarationsToSeparatePlace(context, moduleFragment)
 
-    generateTests(context, moduleFragment)
+//    generateTests(context, moduleFragment)
 
     lowerPreservingIcData(moduleFragment, context, controller)
 
@@ -162,12 +162,14 @@ fun icCompile(
         moveBodilessDeclarationsToSeparatePlace(context, module)
     }
 
-    // TODO should be done incrementally
-//    generateTests(context, allModules.last())
-
     modulesToLower.forEach {
         lowerPreservingIcData(it, context, controller)
     }
+
+    // TODO should be done incrementally
+//    controller.withInitialIr {
+//        generateTests(context, allModules.last())
+//    }
 
 //    dumpIr(allModules.first(), "simple-dump${if (useStdlibCache) "-actual" else ""}")
 
