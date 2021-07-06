@@ -25,10 +25,10 @@ import org.jetbrains.kotlin.backend.common.serialization.proto.IrConstructorCall
 import org.jetbrains.kotlin.backend.common.serialization.proto.IrInlineClassRepresentation as ProtoIrInlineClassRepresentation
 import org.jetbrains.kotlin.backend.common.serialization.proto.IrVariable as ProtoIrVariable
 
-internal class IrCarrierDeserializerImpl(
+internal abstract class IrCarrierDeserializerImpl(
     val declarationDeserializer: IrDeclarationDeserializer,
-    val indexToBody: (Int) -> IrBody,
-    val indexToExpressionBody: (Int) -> IrExpressionBody
+//    val indexToBody: (Int) -> IrBody,
+//    val indexToExpressionBody: (Int) -> IrExpressionBody
 ) : IrCarrierDeserializer() {
 
     override fun deserializeParentSymbol(proto: Long): IrSymbol {
@@ -43,17 +43,17 @@ internal class IrCarrierDeserializerImpl(
         return declarationDeserializer.bodyDeserializer.deserializeAnnotation(proto)
     }
 
-    override fun deserializeBody(proto: Int): IrBody {
-        return indexToBody(proto)
-    }
-
-    override fun deserializeBlockBody(proto: Int): IrBlockBody {
-        return indexToBody(proto) as IrBlockBody
-    }
-
-    override fun deserializeExpressionBody(proto: Int): IrExpressionBody {
-        return indexToExpressionBody(proto)
-    }
+//    override fun deserializeBody(proto: Int): IrBody {
+//        return indexToBody(proto)
+//    }
+//
+//    override fun deserializeBlockBody(proto: Int): IrBlockBody {
+//        return indexToBody(proto) as IrBlockBody
+//    }
+//
+//    override fun deserializeExpressionBody(proto: Int): IrExpressionBody {
+//        return indexToExpressionBody(proto)
+//    }
 
     override fun deserializeValueParameter(proto: Long): IrValueParameterSymbol {
         return declarationDeserializer.symbolDeserializer.deserializeIrSymbol(proto) as IrValueParameterSymbol

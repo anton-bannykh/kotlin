@@ -35,28 +35,41 @@ class CarrierDeserializer(
     val serializedCarriers: SerializedCarriers,
 ) {
     private val carrierDeserializerImpl =
-        IrCarrierDeserializerImpl(declarationDeserializer, ::deserializeBody, ::deserializeExpressionBody)
+        object : IrCarrierDeserializerImpl(declarationDeserializer/*, ::deserializeBody, ::deserializeExpressionBody*/) {
 
-    private val blockBodyCache = mutableMapOf<Int, IrBody>()
+            private val blockBodyCache = mutableMapOf<Int, IrBody>().also { cache ->
+                cache[-1] = IrSyntheticBodyImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET, IrSyntheticBodyKind.ENUM_VALUEOF)
+                cache[-2] = IrSyntheticBodyImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET, IrSyntheticBodyKind.ENUM_VALUES)
+            }
 
-    private fun deserializeBody(index: Int): IrBody = blockBodyCache.getOrPut(index) {
-        when (index) {
-            -1 -> IrSyntheticBodyImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET, IrSyntheticBodyKind.ENUM_VALUEOF)
-            -2 -> IrSyntheticBodyImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET, IrSyntheticBodyKind.ENUM_VALUES)
-            else -> (declarationDeserializer.deserializeStatementBody(index) as IrBlockBody).also {
-                injectCarriers(it, index)
+            private val expressionBodyCache = mutableMapOf<Int, IrExpressionBody>()
+
+            private fun deserializeBodyImpl(index: Int): IrBody = blockBodyCache.getOrPut(index) {
+                return (declarationDeserializer.deserializeStatementBody(index) as IrBlockBody).also {
+                    injectCarriers(it, index)
+                }
+            }
+
+            override fun deserializeBody(proto: Int): IrBody {
+                return deserializeBodyImpl(proto)
+            }
+
+            override fun deserializeBlockBody(proto: Int): IrBlockBody {
+                return deserializeBodyImpl(proto) as IrBlockBody
+            }
+
+            override fun deserializeExpressionBody(proto: Int): IrExpressionBody {
+                return expressionBodyCache.getOrPut(proto) {
+                    declarationDeserializer.deserializeExpressionBody(proto).also {
+                        injectCarriers(it, proto)
+                    }
+                }
             }
         }
 
-    }
-
-    private val expressionBodyCache = mutableMapOf<Int, IrExpressionBody>()
-
-    private fun deserializeExpressionBody(index: Int): IrExpressionBody = expressionBodyCache.getOrPut(index) {
-        declarationDeserializer.deserializeExpressionBody(index).also {
-            injectCarriers(it, index)
-        }
-    }
+//    private fun deserializeExpressionBody(index: Int): IrExpressionBody = expressionBodyCache.getOrPut(index) {
+//
+//    }
 
     private val signatureToIndex = mutableMapOf<IdSignature, Int>().also { map ->
         IrIntArrayMemoryReader(serializedCarriers.signatures).array.forEachIndexed { i, index ->
