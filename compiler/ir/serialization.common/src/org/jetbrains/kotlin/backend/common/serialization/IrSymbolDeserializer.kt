@@ -30,7 +30,7 @@ class IrSymbolDeserializer(
     val handleExpectActualMapping: (IdSignature, IrSymbol) -> IrSymbol,
     private val enqueueAllDeclarations: Boolean = false,
     private val useGlobalSignatures: Boolean = false,
-    val deserializedSymbols: MutableMap<IdSignature, IrSymbol> = mutableMapOf(), // Per-file signature cache. TODO: do we really need it?
+    val deserializedSymbols: MutableMap<IdSignature, IrSymbol> = HashMap(), // Per-file signature cache. TODO: do we really need it?
     val deserializePublicSymbol: (IdSignature, BinarySymbolData.SymbolKind) -> IrSymbol,
 ) {
 
@@ -77,18 +77,16 @@ class IrSymbolDeserializer(
         deserializeIrSymbolData(idSignature, BinarySymbolData.SymbolKind.PROPERTY_SYMBOL) as IrPropertySymbol
 
     private fun deserializeIrSymbolData(idSignature: IdSignature, symbolKind: BinarySymbolData.SymbolKind): IrSymbol {
-        if (idSignature.isLocal) {
-            return deserializedSymbols.getOrPut(idSignature) {
+        return deserializedSymbols.getOrPut(idSignature) {
+            if (idSignature.isLocal) {
                 if (enqueueAllDeclarations) {
                     enqueueLocalTopLevelDeclaration(idSignature)
                 } else if (idSignature.hasTopLevel) {
                     enqueueLocalTopLevelDeclaration(idSignature.topLevelSignature())
                 }
                 referenceDeserializedSymbol(symbolKind, idSignature)
-            }
+            } else deserializePublicSymbol(idSignature, symbolKind)
         }
-
-        return deserializePublicSymbol(idSignature, symbolKind)
     }
 
     fun deserializeIrSymbolToDeclare(code: Long): Pair<IrSymbol, IdSignature> {
@@ -99,10 +97,12 @@ class IrSymbolDeserializer(
 
     fun parseSymbolData(code: Long): BinarySymbolData = BinarySymbolData.decode(code)
 
-    fun deserializeIrSymbol(code: Long): IrSymbol {
+    private val irSymbolDeserializationCache: MutableMap<Long, IrSymbol> = HashMap()
+
+    fun deserializeIrSymbol(code: Long): IrSymbol = irSymbolDeserializationCache.computeIfAbsent(code) {
         val symbolData = parseSymbolData(code)
         val signature = deserializeIdSignature(symbolData.signatureId)
-        return deserializeIrSymbolData(signature, symbolData.kind)
+        deserializeIrSymbolData(signature, symbolData.kind)
     }
 
     private fun readSignature(index: Int): CodedInputStream =
@@ -142,9 +142,17 @@ class IrSymbolDeserializer(
         return IdSignature.AccessorSignature(propertySignature, accessorSignature)
     }
 
+    private val stringCache: MutableMap<Int, String> = HashMap()
+
+    private fun deserializeStringCached(index: Int): String = stringCache.computeIfAbsent(index) {
+        fileReader.deserializeString(index)
+    }
+
+    private val currentFilePath: String = fileSymbol.owner.path
+
     private fun deserializeFileLocalIdSignature(proto: ProtoFileLocalIdSignature): IdSignature {
         if (useGlobalSignatures) {
-            val fp = if (proto.hasFile()) fileReader.deserializeString(proto.file) else fileSymbol.owner.path
+            val fp = if (proto.hasFile()) deserializeStringCached(proto.file) else currentFilePath
             return IdSignature.GlobalFileLocalSignature(deserializeIdSignature(proto.container), proto.localId, fp)
         } else {
             return IdSignature.FileLocalSignature(deserializeIdSignature(proto.container), proto.localId)
@@ -153,7 +161,7 @@ class IrSymbolDeserializer(
 
     private fun deserializeScopeLocalIdSignature(proto: Int): IdSignature {
         if (useGlobalSignatures) {
-            return IdSignature.GlobalScopeLocalDeclaration(proto, filePath = fileSymbol.owner.path)
+            return IdSignature.GlobalScopeLocalDeclaration(proto, filePath = currentFilePath)
         } else {
             return IdSignature.ScopeLocalDeclaration(proto)
         }
@@ -161,7 +169,7 @@ class IrSymbolDeserializer(
 
     private fun deserializeExternalScopeLocalIdSignature(proto: ProtoScopeLocalIdSignature): IdSignature {
         if (useGlobalSignatures) {
-            return IdSignature.GlobalScopeLocalDeclaration(proto.id, filePath = fileReader.deserializeString(proto.file))
+            return IdSignature.GlobalScopeLocalDeclaration(proto.id, filePath = deserializeStringCached(proto.file))
         } else {
             return IdSignature.ScopeLocalDeclaration(proto.id)
         }
