@@ -13,8 +13,7 @@ import org.jetbrains.kotlin.backend.common.serialization.metadata.KlibMetadataVe
 import org.jetbrains.kotlin.backend.wasm.compileWasm
 import org.jetbrains.kotlin.backend.wasm.wasmPhases
 import org.jetbrains.kotlin.cli.common.*
-import org.jetbrains.kotlin.cli.common.ExitCode.COMPILATION_ERROR
-import org.jetbrains.kotlin.cli.common.ExitCode.OK
+import org.jetbrains.kotlin.cli.common.ExitCode.*
 import org.jetbrains.kotlin.cli.common.arguments.K2JSCompilerArguments
 import org.jetbrains.kotlin.cli.common.arguments.K2JsArgumentConstants
 import org.jetbrains.kotlin.cli.common.arguments.K2JsArgumentConstants.RUNTIME_DIAGNOSTIC_EXCEPTION
@@ -216,20 +215,26 @@ class K2JsIrCompiler : CLICompiler<K2JSCompilerArguments>() {
             }
 
             val start = System.currentTimeMillis()
-            if (buildCache(
-                    cachePath = outputFilePath,
-                    project = projectJs,
-                    mainModule = mainModule,
-                    analyzer = AnalyzerWithCompilerReport(config.configuration),
-                    configuration = config.configuration,
-                    allDependencies = resolvedLibraries,
-                    friendDependencies = friendDependencies,
-                    icCache = checkCaches(resolvedLibraries, icCaches, skipLib = mainModule.lib.libraryFile.absolutePath)
-                )
-            ) {
-                messageCollector.report(INFO, "IC cache building duration: ${System.currentTimeMillis() - start}ms")
-            } else {
-                messageCollector.report(INFO, "IC cache up-to-date check duration: ${System.currentTimeMillis() - start}ms")
+            try {
+                if (buildCache(
+                        cachePath = outputFilePath,
+                        project = projectJs,
+                        mainModule = mainModule,
+                        analyzer = AnalyzerWithCompilerReport(config.configuration),
+                        configuration = config.configuration,
+                        allDependencies = resolvedLibraries,
+                        friendDependencies = friendDependencies,
+                        icCache = checkCaches(resolvedLibraries, icCaches, skipLib = mainModule.lib.libraryFile.absolutePath)
+                    )
+                ) {
+                    messageCollector.report(INFO, "IC cache building duration: ${System.currentTimeMillis() - start}ms")
+                } else {
+                    messageCollector.report(INFO, "IC cache up-to-date check duration: ${System.currentTimeMillis() - start}ms")
+                }
+            } catch (t: Throwable) {
+                messageCollector.report(ERROR, "Failed cache building of ${mainModule.lib.libraryFile.absolutePath}\ndependencies: ${libraries}")
+                messageCollector.report(EXCEPTION, "${t.message}\n${t.stackTraceToString()}")
+                return INTERNAL_ERROR
             }
 
             return OK
@@ -303,7 +308,7 @@ class K2JsIrCompiler : CLICompiler<K2JSCompilerArguments>() {
 
             val start = System.currentTimeMillis()
 
-            val compiledModule = compile(
+            val compiledModule = try { compile(
                 projectJs,
                 mainModule,
                 AnalyzerWithCompilerReport(config.configuration),
@@ -333,7 +338,12 @@ class K2JsIrCompiler : CLICompiler<K2JSCompilerArguments>() {
                 lowerPerModule = icCaches.isNotEmpty(),
                 useStdlibCache = icCaches.isNotEmpty(),
                 icCache = if (icCaches.isNotEmpty()) checkCaches(resolvedLibraries, icCaches, skipLib = (mainModule as MainModule.Klib).lib.libraryFile.absolutePath).data else emptyMap(),
-            )
+            ) } catch (t: Throwable) {
+                messageCollector.report(ERROR, "Failed compiling ${(mainModule as MainModule.Klib).lib.libraryFile.absolutePath}\ndependencies: ${libraries.joinToString(",\n")}")
+                messageCollector.report(EXCEPTION, "${t.message}\n${t.stackTraceToString()}")
+                return INTERNAL_ERROR
+            }
+
 
             messageCollector.report(INFO, "Executable production duration: ${System.currentTimeMillis() - start}ms")
 

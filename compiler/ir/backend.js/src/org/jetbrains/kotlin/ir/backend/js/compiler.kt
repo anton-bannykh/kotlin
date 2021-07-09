@@ -93,8 +93,9 @@ fun compile(
         )
     }
 
-    val (moduleFragment: IrModuleFragment, dependencyModules, irBuiltIns, symbolTable, deserializer, moduleToName) =
+    val (moduleFragment: IrModuleFragment, dependencyModules, irBuiltIns, symbolTable, deserializer, moduleToName) = Timer.run("loadIr") {
         loadIr(project, mainModule, analyzer, configuration, allDependencies, friendDependencies, irFactory)
+    }
 
     val moduleDescriptor = moduleFragment.descriptor
 
@@ -120,10 +121,16 @@ fun compile(
     )
 
     // Load declarations referenced during `context` initialization
-    val irProviders = listOf(deserializer)
-    ExternalDependenciesGenerator(symbolTable, irProviders).generateUnboundSymbolsAsDependencies()
 
-    deserializer.postProcess()
+    Timer.run("ctx init deser") {
+        val irProviders = listOf(deserializer)
+        ExternalDependenciesGenerator(symbolTable, irProviders).generateUnboundSymbolsAsDependencies()
+    }
+
+    Timer.run("postProcess") {
+        deserializer.postProcess()
+    }
+
     symbolTable.noUnboundLeft("Unbound symbols at the end of linker")
 
     allModules.forEach { module ->
@@ -166,7 +173,10 @@ fun compile(
             }
             irFactory.stageController = object : StageController(irFactory.stageController.currentStage) {}
         } else {
-            jsPhases.invokeToplevel(phaseConfig, context, allModules)
+
+            Timer.run("lower") {
+                jsPhases.invokeToplevel(phaseConfig, context, allModules)
+            }
         }
 
         val transformer = IrModuleToJsTransformer(
@@ -178,7 +188,7 @@ fun compile(
             relativeRequirePath = relativeRequirePath,
             moduleToName = moduleToName,
         )
-        return transformer.generateModule(allModules)
+        return Timer.run("ir -> js") { transformer.generateModule(allModules) }
     }
 }
 

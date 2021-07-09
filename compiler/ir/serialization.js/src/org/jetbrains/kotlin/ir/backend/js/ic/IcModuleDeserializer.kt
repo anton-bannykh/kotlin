@@ -9,6 +9,7 @@ import org.jetbrains.kotlin.backend.common.serialization.*
 import org.jetbrains.kotlin.backend.common.serialization.encodings.BinarySymbolData
 import org.jetbrains.kotlin.descriptors.ModuleDescriptor
 import org.jetbrains.kotlin.ir.backend.js.JsMapping
+import org.jetbrains.kotlin.ir.backend.js.Timer
 import org.jetbrains.kotlin.ir.backend.js.lower.serialization.ir.JsIrLinker
 import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.declarations.impl.IrModuleFragmentImpl
@@ -51,19 +52,21 @@ class IcModuleDeserializer(
     }
 
     override fun init(delegate: IrModuleDeserializer) {
-        val fileCount = klib.fileCount()
+        Timer.run("d init") {
+            val fileCount = klib.fileCount()
 
-        val files = ArrayList<IrFile>(fileCount)
+            val files = ArrayList<IrFile>(fileCount)
 
-        for (i in 0 until fileCount) {
-            val fileStream = klib.file(i).codedInputStream
-            val fileProto = ProtoFile.parseFrom(fileStream, ExtensionRegistryLite.newInstance())
-            files.add(deserializeIrFile(fileProto, i, delegate, containsErrorCode))
+            for (i in 0 until fileCount) {
+                val fileStream = klib.file(i).codedInputStream
+                val fileProto = ProtoFile.parseFrom(fileStream, ExtensionRegistryLite.newInstance())
+                files.add(deserializeIrFile(fileProto, i, delegate, containsErrorCode))
+            }
+
+            moduleFragment.files.addAll(files)
+
+            fileToDeserializerMap.values.forEach { it.symbolDeserializer.deserializeExpectActualMapping() }
         }
-
-        moduleFragment.files.addAll(files)
-
-        fileToDeserializerMap.values.forEach { it.symbolDeserializer.deserializeExpectActualMapping() }
     }
 
     private fun IrSymbolDeserializer.deserializeExpectActualMapping() {

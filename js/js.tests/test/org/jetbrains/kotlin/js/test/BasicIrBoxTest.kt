@@ -59,7 +59,7 @@ abstract class BasicIrBoxTest(
 
     private fun getBoolean(s: String, default: Boolean) = System.getProperty(s)?.let { parseBoolean(it) } ?: default
 
-    private val runIcMode: Boolean = getBoolean("kotlin.js.ir.icMode")
+    private val runIcMode: Boolean = true//getBoolean("kotlin.js.ir.icMode")
 
     private val lowerPerModule: Boolean = runIcMode || getBoolean("kotlin.js.ir.lowerPerModule")
 
@@ -202,7 +202,7 @@ abstract class BasicIrBoxTest(
 
 
                 val irFactory = if (lowerPerModule) PersistentIrFactory() else IrFactoryImpl
-                val compiledModule = compile(
+                val compiledModule = Timer.run("compile") { compile(
                     project = config.project,
                     mainModule = mainModule,
                     analyzer = AnalyzerWithCompilerReport(config.configuration),
@@ -224,6 +224,9 @@ abstract class BasicIrBoxTest(
                     useStdlibCache = runIcMode,
                     icCache = icCache,
                 )
+                }
+
+                Timer.report()
 
                 compiledModule.outputs!!.writeTo(outputFile, config)
 

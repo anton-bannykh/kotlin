@@ -60,8 +60,9 @@ fun prepareSingleLibraryIcCache(
     moveBodilessDeclarationsToSeparatePlace(context, moduleFragment)
 
 //    generateTests(context, moduleFragment)
-
-    lowerPreservingIcData(moduleFragment, context, controller)
+    Timer.run("lowerPreservingIcData") {
+        lowerPreservingIcData(moduleFragment, context, controller)
+    }
 
     return IcSerializer(
         context.irBuiltIns,
@@ -142,7 +143,7 @@ fun icCompile(
     val controller = WholeWorldStageController()
     irFactory.stageController = controller
 
-    val (context, _, allModules, moduleToName, loweredIrLoaded) = prepareIr(
+    val (context, _, allModules, moduleToName, loweredIrLoaded) = Timer.run("prepareIr") { prepareIr(
         project,
         mainModule,
         analyzer,
@@ -162,6 +163,7 @@ fun icCompile(
         useStdlibCache,
         icCache,
     )
+    }
 
     val modulesToLower = allModules.filter { it !in loweredIrLoaded }
 
@@ -175,8 +177,10 @@ fun icCompile(
 
         generateTests(context, modulesToLower.last())
 
-        modulesToLower.forEach {
-            lowerPreservingIcData(it, context, controller)
+        Timer.run("lowerPreservingIcData") {
+            modulesToLower.forEach {
+                lowerPreservingIcData(it, context, controller)
+            }
         }
     }
 
@@ -195,7 +199,7 @@ fun icCompile(
 
     irFactory.stageController = object : StageController(999) {}
 
-    return transformer.generateModule(allModules)
+    return Timer.run("ir -> js") { transformer.generateModule(allModules) }
 }
 
 fun lowerPreservingIcData(module: IrModuleFragment, context: JsIrBackendContext, controller: WholeWorldStageController) {
@@ -246,8 +250,8 @@ private fun prepareIr(
         else -> null
     }
 
-    val (moduleFragment: IrModuleFragment, dependencyModules, irBuiltIns, symbolTable, deserializer, moduleToName, loweredIrLoaded) =
-        loadIr(project, mainModule, analyzer, configuration, allDependencies, friendDependencies, irFactory, cacheProvider)
+    val (moduleFragment: IrModuleFragment, dependencyModules, irBuiltIns, symbolTable, deserializer, moduleToName, loweredIrLoaded) = Timer.run("loadIr") {
+        loadIr(project, mainModule, analyzer, configuration, allDependencies, friendDependencies, irFactory, cacheProvider) }
 
     val moduleDescriptor = moduleFragment.descriptor
 
@@ -274,13 +278,20 @@ private fun prepareIr(
     )
 
     // Load declarations referenced during `context` initialization
-    val irProviders = listOf(deserializer)
-    ExternalDependenciesGenerator(symbolTable, irProviders).generateUnboundSymbolsAsDependencies()
+    Timer.run("ctx init deser") {
+        val irProviders = listOf(deserializer)
+        ExternalDependenciesGenerator(symbolTable, irProviders).generateUnboundSymbolsAsDependencies()
+    }
 
-    deserializer.postProcess()
+    Timer.run("postProcess") {
+        deserializer.postProcess()
+    }
+
     symbolTable.noUnboundLeft("Unbound symbols at the end of linker")
 
-    deserializer.loadIcIr { moveBodilessDeclarationsToSeparatePlace(context, it) }
+    Timer.run("loadIcIr") {
+        deserializer.loadIcIr { moveBodilessDeclarationsToSeparatePlace(context, it) }
+    }
 
     return PreparedIr(context, deserializer, allModules, moduleToName, loweredIrLoaded)
 }

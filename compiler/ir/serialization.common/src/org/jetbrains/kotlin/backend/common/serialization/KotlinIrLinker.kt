@@ -63,9 +63,11 @@ abstract class KotlinIrLinker(
             append("\n")
             append("Please check that project configuration is correct and has required dependencies.")
         }
-        messageLogger.report(IrMessageLogger.Severity.ERROR, message, null)
+//        messageLogger.report(IrMessageLogger.Severity.ERROR, message, null)
 
-        throw KotlinIrLinkerInternalException
+        error(message)
+
+//        throw KotlinIrLinkerInternalException
     }
 
     public open fun resolveModuleDeserializer(module: ModuleDescriptor, signature: IdSignature?): IrModuleDeserializer {
