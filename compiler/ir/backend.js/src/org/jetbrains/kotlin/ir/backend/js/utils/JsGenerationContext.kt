@@ -26,12 +26,12 @@ val emptyScope: JsScope
     }
 
 class JsGenerationContext(
-    val currentFile: IrFile?,
+    val currentFile: IrFile,
     val currentFunction: IrFunction?,
     val staticContext: JsStaticContext,
     val localNames: LocalNameGenerator? = null
 ): IrNamer by staticContext {
-    fun newFile(file: IrFile? = null, func: IrFunction? = null, localNames: LocalNameGenerator? = null): JsGenerationContext {
+    fun newFile(file: IrFile, func: IrFunction? = null, localNames: LocalNameGenerator? = null): JsGenerationContext {
         return JsGenerationContext(
             currentFile = file,
             currentFunction = func,
@@ -63,17 +63,17 @@ class JsGenerationContext(
     fun getNameForValueDeclaration(declaration: IrDeclarationWithName): JsName {
         val name = localNames!!.variableNames.names[declaration]
             ?: error("Variable name is not found ${declaration.name}")
-        return JsName(name)
+        return JsName(name, false)
     }
 
     fun getNameForLoop(loop: IrLoop): JsName? {
         val name = localNames!!.localLoopNames.names[loop] ?: return null
-        return JsName(name)
+        return JsName(name, false)
     }
 
     fun getNameForReturnableBlock(block: IrReturnableBlock): JsName? {
         val name = localNames!!.localReturnableBlockNames.names[block] ?: return null
-        return JsName(name)
+        return JsName(name, false)
     }
 
     private fun isCoroutineDoResume(): Boolean {

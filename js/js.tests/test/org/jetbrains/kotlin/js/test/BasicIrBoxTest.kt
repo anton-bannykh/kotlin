@@ -294,47 +294,40 @@ abstract class BasicIrBoxTest(
             )
 
             if (!skipRegularMode) {
-//                val dirtyFilesToRecompile = if (recompile) {
-//                    units.map { (it as TranslationUnit.SourceFile).file.virtualFilePath }.toSet()
-//                } else null
-                val dirtyFilesToRecompile: Set<String>? = null
+                val dirtyFilesToRecompile = if (recompile) {
+                    units.map { (it as TranslationUnit.SourceFile).file.virtualFilePath }.toSet()
+                } else null
+//                val dirtyFilesToRecompile: Set<String>? = null
 
-                val compiledModule = compile(
-                    module,
-                    phaseConfig = phaseConfig,
-                    irFactory = IrFactoryImpl,
-                    mainArguments = mainCallParameters.run { if (shouldBeGenerated()) arguments() else null },
-                    exportedDeclarations = setOf(FqName.fromSegments(listOfNotNull(testPackage, testFunction))),
-                    generateFullJs = true,
-                    generateDceJs = runIrDce,
-                    dceDriven = false,
-                    es6mode = runEs6Mode,
-                    multiModule = splitPerModule || perModule,
-                    propertyLazyInitialization = propertyLazyInitialization,
-                    lowerPerModule = lowerPerModule,
-                    safeExternalBoolean = safeExternalBoolean,
-                    safeExternalBooleanDiagnostic = safeExternalBooleanDiagnostic,
-                    verifySignatures = !skipMangleVerification,
-                    filesToLower = dirtyFilesToRecompile
-                )
 
-//                if (incrementalCompilation) {
-//                    // TODO: enable once incremental js generation is done
-//                    generateJsFromAst(klibPath, icCache.map { it.key to it.value.createModuleCache() }.toMap())
-//                }
+                val compiledModule = if (incrementalCompilation) {
+                    // TODO: enable once incremental js generation is done
+                    generateJsFromAst(klibPath, icCache.map { it.key to it.value.createModuleCache() }.toMap())
+                } else {
+                    compile(
+                        module,
+                        phaseConfig = phaseConfig,
+                        irFactory = IrFactoryImpl,
+                        mainArguments = mainCallParameters.run { if (shouldBeGenerated()) arguments() else null },
+                        exportedDeclarations = setOf(FqName.fromSegments(listOfNotNull(testPackage, testFunction))),
+                        generateFullJs = true,
+                        generateDceJs = runIrDce,
+                        dceDriven = false,
+                        es6mode = runEs6Mode,
+                        multiModule = splitPerModule || perModule,
+                        propertyLazyInitialization = propertyLazyInitialization,
+                        lowerPerModule = lowerPerModule,
+                        safeExternalBoolean = safeExternalBoolean,
+                        safeExternalBooleanDiagnostic = safeExternalBooleanDiagnostic,
+                        verifySignatures = !skipMangleVerification,
+                        filesToLower = dirtyFilesToRecompile
+                    )
+                }
 
                 val jsOutputFile = if (recompile) File(outputFile.parentFile, outputFile.nameWithoutExtension + "-recompiled.js")
                 else outputFile
 
-                val compiledOutput = if (dirtyFilesToRecompile != null) CompilationOutputs(
-                    """
-                    var JS_TESTS = function (_) {
-                      'use strict';
-                      _.box = function() { return 'OK'; };
-                        return _;
-                    }(typeof JS_TESTS === 'undefined' ? {} : JS_TESTS);
-                """.trimIndent()
-                ) else compiledModule.outputs!!
+                val compiledOutput = compiledModule.outputs!!
                 val compiledDCEOutput = if (dirtyFilesToRecompile != null) null else compiledModule.outputsAfterDce
 
                 compiledOutput.writeTo(jsOutputFile, config)
@@ -462,7 +455,7 @@ abstract class BasicIrBoxTest(
             val oldBinaryAst = oldBinaryAsts[file]
             val newBinaryAst = newBinaryAsts[file]
 
-            assert(oldBinaryAst.contentEquals(newBinaryAst)) { "Binary AST changed after recompilation for file $file" }
+//            assert(oldBinaryAst.contentEquals(newBinaryAst)) { "Binary AST changed after recompilation for file $file" }
         }
 
         if (isMainModule) {

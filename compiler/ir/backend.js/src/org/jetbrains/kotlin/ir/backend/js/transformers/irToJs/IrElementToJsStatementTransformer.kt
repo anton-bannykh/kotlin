@@ -173,7 +173,8 @@ class IrElementToJsStatementTransformer : BaseIrElementToJsNodeTransformer<JsSta
     override fun visitWhileLoop(loop: IrWhileLoop, context: JsGenerationContext): JsStatement {
         //TODO what if body null?
         val label = context.getNameForLoop(loop)
-        val loopStatement = JsWhile(loop.condition.accept(IrElementToJsExpressionTransformer(), context), loop.body?.accept(this, context))
+        val loopStatement = JsWhile(loop.condition.accept(IrElementToJsExpressionTransformer(), context),
+                                    loop.body?.accept(this, context) ?: JsEmpty)
         return label?.let { JsLabel(it, loopStatement) } ?: loopStatement
     }
 
@@ -181,7 +182,7 @@ class IrElementToJsStatementTransformer : BaseIrElementToJsNodeTransformer<JsSta
         //TODO what if body null?
         val label = context.getNameForLoop(loop)
         val loopStatement =
-            JsDoWhile(loop.condition.accept(IrElementToJsExpressionTransformer(), context), loop.body?.accept(this, context))
+            JsDoWhile(loop.condition.accept(IrElementToJsExpressionTransformer(), context), loop.body?.accept(this, context) ?: JsEmpty)
         return label?.let { JsLabel(it, loopStatement) } ?: loopStatement
     }
 }
