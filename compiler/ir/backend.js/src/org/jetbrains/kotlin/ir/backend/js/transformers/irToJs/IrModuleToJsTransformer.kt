@@ -215,10 +215,10 @@ class IrModuleToJsTransformer(
                     sourceMapContentEmbedding != SourceMapSourceEmbedding.NEVER
                 )
             } else {
-                null
+                NoOpSourceLocationConsumer
             }
 
-        program.accept(JsToStringGenerationVisitor(jsCode, sourceMapBuilderConsumer ?: NoOpSourceLocationConsumer))
+        program.accept(JsToStringGenerationVisitor(jsCode, sourceMapBuilderConsumer))
 
         return CompilationOutputs(
             jsCode.toString(),
