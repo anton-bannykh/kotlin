@@ -121,16 +121,11 @@ class JsIrBackendContext(
         }
     }
 
-    private val testContainerFiles = mutableMapOf<IrModuleFragment, IrFile>()
     val testFunsPerFile = mutableMapOf<IrFile, IrSimpleFunction>()
 
-    fun createTestContainerFun(module: IrModuleFragment, file: IrFile): IrSimpleFunction {
-        val testFile = testContainerFiles.getOrPut(module) {
-            syntheticFile("tests", module)
-        }
-
+    fun createTestContainerFun(file: IrFile): IrSimpleFunction {
         return testFunsPerFile.getOrPut(file) {
-            irFactory.addFunction(testFile) {
+            irFactory.addFunction(file) {
                 name = Name.identifier("test fun")
                 returnType = irBuiltIns.unitType
                 origin = JsIrBuilder.SYNTHESIZED_DECLARATION

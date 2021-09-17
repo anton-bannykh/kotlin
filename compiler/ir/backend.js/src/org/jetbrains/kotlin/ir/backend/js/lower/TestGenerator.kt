@@ -23,23 +23,23 @@ import org.jetbrains.kotlin.ir.expressions.impl.IrConstructorCallImpl
 import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
 import org.jetbrains.kotlin.ir.types.impl.IrSimpleTypeImpl
 import org.jetbrains.kotlin.ir.util.*
-import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
 
 fun generateTests(context: JsIrBackendContext, moduleFragment: IrModuleFragment) {
-    val generator = TestGenerator(context) { f -> context.createTestContainerFun(moduleFragment, f) }
+    val generator = TestGenerator(context)
 
     moduleFragment.files.toList().forEach {
         generator.lower(it)
     }
 }
 
-class TestGenerator(val context: JsIrBackendContext, val testContainerFactory: (IrFile) -> IrSimpleFunction) : FileLoweringPass {
+class TestGenerator(val context: JsIrBackendContext) : FileLoweringPass {
 
     override fun lower(irFile: IrFile) {
-        irFile.declarations.forEach {
+        // Additional copy to prevent ConcurrentModificationException
+        ArrayList(irFile.declarations).forEach {
             if (it is IrClass) {
-                generateTestCalls(it) { testContainerFactory(irFile) }
+                generateTestCalls(it) { context.createTestContainerFun(irFile) }
             }
 
             // TODO top-level functions
