@@ -121,12 +121,16 @@ class JsIrBackendContext(
         }
     }
 
-    private val testContainerFuns = mutableMapOf<IrModuleFragment, IrSimpleFunction>()
+    private val testContainerFiles = mutableMapOf<IrModuleFragment, IrFile>()
+    val testFunsPerFile = mutableMapOf<IrFile, IrSimpleFunction>()
 
-    fun createTestContainerFun(module: IrModuleFragment): IrSimpleFunction {
-        return testContainerFuns.getOrPut(module) {
-            val file = syntheticFile("tests", module)
-            irFactory.addFunction(file) {
+    fun createTestContainerFun(module: IrModuleFragment, file: IrFile): IrSimpleFunction {
+        val testFile = testContainerFiles.getOrPut(module) {
+            syntheticFile("tests", module)
+        }
+
+        return testFunsPerFile.getOrPut(file) {
+            irFactory.addFunction(testFile) {
                 name = Name.identifier("test fun")
                 returnType = irBuiltIns.unitType
                 origin = JsIrBuilder.SYNTHESIZED_DECLARATION
@@ -135,9 +139,6 @@ class JsIrBackendContext(
             }
         }
     }
-
-    val testRoots: Map<IrModuleFragment, IrSimpleFunction>
-        get() = testContainerFuns
 
     override val inlineClassesUtils = JsInlineClassesUtils(this)
 
