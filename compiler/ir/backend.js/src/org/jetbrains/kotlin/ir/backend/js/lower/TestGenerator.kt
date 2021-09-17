@@ -27,29 +27,23 @@ import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
 
 fun generateTests(context: JsIrBackendContext, moduleFragment: IrModuleFragment) {
-    val generator = TestGenerator(context) { context.createTestContainerFun(moduleFragment) }
+    val generator = TestGenerator(context) { f -> context.createTestContainerFun(moduleFragment, f) }
 
     moduleFragment.files.toList().forEach {
         generator.lower(it)
     }
 }
 
-class TestGenerator(val context: JsIrBackendContext, val testContainerFactory: () -> IrSimpleFunction) : FileLoweringPass {
+class TestGenerator(val context: JsIrBackendContext, val testContainerFactory: (IrFile) -> IrSimpleFunction) : FileLoweringPass {
 
     override fun lower(irFile: IrFile) {
         irFile.declarations.forEach {
             if (it is IrClass) {
-                generateTestCalls(it) { suiteForPackage(irFile.fqName) }
+                generateTestCalls(it) { testContainerFactory(irFile) }
             }
 
             // TODO top-level functions
         }
-    }
-
-    private val packageSuites = mutableMapOf<FqName, IrSimpleFunction>()
-
-    private fun suiteForPackage(fqName: FqName) = packageSuites.getOrPut(fqName) {
-        context.suiteFun!!.createInvocation(fqName.asString(), testContainerFactory())
     }
 
     private fun IrSimpleFunctionSymbol.createInvocation(

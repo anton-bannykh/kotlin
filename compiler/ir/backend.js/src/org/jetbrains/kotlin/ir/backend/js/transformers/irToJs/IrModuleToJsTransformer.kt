@@ -284,14 +284,22 @@ class IrModuleToJsTransformer(
 
         val statements = merge(fragments.flatMap { it }, staticContext).toMutableList()
 
-        // TODO: handle tests incrementally
-        modules.forEach {
-            backendContext.testRoots[it]?.let { testContainer ->
-                statements.startRegion("block: tests")
-                statements += JsInvocation(staticContext.getNameForStaticFunction(testContainer).makeRef()).makeStmt()
-                statements.endRegion()
-            }
+        val testFunBody = JsBlock()
+        val testFun = JsFunction(emptyScope, testFunBody, "root test fun")
+        val suiteFunRef = staticContext.getNameForStaticFunction(backendContext.suiteFun!!.owner).makeRef()
+
+        val tests = backendContext.testFunsPerFile.entries.groupBy({ (file, _) -> file.fqName.asString() }) { (_, fn) -> fn } // String -> [IrSimpleFunction]
+
+        for ((pkg, fnList) in tests) {
+            val pkgTestFun = JsFunction(emptyScope, JsBlock(), "test fun for $pkg")
+            fnList.forEach { pkgTestFun.body.statements += JsInvocation(staticContext.getNameForStaticFunction(it).makeRef()).makeStmt() }
+            testFun.body.statements += JsInvocation(suiteFunRef, JsStringLiteral(pkg), JsBooleanLiteral(false), pkgTestFun).makeStmt()
         }
+
+        statements.startRegion("block: tests")
+        statements += JsInvocation(testFun).makeStmt()
+        statements.endRegion()
+
 
         val callToMain = fragments.last().sortedBy { it.packageFqn }.firstNotNullOfOrNull { it.mainFunction }
 
@@ -343,6 +351,8 @@ class IrModuleToJsTransformer(
                 result.mainFunction = JsInvocation(jsName.makeRef(), generateMainArguments(it, staticContext)).makeStmt()
             }
         }
+
+
 
         staticContext.classModels.clear()
         staticContext.initializerBlock.statements.clear()
