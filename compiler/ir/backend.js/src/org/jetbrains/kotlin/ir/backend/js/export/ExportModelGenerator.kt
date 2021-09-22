@@ -44,7 +44,7 @@ class ExportModelGenerator(val context: JsIrBackendContext) {
         ExportedModule(
             context.configuration[CommonConfigurationKeys.MODULE_NAME]!!,
             context.configuration[JSConfigurationKeys.MODULE_KIND]!!,
-            (context.externalPackageFragment.values + modules.flatMap { it.files }).flatMap {
+            (/*context.externalPackageFragment.values + */modules.flatMap { it.files }).flatMap {
                 generateExport(it)
             }
         )
