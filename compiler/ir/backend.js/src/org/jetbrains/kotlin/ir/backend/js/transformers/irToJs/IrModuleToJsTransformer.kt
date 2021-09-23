@@ -167,10 +167,12 @@ class IrModuleToJsTransformer(
 
         val internalModuleName = JsName("_")
         val globalNames = NameTable<String>(namer.globalNames)
-        val exportStatements =
+
+        val exportStatements = exportData.entries.filter { (m, _) -> m in modules }.flatMap { (_, f) -> f.values.flatMap {
             ExportModelToJsStatements(internalModuleName, nameGenerator, { globalNames.declareFreshName(it, it) }).generateModuleExport(
-                ExportedModule(moduleName, moduleKind, exportData.entries.filter { (m, _) -> m in modules }.flatMap { (_, f) -> f.values.flatMap { it } })
+                ExportedModule(moduleName, moduleKind, it)
             )
+        } }
 
         val (crossModuleImports, importedKotlinModules) = generateCrossModuleImports(
             nameGenerator,
