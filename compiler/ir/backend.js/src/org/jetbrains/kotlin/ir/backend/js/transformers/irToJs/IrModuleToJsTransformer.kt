@@ -70,7 +70,7 @@ class IrModuleToJsTransformer(
                 bodilessBuiltInsPackageFragment,
             ) + packageLevelJsModules
         }
-        val jsCode = if (fullJs) generateWrappedModuleBody(modules, generateProgramFragments(modules, exportData)) else null
+        val jsCode = if (fullJs) generateWrappedModuleBody(mainModuleName, modules, generateProgramFragments(modules, exportData)) else null
 
         val dceJsCode = if (dceJs) {
             eliminateDeadDeclarations(modules, backendContext, removeUnusedAssociatedObjects)
@@ -78,7 +78,7 @@ class IrModuleToJsTransformer(
             // TODO: is this mode relevant for scripting? If yes, refactor so that the external name tables are used here when needed.
             val namer = NameTables(emptyList(), context = backendContext)
             namer.merge(modules.flatMap { it.files }, additionalPackages)
-            generateWrappedModuleBody(modules, generateProgramFragments(modules, exportData))
+            generateWrappedModuleBody(mainModuleName, modules, generateProgramFragments(modules, exportData))
         } else null
 
         return CompilerResult(jsCode, dceJsCode, dts)
@@ -118,62 +118,13 @@ class IrModuleToJsTransformer(
     }
 
     private fun generateWrappedModuleBody(
-        modules: Iterable<IrModuleFragment>,
-        fragments: Map<IrFile, JsIrProgramFragment>,
-    ): CompilationOutputs {
-        if (multiModule) {
-
-            val refInfo = buildCrossModuleReferenceInfo(modules)
-
-            val rM = modules.reversed()
-
-            val main = rM.first()
-            val others = rM.drop(1)
-
-            val mainModule = generateWrappedModuleBody2(
-                mainModuleName,
-                listOf(main),
-                others,
-                fragments,
-                refInfo
-            )
-
-            val dependencies = others.mapIndexed { index, module ->
-                val moduleName = module.externalModuleName()
-
-                moduleName to generateWrappedModuleBody2(
-                    moduleName,
-                    listOf(module),
-                    others.drop(index + 1),
-                    fragments,
-                    refInfo
-                )
-            }.reversed()
-
-            return CompilationOutputs(mainModule.jsCode, mainModule.sourceMap, dependencies)
-        } else {
-            return generateWrappedModuleBody2(
-                mainModuleName,
-                modules,
-                emptyList(),
-                fragments,
-                EmptyCrossModuleReferenceInfo
-            )
-        }
-    }
-
-    private fun generateWrappedModuleBody2(
         moduleName: String,
         modules: Iterable<IrModuleFragment>,
-        dependencies: Iterable<IrModuleFragment>,
         fragments: Map<IrFile, JsIrProgramFragment>,
-        refInfo: CrossModuleReferenceInfo
     ): CompilationOutputs {
 
-        val nameGenerator = refInfo.withReferenceTracking(
-            JsNameLinkingNamer(backendContext),
-            modules
-        )
+        val nameGenerator = JsNameLinkingNamer(backendContext)
+
         val staticContext = JsStaticContext(
             backendContext = backendContext,
             irNamer = nameGenerator,
@@ -190,28 +141,21 @@ class IrModuleToJsTransformer(
 
         val internalModuleName = JsName("_")
 
-        val (crossModuleImports, importedKotlinModules) = generateCrossModuleImports(
-            nameGenerator,
-            modules,
-            dependencies,
-            { JsName(sanitizeName(it)) })
-        val crossModuleExports = generateCrossModuleExports(modules, refInfo, internalModuleName)
-
         val program = JsProgram()
         if (generateScriptModule) {
             with(program.globalBlock) {
-                statements.addWithComment("block: imports", importStatements + crossModuleImports)
+                statements.addWithComment("block: imports", importStatements)
                 statements += moduleBody
-                statements.addWithComment("block: exports", exportStatements + crossModuleExports)
+                statements.addWithComment("block: exports", exportStatements)
             }
         } else {
             val rootFunction = JsFunction(program.rootScope, JsBlock(), "root function").apply {
                 parameters += JsParameter(internalModuleName)
-                parameters += (importedJsModules + importedKotlinModules).map { JsParameter(it.internalName) }
+                parameters += (importedJsModules).map { JsParameter(it.internalName) }
                 with(body) {
-                    statements.addWithComment("block: imports", importStatements + crossModuleImports)
+                    statements.addWithComment("block: imports", importStatements)
                     statements += moduleBody
-                    statements.addWithComment("block: exports", exportStatements + crossModuleExports)
+                    statements.addWithComment("block: exports", exportStatements)
                     statements += callToMain
                     statements += JsReturn(internalModuleName.makeRef())
                 }
@@ -220,7 +164,7 @@ class IrModuleToJsTransformer(
             program.globalBlock.statements += ModuleWrapperTranslation.wrap(
                 moduleName,
                 rootFunction,
-                importedJsModules + importedKotlinModules,
+                importedJsModules,
                 program,
                 kind = moduleKind
             )
