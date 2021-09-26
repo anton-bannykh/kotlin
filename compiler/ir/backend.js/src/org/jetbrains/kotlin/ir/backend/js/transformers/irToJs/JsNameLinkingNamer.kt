@@ -17,8 +17,8 @@ class JsNameLinkingNamer(private val context: JsIrBackendContext) : IrNamerBase(
 
     val nameMap = mutableMapOf<IrDeclaration, JsName>()
 
-    private fun IrDeclarationWithName.getName(): JsName {
-        return nameMap.getOrPut(this) { JsName(sanitizeName(getJsNameOrKotlinName().asString()), true) }
+    private fun IrDeclarationWithName.getName(prefix: String = ""): JsName {
+        return nameMap.getOrPut(this) { JsName(sanitizeName(prefix + getJsNameOrKotlinName().asString()), true) }
     }
 
     override fun getNameForStaticDeclaration(declaration: IrDeclarationWithName): JsName = declaration.getName()
@@ -31,6 +31,6 @@ class JsNameLinkingNamer(private val context: JsIrBackendContext) : IrNamerBase(
 
     override fun getNameForMemberField(field: IrField): JsName {
         require(!field.isStatic)
-        return field.getName()
+        return field.getName("___") // TODO resolve name clashes between fields and exported properties
     }
 }
