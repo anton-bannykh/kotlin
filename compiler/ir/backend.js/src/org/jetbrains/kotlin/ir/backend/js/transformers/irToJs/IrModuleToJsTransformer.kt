@@ -70,12 +70,7 @@ class IrModuleToJsTransformer(
                 bodilessBuiltInsPackageFragment,
             ) + packageLevelJsModules
         }
-
-        modules.forEach { module ->
-            namer.merge(module.files, additionalPackages)
-        }
-
-        val jsCode = if (fullJs) generateWrappedModuleBody(modules, generateProgramFragments(modules, exportData, namer), namer) else null
+        val jsCode = if (fullJs) generateWrappedModuleBody(modules, generateProgramFragments(modules, exportData)) else null
 
         val dceJsCode = if (dceJs) {
             eliminateDeadDeclarations(modules, backendContext, removeUnusedAssociatedObjects)
@@ -83,7 +78,7 @@ class IrModuleToJsTransformer(
             // TODO: is this mode relevant for scripting? If yes, refactor so that the external name tables are used here when needed.
             val namer = NameTables(emptyList(), context = backendContext)
             namer.merge(modules.flatMap { it.files }, additionalPackages)
-            generateWrappedModuleBody(modules, generateProgramFragments(modules, exportData, namer), namer)
+            generateWrappedModuleBody(modules, generateProgramFragments(modules, exportData))
         } else null
 
         return CompilerResult(jsCode, dceJsCode, dts)
@@ -92,10 +87,9 @@ class IrModuleToJsTransformer(
     private fun generateProgramFragments(
         modules: Iterable<IrModuleFragment>,
         exportData: Map<IrModuleFragment, Map<IrFile, List<ExportedDeclaration>>>,
-        namer: NameTables,
     ): Map<IrFile, JsIrProgramFragment> {
 
-        val nameGenerator = IrNamerImpl(newNameTables = namer, backendContext)
+        val nameGenerator = JsNameLinkingNamer(backendContext)
 
         val fragments = mutableMapOf<IrFile, JsIrProgramFragment>()
         modules.forEach { m ->
@@ -126,7 +120,6 @@ class IrModuleToJsTransformer(
     private fun generateWrappedModuleBody(
         modules: Iterable<IrModuleFragment>,
         fragments: Map<IrFile, JsIrProgramFragment>,
-        namer: NameTables
     ): CompilationOutputs {
         if (multiModule) {
 
@@ -142,7 +135,6 @@ class IrModuleToJsTransformer(
                 listOf(main),
                 others,
                 fragments,
-                namer,
                 refInfo
             )
 
@@ -154,7 +146,6 @@ class IrModuleToJsTransformer(
                     listOf(module),
                     others.drop(index + 1),
                     fragments,
-                    namer,
                     refInfo
                 )
             }.reversed()
@@ -166,7 +157,6 @@ class IrModuleToJsTransformer(
                 modules,
                 emptyList(),
                 fragments,
-                namer,
                 EmptyCrossModuleReferenceInfo
             )
         }
@@ -177,12 +167,11 @@ class IrModuleToJsTransformer(
         modules: Iterable<IrModuleFragment>,
         dependencies: Iterable<IrModuleFragment>,
         fragments: Map<IrFile, JsIrProgramFragment>,
-        namer: NameTables,
         refInfo: CrossModuleReferenceInfo
     ): CompilationOutputs {
 
         val nameGenerator = refInfo.withReferenceTracking(
-            IrNamerImpl(newNameTables = namer, backendContext),
+            JsNameLinkingNamer(backendContext),
             modules
         )
         val staticContext = JsStaticContext(
@@ -236,6 +225,8 @@ class IrModuleToJsTransformer(
                 kind = moduleKind
             )
         }
+
+        program.resolveTemporaryNames()
 
         val jsCode = TextOutputImpl()
 
