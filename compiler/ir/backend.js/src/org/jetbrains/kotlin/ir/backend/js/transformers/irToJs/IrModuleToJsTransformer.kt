@@ -100,7 +100,7 @@ class IrModuleToJsTransformer(
         val (moduleBody, callToMain, exportStatements, importStatements, importedJsModules) =
             merge(modules.map { it.files.map { fragments[it]!! } })
 
-        val internalModuleName = JsName("_")
+        val internalModuleName = JsName("_", false)
 
         val program = JsProgram()
         if (generateScriptModule) {
@@ -192,7 +192,7 @@ class IrModuleToJsTransformer(
 
         val result = JsIrProgramFragment(file.name, file.fqName.asString())
 
-        val internalModuleName = JsName("_")
+        val internalModuleName = JsName("_", false)
         val globalNames = NameTable<String>(namer.globalNames)
         val exportStatements = ExportModelToJsStatements(internalModuleName, staticContext, { globalNames.declareFreshName(it, it) }).generateModuleExport(
             ExportedModule(mainModuleName, moduleKind, exports)

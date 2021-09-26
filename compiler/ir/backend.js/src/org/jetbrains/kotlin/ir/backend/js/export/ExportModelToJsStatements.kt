@@ -33,11 +33,10 @@ class ExportModelToJsStatements(
                 for (element in elements) {
                     val newNamespace = "$currentNamespace$$element"
                     val newNameSpaceRef = namespaceToRefMap.getOrPut(newNamespace) {
-                        val varName = declareNewNamespace(newNamespace)
-                        val varRef = JsNameRef(varName)
+                        val varName = JsName(declareNewNamespace(newNamespace), false)
                         val namespaceRef = JsNameRef(element, currentRef)
                         statements += JsVars(
-                            JsVars.JsVar(JsName(varName),
+                            JsVars.JsVar(varName,
                                          JsAstUtils.or(
                                              namespaceRef,
                                              jsAssignment(
@@ -47,7 +46,7 @@ class ExportModelToJsStatements(
                                          )
                             )
                         )
-                        varRef
+                        JsNameRef(varName)
                     }
                     currentRef = newNameSpaceRef
                     currentNamespace = newNamespace
