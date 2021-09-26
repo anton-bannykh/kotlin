@@ -65,19 +65,11 @@ class IrModuleToJsTransformer(
             breakCrossModuleFieldAccess(backendContext, modules)
         }
 
-        val additionalPackages = with(backendContext) {
-            externalPackageFragment.values + listOf(
-                bodilessBuiltInsPackageFragment,
-            ) + packageLevelJsModules
-        }
         val jsCode = if (fullJs) generateWrappedModuleBody(mainModuleName, modules, generateProgramFragments(modules, exportData)) else null
 
         val dceJsCode = if (dceJs) {
             eliminateDeadDeclarations(modules, backendContext, removeUnusedAssociatedObjects)
-            // Use a fresh namer for DCE so that we could compare the result with DCE-driven
-            // TODO: is this mode relevant for scripting? If yes, refactor so that the external name tables are used here when needed.
-            val namer = NameTables(emptyList(), context = backendContext)
-            namer.merge(modules.flatMap { it.files }, additionalPackages)
+
             generateWrappedModuleBody(mainModuleName, modules, generateProgramFragments(modules, exportData))
         } else null
 
@@ -89,28 +81,20 @@ class IrModuleToJsTransformer(
         exportData: Map<IrModuleFragment, Map<IrFile, List<ExportedDeclaration>>>,
     ): Map<IrFile, JsIrProgramFragment> {
 
+        // TODO move inside `generateProgramFragment`
         val nameGenerator = JsNameLinkingNamer(backendContext)
+
+        val staticContext = JsStaticContext(
+            backendContext = backendContext,
+            irNamer = nameGenerator,
+            globalNameScope = namer.globalNames
+        )
 
         val fragments = mutableMapOf<IrFile, JsIrProgramFragment>()
         modules.forEach { m ->
             m.files.forEach { f ->
-                val fragment = JsIrProgramFragment(f.fqName.asString())
-
                 val exports = exportData[m]!![f]!! // TODO
-
-                val internalModuleName = JsName("_")
-                val globalNames = NameTable<String>(namer.globalNames)
-                val exportStatements = ExportModelToJsStatements(internalModuleName, nameGenerator, { globalNames.declareFreshName(it, it) }).generateModuleExport(
-                    ExportedModule(mainModuleName, moduleKind, exports)
-                )
-
-                fragment.exports.statements += exportStatements
-
-                if (exports.isNotEmpty()) {
-                    fragment.dts = exports.toTypeScript(moduleKind)
-                }
-
-                fragments[f] = fragment
+                fragments[f] = generateProgramFragment(f, staticContext, exports)
             }
         }
 
@@ -122,22 +106,8 @@ class IrModuleToJsTransformer(
         modules: Iterable<IrModuleFragment>,
         fragments: Map<IrFile, JsIrProgramFragment>,
     ): CompilationOutputs {
-
-        val nameGenerator = JsNameLinkingNamer(backendContext)
-
-        val staticContext = JsStaticContext(
-            backendContext = backendContext,
-            irNamer = nameGenerator,
-            globalNameScope = namer.globalNames
-        )
-
-        val (importStatements, importedJsModules) =
-            generateImportStatements(
-                getNameForExternalDeclaration = { staticContext.getNameForStaticDeclaration(it) },
-                declareFreshGlobal = { JsName(sanitizeName(it)) } // TODO: Declare fresh name
-            )
-
-        val (moduleBody, callToMain, exportStatements) = generateModuleBody(modules, staticContext, fragments)
+        val (moduleBody, callToMain, exportStatements, importStatements, importedJsModules) =
+            merge(modules.map { it.files.map { fragments[it]!! } })
 
         val internalModuleName = JsName("_")
 
@@ -213,75 +183,37 @@ class IrModuleToJsTransformer(
         return moduleToName[this] ?: sanitizeName(safeName)
     }
 
-    private fun generateCrossModuleImports(
-        namerWithImports: IrNamerWithImports,
-        currentModules: Iterable<IrModuleFragment>,
-        allowedDependencies: Iterable<IrModuleFragment>,
-        declareFreshGlobal: (String) -> JsName
-    ): Pair<MutableList<JsStatement>, List<JsImportedModule>> {
-        val imports = mutableListOf<JsStatement>()
-        val modules = mutableListOf<JsImportedModule>()
-
-        namerWithImports.imports().forEach { (module, names) ->
-            check(module in allowedDependencies) {
-                val deps = if (names.size > 10) "[${names.take(10).joinToString()}, ...]" else "$names"
-                "Module ${currentModules.map { it.name.asString() }} depend on module ${module.name.asString()} via $deps"
-            }
-
-            val moduleName = declareFreshGlobal(module.safeName)
-            modules += JsImportedModule(module.externalModuleName(), moduleName, null, relativeRequirePath)
-
-            names.forEach {
-                imports += JsVars(JsVars.JsVar(JsName(it), JsNameRef(it, JsNameRef("\$crossModule\$", moduleName.makeRef()))))
-            }
-        }
-
-        return imports to modules
-    }
-
-    private fun generateCrossModuleExports(
-        modules: Iterable<IrModuleFragment>,
-        refInfo: CrossModuleReferenceInfo,
-        internalModuleName: JsName
-    ): List<JsStatement> {
-        return modules.flatMap {
-            refInfo.exports(it).map {
-                jsAssignment(
-                    JsNameRef(it, JsNameRef("\$crossModule\$", internalModuleName.makeRef())),
-                    JsNameRef(it)
-                ).makeStmt()
-            }
-        }.let {
-            if (!it.isEmpty()) {
-                val createExportBlock = jsAssignment(
-                    JsNameRef("\$crossModule\$", internalModuleName.makeRef()),
-                    JsAstUtils.or(JsNameRef("\$crossModule\$", internalModuleName.makeRef()), JsObjectLiteral())
-                ).makeStmt()
-                return listOf(createExportBlock) + it
-            } else it
-        }
-    }
-
-    private data class ModuleBody(val statements: List<JsStatement>, val mainFunction: JsStatement?, val exportStatements: List<JsStatement>)
-
-    private fun generateModuleBody(
-        modules: Iterable<IrModuleFragment>,
-        staticContext: JsStaticContext,
-        fragments: Map<IrFile, JsIrProgramFragment>
-    ): ModuleBody {
-        val thisModuleFragments = modules.map { it.files.map { fragments[it]!!.fillProgramFragment(it, staticContext) } }
-
-        return merge(thisModuleFragments, staticContext)
-    }
+    private data class ModuleBody(
+        val statements: List<JsStatement>,
+        val mainFunction: JsStatement?,
+        val exportStatements: List<JsStatement>,
+        val importStatements: MutableList<JsStatement>,
+        val importedJsModules: List<JsImportedModule>,
+    )
 
     private val generateFilePaths = backendContext.configuration.getBoolean(JSConfigurationKeys.GENERATE_COMMENTS_WITH_FILE_PATH)
     private val pathPrefixMap = backendContext.configuration.getMap(JSConfigurationKeys.FILE_PATHS_PREFIX_MAP)
 
-    private fun JsIrProgramFragment.fillProgramFragment(file: IrFile, staticContext: JsStaticContext): JsIrProgramFragment {
+    private fun generateProgramFragment(file: IrFile, staticContext: JsStaticContext, exports: List<ExportedDeclaration>): JsIrProgramFragment {
         require(staticContext.classModels.isEmpty())
         require(staticContext.initializerBlock.statements.isEmpty())
 
-        val statements = this.declarations.statements
+        val result = JsIrProgramFragment(file.fqName.asString())
+
+        val internalModuleName = JsName("_")
+        val globalNames = NameTable<String>(namer.globalNames)
+        val exportStatements = ExportModelToJsStatements(internalModuleName, staticContext, { globalNames.declareFreshName(it, it) }).generateModuleExport(
+            ExportedModule(mainModuleName, moduleKind, exports)
+        )
+
+        result.exports.statements += exportStatements
+
+        if (exports.isNotEmpty()) {
+            result.dts = exports.toTypeScript(moduleKind)
+        }
+
+        val statements = result.declarations.statements
+
 
         val fileStatements = file.accept(IrFileToJsTransformer(), staticContext).statements
         if (fileStatements.isNotEmpty()) {
@@ -309,27 +241,31 @@ class IrModuleToJsTransformer(
             statements.endRegion()
         }
 
-        this.classes += staticContext.classModels
-        this.initializers.statements += staticContext.initializerBlock.statements
+        result.classes += staticContext.classModels
+        result.initializers.statements += staticContext.initializerBlock.statements
 
         if (mainArguments != null) {
             JsMainFunctionDetector.getMainFunctionOrNull(file)?.let {
                 val jsName = staticContext.getNameForStaticFunction(it)
-                this.mainFunction = JsInvocation(jsName.makeRef(), generateMainArguments(it, staticContext)).makeStmt()
+                result.mainFunction = JsInvocation(jsName.makeRef(), generateMainArguments(it, staticContext)).makeStmt()
             }
         }
 
         backendContext.testFunsPerFile[file]?.let {
-            this.testFunInvocation = JsInvocation(staticContext.getNameForStaticFunction(it).makeRef()).makeStmt()
+            result.testFunInvocation = JsInvocation(staticContext.getNameForStaticFunction(it).makeRef()).makeStmt()
+            result.suiteFn = staticContext.getNameForStaticFunction(backendContext.suiteFun!!.owner).makeRef()
         }
 
         staticContext.classModels.clear()
         staticContext.initializerBlock.statements.clear()
 
-        return this
+        return result
     }
 
-    private fun merge(fragments: List<List<JsIrProgramFragment>>, staticContext: JsStaticContext): ModuleBody {
+    private fun merge(fragments: List<List<JsIrProgramFragment>>): ModuleBody {
+
+        // TODO: link JsName's by key
+
         val statements = mutableListOf<JsStatement>().also {
             if (!generateScriptModule) it += JsStringLiteral("use strict").makeStmt()
         }
@@ -361,7 +297,7 @@ class IrModuleToJsTransformer(
         if (lastModuleFragments.any { it.testFunInvocation != null }) {
             val testFunBody = JsBlock()
             val testFun = JsFunction(emptyScope, testFunBody, "root test fun")
-            val suiteFunRef = staticContext.getNameForStaticFunction(backendContext.suiteFun!!.owner).makeRef()
+            val suiteFunRef = lastModuleFragments.firstNotNullOf { it.suiteFn }
 
             val tests = lastModuleFragments.filter { it.testFunInvocation != null }
                 .groupBy({ it.packageFqn }) { it.testFunInvocation } // String -> [IrSimpleFunction]
@@ -381,7 +317,7 @@ class IrModuleToJsTransformer(
 
         val exportStatements = fragments.flatMap { it.flatMap { it.exports.statements } }
 
-        return ModuleBody(statements, callToMain, exportStatements)
+        return ModuleBody(statements, callToMain, exportStatements, mutableListOf(), emptyList())
     }
 
     private fun generateMainArguments(mainFunction: IrSimpleFunction, staticContext: JsStaticContext): List<JsExpression> {

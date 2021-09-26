@@ -7,6 +7,7 @@ package org.jetbrains.kotlin.ir.backend.js.transformers.irToJs
 
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.js.backend.ast.JsGlobalBlock
+import org.jetbrains.kotlin.js.backend.ast.JsNameRef
 import org.jetbrains.kotlin.js.backend.ast.JsStatement
 
 class JsIrProgramFragment(val packageFqn: String) {
@@ -17,4 +18,5 @@ class JsIrProgramFragment(val packageFqn: String) {
     val initializers = JsGlobalBlock()
     var mainFunction: JsStatement? = null
     var testFunInvocation: JsStatement? = null
+    var suiteFn: JsNameRef? = null
 }
