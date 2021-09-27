@@ -13,11 +13,11 @@ import org.jetbrains.kotlin.serialization.js.ModuleKind
 import org.jetbrains.kotlin.utils.DFS
 
 class JsIrProgramFragment(val fileName: String, val packageFqn: String) {
-    val nameBindings = mutableMapOf<IrDeclaration, JsName>()
+    val nameBindings = mutableMapOf<String, JsName>()
     val declarations = JsGlobalBlock()
     val exports = JsGlobalBlock()
     val importedModules = mutableListOf<JsImportedModule>()
-    val imports = mutableMapOf<IrDeclaration, JsExpression>()
+    val imports = mutableMapOf<String, JsExpression>()
     var dts: String? = null
     val classes = mutableMapOf<IrClassSymbol, JsIrClassModel>()
     val initializers = JsGlobalBlock()
@@ -25,7 +25,6 @@ class JsIrProgramFragment(val fileName: String, val packageFqn: String) {
     var testFunInvocation: JsStatement? = null
     var suiteFn: JsNameRef? = null
 }
-
 
 class Merger(
     private val moduleName: String,
@@ -35,11 +34,11 @@ class Merger(
     private val generateRegionComments: Boolean,
 ) {
 
-    private val importStatements = mutableMapOf<IrDeclaration, JsStatement>()
+    private val importStatements = mutableMapOf<String, JsStatement>()
     private val importedModulesMap = mutableMapOf<JsImportedModuleKey, JsImportedModule>()
 
     private fun linkJsNames() {
-        val nameMap = mutableMapOf<IrDeclaration, JsName>()
+        val nameMap = mutableMapOf<String, JsName>()
 
         fragments.flatMap { it }.forEach { f ->
             f.buildRenames(nameMap).run {
@@ -63,7 +62,7 @@ class Merger(
         }
     }
 
-    private fun JsIrProgramFragment.buildRenames(nameMap: MutableMap<IrDeclaration, JsName>): Map<JsName, JsName> {
+    private fun JsIrProgramFragment.buildRenames(nameMap: MutableMap<String, JsName>): Map<JsName, JsName> {
         val result = mutableMapOf<JsName, JsName>()
 
         this.importedModules.forEach { module ->
@@ -73,8 +72,8 @@ class Merger(
             }
         }
 
-        this.nameBindings.entries.forEach { (declaration, name) ->
-            val existingName = nameMap.getOrPut(declaration) { name }
+        this.nameBindings.entries.forEach { (tag, name) ->
+            val existingName = nameMap.getOrPut(tag) { name }
             if (existingName !== name) {
                 result[name] = existingName
             }

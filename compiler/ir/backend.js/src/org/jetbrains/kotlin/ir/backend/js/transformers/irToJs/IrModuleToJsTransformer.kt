@@ -14,7 +14,6 @@ import org.jetbrains.kotlin.ir.backend.js.export.*
 import org.jetbrains.kotlin.ir.backend.js.lower.StaticMembersLowering
 import org.jetbrains.kotlin.ir.backend.js.utils.*
 import org.jetbrains.kotlin.ir.declarations.*
-import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.util.isEffectivelyExternal
 import org.jetbrains.kotlin.ir.util.isInterface
 import org.jetbrains.kotlin.js.backend.JsToStringGenerationVisitor
@@ -26,7 +25,6 @@ import org.jetbrains.kotlin.js.sourceMap.SourceFilePathResolver
 import org.jetbrains.kotlin.js.sourceMap.SourceMap3Builder
 import org.jetbrains.kotlin.js.sourceMap.SourceMapBuilderConsumer
 import org.jetbrains.kotlin.js.util.TextOutputImpl
-import org.jetbrains.kotlin.utils.DFS
 import java.io.File
 
 class IrModuleToJsTransformer(
@@ -144,14 +142,6 @@ class IrModuleToJsTransformer(
         )
     }
 
-    private data class ModuleBody(
-        val statements: List<JsStatement>,
-        val mainFunction: JsStatement?,
-        val exportStatements: List<JsStatement>,
-        val importStatements: MutableList<JsStatement>,
-        val importedJsModules: List<JsImportedModule>,
-    )
-
     private val generateFilePaths = backendContext.configuration.getBoolean(JSConfigurationKeys.GENERATE_COMMENTS_WITH_FILE_PATH)
     private val pathPrefixMap = backendContext.configuration.getMap(JSConfigurationKeys.FILE_PATHS_PREFIX_MAP)
 
@@ -225,10 +215,23 @@ class IrModuleToJsTransformer(
         }
 
 
-        result.nameBindings += nameGenerator.nameMap
 
         result.importedModules += nameGenerator.importedModules
-        result.imports += nameGenerator.imports
+
+        fun computeTag(declaration: IrDeclaration): String {
+            // TODO proper tags
+            return System.identityHashCode(declaration).toString()
+        }
+
+        nameGenerator.nameMap.entries.forEach { (declaration, name) ->
+            val tag = computeTag(declaration)
+            result.nameBindings[tag] = name
+        }
+
+        nameGenerator.imports.entries.forEach { (declaration, importExpression) ->
+            val tag = computeTag(declaration)
+            result.imports[tag] = importExpression
+        }
 
         return result
     }
