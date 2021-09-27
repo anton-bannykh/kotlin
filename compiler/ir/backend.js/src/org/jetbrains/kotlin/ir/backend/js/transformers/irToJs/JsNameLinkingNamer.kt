@@ -32,7 +32,7 @@ class JsNameLinkingNamer(private val context: JsIrBackendContext) : IrNamerBase(
 
             when {
                 jsModule != null -> {
-                    val name = declaration.getName()
+                    val name = JsName(declaration.getJsNameOrKotlinName().asString(), false)
                     importedModules += JsImportedModule(jsModule, name, name.makeRef())
                     return name
                 }

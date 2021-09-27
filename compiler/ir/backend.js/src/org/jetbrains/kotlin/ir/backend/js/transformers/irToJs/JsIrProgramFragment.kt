@@ -35,6 +35,9 @@ class Merger(
     private val generateRegionComments: Boolean,
 ) {
 
+    private val importStatements = mutableMapOf<IrDeclaration, JsStatement>()
+    private val importedModulesMap = mutableMapOf<JsImportedModuleKey, JsImportedModule>()
+
     private fun linkJsNames() {
         val nameMap = mutableMapOf<IrDeclaration, JsName>()
 
@@ -42,6 +45,12 @@ class Merger(
             f.buildRenames(nameMap).run {
                 rename(f.declarations)
                 rename(f.exports)
+
+                f.imports.entries.forEach { (declaration, importExpression) ->
+                    val importName = nameMap[declaration]!!
+                    importStatements.putIfAbsent(declaration, JsVars(JsVars.JsVar(importName, rename(importExpression))))
+                }
+
                 f.classes.values.forEach {
                     rename(it.preDeclarationBlock)
                     rename(it.postDeclarationBlock)
@@ -52,6 +61,40 @@ class Merger(
                 f.suiteFn?.let { rename(it) }
             }
         }
+    }
+
+    private fun JsIrProgramFragment.buildRenames(nameMap: MutableMap<IrDeclaration, JsName>): Map<JsName, JsName> {
+        val result = mutableMapOf<JsName, JsName>()
+
+        this.importedModules.forEach { module ->
+            val existingModule = importedModulesMap.getOrPut(module.key) { module }
+            if (existingModule !== module) {
+                result[module.internalName] = existingModule.internalName
+            }
+        }
+
+        this.nameBindings.entries.forEach { (declaration, name) ->
+            val existingName = nameMap.getOrPut(declaration) { name }
+            if (existingName !== name) {
+                result[name] = existingName
+            }
+        }
+
+        return result
+    }
+
+    private fun Map<JsName, JsName>.rename(name: JsName): JsName = getOrElse(name) { name }
+
+    private fun <T : JsNode> Map<JsName, JsName>.rename(rootNode: T): T {
+        rootNode.accept(object : RecursiveJsVisitor() {
+            override fun visitElement(node: JsNode) {
+                super.visitElement(node)
+                if (node is HasName) {
+                    node.name = node.name?.let { rename(it) }
+                }
+            }
+        })
+        return rootNode
     }
 
     fun merge(): JsProgram {
@@ -108,8 +151,8 @@ class Merger(
 
         val exportStatements = fragments.flatMap { it.flatMap { it.exports.statements } }
 
-        val importStatements = emptyList<JsStatement>()
-        val importedJsModules = emptyList<JsImportedModule>()
+        val importedJsModules = this.importedModulesMap.values.toList()
+        val importStatements = this.importStatements.values.toList()
 
         val internalModuleName = JsName("_", false)
 
@@ -194,50 +237,4 @@ class Merger(
         this += statements
         endRegion()
     }
-}
-
-fun Iterable<JsIrProgramFragment>.linkJsNames() {
-    val nameMap = mutableMapOf<IrDeclaration, JsName>()
-
-    this.forEach { f ->
-        f.buildRenames(nameMap).run {
-            rename(f.declarations)
-            rename(f.exports)
-            f.classes.values.forEach {
-                rename(it.preDeclarationBlock)
-                rename(it.postDeclarationBlock)
-            }
-            rename(f.initializers)
-            f.mainFunction?.let { rename(it) }
-            f.testFunInvocation?.let { rename(it) }
-            f.suiteFn?.let { rename(it) }
-        }
-    }
-}
-
-private fun JsIrProgramFragment.buildRenames(nameMap: MutableMap<IrDeclaration, JsName>): Map<JsName, JsName> {
-    val result = mutableMapOf<JsName, JsName>()
-
-    this.nameBindings.entries.forEach { (declaration, name) ->
-        val existingName = nameMap.getOrPut(declaration) { name }
-        if (existingName !== name) {
-            result[name] = existingName
-        }
-    }
-
-    return result
-}
-
-private fun Map<JsName, JsName>.rename(name: JsName): JsName = getOrElse(name) { name }
-
-private fun <T : JsNode> Map<JsName, JsName>.rename(rootNode: T): T {
-    rootNode.accept(object : RecursiveJsVisitor() {
-        override fun visitElement(node: JsNode) {
-            super.visitElement(node)
-            if (node is HasName) {
-                node.name = node.name?.let { rename(it) }
-            }
-        }
-    })
-    return rootNode
 }
