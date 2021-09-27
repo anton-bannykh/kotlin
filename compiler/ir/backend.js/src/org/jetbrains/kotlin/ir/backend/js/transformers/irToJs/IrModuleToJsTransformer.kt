@@ -97,39 +97,13 @@ class IrModuleToJsTransformer(
         modules: Iterable<IrModuleFragment>,
         fragments: Map<IrFile, JsIrProgramFragment>,
     ): CompilationOutputs {
-        val (moduleBody, callToMain, exportStatements, importStatements, importedJsModules) =
-            merge(modules.map { it.files.map { fragments[it]!! } })
-
-        val internalModuleName = JsName("_", false)
-
-        val program = JsProgram()
-        if (generateScriptModule) {
-            with(program.globalBlock) {
-                statements.addWithComment("block: imports", importStatements)
-                statements += moduleBody
-                statements.addWithComment("block: exports", exportStatements)
-            }
-        } else {
-            val rootFunction = JsFunction(program.rootScope, JsBlock(), "root function").apply {
-                parameters += JsParameter(internalModuleName)
-                parameters += (importedJsModules).map { JsParameter(it.internalName) }
-                with(body) {
-                    statements.addWithComment("block: imports", importStatements)
-                    statements += moduleBody
-                    statements.addWithComment("block: exports", exportStatements)
-                    statements += callToMain
-                    statements += JsReturn(internalModuleName.makeRef())
-                }
-            }
-
-            program.globalBlock.statements += ModuleWrapperTranslation.wrap(
-                moduleName,
-                rootFunction,
-                importedJsModules,
-                program,
-                kind = moduleKind
-            )
-        }
+        val program = Merger(
+            moduleName,
+            moduleKind,
+            modules.map { it.files.map { fragments[it]!! } },
+            generateScriptModule,
+            generateRegionComments
+        ).merge()
 
         program.resolveTemporaryNames()
 
@@ -230,7 +204,9 @@ class IrModuleToJsTransformer(
             }
 
             statements.addAll(fileStatements)
-            statements.endRegion()
+            if (generateRegionComments) {
+                statements += JsSingleLineComment("endregion")
+            }
         }
 
         result.classes += staticContext.classModels
@@ -251,65 +227,10 @@ class IrModuleToJsTransformer(
 
         result.nameBindings += nameGenerator.nameMap
 
+        result.importedModules += nameGenerator.importedModules
+        result.imports += nameGenerator.imports
+
         return result
-    }
-
-    private fun merge(fragments: List<List<JsIrProgramFragment>>): ModuleBody {
-
-        fragments.flatMap { it }.linkJsNames()
-
-        val statements = mutableListOf<JsStatement>().also {
-            if (!generateScriptModule) it += JsStringLiteral("use strict").makeStmt()
-        }
-
-        val preDeclarationBlock = JsGlobalBlock()
-        val postDeclarationBlock = JsGlobalBlock()
-
-        statements.addWithComment("block: pre-declaration", preDeclarationBlock)
-
-        val classModels = mutableMapOf<IrClassSymbol, JsIrClassModel>()
-        val initializerBlock = JsGlobalBlock()
-        fragments.forEach {
-            it.forEach {
-                statements += it.declarations.statements
-                classModels += it.classes
-                initializerBlock.statements += it.initializers.statements
-            }
-        }
-
-        // sort member forwarding code
-        processClassModels(classModels, preDeclarationBlock, postDeclarationBlock)
-
-        statements.addWithComment("block: post-declaration", postDeclarationBlock.statements)
-        statements.addWithComment("block: init", initializerBlock.statements)
-
-        val lastModuleFragments = fragments.last()
-
-        // Merge test function invocations
-        if (lastModuleFragments.any { it.testFunInvocation != null }) {
-            val testFunBody = JsBlock()
-            val testFun = JsFunction(emptyScope, testFunBody, "root test fun")
-            val suiteFunRef = lastModuleFragments.firstNotNullOf { it.suiteFn }
-
-            val tests = lastModuleFragments.filter { it.testFunInvocation != null }
-                .groupBy({ it.packageFqn }) { it.testFunInvocation } // String -> [IrSimpleFunction]
-
-            for ((pkg, testCalls) in tests) {
-                val pkgTestFun = JsFunction(emptyScope, JsBlock(), "test fun for $pkg")
-                pkgTestFun.body.statements += testCalls
-                testFun.body.statements += JsInvocation(suiteFunRef, JsStringLiteral(pkg), JsBooleanLiteral(false), pkgTestFun).makeStmt()
-            }
-
-            statements.startRegion("block: tests")
-            statements += JsInvocation(testFun).makeStmt()
-            statements.endRegion()
-        }
-
-        val callToMain = lastModuleFragments.sortedBy { it.packageFqn }.firstNotNullOfOrNull { it.mainFunction }
-
-        val exportStatements = fragments.flatMap { it.flatMap { it.exports.statements } }
-
-        return ModuleBody(statements, callToMain, exportStatements, mutableListOf(), emptyList())
     }
 
     private fun generateMainArguments(mainFunction: IrSimpleFunction, staticContext: JsStaticContext): List<JsExpression> {
@@ -376,53 +297,5 @@ class IrModuleToJsTransformer(
 
         val importedJsModules = (declarationLevelJsModules + packageLevelJsModules).distinctBy { it.key }
         return Pair(importStatements, importedJsModules)
-    }
-
-    private fun processClassModels(
-        classModelMap: Map<IrClassSymbol, JsIrClassModel>,
-        preDeclarationBlock: JsBlock,
-        postDeclarationBlock: JsBlock
-    ) {
-        val declarationHandler = object : DFS.AbstractNodeHandler<IrClassSymbol, Unit>() {
-            override fun result() {}
-            override fun afterChildren(current: IrClassSymbol) {
-                classModelMap[current]?.let {
-                    preDeclarationBlock.statements += it.preDeclarationBlock.statements
-                    postDeclarationBlock.statements += it.postDeclarationBlock.statements
-                }
-            }
-        }
-
-        DFS.dfs(
-            classModelMap.keys,
-            { klass -> classModelMap[klass]?.superClasses ?: emptyList() },
-            declarationHandler
-        )
-    }
-
-    private fun MutableList<JsStatement>.startRegion(description: String = "") {
-        if (generateRegionComments) {
-            this += JsSingleLineComment("region $description")
-        }
-    }
-
-    private fun MutableList<JsStatement>.endRegion() {
-        if (generateRegionComments) {
-            this += JsSingleLineComment("endregion")
-        }
-    }
-
-    private fun MutableList<JsStatement>.addWithComment(regionDescription: String = "", block: JsBlock) {
-        startRegion(regionDescription)
-        this += block
-        endRegion()
-    }
-
-    private fun MutableList<JsStatement>.addWithComment(regionDescription: String = "", statements: List<JsStatement>) {
-        if (statements.isEmpty()) return
-
-        startRegion(regionDescription)
-        this += statements
-        endRegion()
     }
 }
