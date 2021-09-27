@@ -8,8 +8,14 @@ package org.jetbrains.kotlin.ir.backend.js.transformers.irToJs
 import org.jetbrains.kotlin.ir.backend.js.JsIrBackendContext
 import org.jetbrains.kotlin.ir.backend.js.utils.*
 import org.jetbrains.kotlin.ir.declarations.*
+import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
+import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.util.isEffectivelyExternal
+import org.jetbrains.kotlin.ir.util.parentAsClass
+import org.jetbrains.kotlin.ir.util.render
 import org.jetbrains.kotlin.js.backend.ast.*
+import org.jetbrains.kotlin.utils.DFS
+import org.jetbrains.kotlin.utils.addToStdlib.safeAs
 
 class JsNameLinkingNamer(private val context: JsIrBackendContext) : IrNamerBase() {
 
@@ -41,7 +47,8 @@ class JsNameLinkingNamer(private val context: JsIrBackendContext) : IrNamerBase(
                     if (declaration !in nameMap) {
                         val moduleName = JsName("\$module\$$jsModule", true)
                         importedModules += JsImportedModule(fileJsModule, moduleName, null)
-                        val qualifiedReference = if (jsQualifier == null) moduleName.makeRef() else JsNameRef(jsQualifier, moduleName.makeRef())
+                        val qualifiedReference =
+                            if (jsQualifier == null) moduleName.makeRef() else JsNameRef(jsQualifier, moduleName.makeRef())
                         imports[declaration] = JsNameRef(declaration.getJsNameOrKotlinName().identifier, qualifiedReference)
                         return declaration.getName()
                     }
@@ -68,6 +75,51 @@ class JsNameLinkingNamer(private val context: JsIrBackendContext) : IrNamerBase(
 
     override fun getNameForMemberField(field: IrField): JsName {
         require(!field.isStatic)
-        return field.getName("___") // TODO resolve name clashes between fields and exported properties
+        // TODO this looks funny. Rethink.
+        return JsName(field.parentAsClass.fieldData().pickFieldName(field), false)
+    }
+
+    private class FieldData(private val nameCnt: Map<String, Int>) {
+        fun pickFieldName(field: IrField): String {
+            val fieldName = field.safeName()
+            val cnt = nameCnt[fieldName] ?: error("Unexpected field: ${field.render()}")
+            return fieldName + "_$cnt"
+        }
+    }
+
+    private val fieldDataCache = mutableMapOf<IrClass, FieldData>()
+
+    private fun IrClass.fieldData(): FieldData {
+        return fieldDataCache.getOrPut(this) {
+            val nameCnt = mutableMapOf<String, Int>()
+
+            val allClasses = DFS.topologicalOrder(listOf(this)) { node ->
+                node.superTypes.mapNotNull {
+                    it.safeAs<IrSimpleType>()?.classifier.safeAs<IrClassSymbol>()?.owner
+                }
+            }
+
+            allClasses.forEach {
+                it.declarations.forEach {
+                    when {
+                        it is IrField -> {
+                            val safeName = it.safeName()
+                            nameCnt[safeName] = nameCnt.getOrDefault(safeName, 0) + 1
+                        }
+                        it is IrFunction && it.dispatchReceiverParameter != null -> {
+                            nameCnt[jsFunctionSignature(it, context)] = 1 // avoid clashes with member functions
+                        }
+                    }
+                }
+            }
+
+            return FieldData(nameCnt)
+        }
+    }
+}
+
+private fun IrField.safeName(): String {
+    return sanitizeName(name.asString()).let {
+        if (it.lastOrNull()!!.isDigit()) it + "_" else it // Avoid name clashes
     }
 }
