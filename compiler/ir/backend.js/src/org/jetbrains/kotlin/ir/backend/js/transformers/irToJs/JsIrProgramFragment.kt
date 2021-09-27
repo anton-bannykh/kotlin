@@ -19,7 +19,7 @@ class JsIrProgramFragment(val fileName: String, val packageFqn: String) {
     val importedModules = mutableListOf<JsImportedModule>()
     val imports = mutableMapOf<String, JsExpression>()
     var dts: String? = null
-    val classes = mutableMapOf<IrClassSymbol, JsIrClassModel>()
+    val classes = mutableMapOf<JsName, JsIrClassModel>()
     val initializers = JsGlobalBlock()
     var mainFunction: JsStatement? = null
     var testFunInvocation: JsStatement? = null
@@ -50,10 +50,17 @@ class Merger(
                     importStatements.putIfAbsent(declaration, JsVars(JsVars.JsVar(importName, rename(importExpression))))
                 }
 
-                f.classes.values.forEach {
-                    rename(it.preDeclarationBlock)
-                    rename(it.postDeclarationBlock)
+                val classModels = mutableMapOf<JsName, JsIrClassModel>() + f.classes
+                f.classes.clear()
+                classModels.entries.forEach { (name, model) ->
+                    f.classes[rename(name)] = JsIrClassModel(model.superClasses.map { rename(it) }).also {
+                        it.preDeclarationBlock.statements += model.preDeclarationBlock.statements
+                        it.postDeclarationBlock.statements += model.postDeclarationBlock.statements
+                        rename(it.preDeclarationBlock)
+                        rename(it.postDeclarationBlock)
+                    }
                 }
+
                 rename(f.initializers)
                 f.mainFunction?.let { rename(it) }
                 f.testFunInvocation?.let { rename(it) }
@@ -108,7 +115,7 @@ class Merger(
 
         moduleBody.addWithComment("block: pre-declaration", preDeclarationBlock)
 
-        val classModels = mutableMapOf<IrClassSymbol, JsIrClassModel>()
+        val classModels = mutableMapOf<JsName, JsIrClassModel>()
         val initializerBlock = JsGlobalBlock()
         fragments.forEach {
             it.forEach {
@@ -190,13 +197,13 @@ class Merger(
 
 
     private fun processClassModels(
-        classModelMap: Map<IrClassSymbol, JsIrClassModel>,
+        classModelMap: Map<JsName, JsIrClassModel>,
         preDeclarationBlock: JsBlock,
         postDeclarationBlock: JsBlock
     ) {
-        val declarationHandler = object : DFS.AbstractNodeHandler<IrClassSymbol, Unit>() {
+        val declarationHandler = object : DFS.AbstractNodeHandler<JsName, Unit>() {
             override fun result() {}
-            override fun afterChildren(current: IrClassSymbol) {
+            override fun afterChildren(current: JsName) {
                 classModelMap[current]?.let {
                     preDeclarationBlock.statements += it.preDeclarationBlock.statements
                     postDeclarationBlock.statements += it.postDeclarationBlock.statements

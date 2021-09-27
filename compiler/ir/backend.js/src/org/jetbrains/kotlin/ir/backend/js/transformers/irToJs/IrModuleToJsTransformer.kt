@@ -199,7 +199,10 @@ class IrModuleToJsTransformer(
             }
         }
 
-        result.classes += staticContext.classModels
+        staticContext.classModels.entries.forEach { (symbol, model) ->
+            result.classes[nameGenerator.getNameForClass(symbol.owner)] = model
+        }
+
         result.initializers.statements += staticContext.initializerBlock.statements
 
         if (mainArguments != null) {
