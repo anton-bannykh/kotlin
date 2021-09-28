@@ -12,7 +12,7 @@ import org.jetbrains.kotlin.js.backend.ast.*
 import org.jetbrains.kotlin.serialization.js.ModuleKind
 import org.jetbrains.kotlin.utils.DFS
 
-class JsIrProgramFragment(val fileName: String, val packageFqn: String) {
+class JsIrProgramFragment(val packageFqn: String) {
     val nameBindings = mutableMapOf<String, JsName>()
     val declarations = JsGlobalBlock()
     val exports = JsGlobalBlock()

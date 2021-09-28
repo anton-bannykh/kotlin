@@ -154,7 +154,7 @@ class IrModuleToJsTransformer(
             globalNameScope = namer.globalNames
         )
 
-        val result = JsIrProgramFragment(file.name, file.fqName.asString())
+        val result = JsIrProgramFragment(file.fqName.asString())
 
         val internalModuleName = JsName("_", false)
         val globalNames = NameTable<String>(namer.globalNames)
