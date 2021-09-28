@@ -272,6 +272,7 @@ class JsAstDeserializer(program: JsProgram, private val sourceRoots: Iterable<Fi
 
         StatementCase.EMPTY -> JsEmpty
 
+        StatementCase.SINGLE_LINE_COMMENT,
         StatementCase.STATEMENT_NOT_SET,
         null -> error("Statement not set")
     }
