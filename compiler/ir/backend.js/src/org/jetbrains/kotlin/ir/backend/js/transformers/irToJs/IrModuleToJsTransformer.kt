@@ -214,7 +214,7 @@ class IrModuleToJsTransformer(
 
         backendContext.testFunsPerFile[file]?.let {
             result.testFunInvocation = JsInvocation(staticContext.getNameForStaticFunction(it).makeRef()).makeStmt()
-            result.suiteFn = staticContext.getNameForStaticFunction(backendContext.suiteFun!!.owner).makeRef()
+            result.suiteFn = staticContext.getNameForStaticFunction(backendContext.suiteFun!!.owner)
         }
 
 

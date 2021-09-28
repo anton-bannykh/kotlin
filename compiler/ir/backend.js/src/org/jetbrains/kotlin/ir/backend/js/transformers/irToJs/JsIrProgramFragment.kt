@@ -23,7 +23,7 @@ class JsIrProgramFragment(val fileName: String, val packageFqn: String) {
     val initializers = JsGlobalBlock()
     var mainFunction: JsStatement? = null
     var testFunInvocation: JsStatement? = null
-    var suiteFn: JsNameRef? = null
+    var suiteFn: JsName? = null
 }
 
 class Merger(
@@ -64,7 +64,7 @@ class Merger(
                 rename(f.initializers)
                 f.mainFunction?.let { rename(it) }
                 f.testFunInvocation?.let { rename(it) }
-                f.suiteFn?.let { rename(it) }
+                f.suiteFn?.let { f.suiteFn = rename(it) }
             }
         }
     }
@@ -137,7 +137,7 @@ class Merger(
         if (lastModuleFragments.any { it.testFunInvocation != null }) {
             val testFunBody = JsBlock()
             val testFun = JsFunction(emptyScope, testFunBody, "root test fun")
-            val suiteFunRef = lastModuleFragments.firstNotNullOf { it.suiteFn }
+            val suiteFunRef = lastModuleFragments.firstNotNullOf { it.suiteFn }.makeRef()
 
             val tests = lastModuleFragments.filter { it.testFunInvocation != null }
                 .groupBy({ it.packageFqn }) { it.testFunInvocation } // String -> [IrSimpleFunction]
