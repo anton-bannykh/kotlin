@@ -16,14 +16,12 @@ import org.jetbrains.kotlin.descriptors.ModuleDescriptor
 import org.jetbrains.kotlin.descriptors.impl.ModuleDescriptorImpl
 import org.jetbrains.kotlin.incremental.components.LookupTracker
 import org.jetbrains.kotlin.ir.ObsoleteDescriptorBasedAPI
-import org.jetbrains.kotlin.ir.backend.js.JsFactories
-import org.jetbrains.kotlin.ir.backend.js.jsResolveLibraries
+import org.jetbrains.kotlin.ir.backend.js.*
 import org.jetbrains.kotlin.ir.backend.js.lower.serialization.ir.JsIrLinker
 import org.jetbrains.kotlin.ir.backend.js.lower.serialization.ir.JsManglerDesc
-import org.jetbrains.kotlin.ir.backend.js.moduleName
-import org.jetbrains.kotlin.ir.backend.js.toResolverLogger
 import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
+import org.jetbrains.kotlin.ir.declarations.impl.IrFactoryImpl
 import org.jetbrains.kotlin.ir.declarations.persistent.PersistentIrFactory
 import org.jetbrains.kotlin.ir.descriptors.IrBuiltInsOverDescriptors
 import org.jetbrains.kotlin.ir.util.*
@@ -144,7 +142,9 @@ private fun KotlinLibrary.filesAndSigReaders(): List<Pair<String, IdSignatureDes
 
 private fun buildCacheForModule(
     libraryPath: String,
+    configuration: CompilerConfiguration,
     irModule: IrModuleFragment,
+    deserializer: JsIrLinker,
     dependencies: Collection<IrModuleFragment>,
     dirtyFiles: Collection<String>,
     cleanInlineHashes: Map<IdSignature, Hash>,
@@ -190,7 +190,7 @@ private fun buildCacheForModule(
     }
 
     // TODO: actual way of building a cache could change in future
-    buildCacheForModuleFiles(irModule, dependencies, dirtyFiles, cacheConsumer)
+    buildCacheForModuleFiles(irModule, dependencies, deserializer, configuration, dirtyFiles, cacheConsumer)
 
     cacheConsumer.commitLibraryPath(libraryPath)
 }
@@ -231,7 +231,7 @@ private fun loadModules(
 private fun createLinker(configuration: CompilerConfiguration, loadedModules: Map<ModuleDescriptor, KotlinLibrary>): JsIrLinker {
     val logger = configuration[IrMessageLogger.IR_MESSAGE_LOGGER] ?: IrMessageLogger.None
     val signaturer = IdSignatureDescriptor(JsManglerDesc)
-    val symbolTable = SymbolTable(signaturer, PersistentIrFactory())
+    val symbolTable = SymbolTable(signaturer, IrFactoryImpl)
     val moduleDescriptor = loadedModules.keys.last()
     val typeTranslator = TypeTranslatorImpl(symbolTable, configuration.languageVersionSettings, moduleDescriptor)
     val irBuiltIns = IrBuiltInsOverDescriptors(moduleDescriptor.builtIns, typeTranslator, symbolTable)
@@ -407,7 +407,9 @@ private fun actualizeCacheForModule(
 
     buildCacheForModule(
         library.libraryFile.canonicalPath,
+        configuration,
         currentIrModule,
+        jsIrLinker,
         irModules.map { it.first },
         dirtySet,
         sigHashes,
@@ -452,16 +454,27 @@ fun rebuildCacheForDirtyFiles(
 
     val currentIrModule = irModules.find { it.second == library }?.first!!
 
-    buildCacheForModuleFiles(currentIrModule, irModules.map { it.first }, dirtyFiles, cacheConsumer)
+    buildCacheForModuleFiles(currentIrModule, irModules.map { it.first }, jsIrLinker, configuration, dirtyFiles, cacheConsumer)
 }
 
 @Suppress("UNUSED_PARAMETER")
 private fun buildCacheForModuleFiles(
     currentModule: IrModuleFragment,
     dependencies: Collection<IrModuleFragment>,
+    deserializer: JsIrLinker,
+    configuration: CompilerConfiguration,
     dirtyFiles: Collection<String>?, // if null consider the whole module dirty
     cacheConsumer: PersistentCacheConsumer
 ) {
+    compileWithIC(
+        currentModule,
+        configuration = configuration,
+        deserializer = deserializer,
+        dependencies = dependencies,
+        filesToLower = dirtyFiles?.toSet(),
+        cacheConsumer = cacheConsumer,
+    )
+
 //    println("creating caches for module ${currentModule.name}")
 //    println("Store them into $cacheConsumer")
 //    val dirtyS = if (dirtyFiles == null) "[ALL]" else dirtyFiles.joinToString(",", "[", "]") { it }

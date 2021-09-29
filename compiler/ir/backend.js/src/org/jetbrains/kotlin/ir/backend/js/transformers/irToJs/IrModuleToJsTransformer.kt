@@ -6,6 +6,7 @@
 package org.jetbrains.kotlin.ir.backend.js.transformers.irToJs
 
 import org.jetbrains.kotlin.config.CommonConfigurationKeys
+import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.ir.backend.js.CompilationOutputs
 import org.jetbrains.kotlin.ir.backend.js.CompilerResult
 import org.jetbrains.kotlin.ir.backend.js.JsIrBackendContext
@@ -27,6 +28,7 @@ import org.jetbrains.kotlin.js.sourceMap.SourceFilePathResolver
 import org.jetbrains.kotlin.js.sourceMap.SourceMap3Builder
 import org.jetbrains.kotlin.js.sourceMap.SourceMapBuilderConsumer
 import org.jetbrains.kotlin.js.util.TextOutputImpl
+import org.jetbrains.kotlin.serialization.js.ModuleKind
 import org.jetbrains.kotlin.serialization.js.ast.JsAstSerializer
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
@@ -49,6 +51,18 @@ class IrModuleToJsTransformer(
     private val mainModuleName = backendContext.configuration[CommonConfigurationKeys.MODULE_NAME]!!
     private val moduleKind = backendContext.configuration[JSConfigurationKeys.MODULE_KIND]!!
 
+    fun generateBinaryAst(files: Iterable<IrFile>): Map<String, ByteArray> {
+        val exportModelGenerator = ExportModelGenerator(backendContext)
+
+        val exportData = files.associate { file ->
+            file to exportModelGenerator.generateExport(file)
+        }
+
+        files.forEach { StaticMembersLowering(backendContext).lower(it) }
+
+        return generateBinaryAst(files, exportData)
+    }
+
     fun generateModule(modules: Iterable<IrModuleFragment>): CompilerResult {
         val exportModelGenerator = ExportModelGenerator(backendContext)
 
@@ -68,21 +82,42 @@ class IrModuleToJsTransformer(
             breakCrossModuleFieldAccess(backendContext, modules)
         }
 
-        val jsCode = if (fullJs) generateWrappedModuleBody(mainModuleName, modules, generateProgramFragments(modules, exportData)) else null
+        val jsCode = if (fullJs) generateWrappedModuleBody(mainModuleName, moduleKind, generateProgramFragments(modules, exportData)) else null
 
         val dceJsCode = if (dceJs) {
             eliminateDeadDeclarations(modules, backendContext, removeUnusedAssociatedObjects)
 
-            generateWrappedModuleBody(mainModuleName, modules, generateProgramFragments(modules, exportData))
+            generateWrappedModuleBody(mainModuleName, moduleKind, generateProgramFragments(modules, exportData))
         } else null
 
         return CompilerResult(jsCode, dceJsCode, dts)
     }
 
+    private fun generateBinaryAst(
+        files: Iterable<IrFile>,
+        exportData: Map<IrFile, List<ExportedDeclaration>>,
+    ): Map<String, ByteArray> {
+
+        val serializer = JsIrAstSerializer() { "TODO" }
+
+        val result = mutableMapOf<String, ByteArray>()
+        files.forEach { f ->
+            val exports = exportData[f]!! // TODO
+            val fragment = generateProgramFragment(f, exports)
+            val output = ByteArrayOutputStream()
+            serializer.serialize(fragment, output)
+            val binaryAst = output.toByteArray()
+            result[f.fileEntry.name] = binaryAst
+        }
+
+        return result
+    }
+
+
     private fun generateProgramFragments(
         modules: Iterable<IrModuleFragment>,
         exportData: Map<IrModuleFragment, Map<IrFile, List<ExportedDeclaration>>>,
-    ): Map<IrFile, JsIrProgramFragment> {
+    ): List<List<JsIrProgramFragment>> {
 
         val fragments = mutableMapOf<IrFile, JsIrProgramFragment>()
         modules.forEach { m ->
@@ -92,78 +127,26 @@ class IrModuleToJsTransformer(
             }
         }
 
-        // TODO remove serialization -> deserialization work
-        val serialized = mutableListOf<Pair<IrFile, ByteArray>>()
+//        // TODO remove serialization -> deserialization work
+//        val serialized = mutableListOf<Pair<IrFile, ByteArray>>()
+//
+//        val serializer = JsIrAstSerializer() { "TODO" }
+//        fragments.entries.forEach { (file, fragment) ->
+//            val output = ByteArrayOutputStream()
+//            serializer.serialize(fragment, output)
+//            val binaryAst = output.toByteArray()
+//            serialized += file to binaryAst
+//        }
+//
+//        val restoredMap = mutableMapOf<IrFile, JsIrProgramFragment>()
+//
+//        val deserializer = JsIrAstDeserializer()
+//
+//        serialized.forEach { (file, binaryAst) ->
+//            restoredMap[file] = deserializer.deserialize(ByteArrayInputStream(binaryAst))
+//        }
 
-        val serializer = JsIrAstSerializer() { "TODO" }
-        fragments.entries.forEach { (file, fragment) ->
-            val output = ByteArrayOutputStream()
-            serializer.serialize(fragment, output)
-            val binaryAst = output.toByteArray()
-            serialized += file to binaryAst
-        }
-
-        val restoredMap = mutableMapOf<IrFile, JsIrProgramFragment>()
-
-        val deserializer = JsIrAstDeserializer()
-
-        serialized.forEach { (file, binaryAst) ->
-            restoredMap[file] = deserializer.deserialize(ByteArrayInputStream(binaryAst))
-        }
-
-        return restoredMap
-    }
-
-    private fun generateWrappedModuleBody(
-        moduleName: String,
-        modules: Iterable<IrModuleFragment>,
-        fragments: Map<IrFile, JsIrProgramFragment>,
-    ): CompilationOutputs {
-        val program = Merger(
-            moduleName,
-            moduleKind,
-            modules.map { it.files.map { fragments[it]!! } },
-            generateScriptModule,
-            generateRegionComments
-        ).merge()
-
-        program.resolveTemporaryNames()
-
-        val jsCode = TextOutputImpl()
-
-        val configuration = backendContext.configuration
-        val sourceMapPrefix = configuration.get(JSConfigurationKeys.SOURCE_MAP_PREFIX, "")
-        val sourceMapsEnabled = configuration.getBoolean(JSConfigurationKeys.SOURCE_MAP)
-
-        val sourceMapBuilder = SourceMap3Builder(null, jsCode, sourceMapPrefix)
-        val sourceMapBuilderConsumer =
-            if (sourceMapsEnabled) {
-                val sourceRoots = configuration.get(JSConfigurationKeys.SOURCE_MAP_SOURCE_ROOTS, emptyList<String>()).map(::File)
-                val generateRelativePathsInSourceMap = sourceMapPrefix.isEmpty() && sourceRoots.isEmpty()
-                val outputDir = if (generateRelativePathsInSourceMap) configuration.get(JSConfigurationKeys.OUTPUT_DIR) else null
-
-                val pathResolver = SourceFilePathResolver(sourceRoots, outputDir)
-
-                val sourceMapContentEmbedding =
-                    configuration.get(JSConfigurationKeys.SOURCE_MAP_EMBED_SOURCES, SourceMapSourceEmbedding.INLINING)
-
-                SourceMapBuilderConsumer(
-                    File("."),
-                    sourceMapBuilder,
-                    pathResolver,
-                    sourceMapContentEmbedding == SourceMapSourceEmbedding.ALWAYS,
-                    sourceMapContentEmbedding != SourceMapSourceEmbedding.NEVER
-                )
-            } else {
-                NoOpSourceLocationConsumer
-            }
-
-        program.accept(JsToStringGenerationVisitor(jsCode, sourceMapBuilderConsumer))
-
-        return CompilationOutputs(
-            jsCode.toString(),
-            if (sourceMapsEnabled) sourceMapBuilder.build() else null
-        )
+        return modules.map { it.files.map { fragments[it]!! } }
     }
 
     private val generateFilePaths = backendContext.configuration.getBoolean(JSConfigurationKeys.GENERATE_COMMENTS_WITH_FILE_PATH)
@@ -328,4 +311,29 @@ class IrModuleToJsTransformer(
         val importedJsModules = (declarationLevelJsModules + packageLevelJsModules).distinctBy { it.key }
         return Pair(importStatements, importedJsModules)
     }
+}
+
+fun generateWrappedModuleBody(
+    moduleName: String,
+    moduleKind: ModuleKind,
+    fragments: List<List<JsIrProgramFragment>>
+): CompilationOutputs {
+    val program = Merger(
+        moduleName,
+        moduleKind,
+        fragments,
+        false,
+        true
+    ).merge()
+
+    program.resolveTemporaryNames()
+
+    val jsCode = TextOutputImpl()
+
+    program.accept(JsToStringGenerationVisitor(jsCode, NoOpSourceLocationConsumer))
+
+    return CompilationOutputs(
+        jsCode.toString(),
+        null
+    )
 }

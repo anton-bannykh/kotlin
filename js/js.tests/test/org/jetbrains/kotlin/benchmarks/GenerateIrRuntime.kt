@@ -72,7 +72,7 @@ import kotlin.io.path.createTempFile
 import org.jetbrains.kotlin.konan.file.File as KonanFile
 
 @OptIn(ExperimentalPathApi::class)
-@Ignore
+//@Ignore
 class GenerateIrRuntime {
     fun loadKlib(klibPath: String, isPacked: Boolean) = resolveSingleFileKlib(KonanFile("$klibPath${if (isPacked) ".klib" else ""}"))
 
