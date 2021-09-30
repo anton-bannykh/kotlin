@@ -31,6 +31,7 @@ import org.jetbrains.kotlin.konan.properties.propertyList
 import org.jetbrains.kotlin.library.KLIB_PROPERTY_DEPENDS
 import org.jetbrains.kotlin.library.KotlinLibrary
 import org.jetbrains.kotlin.library.unresolvedDependencies
+import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.protobuf.ExtensionRegistryLite
 import org.jetbrains.kotlin.psi2ir.generators.TypeTranslatorImpl
 import org.jetbrains.kotlin.storage.LockBasedStorageManager
@@ -471,6 +472,7 @@ private fun buildCacheForModuleFiles(
         configuration = configuration,
         deserializer = deserializer,
         dependencies = dependencies,
+        exportedDeclarations = setOf(FqName("box")),
         filesToLower = dirtyFiles?.toSet(),
         cacheConsumer = cacheConsumer,
     )
