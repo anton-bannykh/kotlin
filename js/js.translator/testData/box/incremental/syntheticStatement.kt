@@ -1,4 +1,5 @@
 // EXPECTED_REACHABLE_NODES: 1282
+// SKIP_INCREMENTAL_CHECKS
 // FILE: a.kt
 
 fun a() = "["

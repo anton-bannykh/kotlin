@@ -329,25 +329,25 @@ class IrModuleToJsTransformer(
         statements.addWithComment("block: init", staticContext.initializerBlock.statements)
 
         modules.forEach { module ->
-            val tests = module.files.groupBy({ it.fqName.asString()}) { backendContext.testFunsPerFile[it] }
+            val tests = module.files
+                .groupBy({ it.fqName.asString()}) { backendContext.testFunsPerFile[it] }
+                .mapNotNull{ (fqn, testFuns) -> testFuns.filterNotNull().let { if (it.isEmpty()) null else fqn to it } }
+                .associate { it }
 
-            val testFunBody = JsBlock()
-            val testFun = JsFunction(emptyScope, testFunBody, "root test fun")
-            val suiteFunRef = staticContext.getNameForStaticFunction(backendContext.suiteFun!!.owner).makeRef()
+            if (tests.isNotEmpty()) {
+                val testFunBody = JsBlock()
+                val testFun = JsFunction(emptyScope, testFunBody, "root test fun")
+                val suiteFunRef = staticContext.getNameForStaticFunction(backendContext.suiteFun!!.owner).makeRef()
 
-            for ((pkg, testCalls) in tests) {
-                val nonNullCalls = testCalls.filterNotNull()
-                if (nonNullCalls.isNotEmpty()) {
+                for ((pkg, testFuns) in tests) {
                     val pkgTestFun = JsFunction(emptyScope, JsBlock(), "test fun for $pkg")
-                    pkgTestFun.body.statements += nonNullCalls.map {
+                    pkgTestFun.body.statements += testFuns.map {
                         JsInvocation(staticContext.getNameForStaticFunction(it).makeRef()).makeStmt()
                     }
                     testFun.body.statements +=
                         JsInvocation(suiteFunRef, JsStringLiteral(pkg), JsBooleanLiteral(false), pkgTestFun).makeStmt()
                 }
-            }
 
-            if (testFun.body.statements.isNotEmpty()) {
                 statements.startRegion("block: tests")
                 statements += JsInvocation(testFun).makeStmt()
                 statements.endRegion()

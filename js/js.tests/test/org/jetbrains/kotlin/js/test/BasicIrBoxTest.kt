@@ -297,11 +297,8 @@ abstract class BasicIrBoxTest(
                 val dirtyFilesToRecompile = if (recompile) {
                     units.map { (it as TranslationUnit.SourceFile).file.virtualFilePath }.toSet()
                 } else null
-//                val dirtyFilesToRecompile: Set<String>? = null
-
 
                 val compiledModule = if (incrementalCompilation) {
-                    // TODO: enable once incremental js generation is done
                     generateJsFromAst(klibPath, icCache.map { it.key to it.value.createModuleCache() }.toMap())
                 } else {
                     compile(
