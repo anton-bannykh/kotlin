@@ -59,7 +59,7 @@ class JsNameLinkingNamer(private val context: JsIrBackendContext) : IrNamerBase(
                     if (jsQualifier != null)
                         name = "$jsQualifier.$name"
 
-                    return JsName(name, false)
+                    return name.toJsName(temporary = false)
                 }
             }
         }
