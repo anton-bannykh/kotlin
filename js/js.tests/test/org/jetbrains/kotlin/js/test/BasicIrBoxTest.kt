@@ -493,7 +493,7 @@ abstract class BasicIrBoxTest(
 
             val currentLib = libs[File(cannonicalPath).canonicalPath] ?: error("Expected library at $cannonicalPath")
 
-            rebuildCacheForDirtyFiles(currentLib, config.configuration, dependencyGraph, dirtyFiles, moduleCache.cacheConsumer())
+            rebuildCacheForDirtyFiles(currentLib, config.configuration, dependencyGraph, dirtyFiles, moduleCache.cacheConsumer(), IrFactoryImpl)
 
             if (cannonicalPath in predefinedKlibHasIcCache) {
                 predefinedKlibHasIcCache[cannonicalPath] = moduleCache

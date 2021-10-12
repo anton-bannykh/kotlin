@@ -19,10 +19,9 @@ import org.jetbrains.kotlin.ir.ObsoleteDescriptorBasedAPI
 import org.jetbrains.kotlin.ir.backend.js.*
 import org.jetbrains.kotlin.ir.backend.js.lower.serialization.ir.JsIrLinker
 import org.jetbrains.kotlin.ir.backend.js.lower.serialization.ir.JsManglerDesc
+import org.jetbrains.kotlin.ir.declarations.IrFactory
 import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
-import org.jetbrains.kotlin.ir.declarations.impl.IrFactoryImpl
-import org.jetbrains.kotlin.ir.declarations.persistent.PersistentIrFactory
 import org.jetbrains.kotlin.ir.descriptors.IrBuiltInsOverDescriptors
 import org.jetbrains.kotlin.ir.util.*
 import org.jetbrains.kotlin.ir.visitors.acceptVoid
@@ -229,10 +228,14 @@ private fun loadModules(
 }
 
 @OptIn(ObsoleteDescriptorBasedAPI::class)
-private fun createLinker(configuration: CompilerConfiguration, loadedModules: Map<ModuleDescriptor, KotlinLibrary>): JsIrLinker {
+private fun createLinker(
+    configuration: CompilerConfiguration,
+    loadedModules: Map<ModuleDescriptor, KotlinLibrary>,
+    irFactory: IrFactory
+): JsIrLinker {
     val logger = configuration[IrMessageLogger.IR_MESSAGE_LOGGER] ?: IrMessageLogger.None
     val signaturer = IdSignatureDescriptor(JsManglerDesc)
-    val symbolTable = SymbolTable(signaturer, IrFactoryImpl)
+    val symbolTable = SymbolTable(signaturer, irFactory)
     val moduleDescriptor = loadedModules.keys.last()
     val typeTranslator = TypeTranslatorImpl(symbolTable, configuration.languageVersionSettings, moduleDescriptor)
     val irBuiltIns = IrBuiltInsOverDescriptors(moduleDescriptor.builtIns, typeTranslator, symbolTable)
@@ -289,7 +292,8 @@ fun actualizeCacheForModule(
     cachePath: String,
     compilerConfiguration: CompilerConfiguration,
     dependencies: Collection<ModulePath>,
-    icCachePaths: Collection<String>
+    icCachePaths: Collection<String>,
+    irFactory: IrFactory,
 ): Boolean {
     val icCacheMap: Map<ModulePath, String> = loadCacheInfo(icCachePaths).also {
         it[moduleName.toCanonicalPath()] = cachePath
@@ -312,7 +316,7 @@ fun actualizeCacheForModule(
     val currentModule = libraries[moduleName.toCanonicalPath()] ?: error("No loaded library found for path $moduleName")
     val persistentCacheConsumer = createCacheConsumer(cachePath)
 
-    return actualizeCacheForModule(currentModule, compilerConfiguration, dependencyGraph, persistentCacheProviders, persistentCacheConsumer)
+    return actualizeCacheForModule(currentModule, compilerConfiguration, dependencyGraph, persistentCacheProviders, persistentCacheConsumer, irFactory)
 }
 
 
@@ -321,7 +325,8 @@ private fun actualizeCacheForModule(
     configuration: CompilerConfiguration,
     dependencyGraph: Map<KotlinLibrary, Collection<KotlinLibrary>>,
     persistentCacheProviders: Map<KotlinLibrary, PersistentCacheProvider>,
-    persistentCacheConsumer: PersistentCacheConsumer
+    persistentCacheConsumer: PersistentCacheConsumer,
+    irFactory: IrFactory,
 ): Boolean {
     // 1. Invalidate
     val dependencies = dependencyGraph[library]!!
@@ -375,7 +380,7 @@ private fun actualizeCacheForModule(
 
     val loadedModules = loadModules(configuration.languageVersionSettings, dependencyGraph)
 
-    val jsIrLinker = createLinker(configuration, loadedModules)
+    val jsIrLinker = createLinker(configuration, loadedModules, irFactory)
 
     val irModules = ArrayList<Pair<IrModuleFragment, KotlinLibrary>>(loadedModules.size)
 
@@ -426,11 +431,12 @@ fun rebuildCacheForDirtyFiles(
     configuration: CompilerConfiguration,
     dependencyGraph: Map<KotlinLibrary, Collection<KotlinLibrary>>,
     dirtyFiles: Collection<String>?,
-    cacheConsumer: PersistentCacheConsumer
+    cacheConsumer: PersistentCacheConsumer,
+    irFactory: IrFactory,
 ) {
     val loadedModules = loadModules(configuration.languageVersionSettings, dependencyGraph)
 
-    val jsIrLinker = createLinker(configuration, loadedModules)
+    val jsIrLinker = createLinker(configuration, loadedModules, irFactory)
 
     val irModules = ArrayList<Pair<IrModuleFragment, KotlinLibrary>>(loadedModules.size)
 
