@@ -98,7 +98,7 @@ class IrModuleToJsTransformer(
         exportData: Map<IrFile, List<ExportedDeclaration>>,
     ): Map<String, ByteArray> {
 
-        val serializer = JsIrAstSerializer() { "TODO" }
+        val serializer = JsIrAstSerializer()
 
         val result = mutableMapOf<String, ByteArray>()
         files.forEach { f ->
