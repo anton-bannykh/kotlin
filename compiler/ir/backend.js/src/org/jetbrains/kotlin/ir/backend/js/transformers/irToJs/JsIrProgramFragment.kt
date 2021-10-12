@@ -46,7 +46,7 @@ class Merger(
                 rename(f.exports)
 
                 f.imports.entries.forEach { (declaration, importExpression) ->
-                    val importName = nameMap[declaration]!!
+                    val importName = nameMap[declaration] ?: error("Missing name for declaration '${declaration}'")
                     importStatements.putIfAbsent(declaration, JsVars(JsVars.JsVar(importName, rename(importExpression))))
                 }
 
