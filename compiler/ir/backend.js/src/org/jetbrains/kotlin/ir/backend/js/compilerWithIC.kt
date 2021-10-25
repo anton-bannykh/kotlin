@@ -14,9 +14,7 @@ import org.jetbrains.kotlin.ir.backend.js.ic.PersistentCacheConsumer
 import org.jetbrains.kotlin.ir.backend.js.lower.generateJsTests
 import org.jetbrains.kotlin.ir.backend.js.lower.moveBodilessDeclarationsToSeparatePlace
 import org.jetbrains.kotlin.ir.backend.js.lower.serialization.ir.JsIrLinker
-import org.jetbrains.kotlin.ir.backend.js.transformers.irToJs.IrModuleToJsTransformer
-import org.jetbrains.kotlin.ir.backend.js.transformers.irToJs.IrModuleToJsTransformerTmp
-import org.jetbrains.kotlin.ir.backend.js.transformers.irToJs.generateWrappedModuleBody
+import org.jetbrains.kotlin.ir.backend.js.transformers.irToJs.*
 import org.jetbrains.kotlin.ir.backend.js.utils.serialization.JsIrAstDeserializer
 import org.jetbrains.kotlin.ir.declarations.IrFactory
 import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
@@ -115,6 +113,6 @@ fun generateJsFromAst(
     caches: Map<String, ModuleCache>
 ): CompilerResult {
     val deserializer = JsIrAstDeserializer()
-    val fragments = caches.values.map { it.asts.values.mapNotNull { it.ast?.let { deserializer.deserialize(ByteArrayInputStream(it))} } }
+    val fragments = JsIrProgram(caches.values.map { JsIrModule(it.asts.values.mapNotNull { it.ast?.let { deserializer.deserialize(ByteArrayInputStream(it))} }) })
     return CompilerResult(generateWrappedModuleBody("JS_TESTS", ModuleKind.PLAIN, fragments), null)
 }

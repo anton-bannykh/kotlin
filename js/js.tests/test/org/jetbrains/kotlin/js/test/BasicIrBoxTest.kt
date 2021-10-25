@@ -19,6 +19,7 @@ import org.jetbrains.kotlin.ir.backend.js.codegen.JsGenerationOptions
 import org.jetbrains.kotlin.ir.backend.js.codegen.generateEsModules
 import org.jetbrains.kotlin.ir.backend.js.transformers.irToJs.IrModuleToJsTransformer
 import org.jetbrains.kotlin.ir.backend.js.ic.*
+import org.jetbrains.kotlin.ir.backend.js.transformers.irToJs.IrModuleToJsTransformerTmp
 import org.jetbrains.kotlin.ir.declarations.impl.IrFactoryImpl
 import org.jetbrains.kotlin.ir.declarations.persistent.PersistentIrFactory
 import org.jetbrains.kotlin.ir.util.IdSignature
@@ -425,7 +426,8 @@ abstract class BasicIrBoxTest(
         mainArguments: List<String>?,
     ): CompilerResult {
         check(granularity != PER_FILE) { "Per file granularity is not supported for old module systems" }
-        val transformer = IrModuleToJsTransformer(
+
+        val transformer = IrModuleToJsTransformerTmp(
             context,
             mainArguments,
             fullJs = true,

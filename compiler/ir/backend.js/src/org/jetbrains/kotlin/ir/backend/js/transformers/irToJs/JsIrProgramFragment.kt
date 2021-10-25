@@ -29,7 +29,7 @@ class JsIrProgramFragment(val packageFqn: String) {
 class Merger(
     private val moduleName: String,
     private val moduleKind: ModuleKind,
-    private val fragments: List<List<JsIrProgramFragment>>,
+    private val fragments: JsIrProgram,
     private val generateScriptModule: Boolean,
     private val generateRegionComments: Boolean,
 ) {
@@ -40,7 +40,7 @@ class Merger(
     private fun linkJsNames() {
         val nameMap = mutableMapOf<String, JsName>()
 
-        fragments.flatMap { it }.forEach { f ->
+        fragments.modules.flatMap { it.fragments }.forEach { f ->
             f.buildRenames(nameMap).run {
                 rename(f.declarations)
                 rename(f.exports)
@@ -117,8 +117,8 @@ class Merger(
 
         val classModels = mutableMapOf<JsName, JsIrIcClassModel>()
         val initializerBlock = JsGlobalBlock()
-        fragments.forEach {
-            it.forEach {
+        fragments.modules.forEach {
+            it.fragments.forEach {
                 moduleBody += it.declarations.statements
                 classModels += it.classes
                 initializerBlock.statements += it.initializers.statements
@@ -131,7 +131,7 @@ class Merger(
         moduleBody.addWithComment("block: post-declaration", postDeclarationBlock.statements)
         moduleBody.addWithComment("block: init", initializerBlock.statements)
 
-        val lastModuleFragments = fragments.last()
+        val lastModuleFragments = fragments.modules.last().fragments
 
         // Merge test function invocations
         if (lastModuleFragments.any { it.testFunInvocation != null }) {
@@ -155,7 +155,7 @@ class Merger(
 
         val callToMain = lastModuleFragments.sortedBy { it.packageFqn }.firstNotNullOfOrNull { it.mainFunction }
 
-        val exportStatements = fragments.flatMap { it.flatMap { it.exports.statements } }
+        val exportStatements = fragments.modules.flatMap { it.fragments.flatMap { it.exports.statements } }
 
         val importedJsModules = this.importedModulesMap.values.toList()
         val importStatements = this.importStatements.values.toList()

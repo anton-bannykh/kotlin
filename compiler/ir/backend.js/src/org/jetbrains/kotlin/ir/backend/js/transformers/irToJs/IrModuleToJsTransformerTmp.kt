@@ -101,17 +101,16 @@ class IrModuleToJsTransformerTmp(
     private fun generateProgramFragments(
         modules: Iterable<IrModuleFragment>,
         exportData: Map<IrModuleFragment, Map<IrFile, List<ExportedDeclaration>>>,
-    ): List<List<JsIrProgramFragment>> {
+    ): JsIrProgram {
 
-        val fragments = mutableMapOf<IrFile, JsIrProgramFragment>()
-        modules.forEach { m ->
-            m.files.forEach { f ->
-                val exports = exportData[m]!![f]!! // TODO
-                fragments[f] = generateProgramFragment(f, exports)
+        return JsIrProgram(
+            modules.map { m ->
+                JsIrModule(m.files.map { f ->
+                    val exports = exportData[m]!![f]!!
+                    generateProgramFragment(f, exports)
+                })
             }
-        }
-
-        return modules.map { it.files.map { fragments[it]!! } }
+        )
     }
 
     private val generateFilePaths = backendContext.configuration.getBoolean(JSConfigurationKeys.GENERATE_COMMENTS_WITH_FILE_PATH)
@@ -239,7 +238,7 @@ class IrModuleToJsTransformerTmp(
 fun generateWrappedModuleBody(
     moduleName: String,
     moduleKind: ModuleKind,
-    fragments: List<List<JsIrProgramFragment>>
+    fragments: JsIrProgram,
 ): CompilationOutputs {
     val program = Merger(
         moduleName,
@@ -260,3 +259,7 @@ fun generateWrappedModuleBody(
         null
     )
 }
+
+class JsIrModule(val fragments: List<JsIrProgramFragment>)
+
+class JsIrProgram(val modules: List<JsIrModule>)
