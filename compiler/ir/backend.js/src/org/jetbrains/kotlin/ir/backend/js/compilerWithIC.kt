@@ -113,6 +113,6 @@ fun generateJsFromAst(
     caches: Map<String, ModuleCache>
 ): CompilerResult {
     val deserializer = JsIrAstDeserializer()
-    val fragments = JsIrProgram(caches.values.map { JsIrModule(it.asts.values.mapNotNull { it.ast?.let { deserializer.deserialize(ByteArrayInputStream(it))} }) })
+    val fragments = JsIrProgram(caches.values.map { JsIrModule(it.name, it.asts.values.mapNotNull { it.ast?.let { deserializer.deserialize(ByteArrayInputStream(it))} }) })
     return CompilerResult(generateWrappedModuleBody("JS_TESTS", ModuleKind.PLAIN, fragments), null)
 }
