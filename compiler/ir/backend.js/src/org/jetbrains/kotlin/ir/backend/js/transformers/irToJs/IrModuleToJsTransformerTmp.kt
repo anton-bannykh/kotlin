@@ -57,12 +57,24 @@ class IrModuleToJsTransformerTmp(
             module.files.forEach { StaticMembersLowering(backendContext).lower(it) }
         }
 
-        val jsCode = if (fullJs) generateWrappedModuleBody(multiModule, mainModuleName, moduleKind, generateProgramFragments(modules, exportData)) else null
+        val jsCode = if (fullJs) generateWrappedModuleBody(
+            multiModule,
+            mainModuleName,
+            moduleKind,
+            generateProgramFragments(modules, exportData),
+            relativeRequirePath
+        ) else null
 
         val dceJsCode = if (dceJs) {
             eliminateDeadDeclarations(modules, backendContext, removeUnusedAssociatedObjects)
 
-            generateWrappedModuleBody(multiModule, mainModuleName, moduleKind, generateProgramFragments(modules, exportData))
+            generateWrappedModuleBody(
+                multiModule,
+                mainModuleName,
+                moduleKind,
+                generateProgramFragments(modules, exportData),
+                relativeRequirePath
+            )
         } else null
 
         return CompilerResult(jsCode, dceJsCode, dts)
@@ -109,7 +121,7 @@ class IrModuleToJsTransformerTmp(
 
         return JsIrProgram(
             modules.map { m ->
-                JsIrModule(m.externalModuleName(), m.files.map { f ->
+                JsIrModule(m.safeName, m.externalModuleName(), m.files.map { f ->
                     val exports = exportData[m]!![f]!!
                     generateProgramFragment(f, exports)
                 })
@@ -216,6 +228,10 @@ class IrModuleToJsTransformerTmp(
             result.imports[tag] = importExpression
         }
 
+        file.declarations.forEach {
+            result.definitions += computeTag(it)
+        }
+
         return result
     }
 
@@ -244,8 +260,11 @@ private fun generateWrappedModuleBody(
     mainModuleName: String,
     moduleKind: ModuleKind,
     program: JsIrProgram,
+    relativeRequirePath: Boolean,
 ): CompilationOutputs {
     if (multiModule) {
+
+        val moduleToRef = program.crossModuleDependencies(relativeRequirePath)
 
         val main = program.modules.last()
         val others = program.modules.dropLast(1)
@@ -253,7 +272,8 @@ private fun generateWrappedModuleBody(
         val mainModule = generateSingleWrappedModuleBody(
             mainModuleName,
             moduleKind,
-            main.fragments
+            main.fragments,
+            moduleToRef[main]!!
         )
 
         val dependencies = others.mapIndexed { index, module ->
@@ -262,7 +282,8 @@ private fun generateWrappedModuleBody(
             moduleName to generateSingleWrappedModuleBody(
                 moduleName,
                 moduleKind,
-                module.fragments
+                module.fragments,
+                moduleToRef[module]!!
             )
         }.reversed()
 
@@ -280,11 +301,13 @@ fun generateSingleWrappedModuleBody(
     moduleName: String,
     moduleKind: ModuleKind,
     fragments: List<JsIrProgramFragment>,
+    crossModuleReferences: CrossModuleReferences = CrossModuleReferences.Empty,
 ): CompilationOutputs {
     val program = Merger(
         moduleName,
         moduleKind,
         fragments,
+        crossModuleReferences,
         false,
         true
     ).merge()

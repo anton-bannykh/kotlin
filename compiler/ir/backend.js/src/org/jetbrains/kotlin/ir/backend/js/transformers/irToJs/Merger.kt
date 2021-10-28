@@ -14,6 +14,7 @@ class Merger(
     private val moduleName: String,
     private val moduleKind: ModuleKind,
     private val fragments: List<JsIrProgramFragment>,
+    private val crossModuleReferences: CrossModuleReferences,
     private val generateScriptModule: Boolean,
     private val generateRegionComments: Boolean,
 ) {
@@ -50,6 +51,11 @@ class Merger(
                 f.testFunInvocation?.let { rename(it) }
                 f.suiteFn?.let { f.suiteFn = rename(it) }
             }
+        }
+
+        with (nameMap) {
+            crossModuleReferences.exports
+            // TODO do renames
         }
     }
 
