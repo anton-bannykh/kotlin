@@ -19,6 +19,7 @@ import org.jetbrains.kotlin.ir.expressions.IrSetField
 import org.jetbrains.kotlin.ir.expressions.impl.*
 import org.jetbrains.kotlin.ir.util.constructedClass
 import org.jetbrains.kotlin.ir.util.isEffectivelyExternal
+import org.jetbrains.kotlin.ir.util.isInterface
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
 import org.jetbrains.kotlin.ir.visitors.transformChildrenVoid
 import org.jetbrains.kotlin.js.backend.ast.JsName
@@ -109,6 +110,13 @@ fun buildCrossModuleReferenceInfo(modules: Iterable<IrModuleFragment>): CrossMod
         module.files.forEach { file ->
             file.declarations.forEach { declaration ->
                 map[declaration] = module
+
+                // TODO move interface members to top-level via lowerings
+                if (declaration is IrClass && declaration.isInterface) {
+                    declaration.declarations.forEach {
+                        map[it] = module
+                    }
+                }
             }
         }
     }
