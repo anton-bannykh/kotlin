@@ -328,7 +328,7 @@ class CacheUpdater(
         val rootModuleCanonical = File(rootModule).canonicalPath
         val mainLibrary = libraries[rootModuleCanonical] ?: error("Main library not found in libraries: $rootModuleCanonical")
 
-        ForkJoinPool.commonPool().invoke(LibraryProcessor(mainLibrary))
+        ForkJoinPool(4).invoke(LibraryProcessor(mainLibrary))
 
 //        visitDependency(mainLibrary)
         return klibIncrementalCaches.map { it.value.fetchArtifacts() }
