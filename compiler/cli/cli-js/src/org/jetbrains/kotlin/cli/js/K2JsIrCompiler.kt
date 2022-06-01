@@ -221,7 +221,8 @@ class K2JsIrCompiler : CLICompiler<K2JSCompilerArguments>() {
                 mainCallArguments,
                 ::buildCacheForModuleFiles
             )
-            cacheUpdater.actualizeCaches { updateStatus, updatedModule ->
+//            File("/home/ab/dbg").writeText("")
+            cacheUpdater.actualizeCaches(/*{ File("/home/ab/dbg").appendText(it) }*/) { updateStatus, updatedModule ->
                 val now = System.currentTimeMillis()
                 fun reportCacheStatus(status: String, removed: Set<String> = emptySet(), updated: Set<String> = emptySet()) {
                     messageCollector.report(INFO, "IC per-file is $status duration ${now - start}ms; module [${File(updatedModule).name}]")
