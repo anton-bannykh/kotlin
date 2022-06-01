@@ -24,6 +24,13 @@ import org.jetbrains.kotlin.psi2ir.descriptors.IrBuiltInsOverDescriptors
 import org.jetbrains.kotlin.psi2ir.generators.TypeTranslatorImpl
 import org.jetbrains.kotlin.storage.LockBasedStorageManager
 import java.io.File
+import java.util.*
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.Executors
+import java.util.concurrent.ForkJoinPool
+import java.util.concurrent.ForkJoinTask
+import java.util.concurrent.RecursiveTask
+import java.util.concurrent.ThreadPoolExecutor
 
 
 fun interface CacheExecutor {
@@ -266,32 +273,64 @@ class CacheUpdater(
 
         val cacheMap = libraries.values.zip(icCachePaths).toMap()
 
-        val klibIncrementalCaches = mutableMapOf<KotlinLibrary, IncrementalCache>()
+        val klibIncrementalCaches = ConcurrentHashMap<KotlinLibrary, IncrementalCache>()//Collections.synchronizedCollection(mutableMapOf<KotlinLibrary, IncrementalCache>())
 
-        val visitedLibraries = mutableSetOf<KotlinLibrary>()
-        fun visitDependency(library: KotlinLibrary) {
-            if (library in visitedLibraries) return
-            visitedLibraries.add(library)
+        val visitedLibraries = ConcurrentHashMap<KotlinLibrary, Boolean>() //Collections.synchronizedCollection(mutableSetOf<KotlinLibrary>())
 
-            val libraryDeps = dependencyGraph[library] ?: error("Unknown library ${library.libraryName}")
-            libraryDeps.forEach { visitDependency(it) }
+        val lock = object {} // lock for callback execution
 
-            val cachePath = cacheMap[library] ?: error("Unknown cache for library ${library.libraryName}")
-            val incrementalCache = IncrementalCache(library, cachePath)
-            klibIncrementalCaches[library] = incrementalCache
+        class LibraryProcessor(val library: KotlinLibrary) : RecursiveTask<Unit>() {
+            override fun compute() {
+                if (visitedLibraries.putIfAbsent(library, true) ?: false) return
 
-            incrementalCache.invalidateCacheForNewConfig(configHash)
-            val cacheUpdater = KLibCacheUpdater(library, dependencyGraph, incrementalCache, klibIncrementalCaches)
-            val updateStatus = when {
-                cacheUpdater.checkLibrariesHash() -> CacheUpdateStatus.FastPath
-                else -> cacheUpdater.actualizeCacheForModule()
+                val libraryDeps = dependencyGraph[library] ?: error("Unknown library ${library.libraryName}")
+
+                ForkJoinTask.invokeAll(libraryDeps.map { LibraryProcessor(it) })
+
+                val cachePath = cacheMap[library] ?: error("Unknown cache for library ${library.libraryName}")
+                val incrementalCache = IncrementalCache(library, cachePath)
+                klibIncrementalCaches[library] = incrementalCache
+
+                incrementalCache.invalidateCacheForNewConfig(configHash)
+                val cacheUpdater = KLibCacheUpdater(library, dependencyGraph, incrementalCache, klibIncrementalCaches)
+                val updateStatus = when {
+                    cacheUpdater.checkLibrariesHash() -> CacheUpdateStatus.FastPath
+                    else -> cacheUpdater.actualizeCacheForModule()
+                }
+
+                synchronized(lock) {
+                    callback(updateStatus, library.libraryFile.path)
+                }
             }
-            callback(updateStatus, library.libraryFile.path)
         }
+
+
+//        fun visitDependency(library: KotlinLibrary) {
+//            if (library in visitedLibraries) return
+//            visitedLibraries.add(library)
+//
+//            val libraryDeps = dependencyGraph[library] ?: error("Unknown library ${library.libraryName}")
+//            libraryDeps.forEach { visitDependency(it) }
+//
+//            val cachePath = cacheMap[library] ?: error("Unknown cache for library ${library.libraryName}")
+//            val incrementalCache = IncrementalCache(library, cachePath)
+//            klibIncrementalCaches[library] = incrementalCache
+//
+//            incrementalCache.invalidateCacheForNewConfig(configHash)
+//            val cacheUpdater = KLibCacheUpdater(library, dependencyGraph, incrementalCache, klibIncrementalCaches)
+//            val updateStatus = when {
+//                cacheUpdater.checkLibrariesHash() -> CacheUpdateStatus.FastPath
+//                else -> cacheUpdater.actualizeCacheForModule()
+//            }
+//            callback(updateStatus, library.libraryFile.path)
+//        }
 
         val rootModuleCanonical = File(rootModule).canonicalPath
         val mainLibrary = libraries[rootModuleCanonical] ?: error("Main library not found in libraries: $rootModuleCanonical")
-        visitDependency(mainLibrary)
+
+        ForkJoinPool.commonPool().invoke(LibraryProcessor(mainLibrary))
+
+//        visitDependency(mainLibrary)
         return klibIncrementalCaches.map { it.value.fetchArtifacts() }
     }
 }
