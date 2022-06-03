@@ -30,9 +30,9 @@ value class ICHash(private val value: ULong = 0UL) {
 }
 
 private class HashCalculatorForIC {
-    private companion object {
+//    private companion object {
         private val md5 = MessageDigest.getInstance("MD5")
-    }
+//    }
 
     init {
         md5.reset()

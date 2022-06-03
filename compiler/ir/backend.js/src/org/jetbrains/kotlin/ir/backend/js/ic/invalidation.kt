@@ -19,7 +19,6 @@ import org.jetbrains.kotlin.library.KLIB_PROPERTY_DEPENDS
 import org.jetbrains.kotlin.library.KotlinLibrary
 import org.jetbrains.kotlin.name.FqName
 import java.io.File
-import java.util.*
 import java.util.concurrent.*
 
 
@@ -267,7 +266,7 @@ class CacheUpdater(
 
         val visitedLibraries = mutableMapOf<KotlinLibrary, Future<*>>()
 
-        val executor = Executors.newWorkStealingPool(4)
+        val threadPool = Executors.newWorkStealingPool(4)
 
         val lock = object {} // lock for callback execution
 
@@ -289,7 +288,7 @@ class CacheUpdater(
                 }
             }
 
-            return executor.submit {
+            return threadPool.submit {
 
                 dln("preparing: ${library.libraryName}")
 
@@ -311,16 +310,23 @@ class CacheUpdater(
                 val incrementalCache = IncrementalCache(library, cachePath)
                 klibIncrementalCaches[library.moduleCanonicalName()] = incrementalCache
 
-                incrementalCache.invalidateCacheForNewConfig(configHash)
-                val cacheUpdater = KLibCacheUpdater(library, dependencyGraph, incrementalCache, klibIncrementalCaches)
-                val updateStatus = when {
-                    cacheUpdater.checkLibrariesHash() -> CacheUpdateStatus.FastPath
-                    else -> cacheUpdater.actualizeCacheForModule()
-                }
+                val jsIrLinkerProcessor = JsIrLinkerLoader(compilerConfiguration, library, library.getDependencySubGraph(dependencyGraph), irFactory())
+                val (jsIrLinker, currentIrModule, irModules) = jsIrLinkerProcessor.processJsIrLinker(null)
 
-                synchronized(lock) {
-                    callback(updateStatus, library.libraryFile.path)
-                }
+                executor.execute(
+                    currentIrModule, irModules, jsIrLinker, compilerConfiguration, null, incrementalCache, emptySet(), mainArguments
+                )
+
+//                incrementalCache.invalidateCacheForNewConfig(configHash)
+//                val cacheUpdater = KLibCacheUpdater(library, dependencyGraph, incrementalCache, klibIncrementalCaches)
+//                val updateStatus = when {
+//                    cacheUpdater.checkLibrariesHash() -> CacheUpdateStatus.FastPath
+//                    else -> cacheUpdater.actualizeCacheForModule()
+//                }
+//
+//                synchronized(lock) {
+//                    callback(updateStatus, library.libraryFile.path)
+//                }
 
                 dln("finished: ${library.libraryName}")
             }
@@ -331,6 +337,23 @@ class CacheUpdater(
         visitDependency(mainLibrary).get()
         return klibIncrementalCaches.map { it.value.fetchArtifacts() }
     }
+}
+
+private fun KotlinLibrary.getDependencySubGraph(dependencyGraph: Map<KotlinLibrary, List<KotlinLibrary>>): Map<KotlinLibrary, List<KotlinLibrary>> {
+    val subGraph = mutableMapOf<KotlinLibrary, List<KotlinLibrary>>()
+
+    fun addDependsFor(library: KotlinLibrary) {
+        if (library in subGraph) {
+            return
+        }
+        val dependencies = dependencyGraph[library] ?: error("Cannot find dependencies for ${library.libraryName}")
+        subGraph[library] = dependencies
+        for (dependency in dependencies) {
+            addDependsFor(dependency)
+        }
+    }
+    addDependsFor(this)
+    return subGraph
 }
 
 
