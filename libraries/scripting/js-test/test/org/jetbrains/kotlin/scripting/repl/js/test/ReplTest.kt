@@ -122,8 +122,6 @@ abstract class AbstractReplTestRunner : TestCase() {
         Assert.assertEquals("OK", compileAndEval(lines))
     }
 
-    /* Ignore annotation doesn't work, so comment it
-    @Ignore("we use Object.assign inside type checks and nashorn does not support  it")
     @Test
     fun testInstanceOf() {
         val lines = listOf(
@@ -136,7 +134,6 @@ abstract class AbstractReplTestRunner : TestCase() {
         )
         Assert.assertEquals("truetrue", compileAndEval(lines))
     }
-     */
 
     @Test
     fun testScopes() {
