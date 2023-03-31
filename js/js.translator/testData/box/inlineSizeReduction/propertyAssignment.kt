@@ -2,7 +2,7 @@
 package foo
 
 // CHECK_CONTAINS_NO_CALLS: test except=SumHolder_getInstance
-// CHECK_VARS_COUNT: function=test count=2
+// CHECK_VARS_COUNT: function=test count=4
 
 object SumHolder {
     var sum = 0

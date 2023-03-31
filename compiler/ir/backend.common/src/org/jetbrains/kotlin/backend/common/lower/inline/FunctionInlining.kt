@@ -755,7 +755,7 @@ class FunctionInlining(
                 copy.extensionReceiverParameter -> original.extensionReceiverParameter?.getTypeIfFromTypeParameter()
                     ?: copy.extensionReceiverParameter!!.type
                 else -> copy.valueParameters.first { it == this }.let { valueParameter ->
-                    original.valueParameters[valueParameter.index].getTypeIfFromTypeParameter()
+                    original.valueParameters.getOrNull(valueParameter.index)?.getTypeIfFromTypeParameter()
                         ?: valueParameter.type
                 }
             }

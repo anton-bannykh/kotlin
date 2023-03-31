@@ -2,7 +2,7 @@
 package foo
 
 // CHECK_CONTAINS_NO_CALLS: test
-// CHECK_VARS_COUNT: function=test count=2
+// CHECK_VARS_COUNT: function=test count=4
 
 internal inline fun sum(x: Int, y: Int): Int {
     if (x == 0 || y == 0) return 0
