@@ -25,11 +25,14 @@ inline fun foo(n: Int) {}
 // test.kt:3 box
 // test.kt:3 box
 // test.kt:3 box
+// test.kt:4 box
 // test.kt:3 box
 // test.kt:3 box
 // test.kt:3 box
+// test.kt:4 box
 // test.kt:3 box
 // test.kt:3 box
 // test.kt:3 box
+// test.kt:4 box
 // test.kt:3 box
 // test.kt:6 box
