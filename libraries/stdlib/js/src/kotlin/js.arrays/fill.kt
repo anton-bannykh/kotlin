@@ -61,6 +61,6 @@ if (typeof Array.prototype.fill === "undefined") {
     }
 })
 """)
-internal inline fun Any.nativeFill(element: Any?, fromIndex: Int, toIndex: Int): Unit {
+internal inline fun <C, T> C.nativeFill(element: T?, fromIndex: Int, toIndex: Int): Unit {
     asDynamic().fill(element, fromIndex, toIndex)
 }
