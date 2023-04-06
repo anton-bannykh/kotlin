@@ -479,6 +479,8 @@ class K2JsIrCompiler : CLICompiler<K2JSCompilerArguments>() {
         val mainModule = MainModule.SourceFiles(environmentForJS.getSourceFiles())
         val moduleStructure = ModulesStructure(environmentForJS.project, mainModule, configuration, libraries, friendLibraries)
 
+        val lookupTracker = configuration.get(CommonConfigurationKeys.LOOKUP_TRACKER) ?: LookupTracker.DO_NOTHING
+
         val outputs = compileModuleToAnalyzedFir(
             moduleStructure = moduleStructure,
             ktFiles = environmentForJS.getSourceFiles(),
@@ -486,7 +488,8 @@ class K2JsIrCompiler : CLICompiler<K2JSCompilerArguments>() {
             friendLibraries = friendLibraries,
             messageCollector = messageCollector,
             diagnosticsReporter = diagnosticsReporter,
-            incrementalDataProvider = configuration[JSConfigurationKeys.INCREMENTAL_DATA_PROVIDER]
+            incrementalDataProvider = configuration[JSConfigurationKeys.INCREMENTAL_DATA_PROVIDER],
+            lookupTracker = lookupTracker,
         ) ?: return null
 
         if (configuration.getBoolean(CommonConfigurationKeys.INCREMENTAL_COMPILATION)) {

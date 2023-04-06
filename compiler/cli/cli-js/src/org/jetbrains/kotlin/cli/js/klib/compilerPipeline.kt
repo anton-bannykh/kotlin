@@ -68,7 +68,8 @@ fun compileModuleToAnalyzedFir(
     friendLibraries: List<String>,
     messageCollector: MessageCollector,
     diagnosticsReporter: BaseDiagnosticsCollector,
-    incrementalDataProvider: IncrementalDataProvider?
+    incrementalDataProvider: IncrementalDataProvider?,
+    lookupTracker: LookupTracker,
 ): List<ModuleCompilerAnalyzedOutput>? {
     val renderDiagnosticNames = moduleStructure.compilerConfiguration.getBoolean(CLIConfigurationKeys.RENDER_DIAGNOSTIC_INTERNAL_NAME)
 
@@ -94,7 +95,8 @@ fun compileModuleToAnalyzedFir(
 
     val sessionsWithSources = prepareJsSessions(
         ktFiles, moduleStructure.compilerConfiguration, escapedMainModuleName,
-        resolvedLibraries, dependencyList, extensionRegistrars, isCommonSourceForPsi, fileBelongsToModuleForPsi
+        resolvedLibraries, dependencyList, extensionRegistrars, isCommonSourceForPsi, fileBelongsToModuleForPsi,
+        lookupTracker
     )
 
     val outputs = sessionsWithSources.map {
