@@ -27,12 +27,7 @@ import org.jetbrains.kotlin.cli.common.messages.CompilerMessageLocation
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity.*
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
 import org.jetbrains.kotlin.cli.common.messages.MessageUtil
-import org.jetbrains.kotlin.cli.js.klib.TopDownAnalyzerFacadeForJSIR
-import org.jetbrains.kotlin.cli.js.klib.TopDownAnalyzerFacadeForWasm
-import org.jetbrains.kotlin.cli.js.klib.compileModuleToAnalyzedFir
-import org.jetbrains.kotlin.cli.js.klib.generateIrForKlibSerialization
-import org.jetbrains.kotlin.cli.js.klib.serializeFirKlib
-import org.jetbrains.kotlin.cli.js.klib.transformFirToIr
+import org.jetbrains.kotlin.cli.js.klib.*
 import org.jetbrains.kotlin.cli.jvm.compiler.EnvironmentConfigFiles
 import org.jetbrains.kotlin.cli.jvm.compiler.KotlinCoreEnvironment
 import org.jetbrains.kotlin.cli.jvm.plugins.PluginCliParser
@@ -61,6 +56,7 @@ import org.jetbrains.kotlin.konan.file.ZipFileSystemCacheableAccessor
 import org.jetbrains.kotlin.library.metadata.KlibMetadataVersion
 import org.jetbrains.kotlin.metadata.deserialization.BinaryVersion
 import org.jetbrains.kotlin.name.FqName
+import org.jetbrains.kotlin.progress.IncrementalNextRoundException
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.serialization.js.ModuleKind
 import org.jetbrains.kotlin.utils.KotlinPaths
@@ -489,8 +485,14 @@ class K2JsIrCompiler : CLICompiler<K2JSCompilerArguments>() {
             libraries = libraries,
             friendLibraries = friendLibraries,
             messageCollector = messageCollector,
-            diagnosticsReporter = diagnosticsReporter
+            diagnosticsReporter = diagnosticsReporter,
+            incrementalDataProvider = configuration[JSConfigurationKeys.INCREMENTAL_DATA_PROVIDER]
         ) ?: return null
+
+        if (configuration.getBoolean(CommonConfigurationKeys.INCREMENTAL_COMPILATION)) {
+            /** can throw [IncrementalNextRoundException] */
+            compareFirMetadataAndGoToNextICRoundIfNeeded(moduleStructure, outputs, configuration)
+        }
 
         // FIR2IR
         val irResult = transformFirToIr(moduleStructure, outputs, diagnosticsReporter)

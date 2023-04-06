@@ -5,6 +5,8 @@
 
 package org.jetbrains.kotlin.cli.js.klib
 
+import com.intellij.openapi.project.Project
+import com.intellij.openapi.vfs.VfsUtilCore
 import org.jetbrains.kotlin.KtSourceFile
 import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
 import org.jetbrains.kotlin.builtins.DefaultBuiltIns
@@ -17,6 +19,7 @@ import org.jetbrains.kotlin.cli.common.messages.AnalyzerWithCompilerReport
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
 import org.jetbrains.kotlin.cli.common.prepareJsSessions
 import org.jetbrains.kotlin.config.CommonConfigurationKeys
+import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.config.LanguageVersionSettings
 import org.jetbrains.kotlin.config.languageVersionSettings
 import org.jetbrains.kotlin.descriptors.impl.ModuleDescriptorImpl
@@ -40,17 +43,22 @@ import org.jetbrains.kotlin.fir.serialization.FirElementAwareSerializableStringT
 import org.jetbrains.kotlin.fir.serialization.FirKLibSerializerExtension
 import org.jetbrains.kotlin.fir.serialization.serializeSingleFirFile
 import org.jetbrains.kotlin.incremental.components.LookupTracker
+import org.jetbrains.kotlin.incremental.js.IncrementalDataProvider
 import org.jetbrains.kotlin.ir.backend.js.*
 import org.jetbrains.kotlin.ir.backend.js.lower.serialization.ir.JsManglerIr
 import org.jetbrains.kotlin.ir.util.IrMessageLogger
+import org.jetbrains.kotlin.js.config.JSConfigurationKeys
+import org.jetbrains.kotlin.js.config.JsConfig
 import org.jetbrains.kotlin.js.resolve.JsPlatformAnalyzerServices
 import org.jetbrains.kotlin.library.KotlinAbiVersion
 import org.jetbrains.kotlin.library.unresolvedDependencies
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.platform.js.JsPlatforms
+import org.jetbrains.kotlin.progress.IncrementalNextRoundException
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.storage.LockBasedStorageManager
 import org.jetbrains.kotlin.utils.metadataVersion
+import java.io.File
 import java.nio.file.Paths
 
 fun compileModuleToAnalyzedFir(
@@ -59,7 +67,8 @@ fun compileModuleToAnalyzedFir(
     libraries: List<String>,
     friendLibraries: List<String>,
     messageCollector: MessageCollector,
-    diagnosticsReporter: BaseDiagnosticsCollector
+    diagnosticsReporter: BaseDiagnosticsCollector,
+    incrementalDataProvider: IncrementalDataProvider?
 ): List<ModuleCompilerAnalyzedOutput>? {
     val renderDiagnosticNames = moduleStructure.compilerConfiguration.getBoolean(CLIConfigurationKeys.RENDER_DIAGNOSTIC_INTERNAL_NAME)
 
@@ -76,11 +85,12 @@ fun compileModuleToAnalyzedFir(
     val binaryModuleData = BinaryModuleData.initialize(escapedMainModuleName, JsPlatforms.defaultJsPlatform, JsPlatformAnalyzerServices)
     val dependencyList = DependencyListForCliModule.build(binaryModuleData) {
         dependencies(libraries.map { Paths.get(it).toAbsolutePath() })
-        friendDependencies(friendLibraries.map { Paths.get(it).toAbsolutePath() })
+        friendDependencies(friendLibraries.map { Paths.get(it).toAbsolutePath() } +
+                                   if (incrementalDataProvider != null) listOf(Paths.get(FAKE_IC_LIBRARY_PATH)) else emptyList())
         // TODO: !!! dependencies module data?
     }
 
-    val resolvedLibraries = moduleStructure.allDependencies
+    val resolvedLibraries = moduleStructure.allDependencies + (incrementalDataProvider?.let { listOf(IcKotlinLibrary(it)) } ?: emptyList())
 
     val sessionsWithSources = prepareJsSessions(
         ktFiles, moduleStructure.compilerConfiguration, escapedMainModuleName,
@@ -195,4 +205,44 @@ fun serializeFirKlib(
             moduleStructure.compilerConfiguration.languageVersionSettings,
         )
     }
+}
+
+fun compareFirMetadataAndGoToNextICRoundIfNeeded(
+    moduleStructure: ModulesStructure,
+    firOutputs: List<ModuleCompilerAnalyzedOutput>,
+    config: CompilerConfiguration,
+) {
+    val sourceFiles = mutableListOf<KtSourceFile>()
+    val firFilesAndSessionsBySourceFile = mutableMapOf<KtSourceFile, Triple<FirFile, FirSession, ScopeSession>>()
+
+    for (output in firOutputs) {
+        output.fir.forEach {
+            sourceFiles.add(it.sourceFile!!)
+            firFilesAndSessionsBySourceFile[it.sourceFile!!] = Triple(it, output.session, output.scopeSession)
+        }
+    }
+
+    val metadataVersion = moduleStructure.compilerConfiguration.metadataVersion()
+
+    val nextRoundChecker = config.get(JSConfigurationKeys.INCREMENTAL_NEXT_ROUND_CHECKER) ?: return
+
+    for (ktFile in sourceFiles) {
+
+        val (firFile, session, scopeSession) = firFilesAndSessionsBySourceFile[ktFile]
+            ?: error("cannot find FIR file by source file ${ktFile.name} (${ktFile.path})")
+
+        val packageFragment = serializeSingleFirFile(
+            firFile,
+            session,
+            scopeSession,
+            FirKLibSerializerExtension(session, metadataVersion, FirElementAwareSerializableStringTable()),
+            moduleStructure.compilerConfiguration.languageVersionSettings,
+        )
+
+        // to minimize a number of IC rounds, we should inspect all proto for changes first,
+        // then go to a next round if needed, with all new dirty files
+        nextRoundChecker.checkProtoChanges(File(ktFile.path!!), packageFragment.toByteArray())
+    }
+
+    if (nextRoundChecker.shouldGoToNextRound()) throw IncrementalNextRoundException()
 }
