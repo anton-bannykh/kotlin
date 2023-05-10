@@ -308,7 +308,6 @@ internal val functionInliningPhase = makeIrModulePhase(
             inlinePureArguments = false,
             regenerateInlinedAnonymousObjects = true,
             inlineArgumentsWithTheirOriginalTypeAndOffset = true,
-            shouldKeepOriginalGenericTypeInsteadOfSubstituted = true
         )
     },
     name = "FunctionInliningPhase",

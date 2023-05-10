@@ -2,8 +2,7 @@
 package foo
 
 // CHECK_CONTAINS_NO_CALLS: test
-// CHECK_VARS_COUNT: function=test count=2 TARGET_BACKENDS=JS
-// CHECK_VARS_COUNT: function=test count=4 TARGET_BACKENDS=JS_IR
+// CHECK_VARS_COUNT: function=test count=2
 
 internal inline fun sign(x: Int): Int {
     if (x < 0) return -1

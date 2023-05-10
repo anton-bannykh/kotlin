@@ -61,7 +61,6 @@ if (typeof Array.prototype.fill === "undefined") {
     }
 })
 """)
-// It's required to have a generic extension receiver and an element type here to avoid autoboxing for inline-classes such as Char
-internal inline fun <C, T> C.nativeFill(element: T?, fromIndex: Int, toIndex: Int): Unit {
+internal inline fun Any.nativeFill(element: Any?, fromIndex: Int, toIndex: Int): Unit {
     asDynamic().fill(element, fromIndex, toIndex)
 }

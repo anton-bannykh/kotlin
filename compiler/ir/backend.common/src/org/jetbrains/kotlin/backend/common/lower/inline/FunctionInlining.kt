@@ -91,7 +91,6 @@ class FunctionInlining(
     private val regenerateInlinedAnonymousObjects: Boolean = false,
     private val inlineArgumentsWithTheirOriginalTypeAndOffset: Boolean = false,
     private val allowExternalInlining: Boolean = false,
-    private val shouldKeepOriginalGenericTypeInsteadOfSubstituted: Boolean = false,
 ) : IrElementTransformerVoidWithContext(), BodyLoweringPass {
     private var containerScope: ScopeWithIr? = null
 
@@ -722,7 +721,7 @@ class FunctionInlining(
         // In short this is needed for `kt44429` test. We need to get original generic type to trick type system on JVM backend.
         // Probably this it is relevant only for numeric types in JVM.
         private fun IrValueParameter.getOriginalType(): IrType {
-            if (!shouldKeepOriginalGenericTypeInsteadOfSubstituted || this.parent !is IrFunction) return type
+            if (this.parent !is IrFunction) return type
             val copy = this.parent as IrFunction // contains substituted type parameters with corresponding type arguments
             val original = copy.originalFunction // contains original unsubstituted type parameters
 
