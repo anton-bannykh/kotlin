@@ -88,69 +88,6 @@ private class VariableValues {
     }
 }
 
-private class ExpressionValuesExtractor(val context: Context,
-                                        val returnableBlockValues: Map<IrReturnableBlock, List<IrExpression>>,
-                                        val suspendableExpressionValues: Map<IrSuspendableExpression, List<IrSuspensionPoint>>) {
-
-    val unit = IrGetObjectValueImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET,
-            context.irBuiltIns.unitType, context.ir.symbols.unit)
-
-    val nothing = IrGetObjectValueImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET,
-            context.irBuiltIns.nothingType, context.ir.symbols.nothing)
-
-    fun forEachValue(expression: IrExpression, block: (IrExpression) -> Unit) {
-        when (expression) {
-            is IrReturnableBlock -> returnableBlockValues[expression]!!.forEach { forEachValue(it, block) }
-
-            is IrSuspendableExpression ->
-                (suspendableExpressionValues[expression]!! + expression.result).forEach { forEachValue(it, block) }
-
-            is IrSuspensionPoint -> {
-                forEachValue(expression.result, block)
-                forEachValue(expression.resumeResult, block)
-            }
-
-            is IrContainerExpression -> {
-                if (expression.statements.isNotEmpty())
-                    forEachValue(
-                            expression = (expression.statements.last() as? IrExpression) ?: unit,
-                            block      = block
-                    )
-            }
-
-            is IrWhen -> expression.branches.forEach { forEachValue(it.result, block) }
-
-            is IrTypeOperatorCall -> {
-                if (!expression.operator.isCast())
-                    block(expression)
-                else { // Propagate cast to sub-values.
-                    forEachValue(expression.argument) { value ->
-                        with(expression) {
-                            block(IrTypeOperatorCallImpl(startOffset, endOffset, type, operator, typeOperand, value))
-                        }
-                    }
-                }
-            }
-
-            is IrTry -> {
-                forEachValue(expression.tryResult, block)
-                expression.catches.forEach { forEachValue(it.result, block) }
-            }
-
-            is IrVararg, /* Sometimes, we keep vararg till codegen phase (for constant arrays). */
-            is IrMemberAccessExpression<*>, is IrGetValue, is IrGetField, is IrConst<*>,
-            is IrGetObjectValue, is IrFunctionReference, is IrSetField,
-            is IrConstantValue -> block(expression)
-
-            else -> when {
-                expression.type.isUnit() -> unit
-                expression.type.isNothing() -> nothing
-                else -> TODO(ir2stringWhole(expression))
-            }
-        }
-    }
-}
-
 internal class ModuleDFG(val functions: Map<DataFlowIR.FunctionSymbol, DataFlowIR.Function>,
                          val symbolTable: DataFlowIR.SymbolTable)
 
