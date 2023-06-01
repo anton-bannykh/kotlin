@@ -307,7 +307,7 @@ internal val functionInliningPhase = makeIrModulePhase(
             context, JvmInlineFunctionResolver(), context.innerClassesSupport,
             inlinePureArguments = false,
             regenerateInlinedAnonymousObjects = true,
-            inlineArgumentsWithTheirOriginalTypeAndOffset = true,
+            inlineArgumentsWithTheirOriginalTypeAndOffset = true
         )
     },
     name = "FunctionInliningPhase",
