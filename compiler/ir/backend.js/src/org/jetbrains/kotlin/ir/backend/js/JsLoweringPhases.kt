@@ -741,13 +741,6 @@ private val autoboxingTransformerPhase = makeBodyLoweringPhase(
     description = "Insert box/unbox intrinsics"
 )
 
-private val autoboxingOptimizationPhase = makeBodyLoweringPhase(
-    ::AutoboxingOptimizationLowering,
-    name = "AutoboxingOptimizationLowering",
-    description = "[Optimization] Remove unnecessary box/unbox inside function bodys",
-    prerequisite = setOf(autoboxingTransformerPhase)
-)
-
 private val blockDecomposerLoweringPhase = makeBodyLoweringPhase(
     ::JsBlockDecomposerLowering,
     name = "BlockDecomposerLowering",
@@ -955,7 +948,6 @@ val loweringList = listOf<Lowering>(
     inlineClassDeclarationLoweringPhase,
     inlineClassUsageLoweringPhase,
     autoboxingTransformerPhase,
-    autoboxingOptimizationPhase,
     objectDeclarationLoweringPhase,
     blockDecomposerLoweringPhase,
     invokeStaticInitializersPhase,
