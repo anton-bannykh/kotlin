@@ -24,6 +24,5 @@ inline fun lookAtMe(f: (String) -> Unit) {
 
 // EXPECTATIONS JS_IR
 // test.kt:11 box
-// test.kt:12 box
 // test.kt:6 box
 // test.kt:8 box
