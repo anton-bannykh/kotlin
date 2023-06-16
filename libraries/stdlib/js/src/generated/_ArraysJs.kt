@@ -1268,8 +1268,8 @@ public actual fun BooleanArray.fill(element: Boolean, fromIndex: Int = 0, toInde
 @Suppress("ACTUAL_FUNCTION_WITH_DEFAULT_ARGUMENTS")
 public actual fun CharArray.fill(element: Char, fromIndex: Int = 0, toIndex: Int = size): Unit {
     AbstractList.checkRangeIndexes(fromIndex, toIndex, size)
-    // We need to call [Char.hashCode] here to eliminate Char-boxing with the new JS function inlining logic
-    nativeFill(element.hashCode(), fromIndex, toIndex)
+    // We need to call [Char.code] here to eliminate Char-boxing with the new JS function inlining logic
+    nativeFill(element.code, fromIndex, toIndex)
 }
 
 /**

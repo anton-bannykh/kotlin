@@ -1631,8 +1631,8 @@ object ArrayOps : TemplateGroupBase() {
                         body {
                             """
                             AbstractList.checkRangeIndexes(fromIndex, toIndex, size)
-                            // We need to call [Char.hashCode] here to eliminate Char-boxing with the new JS function inlining logic
-                            nativeFill(element.hashCode(), fromIndex, toIndex)
+                            // We need to call [Char.code] here to eliminate Char-boxing with the new JS function inlining logic
+                            nativeFill(element.code, fromIndex, toIndex)
                             """
                         }
                     }
