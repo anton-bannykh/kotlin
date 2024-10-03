@@ -191,6 +191,11 @@ public class SirAsSwiftSourcesPrinter(
     }
 
     private fun SirCallable.print() {
+        (this as? SirFunction)?.extensionReceiverParameter?.let {
+            println("extension ${it.type.swiftRender} {")
+            pushIndent()
+        }
+
         printDocumentation()
         printAttributes()
         printModifiers()
@@ -211,6 +216,11 @@ public class SirAsSwiftSourcesPrinter(
             body.print()
         }
         println("}")
+
+        if (this is SirFunction && extensionReceiverParameter != null) {
+            popIndent()
+            println("}")
+        }
     }
 
     private fun SirClassMemberDeclaration.printOverride() {
@@ -377,7 +387,7 @@ public class SirAsSwiftSourcesPrinter(
     private fun SirCallable.collectParameters(): List<SirParameter> = when (this) {
         is SirGetter -> emptyList()
         is SirSetter -> emptyList()
-        is SirFunction -> listOfNotNull(extensionReceiverParameter) + parameters
+        is SirFunction -> parameters
         is SirInit -> parameters
     }
 
