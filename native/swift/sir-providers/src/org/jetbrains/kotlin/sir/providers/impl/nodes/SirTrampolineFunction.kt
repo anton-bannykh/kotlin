@@ -40,10 +40,10 @@ public class SirTrampolineFunction(
     override var body: SirFunctionBody?
         get() = SirFunctionBody(
             listOf(
-                "${source.swiftFqName}(${this.parameters.joinToString { it.forward ?: error("unreachable") }})"
+                "${source.swiftFqName}(${(listOfNotNull(extensionReceiverParameter) + parameters).joinToString { it.forward ?: error("unreachable") }})"
             )
         )
         set(_) = Unit
 }
 
-private val SirParameter.forward: String? get() = this.name?.let { name -> this.argumentName?.let { "$it: $name" } ?: name }
+internal val SirParameter.forward: String? get() = this.name?.let { name -> this.argumentName?.let { "$it: $name" } ?: name }

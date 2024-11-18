@@ -21,3 +21,6 @@ fun reverseListNothing(l: List<Nothing>) = l.reversed()
 fun reverseListOptNothing(l: List<Nothing?>) = l.reversed()
 
 fun List<Int>.extReverseListInt() = this.reversed()
+
+val List<Int>.extReverseListIntProp
+        get() = this.reversed()

@@ -23,6 +23,7 @@ import org.jetbrains.sir.lightclasses.extensions.lazyWithSessions
 import org.jetbrains.sir.lightclasses.extensions.withSessions
 import org.jetbrains.sir.lightclasses.utils.isSubtypeOf
 import org.jetbrains.sir.lightclasses.utils.overridableCandidates
+import org.jetbrains.sir.lightclasses.utils.translateExtensionParameter
 import org.jetbrains.sir.lightclasses.utils.translateReturnType
 import org.jetbrains.sir.lightclasses.utils.translatedAttributes
 
@@ -42,6 +43,9 @@ internal abstract class SirAbstractVariableFromKtSymbol(
     }
     override val type: SirType by lazy {
         translateReturnType()
+    }
+    override val extensionReceiverParameter: SirParameter? by lazy {
+        translateExtensionParameter()
     }
     override val getter: SirGetter by lazy {
         ((ktSymbol as? KaPropertySymbol)?.let {

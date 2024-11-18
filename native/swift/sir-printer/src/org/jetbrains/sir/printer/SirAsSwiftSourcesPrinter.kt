@@ -153,6 +153,12 @@ public class SirAsSwiftSourcesPrinter(
         if (stableDeclarationsOrder) sortedWith(comparator) else this
 
     private fun SirVariable.print() {
+        if (extensionReceiverParameter != null) {
+            getter.printAsFunction()
+            setter?.printAsFunction()
+            return
+        }
+
         printDocumentation()
         printAttributes()
         printModifiers()
@@ -167,6 +173,31 @@ public class SirAsSwiftSourcesPrinter(
         withIndent {
             getter.print()
             setter?.print()
+        }
+        println("}")
+    }
+
+    private fun SirAccessor.printAsFunction() {
+        val prop = parent as SirVariable
+        prop.apply {
+            printDocumentation()
+            printAttributes()
+            printModifiers()
+            printOverride()
+        }
+        val swiftName = (if (this is SirGetter) "get" else "set") + prop.name.swiftIdentifier.replaceFirstChar { it.titlecase() }
+        print("func $swiftName")
+        printPostNameKeywords()
+        print("(")
+        val parameters = listOfNotNull(prop.extensionReceiverParameter) + allParameters
+        parameters.print()
+        print(")")
+        if (this is SirGetter) {
+            print(" -> ${prop.type.swiftRender}")
+        }
+        println(" {")
+        withIndent {
+            body.print()
         }
         println("}")
     }

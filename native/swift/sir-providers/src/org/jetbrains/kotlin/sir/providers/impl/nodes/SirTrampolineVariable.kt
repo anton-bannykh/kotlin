@@ -8,7 +8,7 @@ package org.jetbrains.kotlin.sir.providers.impl.nodes
 import org.jetbrains.kotlin.sir.*
 import org.jetbrains.kotlin.sir.builder.buildGetterCopy
 import org.jetbrains.kotlin.sir.builder.buildSetterCopy
-import org.jetbrains.kotlin.sir.util.swiftFqName
+import org.jetbrains.kotlin.sir.util.*
 
 public class SirTrampolineVariable(
     public val source: SirVariable,
@@ -23,14 +23,13 @@ public class SirTrampolineVariable(
     override val isInstance: Boolean get() = false
     override val modality: SirModality get() = SirModality.UNSPECIFIED
     override val attributes: List<SirAttribute> get() = source.attributes
+    override val extensionReceiverParameter: SirParameter? get() = source.extensionReceiverParameter
     override val getter: SirGetter by lazy {
         buildGetterCopy(source.getter) {
             origin = SirOrigin.Trampoline(source.getter)
-            body = SirFunctionBody(
-                listOf(
-                    source.swiftFqName
-                )
-            )
+            body = source.getter.trampolineBody()
+        }.also {
+            it.parent = this
         }
     }
 
@@ -38,12 +37,26 @@ public class SirTrampolineVariable(
         source.setter?.let { setter ->
             buildSetterCopy(setter) {
                 origin = SirOrigin.Trampoline(setter)
-                body = SirFunctionBody(
-                    listOf(
-                        "${source.swiftFqName} = newValue"
-                    )
-                )
+                body = setter.trampolineBody()
+            }.also {
+                it.parent = this
             }
         }
     }
+}
+
+private fun SirAccessor.trampolineBody(): SirFunctionBody {
+    val prop = parent as SirVariable
+
+    var body = ""
+    prop.extensionReceiverParameter?.let {
+        body += "$swiftFqName(${it.forward}"
+        if (this is SirSetter) body += ", newValue"
+        body += ")"
+    } ?: run {
+        body += prop.swiftFqName
+        if (this is SirSetter) body += " = newValue"
+    }
+
+    return SirFunctionBody(listOf(body))
 }

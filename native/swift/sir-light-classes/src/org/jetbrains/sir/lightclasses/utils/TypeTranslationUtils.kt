@@ -39,7 +39,7 @@ internal inline fun <reified T : KaCallableSymbol> SirFromKtSymbol<T>.translateE
     return withSessions {
         this@translateExtensionParameter.ktSymbol.receiverParameter?.let { receiver ->
             val sirType = createParameterType(ktSymbol, receiver)
-            SirParameter(argumentName = receiver.name.asStringStripSpecialMarkers(), type = sirType, origin = KotlinParameterOrigin.ReceiverParameter(receiver))
+            SirParameter(parameterName = receiver.name.asStringStripSpecialMarkers(), type = sirType, origin = KotlinParameterOrigin.ReceiverParameter(receiver))
         }
     }
 }

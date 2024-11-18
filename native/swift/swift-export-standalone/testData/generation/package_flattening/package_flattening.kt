@@ -16,6 +16,11 @@ typealias Typealias = Int
 
 class Clazz
 
+val Int.x: String
+    get() = "test"
+
+fun String.y(): Int = 5
+
 fun function(arg: Int) = arg
 
 var variable: Int = 0

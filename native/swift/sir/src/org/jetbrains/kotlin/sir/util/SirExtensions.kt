@@ -76,3 +76,9 @@ val SirFunction.swiftFqName: String
 
 val SirVariable.swiftFqName: String
     get() = swiftParentNamePrefix?.let { "$it.${name.swiftSanitizedName}" } ?: name.swiftSanitizedName
+
+val SirAccessor.swiftFqName: String
+    get() = (parent as SirVariable).swiftParentNamePrefix?.let {"$it.$extensionSwiftName"} ?: extensionSwiftName
+
+val SirAccessor.extensionSwiftName: String
+    get() = (if (this is SirGetter) "get" else "set") + (parent as SirVariable).name.swiftIdentifier.replaceFirstChar { it.titlecase() }
