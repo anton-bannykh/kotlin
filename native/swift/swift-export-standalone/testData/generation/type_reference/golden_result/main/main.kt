@@ -22,6 +22,10 @@
 
 import kotlin.native.internal.ExportedBridge
 import kotlinx.cinterop.*
+import extensionOnNullabeRef
+import extensionOnNullablePrimitive
+import extensionVarOnNullablePrimitive
+import extensionVarOnNullableRef
 
 @ExportedBridge("Class_without_package_INNER_CLASS_init_allocate")
 public fun Class_without_package_INNER_CLASS_init_allocate(): kotlin.native.internal.NativePtr {

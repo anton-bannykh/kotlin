@@ -26,9 +26,13 @@ internal class BridgeGeneratorImpl(private val typeNamer: SirTypeNamer) : Bridge
             is SirFunction -> {
                 add(
                     request.descriptor(typeNamer).createFunctionBridge {
-                        if (selfParameter != null && extensionReceiverParameter != null) {
-                            "__${selfParameter.name}.run { __${extensionReceiverParameter.name}.${kotlinFqName.last()}(${args.joinToString()}) }"
-                        } else "$name(${args.joinToString()})"
+                        if (extensionReceiverParameter != null) {
+                            if (selfParameter != null) {
+                                "__${selfParameter.name}.run { __${extensionReceiverParameter.name}.${kotlinFqName.last()}(${args.joinToString()}) }"
+                            } else {
+                                "__${extensionReceiverParameter.name}.${kotlinFqName.last()}(${args.joinToString()})"
+                            }
+                        } else  "$name(${args.joinToString()})"
                     }
                 )
             }
@@ -36,8 +40,10 @@ internal class BridgeGeneratorImpl(private val typeNamer: SirTypeNamer) : Bridge
                 add(
                     request.descriptor(typeNamer).createFunctionBridge {
                         require(args.isEmpty()) { "Received a getter $name with ${args.size} parameters instead of no parameters, aborting" }
-                        if (selfParameter != null && extensionReceiverParameter != null) {
-                            "__${selfParameter.name}.run { __${extensionReceiverParameter.name}.${kotlinFqName.last()} }"
+                        if (extensionReceiverParameter != null) {
+                            if (selfParameter != null) {
+                                "__${selfParameter.name}.run { __${extensionReceiverParameter.name}.${kotlinFqName.last()} }"
+                            } else "__${extensionReceiverParameter.name}.${kotlinFqName.last()}"
                         } else name
                     }
                 )
@@ -46,8 +52,10 @@ internal class BridgeGeneratorImpl(private val typeNamer: SirTypeNamer) : Bridge
                 add(
                     request.descriptor(typeNamer).createFunctionBridge {
                         require(args.size == 1) { "Received a setter $name with ${args.size} parameters instead of a single one, aborting" }
-                        if (selfParameter != null && extensionReceiverParameter != null) {
-                            "__${selfParameter.name}.run { __${extensionReceiverParameter.name}.${kotlinFqName.last()} = ${args.single()} }"
+                        if (extensionReceiverParameter != null) {
+                            if (selfParameter != null) {
+                                "__${selfParameter.name}.run { __${extensionReceiverParameter.name}.${kotlinFqName.last()} = ${args.single()} }"
+                            } else "__${extensionReceiverParameter.name}.${kotlinFqName.last()} = ${args.single()}"
                         } else "$name = ${args.single()}"
                     }
                 )
@@ -111,8 +119,8 @@ private class BridgeFunctionDescriptor(
     val name
         get() = if (selfParameter != null) {
             "__${selfParameter.name}.${kotlinFqName.last()}"
-        } else if (extensionReceiverParameter != null) { // TODO both
-            "__${extensionReceiverParameter.name}.${kotlinFqName.last()}"
+//        } else if (extensionReceiverParameter != null) { // TODO both
+//            "__${extensionReceiverParameter.name}.${kotlinFqName.last()}"
         } else {
             kotlinFqName.joinToString(separator = ".")
         }
@@ -226,9 +234,13 @@ private fun BridgeFunctionDescriptor.cDeclaration() =
 
 private fun BridgeFunctionDescriptor.createFunctionBridge(kotlinCall: BridgeFunctionDescriptor.() -> String) =
     FunctionBridge(
-        KotlinFunctionBridge(createKotlinBridge(typeNamer, kotlinCall), listOf(exportAnnotationFqName, cinterop)),
+        KotlinFunctionBridge(createKotlinBridge(typeNamer, kotlinCall), listOf(exportAnnotationFqName, cinterop) + extensionImports),
         CFunctionBridge(listOf(cDeclaration()), listOf(foundationHeader, stdintHeader))
     )
+
+// Top-level extension properties need to be imported because calling them by fully qualified names is impossible.
+private val BridgeFunctionDescriptor.extensionImports
+    get() = if (extensionReceiverParameter != null && selfParameter == null) listOf(name) else emptyList()
 
 private fun SirCallable.bridgeParameters() = allParameters.mapIndexed { index, value -> bridgeParameter(value, index) }
 
