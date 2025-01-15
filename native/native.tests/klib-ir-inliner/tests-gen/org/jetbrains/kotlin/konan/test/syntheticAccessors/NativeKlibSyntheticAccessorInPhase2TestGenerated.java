@@ -10,7 +10,6 @@ import org.jetbrains.kotlin.test.util.KtTestUtil;
 import org.jetbrains.kotlin.konan.test.blackbox.support.EnforcedProperty;
 import org.jetbrains.kotlin.konan.test.blackbox.support.ClassLevelProperty;
 import org.jetbrains.kotlin.konan.test.blackbox.support.group.UseExtTestCaseGroupProvider;
-import org.jetbrains.kotlin.konan.test.blackbox.support.group.FirPipeline;
 import org.jetbrains.kotlin.test.TargetBackend;
 import org.jetbrains.kotlin.test.TestMetadata;
 import org.junit.jupiter.api.Nested;
@@ -26,7 +25,6 @@ import java.util.regex.Pattern;
 @EnforcedProperty(property = ClassLevelProperty.TEST_KIND, propertyValue = "STANDALONE")
 @EnforcedProperty(property = ClassLevelProperty.CACHE_MODE, propertyValue = "NO")
 @UseExtTestCaseGroupProvider()
-@FirPipeline()
 public class NativeKlibSyntheticAccessorInPhase2TestGenerated extends AbstractNativeKlibSyntheticAccessorInPhase2Test {
   @Test
   public void testAllFilesPresentInSyntheticAccessors() {
@@ -39,7 +37,6 @@ public class NativeKlibSyntheticAccessorInPhase2TestGenerated extends AbstractNa
   @EnforcedProperty(property = ClassLevelProperty.TEST_KIND, propertyValue = "STANDALONE")
   @EnforcedProperty(property = ClassLevelProperty.CACHE_MODE, propertyValue = "NO")
   @UseExtTestCaseGroupProvider()
-  @FirPipeline()
   public class OuterThis {
     @Test
     public void testAllFilesPresentInOuterThis() {
@@ -52,7 +49,6 @@ public class NativeKlibSyntheticAccessorInPhase2TestGenerated extends AbstractNa
     @EnforcedProperty(property = ClassLevelProperty.TEST_KIND, propertyValue = "STANDALONE")
     @EnforcedProperty(property = ClassLevelProperty.CACHE_MODE, propertyValue = "NO")
     @UseExtTestCaseGroupProvider()
-    @FirPipeline()
     public class CrossFileLeak {
       @Test
       public void testAllFilesPresentInCrossFileLeak() {
@@ -132,7 +128,6 @@ public class NativeKlibSyntheticAccessorInPhase2TestGenerated extends AbstractNa
     @EnforcedProperty(property = ClassLevelProperty.TEST_KIND, propertyValue = "STANDALONE")
     @EnforcedProperty(property = ClassLevelProperty.CACHE_MODE, propertyValue = "NO")
     @UseExtTestCaseGroupProvider()
-    @FirPipeline()
     public class CrossModuleLeak {
       @Test
       public void testAllFilesPresentInCrossModuleLeak() {
@@ -212,7 +207,6 @@ public class NativeKlibSyntheticAccessorInPhase2TestGenerated extends AbstractNa
     @EnforcedProperty(property = ClassLevelProperty.TEST_KIND, propertyValue = "STANDALONE")
     @EnforcedProperty(property = ClassLevelProperty.CACHE_MODE, propertyValue = "NO")
     @UseExtTestCaseGroupProvider()
-    @FirPipeline()
     public class SingleFile {
       @Test
       public void testAllFilesPresentInSingleFile() {
@@ -293,7 +287,6 @@ public class NativeKlibSyntheticAccessorInPhase2TestGenerated extends AbstractNa
   @EnforcedProperty(property = ClassLevelProperty.TEST_KIND, propertyValue = "STANDALONE")
   @EnforcedProperty(property = ClassLevelProperty.CACHE_MODE, propertyValue = "NO")
   @UseExtTestCaseGroupProvider()
-  @FirPipeline()
   public class PrivateMember {
     @Test
     public void testAllFilesPresentInPrivateMember() {
@@ -306,7 +299,6 @@ public class NativeKlibSyntheticAccessorInPhase2TestGenerated extends AbstractNa
     @EnforcedProperty(property = ClassLevelProperty.TEST_KIND, propertyValue = "STANDALONE")
     @EnforcedProperty(property = ClassLevelProperty.CACHE_MODE, propertyValue = "NO")
     @UseExtTestCaseGroupProvider()
-    @FirPipeline()
     public class CrossFilePrivateLeak {
       @Test
       public void testAllFilesPresentInCrossFilePrivateLeak() {
@@ -608,7 +600,6 @@ public class NativeKlibSyntheticAccessorInPhase2TestGenerated extends AbstractNa
     @EnforcedProperty(property = ClassLevelProperty.TEST_KIND, propertyValue = "STANDALONE")
     @EnforcedProperty(property = ClassLevelProperty.CACHE_MODE, propertyValue = "NO")
     @UseExtTestCaseGroupProvider()
-    @FirPipeline()
     public class CrossModulePrivateLeak {
       @Test
       public void testAllFilesPresentInCrossModulePrivateLeak() {
@@ -910,7 +901,6 @@ public class NativeKlibSyntheticAccessorInPhase2TestGenerated extends AbstractNa
     @EnforcedProperty(property = ClassLevelProperty.TEST_KIND, propertyValue = "STANDALONE")
     @EnforcedProperty(property = ClassLevelProperty.CACHE_MODE, propertyValue = "NO")
     @UseExtTestCaseGroupProvider()
-    @FirPipeline()
     public class SingleFile {
       @Test
       public void testAllFilesPresentInSingleFile() {
@@ -1087,7 +1077,6 @@ public class NativeKlibSyntheticAccessorInPhase2TestGenerated extends AbstractNa
   @EnforcedProperty(property = ClassLevelProperty.TEST_KIND, propertyValue = "STANDALONE")
   @EnforcedProperty(property = ClassLevelProperty.CACHE_MODE, propertyValue = "NO")
   @UseExtTestCaseGroupProvider()
-  @FirPipeline()
   public class TopLevelPrivate {
     @Test
     public void testAllFilesPresentInTopLevelPrivate() {
@@ -1100,7 +1089,6 @@ public class NativeKlibSyntheticAccessorInPhase2TestGenerated extends AbstractNa
     @EnforcedProperty(property = ClassLevelProperty.TEST_KIND, propertyValue = "STANDALONE")
     @EnforcedProperty(property = ClassLevelProperty.CACHE_MODE, propertyValue = "NO")
     @UseExtTestCaseGroupProvider()
-    @FirPipeline()
     public class CrossFilePrivateLeak {
       @Test
       public void testAllFilesPresentInCrossFilePrivateLeak() {
@@ -1282,7 +1270,6 @@ public class NativeKlibSyntheticAccessorInPhase2TestGenerated extends AbstractNa
     @EnforcedProperty(property = ClassLevelProperty.TEST_KIND, propertyValue = "STANDALONE")
     @EnforcedProperty(property = ClassLevelProperty.CACHE_MODE, propertyValue = "NO")
     @UseExtTestCaseGroupProvider()
-    @FirPipeline()
     public class CrossModulePrivateLeak {
       @Test
       public void testAllFilesPresentInCrossModulePrivateLeak() {
@@ -1464,7 +1451,6 @@ public class NativeKlibSyntheticAccessorInPhase2TestGenerated extends AbstractNa
     @EnforcedProperty(property = ClassLevelProperty.TEST_KIND, propertyValue = "STANDALONE")
     @EnforcedProperty(property = ClassLevelProperty.CACHE_MODE, propertyValue = "NO")
     @UseExtTestCaseGroupProvider()
-    @FirPipeline()
     public class SingleFile {
       @Test
       public void testAllFilesPresentInSingleFile() {

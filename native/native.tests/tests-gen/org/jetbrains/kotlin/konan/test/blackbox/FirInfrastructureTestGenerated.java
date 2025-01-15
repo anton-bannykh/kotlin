@@ -8,7 +8,6 @@ package org.jetbrains.kotlin.konan.test.blackbox;
 import com.intellij.testFramework.TestDataPath;
 import org.jetbrains.kotlin.test.util.KtTestUtil;
 import org.junit.jupiter.api.Tag;
-import org.jetbrains.kotlin.konan.test.blackbox.support.group.FirPipeline;
 import org.jetbrains.kotlin.konan.test.blackbox.support.group.UseStandardTestCaseGroupProvider;
 import org.jetbrains.kotlin.test.TestMetadata;
 import org.junit.jupiter.api.Nested;
@@ -24,7 +23,6 @@ public class FirInfrastructureTestGenerated extends AbstractNativeBlackBoxTest {
   @TestMetadata("native/native.tests/testData/samples")
   @TestDataPath("$PROJECT_ROOT")
   @Tag("infrastructure")
-  @FirPipeline()
   @UseStandardTestCaseGroupProvider()
   public class Samples {
     @Test
@@ -300,7 +298,6 @@ public class FirInfrastructureTestGenerated extends AbstractNativeBlackBoxTest {
     @TestMetadata("native/native.tests/testData/samples/inner")
     @TestDataPath("$PROJECT_ROOT")
     @Tag("infrastructure")
-    @FirPipeline()
     @UseStandardTestCaseGroupProvider()
     public class Inner {
       @Test
@@ -320,7 +317,6 @@ public class FirInfrastructureTestGenerated extends AbstractNativeBlackBoxTest {
   @TestMetadata("native/native.tests/testData/samples2")
   @TestDataPath("$PROJECT_ROOT")
   @Tag("infrastructure")
-  @FirPipeline()
   @UseStandardTestCaseGroupProvider()
   public class Samples2 {
     @Test

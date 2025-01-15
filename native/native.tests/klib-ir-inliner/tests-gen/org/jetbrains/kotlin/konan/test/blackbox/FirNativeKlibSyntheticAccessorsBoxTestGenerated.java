@@ -7,7 +7,6 @@ package org.jetbrains.kotlin.konan.test.blackbox;
 
 import com.intellij.testFramework.TestDataPath;
 import org.jetbrains.kotlin.test.util.KtTestUtil;
-import org.jetbrains.kotlin.konan.test.blackbox.support.group.FirPipeline;
 import org.junit.jupiter.api.Tag;
 import org.jetbrains.kotlin.konan.test.blackbox.support.group.UseExtTestCaseGroupProvider;
 import org.jetbrains.kotlin.test.TargetBackend;
@@ -22,7 +21,6 @@ import java.util.regex.Pattern;
 @SuppressWarnings("all")
 @TestMetadata("compiler/testData/klib/syntheticAccessors")
 @TestDataPath("$PROJECT_ROOT")
-@FirPipeline()
 @Tag("klibIrInliner")
 @UseExtTestCaseGroupProvider()
 public class FirNativeKlibSyntheticAccessorsBoxTestGenerated extends AbstractNativeCodegenBoxTest {
@@ -34,7 +32,6 @@ public class FirNativeKlibSyntheticAccessorsBoxTestGenerated extends AbstractNat
   @Nested
   @TestMetadata("compiler/testData/klib/syntheticAccessors/outerThis")
   @TestDataPath("$PROJECT_ROOT")
-  @FirPipeline()
   @Tag("klibIrInliner")
   @UseExtTestCaseGroupProvider()
   public class OuterThis {
@@ -46,7 +43,6 @@ public class FirNativeKlibSyntheticAccessorsBoxTestGenerated extends AbstractNat
     @Nested
     @TestMetadata("compiler/testData/klib/syntheticAccessors/outerThis/crossFileLeak")
     @TestDataPath("$PROJECT_ROOT")
-    @FirPipeline()
     @Tag("klibIrInliner")
     @UseExtTestCaseGroupProvider()
     public class CrossFileLeak {
@@ -125,7 +121,6 @@ public class FirNativeKlibSyntheticAccessorsBoxTestGenerated extends AbstractNat
     @Nested
     @TestMetadata("compiler/testData/klib/syntheticAccessors/outerThis/crossModuleLeak")
     @TestDataPath("$PROJECT_ROOT")
-    @FirPipeline()
     @Tag("klibIrInliner")
     @UseExtTestCaseGroupProvider()
     public class CrossModuleLeak {
@@ -204,7 +199,6 @@ public class FirNativeKlibSyntheticAccessorsBoxTestGenerated extends AbstractNat
     @Nested
     @TestMetadata("compiler/testData/klib/syntheticAccessors/outerThis/singleFile")
     @TestDataPath("$PROJECT_ROOT")
-    @FirPipeline()
     @Tag("klibIrInliner")
     @UseExtTestCaseGroupProvider()
     public class SingleFile {
@@ -284,7 +278,6 @@ public class FirNativeKlibSyntheticAccessorsBoxTestGenerated extends AbstractNat
   @Nested
   @TestMetadata("compiler/testData/klib/syntheticAccessors/privateMember")
   @TestDataPath("$PROJECT_ROOT")
-  @FirPipeline()
   @Tag("klibIrInliner")
   @UseExtTestCaseGroupProvider()
   public class PrivateMember {
@@ -296,7 +289,6 @@ public class FirNativeKlibSyntheticAccessorsBoxTestGenerated extends AbstractNat
     @Nested
     @TestMetadata("compiler/testData/klib/syntheticAccessors/privateMember/crossFilePrivateLeak")
     @TestDataPath("$PROJECT_ROOT")
-    @FirPipeline()
     @Tag("klibIrInliner")
     @UseExtTestCaseGroupProvider()
     public class CrossFilePrivateLeak {
@@ -597,7 +589,6 @@ public class FirNativeKlibSyntheticAccessorsBoxTestGenerated extends AbstractNat
     @Nested
     @TestMetadata("compiler/testData/klib/syntheticAccessors/privateMember/crossModulePrivateLeak")
     @TestDataPath("$PROJECT_ROOT")
-    @FirPipeline()
     @Tag("klibIrInliner")
     @UseExtTestCaseGroupProvider()
     public class CrossModulePrivateLeak {
@@ -898,7 +889,6 @@ public class FirNativeKlibSyntheticAccessorsBoxTestGenerated extends AbstractNat
     @Nested
     @TestMetadata("compiler/testData/klib/syntheticAccessors/privateMember/singleFile")
     @TestDataPath("$PROJECT_ROOT")
-    @FirPipeline()
     @Tag("klibIrInliner")
     @UseExtTestCaseGroupProvider()
     public class SingleFile {
@@ -1074,7 +1064,6 @@ public class FirNativeKlibSyntheticAccessorsBoxTestGenerated extends AbstractNat
   @Nested
   @TestMetadata("compiler/testData/klib/syntheticAccessors/topLevelPrivate")
   @TestDataPath("$PROJECT_ROOT")
-  @FirPipeline()
   @Tag("klibIrInliner")
   @UseExtTestCaseGroupProvider()
   public class TopLevelPrivate {
@@ -1086,7 +1075,6 @@ public class FirNativeKlibSyntheticAccessorsBoxTestGenerated extends AbstractNat
     @Nested
     @TestMetadata("compiler/testData/klib/syntheticAccessors/topLevelPrivate/crossFilePrivateLeak")
     @TestDataPath("$PROJECT_ROOT")
-    @FirPipeline()
     @Tag("klibIrInliner")
     @UseExtTestCaseGroupProvider()
     public class CrossFilePrivateLeak {
@@ -1267,7 +1255,6 @@ public class FirNativeKlibSyntheticAccessorsBoxTestGenerated extends AbstractNat
     @Nested
     @TestMetadata("compiler/testData/klib/syntheticAccessors/topLevelPrivate/crossModulePrivateLeak")
     @TestDataPath("$PROJECT_ROOT")
-    @FirPipeline()
     @Tag("klibIrInliner")
     @UseExtTestCaseGroupProvider()
     public class CrossModulePrivateLeak {
@@ -1448,7 +1435,6 @@ public class FirNativeKlibSyntheticAccessorsBoxTestGenerated extends AbstractNat
     @Nested
     @TestMetadata("compiler/testData/klib/syntheticAccessors/topLevelPrivate/singleFile")
     @TestDataPath("$PROJECT_ROOT")
-    @FirPipeline()
     @Tag("klibIrInliner")
     @UseExtTestCaseGroupProvider()
     public class SingleFile {
