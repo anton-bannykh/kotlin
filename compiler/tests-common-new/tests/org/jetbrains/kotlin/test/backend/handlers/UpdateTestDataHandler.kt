@@ -39,10 +39,14 @@ class UpdateTestDataHandler(
                 .flatMap { (it.cause as? MultipleFailuresError)?.failures ?: listOf(it.cause) }
                 .filterIsInstance<AssertionFailedError>()
             for (failure in assertationFailures) {
-                val path = (failure.expected?.value as? FileInfo)?.path ?: continue
-                File(path).writeText(failure.actual.stringRepresentation)
+                failure.tryUpdateTestData()
             }
         }
         return failedAssertions
     }
+}
+
+fun AssertionFailedError.tryUpdateTestData() {
+    val path = (expected?.value as? FileInfo)?.path ?: return
+    File(path).writeText(actual.stringRepresentation)
 }
