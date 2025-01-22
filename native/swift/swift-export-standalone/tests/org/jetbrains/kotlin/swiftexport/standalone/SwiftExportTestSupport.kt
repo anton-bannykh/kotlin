@@ -37,7 +37,7 @@ class SwiftExportTestSupport : BeforeEachCallback, TestExecutionExceptionHandler
     private val overwriteGoldenData = System.getProperty("kotlin.test.update.test.data") == "true"
 
     override fun handleTestExecutionException(context: ExtensionContext, throwable: Throwable) {
-        if (overwriteGoldenData && throwable is AssertionFailedError) {
+        if (overwriteGoldenData) {
             throwable.tryUpdateTestData()
         }
         throw throwable
