@@ -33,7 +33,7 @@ internal class SirFunctionFromKtSymbol(
         KotlinSource(ktSymbol)
     }
     override val name: String by lazyWithSessions {
-        ktSymbol.sirDeclarationName()
+        ktSymbol.sirDeclarationName(useSiteSession)
     }
     override val extensionReceiverParameter: SirParameter? by lazy {
         translateExtensionParameter()

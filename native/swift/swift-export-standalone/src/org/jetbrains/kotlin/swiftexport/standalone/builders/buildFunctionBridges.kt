@@ -5,6 +5,7 @@
 
 package org.jetbrains.kotlin.swiftexport.standalone.builders
 
+import org.jetbrains.kotlin.analysis.api.KaSession
 import org.jetbrains.kotlin.analysis.api.symbols.*
 import org.jetbrains.kotlin.sir.*
 import org.jetbrains.kotlin.sir.bridge.*
@@ -69,6 +70,24 @@ internal fun SirInit.constructFunctionBridgeRequests(generator: BridgeGenerator)
     )
 }
 
+internal fun SirFunction.constructPropertyAccessorsBridgeRequests(
+    generator: BridgeGenerator,
+    ktAnalysisSession: KaSession,
+): List<FunctionBridgeRequest> {
+    val originSymbol = (origin as? KotlinSource)?.symbol as? KaPropertyAccessorSymbol ?: return emptyList()
+
+    val fqName = with(ktAnalysisSession) {
+        (originSymbol.containingDeclaration as? KaPropertySymbol)
+            ?.callableId?.asSingleFqName()
+            ?.pathSegments()?.map { it.toString() }
+            ?: return emptyList()
+    }
+
+    return listOfNotNull(
+        patchCallableBodyAndGenerateRequest(generator, fqName)
+    )
+}
+
 private fun SirCallable.patchCallableBodyAndGenerateRequest(
     generator: BridgeGenerator,
     fqName: List<String>,
@@ -82,11 +101,19 @@ private fun SirCallable.patchCallableBodyAndGenerateRequest(
     val request = FunctionBridgeRequest(
         this,
         fqName.forBridge.joinToString("_") + suffix,
-        fqName
+        fqName,
+        functionBridgeKind,
     )
     body = generator.generateSirFunctionBody(request)
     return request
 }
+
+private val SirCallable.functionBridgeKind
+    get() = when ((this.origin as? KotlinSource)?.symbol) {
+        is KaPropertyGetterSymbol -> FunctionBridgeKind.GETTER
+        is KaPropertySetterSymbol -> FunctionBridgeKind.SETTER
+        else -> FunctionBridgeKind.FUNCTION
+    }
 
 private val SirType.isSupported: Boolean
     get() = when (this) {
@@ -105,7 +132,11 @@ private val SirCallable.bridgeSuffix: String
     get() = when (this) {
         is SirAccessor -> "_$bridgeSuffix"
         is SirInit -> "_init"
-        else -> ""
+        else -> when (functionBridgeKind) {
+            FunctionBridgeKind.FUNCTION -> ""
+            FunctionBridgeKind.GETTER -> "_get"
+            FunctionBridgeKind.SETTER -> "_set"
+        }
     }
 
 private val SirAccessor.bridgeSuffix: String
