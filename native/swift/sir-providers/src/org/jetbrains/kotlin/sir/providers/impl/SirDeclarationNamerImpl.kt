@@ -5,22 +5,20 @@
 
 package org.jetbrains.kotlin.sir.providers.impl
 
-import org.jetbrains.kotlin.analysis.api.KaSession
 import org.jetbrains.kotlin.analysis.api.symbols.*
 import org.jetbrains.kotlin.analysis.api.types.symbol
 import org.jetbrains.kotlin.sir.providers.SirDeclarationNamer
 
 public class SirDeclarationNamerImpl : SirDeclarationNamer {
 
-    override fun KaDeclarationSymbol.sirDeclarationName(ktAnalysisSession: KaSession): String {
-        return getName(ktAnalysisSession) ?: error("could not retrieve a name for $this")
+    override fun KaDeclarationSymbol.sirDeclarationName(): String {
+        return getName() ?: error("could not retrieve a name for $this")
     }
 
-    private fun KaDeclarationSymbol.getName(ktAnalysisSession: KaSession): String? {
+    private fun KaDeclarationSymbol.getName(): String? {
         return when (this) {
             is KaNamedClassSymbol -> this.classId?.shortClassName?.asString()
-            is KaPropertyGetterSymbol -> with (ktAnalysisSession) { "get" + containingDeclaration!!.name!!.toString().replaceFirstChar { it.titlecase() } }
-            is KaPropertySetterSymbol -> with (ktAnalysisSession) { "set" + containingDeclaration!!.name!!.toString().replaceFirstChar { it.titlecase() } }
+            is KaPropertySymbol -> this.name.asString()
             is KaCallableSymbol -> this.mangleCallableName()
             else -> error(this)
         }

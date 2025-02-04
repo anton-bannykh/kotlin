@@ -50,7 +50,7 @@ public interface SirSession :
     override val unsupportedTypeStrategy: SirTypeProvider.ErrorTypeStrategy
         get() = typeProvider.unsupportedTypeStrategy
 
-    override fun KaDeclarationSymbol.sirDeclarationName(ktAnalysisSession: KaSession): String = with(declarationNamer) { this@sirDeclarationName.sirDeclarationName(ktAnalysisSession) }
+    override fun KaDeclarationSymbol.sirDeclarationName(): String = with(declarationNamer) { this@sirDeclarationName.sirDeclarationName() }
 
     override fun KaDeclarationSymbol.sirDeclarations(): List<SirDeclaration> =
         with(declarationProvider) { this@sirDeclarations.sirDeclarations() }
@@ -98,7 +98,7 @@ public interface SirEnumGenerator {
  * Names SIR declarations that are constructed from [KaDeclarationSymbol].
  */
 public interface SirDeclarationNamer {
-    public fun KaDeclarationSymbol.sirDeclarationName(ktAnalysisSession: KaSession): String
+    public fun KaDeclarationSymbol.sirDeclarationName(): String
 }
 
 

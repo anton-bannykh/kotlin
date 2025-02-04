@@ -7,6 +7,8 @@ package org.jetbrains.sir.lightclasses.nodes
 
 import org.jetbrains.kotlin.analysis.api.projectStructure.KaModule
 import org.jetbrains.kotlin.analysis.api.symbols.KaPropertyAccessorSymbol
+import org.jetbrains.kotlin.analysis.api.symbols.KaPropertyGetterSymbol
+import org.jetbrains.kotlin.analysis.api.symbols.KaPropertySetterSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaPropertySymbol
 import org.jetbrains.kotlin.analysis.api.symbols.isTopLevel
 import org.jetbrains.kotlin.sir.SirAttribute
@@ -49,7 +51,11 @@ internal class SirFunctionFromKtPropertySymbol(
         KotlinSource(ktSymbol)
     }
     override val name: String by lazyWithSessions {
-        ktSymbol.sirDeclarationName(useSiteSession)
+        val prefix = when (ktSymbol) {
+            is KaPropertyGetterSymbol -> "get"
+            is KaPropertySetterSymbol -> "set"
+        }
+        prefix + ktPropertySymbol.sirDeclarationName().replaceFirstChar { it.titlecase() }
     }
     override val extensionReceiverParameter: SirParameter? by lazy {
         translateExtensionParameter()

@@ -38,7 +38,7 @@ internal abstract class SirAbstractVariableFromKtSymbol(
         KotlinSource(ktSymbol)
     }
     override val name: String by lazyWithSessions {
-        ktSymbol.sirDeclarationName(useSiteSession)
+        ktSymbol.sirDeclarationName()
     }
     override val type: SirType by lazy {
         translateReturnType()
