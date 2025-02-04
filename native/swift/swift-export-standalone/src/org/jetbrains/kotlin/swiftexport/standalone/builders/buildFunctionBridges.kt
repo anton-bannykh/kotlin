@@ -5,10 +5,10 @@
 
 package org.jetbrains.kotlin.swiftexport.standalone.builders
 
-import org.jetbrains.kotlin.analysis.api.KaSession
 import org.jetbrains.kotlin.analysis.api.symbols.*
 import org.jetbrains.kotlin.sir.*
 import org.jetbrains.kotlin.sir.bridge.*
+import org.jetbrains.kotlin.sir.providers.source.KotlinPropertyAccessorOrigin
 import org.jetbrains.kotlin.sir.providers.source.KotlinSource
 import org.jetbrains.kotlin.sir.providers.utils.isAbstract
 import org.jetbrains.kotlin.sir.util.*
@@ -70,18 +70,11 @@ internal fun SirInit.constructFunctionBridgeRequests(generator: BridgeGenerator)
     )
 }
 
-internal fun SirFunction.constructPropertyAccessorsBridgeRequests(
-    generator: BridgeGenerator,
-    ktAnalysisSession: KaSession,
-): List<FunctionBridgeRequest> {
-    val originSymbol = (origin as? KotlinSource)?.symbol as? KaPropertyAccessorSymbol ?: return emptyList()
-
-    val fqName = with(ktAnalysisSession) {
-        (originSymbol.containingDeclaration as? KaPropertySymbol)
-            ?.callableId?.asSingleFqName()
-            ?.pathSegments()?.map { it.toString() }
-            ?: return emptyList()
-    }
+internal fun SirFunction.constructPropertyAccessorsBridgeRequests(generator: BridgeGenerator): List<FunctionBridgeRequest> {
+    val fqName = (origin as? KotlinPropertyAccessorOrigin)?.propertySymbol
+        ?.callableId?.asSingleFqName()
+        ?.pathSegments()?.map { it.toString() }
+        ?: return emptyList()
 
     return listOfNotNull(
         patchCallableBodyAndGenerateRequest(generator, fqName)

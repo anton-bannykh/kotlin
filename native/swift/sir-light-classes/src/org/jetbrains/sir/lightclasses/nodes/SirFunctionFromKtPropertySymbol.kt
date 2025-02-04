@@ -21,7 +21,7 @@ import org.jetbrains.kotlin.sir.SirParameter
 import org.jetbrains.kotlin.sir.SirType
 import org.jetbrains.kotlin.sir.SirVisibility
 import org.jetbrains.kotlin.sir.providers.SirSession
-import org.jetbrains.kotlin.sir.providers.source.KotlinSource
+import org.jetbrains.kotlin.sir.providers.source.KotlinPropertyAccessorOrigin
 import org.jetbrains.kotlin.sir.providers.utils.throwsAnnotation
 import org.jetbrains.sir.lightclasses.SirFromKtSymbol
 import org.jetbrains.sir.lightclasses.extensions.documentation
@@ -48,7 +48,7 @@ internal class SirFunctionFromKtPropertySymbol(
 
     override val visibility: SirVisibility = SirVisibility.PUBLIC
     override val origin: SirOrigin by lazy {
-        KotlinSource(ktSymbol)
+        KotlinPropertyAccessorOrigin(ktSymbol, ktPropertySymbol)
     }
     override val name: String by lazyWithSessions {
         val prefix = when (ktSymbol) {

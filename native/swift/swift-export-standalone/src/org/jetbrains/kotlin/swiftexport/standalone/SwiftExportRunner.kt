@@ -5,7 +5,6 @@
 
 package org.jetbrains.kotlin.swiftexport.standalone
 
-import org.jetbrains.kotlin.analysis.api.analyze
 import org.jetbrains.kotlin.analysis.api.symbols.KaClassLikeSymbol
 import org.jetbrains.kotlin.konan.target.Distribution
 import org.jetbrains.kotlin.name.FqName
@@ -204,13 +203,11 @@ public fun runSwiftExport(
 
 private fun translateModule(module: InputModule, dependencies: Set<InputModule>): TranslationResult {
     val moduleProvider: SirModuleProvider = SirOneToOneModuleProvider()
-    val moduleWithScopeProvider = createModuleWithScopeProviderFromBinary(module, dependencies)
-    val buildResult = moduleWithScopeProvider.initializeSirModule(module.config, moduleProvider)
+    val buildResult = createModuleWithScopeProviderFromBinary(module, dependencies)
+        .initializeSirModule(module.config, moduleProvider)
 
     // KT-68253: bridge generation could be better
-    val bridgeRequests = analyze(moduleWithScopeProvider.mainModule) {
-        buildBridgeRequests(module.config.bridgeGenerator, buildResult.module, useSiteSession)
-    }
+    val bridgeRequests = buildBridgeRequests(module.config.bridgeGenerator, buildResult.module)
     if (bridgeRequests.isNotEmpty()) {
         buildResult.module.updateImport(
             SirImport(
