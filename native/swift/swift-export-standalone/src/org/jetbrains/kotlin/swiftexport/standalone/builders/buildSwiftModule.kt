@@ -21,7 +21,6 @@ import org.jetbrains.kotlin.sir.SirModule
 import org.jetbrains.kotlin.sir.SirMutableDeclarationContainer
 import org.jetbrains.kotlin.sir.builder.buildModule
 import org.jetbrains.kotlin.sir.providers.SirModuleProvider
-import org.jetbrains.kotlin.sir.providers.SirSession
 import org.jetbrains.kotlin.sir.util.addChild
 import org.jetbrains.kotlin.swiftexport.standalone.*
 import org.jetbrains.kotlin.swiftexport.standalone.klib.KlibScope
@@ -31,7 +30,6 @@ import kotlin.io.path.Path
 internal class SwiftModuleBuildResults(
     val module: SirModule,
     val packages: Set<FqName>,
-    val sirSession: SirSession
 )
 
 internal fun ModuleWithScopeProvider.initializeSirModule(
@@ -59,7 +57,6 @@ internal fun ModuleWithScopeProvider.initializeSirModule(
         SwiftModuleBuildResults(
             module = mainModule.sirModule(),
             packages = sirSession.enumGenerator.collectedPackages,
-            sirSession = sirSession,
         )
     }
 }
