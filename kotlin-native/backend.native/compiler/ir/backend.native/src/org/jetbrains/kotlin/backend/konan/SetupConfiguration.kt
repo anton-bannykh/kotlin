@@ -113,6 +113,8 @@ fun CompilerConfiguration.setupFromArguments(arguments: K2NativeCompilerArgument
         put(VERIFY_COMPILER, arguments.verifyCompiler == "true")
     put(VERIFY_BITCODE, arguments.verifyBitCode)
 
+    put(STACK_PROTECTOR, arguments.stackProtector)
+
     put(ENABLE_ASSERTIONS, arguments.enableAssertions)
 
     val memoryModelFromArgument = when (arguments.memoryModel) {

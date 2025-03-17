@@ -124,6 +124,8 @@ class KonanConfigKeys {
                 = CompilerConfigurationKey.create("verify bitcode")
         val VERIFY_COMPILER: CompilerConfigurationKey<Boolean>
                 = CompilerConfigurationKey.create("verify compiler")
+        val STACK_PROTECTOR: CompilerConfigurationKey<String>
+                = CompilerConfigurationKey.create("stack protector")
         val WRITE_DEPENDENCIES_OF_PRODUCED_KLIB_TO: CompilerConfigurationKey<String?>
                 = CompilerConfigurationKey.create("write dependencies of the klib being produced to the given path")
         val DEBUG_INFO_VERSION: CompilerConfigurationKey<Int>

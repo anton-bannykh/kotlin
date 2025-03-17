@@ -323,6 +323,13 @@ The default value is 1."""
     var verifyCompiler: String? = null
 
     @Argument(
+        value = "-Xstack-protector",
+        valueDescription = "{no|enable|strong|all}",
+        description = "Add stack canaries"
+    )
+    var stackProtector: String = "no"
+
+    @Argument(
         value = "-friend-modules",
         valueDescription = "<path>",
         description = "Paths to friend modules."
