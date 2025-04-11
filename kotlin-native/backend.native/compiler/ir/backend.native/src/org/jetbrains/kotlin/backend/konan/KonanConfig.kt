@@ -519,7 +519,12 @@ class KonanConfig(val project: Project, val configuration: CompilerConfiguration
 
     internal val threadsCount = configuration.get(CommonConfigurationKeys.PARALLEL_BACKEND_THREADS) ?: 1
 
-    val stackProtectorMode = configuration.get(BinaryOptions.stackProtector) ?: StackProtectorMode.NO
+    val stackProtectorMode = configuration.get(BinaryOptions.stackProtector)?.let {
+        if (it != StackProtectorMode.NO && target.family == Family.MINGW) {
+            configuration.reportCompilationError("Stack protector is not supported on MinGW targets")
+            null
+        } else it
+    } ?: StackProtectorMode.NO
 
     private fun StringBuilder.appendCommonCacheFlavor() {
         append(target.toString())

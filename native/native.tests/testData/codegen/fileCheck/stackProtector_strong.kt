@@ -1,4 +1,5 @@
 // TARGET_BACKEND: NATIVE
+// DISABLE_NATIVE: targetFamily=MINGW
 // FILECHECK_STAGE: StackProtectorPhase
 // FREE_COMPILER_ARGS: -Xbinary=stackProtector=STRONG
 
