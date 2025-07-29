@@ -425,10 +425,10 @@ internal object DataFlowIR {
 
     class TypeHierarchy(val allTypes: Array<Type>) {
         private val typesSubTypes = Array(allTypes.size) { mutableListOf<Type>() }
-        private val allInheritors = Array(allTypes.size) { BitSet() }
+        private val allInheritors = Array(allTypes.size) { BS() }
 
         init {
-            val visited = BitSet()
+            val visited = BS()
 
             fun processType(type: Type) {
                 if (visited[type.index]) return
@@ -444,7 +444,7 @@ internal object DataFlowIR {
             allTypes.forEach { processType(it) }
         }
 
-        fun inheritorsOf(type: Type): BitSet {
+        fun inheritorsOf(type: Type): BS {
             val typeId = type.index
             val inheritors = allInheritors[typeId]
             if (!inheritors.isEmpty || type == Type.Virtual) return inheritors

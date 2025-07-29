@@ -61,6 +61,242 @@ object DevirtualizationUnfoldFactors {
     const val DFG_NON_DEVIRTUALIZED_CALL = 5
 }
 
+internal typealias BS = BS2
+
+internal class BS1 private constructor(bitSet: BitSet) {
+    private val bitSet = bitSet
+
+    constructor() : this(BitSet()) {}
+
+    constructor(nodesCount: Int) : this(BitSet(nodesCount)) {}
+
+    fun set(bitIndex: Int) = bitSet.set(bitIndex)
+
+    operator fun get(bitIndex: Int) = bitSet.get(bitIndex)
+
+    operator fun set(bitIndex: Int, value: Boolean) = bitSet.set(bitIndex, value)
+
+    fun cardinality() = bitSet.cardinality()
+
+    inline fun forEachBit(block: (Int) -> Unit) = bitSet.forEachBit(block)
+
+    fun clear() = bitSet.clear()
+
+    fun or(another: BS1) = bitSet.or(another.bitSet)
+
+    fun copy() = BS1(bitSet.copy())
+
+    fun and(another: BS1) = bitSet.and(another.bitSet)
+
+    fun andNot(another: BS1) = bitSet.andNot(another.bitSet)
+
+    val isEmpty get() = bitSet.isEmpty
+}
+
+internal class BS2 private constructor(size: Int, data: LongArray) {
+    private var size = size
+    private var data = data
+
+    constructor(nodesCount: Int = 10) : this(0, LongArray((nodesCount shr 6) + 1))
+
+    private fun ensureCapacity(index: Int) {
+        if (data.size <= index) {
+            val oldData = data
+            data = LongArray((oldData.size * 2).coerceAtLeast(index + 1))
+            oldData.copyInto(data)
+        }
+        if (size <= index) size = index + 1
+    }
+
+    fun set(bitIndex: Int) {
+        val index = bitIndex shr 6
+        val offset = bitIndex and 0x3f
+        ensureCapacity(index)
+        data[index] = data[index] or (1L shl offset)
+    }
+
+    fun clear(bitIndex: Int) {
+        val index = bitIndex shr 6
+        val offset = bitIndex and 0x3f
+        ensureCapacity(index)
+        data[index] = data[index] and (1L shl offset).inv()
+    }
+
+    operator fun get(bitIndex: Int): Boolean {
+        val index = bitIndex shr 6
+        val offset = bitIndex and 0x3f
+        return index < size && (data[index] and (1L shl offset)) != 0L
+    }
+
+    operator fun set(bitIndex: Int, value: Boolean) {
+        if (value) {
+            set(bitIndex)
+        } else {
+            clear(bitIndex)
+        }
+    }
+
+    fun cardinality(): Int {
+        var cardinality = 0
+        for (i in 0 until size) {
+            cardinality += data[i].countOneBits()
+        }
+        return cardinality
+    }
+
+    inline fun forEachBit(block: (Int) -> Unit) {
+        for (index in 0 until size) {
+            val d = data[index]
+            if (d == 0L) continue
+            var idx = index shl 6
+            var mask = 1L
+            for (offset in 0 until 64) {
+                val bit = d and mask
+                if (bit != 0L) {
+                    block(idx)
+                }
+                mask = mask shl 1
+                ++idx
+            }
+        }
+    }
+
+    fun clear() {
+        data.fill(0L)
+        size = 0
+    }
+
+    fun or(another: BS2) {
+        val adata = another.data
+        val asize = another.size
+        ensureCapacity(asize - 1)
+        for (i in 0 until asize) {
+            data[i] = data[i] or adata[i]
+        }
+    }
+
+    fun or2(another: BS2): Boolean {
+        val adata = another.data
+        val asize = another.size
+        ensureCapacity(asize - 1)
+        var result = false
+        for (i in 0 until asize) {
+            val d = data[i]
+            val dd = d or adata[i]
+            if (d != dd) { result = true }
+            data[i] = dd
+        }
+        return result
+    }
+
+
+    fun or2(another: BS2, filter: BS2): Boolean {
+        val fdata = filter.data
+        val fsize = filter.size
+        val adata = another.data
+        val asize = another.size
+        ensureCapacity(asize - 1)
+        var result = false
+
+        for (i in 0 until asize.coerceAtMost(fsize)) {
+            val d = data[i]
+            val fd = fdata[i]
+            val dd = d or (adata[i] and fd)
+            if (d != dd) { result = true }
+            data[i] = dd
+        }
+
+        return result
+    }
+
+    fun and(another: BS2) {
+        val adata = another.data
+        val asize = another.size
+        ensureCapacity(asize - 1)
+        for (i in 0 until asize) {
+            data[i] = data[i] and adata[i]
+        }
+        for (i in asize until size) {
+            data[i] = 0L
+        }
+    }
+
+    fun andNot(another: BS2) {
+        val adata = another.data
+        val asize = another.size
+        ensureCapacity(asize - 1)
+        for (i in 0 until asize) {
+            data[i] = data[i] and adata[i].inv()
+        }
+    }
+
+    fun copy(): BS2 {
+        return BS2(size, data.copyOf())
+    }
+
+    val isEmpty
+        get(): Boolean {
+            for (i in 0 until size) {
+                if (data[i] != 0L) return false
+            }
+            return true
+        }
+}
+
+internal class BS3 private constructor(bs1: BS1, bs2: BS2) {
+    private val bs1 = bs1
+    private val bs2 = bs2
+
+    constructor() : this(BS1(), BS2()) {}
+
+    constructor(nodesCount: Int) : this(BS1(nodesCount), BS2(nodesCount)) {}
+
+    fun set(bitIndex: Int) {
+        bs1.set(bitIndex)
+        bs2.set(bitIndex)
+    }
+
+    operator fun get(bitIndex: Int): Boolean {
+        return bs1.get(bitIndex).also { if (bs2.get(bitIndex) != it) error("get($bitIndex)") }
+    }
+
+    operator fun set(bitIndex: Int, value: Boolean) {
+        bs1.set(bitIndex, value)
+        bs2.set(bitIndex, value)
+    }
+
+    fun cardinality() = bs1.cardinality().also { if (bs2.cardinality() != it) error("cardinality()") }
+
+    inline fun forEachBit(block: (Int) -> Unit) {
+        bs1.forEachBit { block(it) }
+        bs2.forEachBit { block(it) }
+    }
+
+    fun clear() {
+        bs1.clear()
+        bs2.clear()
+    }
+
+    fun or(another: BS3) {
+        bs1.or(another.bs1)
+        bs2.or(another.bs2)
+    }
+
+    fun copy() = BS3(bs1.copy(), bs2.copy())
+
+    fun and(another: BS3) {
+        bs1.and(another.bs1)
+        bs2.and(another.bs2)
+    }
+
+    fun andNot(another: BS3) {
+        bs1.andNot(another.bs1)
+        bs2.andNot(another.bs2)
+    }
+
+    val isEmpty get() = bs1.isEmpty.also { if (bs2.isEmpty != it) error("isEmpty") }
+}
+
 // Devirtualization analysis is performed using Variable Type Analysis algorithm.
 // See http://web.cs.ucla.edu/~palsberg/tba/papers/sundaresan-et-al-oopsla00.pdf for details.
 internal object DevirtualizationAnalysis {
@@ -122,7 +358,7 @@ internal object DevirtualizationAnalysis {
         return (exported + globalInitializers + explicitlyExported + associatedObjectConstructors + leakingThroughFunctionReferences).distinct()
     }
 
-    fun BitSet.format(allTypes: Array<DataFlowIR.Type>): String {
+    fun BS.format(allTypes: Array<DataFlowIR.Type>): String {
         return allTypes.withIndex().filter { this[it.index] }.joinToString { it.value.toString() }
     }
 
@@ -140,7 +376,7 @@ internal object DevirtualizationAnalysis {
             var directCastEdges: MutableList<CastEdge>? = null
             var reversedCastEdges: MutableList<CastEdge>? = null
 
-            val types = BitSet()
+            val types = BS()
 
             var priority = -1
 
@@ -178,7 +414,7 @@ internal object DevirtualizationAnalysis {
                 }
             }
 
-            class CastEdge(val node: Node, val suitableTypes: BitSet)
+            class CastEdge(val node: Node, val suitableTypes: BS)
         }
 
         class Function(val symbol: DataFlowIR.FunctionSymbol, val parameters: Array<Node>, val returns: Node, val throws: Node)
@@ -207,7 +443,7 @@ internal object DevirtualizationAnalysis {
 
         private val constraintGraph = ConstraintGraph()
 
-        private inline fun forEachBitInBoth(first: BitSet, second: BitSet, block: (Int) -> Unit) {
+        private inline fun forEachBitInBoth(first: BS, second: BS, block: (Int) -> Unit) {
             if (first.cardinality() < second.cardinality())
                 first.forEachBit {
                     if (second[it])
@@ -238,7 +474,7 @@ internal object DevirtualizationAnalysis {
 
         fun logPathToType(reversedEdges: IntArray, node: Node, type: Int) {
             val nodes = constraintGraph.nodes
-            val visited = BitSet()
+            val visited = BS()
             val prev = mutableMapOf<Node, Node>()
             var front = mutableListOf<Node>()
             front.add(node)
@@ -303,7 +539,7 @@ internal object DevirtualizationAnalysis {
             val nodesCount = nodes.size
             val order = IntArray(nodesCount)
             val multiNodes = IntArray(nodesCount)
-            val visited = BitSet(nodesCount)
+            val visited = BS(nodesCount)
 
             private fun calculateTopologicalSort() {
                 require(directEdges.size == reversedEdges.size)
@@ -474,7 +710,7 @@ internal object DevirtualizationAnalysis {
                 for (multiNode in topologicalOrder) {
                     if (multiNode.multiNodeSize == 1 && multiNode is Node.Source)
                         continue // A source has no incoming edges.
-                    val types = BitSet()
+                    val types = BS()
                     condensation.forEachNode(multiNode) { node ->
                         reversedEdges.forEachEdge(node.id) {
                             types.or(constraintGraph.nodes[it].types)
@@ -494,30 +730,21 @@ internal object DevirtualizationAnalysis {
                 var end = true
                 for ((sourceNode, edge) in badEdges) {
                     val distNode = edge.node
-                    val missingTypes = sourceNode.types.copy().apply { andNot(distNode.types) }
-                    missingTypes.and(edge.suitableTypes)
-                    if (!missingTypes.isEmpty) {
+                    if (distNode.types.or2(sourceNode.types, edge.suitableTypes)) {
                         end = false
-                        distNode.types.or(missingTypes)
                     }
                 }
             } while (!end)
 
             // Second phase - do BFS.
             val nodesCount = constraintGraph.nodes.size
-            val marked = BitSet(nodesCount)
+            val marked = BS(nodesCount)
             var front = IntArray(nodesCount)
             var prevFront = IntArray(nodesCount)
             var frontSize = 0
-            val tempBitSet = BitSet()
             for ((sourceNode, edge) in badEdges) {
                 val distNode = edge.node
-                tempBitSet.clear()
-                tempBitSet.or(sourceNode.types)
-                tempBitSet.andNot(distNode.types)
-                tempBitSet.and(edge.suitableTypes)
-                distNode.types.or(tempBitSet)
-                if (!marked[distNode.id] && !tempBitSet.isEmpty) {
+                if (distNode.types.or2(sourceNode.types, edge.suitableTypes) && !marked[distNode.id]) {
                     marked.set(distNode.id)
                     front[frontSize++] = distNode.id
                 }
@@ -537,11 +764,7 @@ internal object DevirtualizationAnalysis {
                         if (marked[distNode.id])
                             distNode.types.or(node.types)
                         else {
-                            tempBitSet.clear()
-                            tempBitSet.or(node.types)
-                            tempBitSet.andNot(distNode.types)
-                            distNode.types.or(node.types)
-                            if (!marked[distNode.id] && !tempBitSet.isEmpty) {
+                            if (distNode.types.or2(node.types) && !marked[distNode.id]) {
                                 marked.set(distNode.id)
                                 front[frontSize++] = distNode.id
                             }
@@ -549,12 +772,7 @@ internal object DevirtualizationAnalysis {
                     }
                     node.directCastEdges?.forEach { edge ->
                         val distNode = edge.node
-                        tempBitSet.clear()
-                        tempBitSet.or(node.types)
-                        tempBitSet.andNot(distNode.types)
-                        tempBitSet.and(edge.suitableTypes)
-                        distNode.types.or(tempBitSet)
-                        if (!marked[distNode.id] && !tempBitSet.isEmpty) {
+                        if (distNode.types.or2(node.types, edge.suitableTypes) && !marked[distNode.id]) {
                             marked.set(distNode.id)
                             front[frontSize++] = distNode.id
                         }
@@ -669,7 +887,7 @@ internal object DevirtualizationAnalysis {
             constraintGraph.externalVirtualCalls
                     .groupBy { it.returnType }
                     .forEach { (type, list) ->
-                        val visited = BitSet(nodesCount)
+                        val visited = BS(nodesCount)
                         val stack = mutableListOf<Node>()
                         list.forEach { call ->
                             val returnsNode = call.returnsNode
@@ -705,7 +923,7 @@ internal object DevirtualizationAnalysis {
 
         // Both [directEdges] and [reversedEdges] are the array representation of a graph:
         // for each node v the edges of that node are stored in edges[edges[v] until edges[v + 1]].
-        private data class ConstraintGraphBuildResult(val instantiatingClasses: BitSet,
+        private data class ConstraintGraphBuildResult(val instantiatingClasses: BS,
                                                       val directEdges: IntArray, val reversedEdges: IntArray)
 
         // Here we're dividing the build process onto two phases:
@@ -722,7 +940,7 @@ internal object DevirtualizationAnalysis {
                     buildReversedEdges(precursor.directEdges, precursor.reversedEdgesCount))
         }
 
-        private class ConstraintGraphPrecursor(val instantiatingClasses: BitSet,
+        private class ConstraintGraphPrecursor(val instantiatingClasses: BS,
                                                val directEdges: IntArray, val reversedEdgesCount: IntArrayList)
 
         private fun buildReversedEdges(directEdges: IntArray, reversedEdgesCount: IntArrayList): IntArray {
@@ -788,10 +1006,10 @@ internal object DevirtualizationAnalysis {
             private val allTypes = typeHierarchy.allTypes
             private val variables = mutableMapOf<DataFlowIR.Node.Variable, Node>()
             private val typesVirtualCallSites = Array(allTypes.size) { mutableListOf<ConstraintGraphVirtualCall>() }
-            private val suitableTypes = arrayOfNulls<BitSet?>(allTypes.size)
+            private val suitableTypes = arrayOfNulls<BS?>(allTypes.size)
             private val concreteClasses = arrayOfNulls<Node?>(allTypes.size)
-            private val virtualTypeFilter = BitSet().apply { set(VIRTUAL_TYPE_ID) }
-            val instantiatingClasses = BitSet()
+            private val virtualTypeFilter = BS().apply { set(VIRTUAL_TYPE_ID) }
+            val instantiatingClasses = BS()
 
             val bagOfEdges = TLongHashSet(
                     1024,
@@ -948,7 +1166,7 @@ internal object DevirtualizationAnalysis {
                 if (instantiatingClasses[type.index]) return
                 instantiatingClasses.set(type.index)
                 context.log { "Adding instantiating class: $type" }
-                checkSupertypes(type, type, BitSet())
+                checkSupertypes(type, type, BS())
             }
 
             private fun processVirtualCall(virtualCall: ConstraintGraphVirtualCall,
@@ -966,7 +1184,7 @@ internal object DevirtualizationAnalysis {
 
             private fun checkSupertypes(type: DataFlowIR.Type,
                                         inheritor: DataFlowIR.Type,
-                                        seenTypes: BitSet) {
+                                        seenTypes: BS) {
                 seenTypes.set(type.index)
 
                 context.logMultiple {
