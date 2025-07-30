@@ -179,14 +179,14 @@ internal class BS2 private constructor(size: Int, data: LongArray) {
         val adata = another.data
         val asize = another.size
         ensureCapacity(asize - 1)
-        var result = false
+        var acc = 0L
         for (i in 0 until asize) {
             val d = data[i]
             val dd = d or adata[i]
-            if (d != dd) { result = true }
+            acc = acc or (dd xor d)
             data[i] = dd
         }
-        return result
+        return acc != 0L
     }
 
 
@@ -196,17 +196,17 @@ internal class BS2 private constructor(size: Int, data: LongArray) {
         val adata = another.data
         val asize = another.size
         ensureCapacity(asize - 1)
-        var result = false
 
+        var acc = 0L
         for (i in 0 until asize.coerceAtMost(fsize)) {
             val d = data[i]
             val fd = fdata[i]
             val dd = d or (adata[i] and fd)
-            if (d != dd) { result = true }
+            acc = acc or (dd xor d)
             data[i] = dd
         }
 
-        return result
+        return acc != 0L
     }
 
     fun and(another: BS2) {
