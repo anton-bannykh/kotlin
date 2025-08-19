@@ -526,6 +526,48 @@ internal object DevirtualizationAnalysis {
             })
         }
 
+        private fun markUsefulNodes(reversedEdges: IntArray, functions: Map<DataFlowIR.FunctionSymbol, DataFlowIR.Function>): BitSet {
+            val ua = BitSet(constraintGraph.nodes.size)
+            val stk = IntArray(constraintGraph.nodes.size)
+
+            fun dfs(i: Int) {
+                if (ua[i]) return
+
+                var stp = 0
+
+                ua.set(i)
+                stk[stp++] = i
+
+                while (stp != 0) {
+                    val u = stk[--stp]
+                    reversedEdges.forEachEdge(u) { v ->
+                        if (!ua.get(v)) {
+                            ua.set(v)
+                            stk[stp++] = v
+                        }
+                    }
+                    constraintGraph.nodes[u].reversedCastEdges?.forEach { nv ->
+                        if (!ua.get(nv.node.id)) {
+                            ua.set(nv.node.id)
+                            stk[stp++] = nv.node.id
+                        }
+                    }
+                }
+            }
+
+            for (function in functions.values) {
+                if (!constraintGraph.functions.containsKey(function.symbol)) continue
+                function.body.forEachNonScopeNode { node ->
+                    val virtualCall = node as? DataFlowIR.Node.VirtualCall ?: return@forEachNonScopeNode
+                    val receiverNode = constraintGraph.virtualCallSiteReceivers[virtualCall]!!
+
+                    dfs(receiverNode.id)
+                }
+            }
+
+            return ua
+        }
+
         fun analyze() {
             resetCallSitesAttributeOwnerIds()
 
@@ -642,7 +684,10 @@ internal object DevirtualizationAnalysis {
             var front = IntArray(nodesCount)
             var prevFront = IntArray(nodesCount)
             var frontSize = 0
+            val usefulNodes = markUsefulNodes(reversedEdges, functions)
             for ((sourceNode, edge) in badEdges) {
+                if (!usefulNodes[sourceNode.id]) continue
+
                 val distNode = edge.node
                 if (distNode.types.or2(sourceNode.types, edge.suitableTypes) && !marked[distNode.id]) {
                     marked.set(distNode.id)
