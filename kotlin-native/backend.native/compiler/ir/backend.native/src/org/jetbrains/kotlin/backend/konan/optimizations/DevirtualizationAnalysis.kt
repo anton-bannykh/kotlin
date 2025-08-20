@@ -798,6 +798,7 @@ internal object DevirtualizationAnalysis {
             private val typesVirtualCallSites = Array(allTypes.size) { mutableListOf<ConstraintGraphVirtualCall>() }
             private val suitableTypes = arrayOfNulls<BitSet?>(allTypes.size)
             private val concreteClasses = arrayOfNulls<Node?>(allTypes.size)
+            private val consts = arrayOfNulls<Node?>(allTypes.size)
             private val virtualTypeFilter = BitSet().apply { set(VIRTUAL_TYPE_ID) }
             val instantiatingClasses = BitSet()
 
@@ -881,6 +882,10 @@ internal object DevirtualizationAnalysis {
             private fun concreteClass(type: DataFlowIR.Type) =
                     concreteClasses[type.index]
                             ?: sourceNode(concreteType(type)) { "Class\$$type" }.also { concreteClasses[type.index] = it}
+
+            private fun const(type: DataFlowIR.Type) =
+                    consts[type.index]
+                            ?: sourceNode(concreteType(type)) { "Const\$$type" }.also { consts[type.index] = it}
 
             private fun fieldNode(field: DataFlowIR.Field) =
                     constraintGraph.fields.getOrPut(field) {
@@ -1142,7 +1147,7 @@ internal object DevirtualizationAnalysis {
                         is DataFlowIR.Node.Const -> {
                             val type = node.type
                             addInstantiatingClass(type)
-                            sourceNode(concreteType(type)) { "Const\$${function.symbol}" }
+                            const(type)
                         }
 
                         DataFlowIR.Node.Null -> constraintGraph.voidNode
