@@ -36,6 +36,7 @@ import org.jetbrains.kotlin.ir.visitors.IrTransformer
 import org.jetbrains.kotlin.ir.visitors.IrVisitorVoid
 import org.jetbrains.kotlin.ir.visitors.acceptChildrenVoid
 import org.jetbrains.kotlin.name.Name
+import java.io.PrintWriter
 import java.util.*
 
 internal var IrCall.devirtualizedCallSite: DevirtualizationAnalysis.DevirtualizedCallSite? by irAttribute(copyByDefault = true)
@@ -677,6 +678,13 @@ internal object DevirtualizationAnalysis {
 //                }
 //                +""
 //            }
+
+            PrintWriter("/Volumes/case_sensitive/vcs/kotlin_a/gdmp").use { out ->
+                for (node in topologicalOrder) {
+                    out.println("${node.id} ${node.types.cardinality()}")
+                }
+            }
+
 
             val result = mutableMapOf<DataFlowIR.Node.VirtualCall, Pair<DevirtualizedCallSite, DataFlowIR.FunctionSymbol>>()
             val nothing = symbolTable.classMap[context.symbols.nothing.owner]
