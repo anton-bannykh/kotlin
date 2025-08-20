@@ -139,14 +139,38 @@ internal object DevirtualizationAnalysis {
         private val symbolTable = moduleDFG.symbolTable
 
         sealed class Node(val id: Int) {
+            var frozen = false
+
+            private fun checkFrozen() {
+                if (frozen) error("Node is already frozen")
+            }
+
             var directCastEdges: MutableList<CastEdge>? = null
+                get() {
+                    checkFrozen()
+                    return field
+                }
+
             var reversedCastEdges: MutableList<CastEdge>? = null
+                get() {
+                    checkFrozen()
+                    return field
+                }
 
             val types = CustomBitSet()
+                get() {
+                    checkFrozen()
+                    return field
+                }
 
             var priority = -1
+                get() {
+                    checkFrozen()
+                    return field
+                }
 
             fun addCastEdge(edge: CastEdge) {
+                checkFrozen()
                 if (directCastEdges == null) directCastEdges = ArrayList(1)
                 directCastEdges!!.add(edge)
                 if (edge.node.reversedCastEdges == null) edge.node.reversedCastEdges = ArrayList(1)
@@ -165,6 +189,8 @@ internal object DevirtualizationAnalysis {
             }
 
             fun join(other: Node) {
+                checkFrozen()
+                other.checkFrozen()
                 val r = root()
                 val otherR = other.root()
 
@@ -426,7 +452,7 @@ internal object DevirtualizationAnalysis {
                             val value = fromRootId.toLong() or (toRootId.toLong() shl 32)
 
                             bagOfCastEdges[value]?.or(edge.suitableTypes) ?: run {
-                                bagOfCastEdges[value] = edge.suitableTypes
+                                bagOfCastEdges[value] = edge.suitableTypes.copy()
                             }
                         }
                     }
@@ -475,6 +501,8 @@ internal object DevirtualizationAnalysis {
                     val n = nodes[order[i]]
                     if (n.root() == n) {
                         rootOrder.add(n.id)
+                    } else {
+                        n.frozen = true
                     }
                 }
                 return rootOrder.toIntArray()
