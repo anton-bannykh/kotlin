@@ -5,8 +5,6 @@
 
 package org.jetbrains.kotlin.backend.konan.optimizations
 
-import org.jetbrains.kotlin.utils.copy
-import org.jetbrains.kotlin.utils.forEachBit
 import org.jetbrains.kotlin.backend.common.pop
 import org.jetbrains.kotlin.backend.common.push
 import org.jetbrains.kotlin.backend.common.lower.createIrBuilder
@@ -35,6 +33,8 @@ import org.jetbrains.kotlin.ir.visitors.IrTransformer
 import org.jetbrains.kotlin.ir.visitors.IrVisitorVoid
 import org.jetbrains.kotlin.ir.visitors.acceptChildrenVoid
 import org.jetbrains.kotlin.name.Name
+import org.jetbrains.kotlin.utils.forEachBit
+import java.io.PrintWriter
 import java.util.*
 
 internal var IrCall.devirtualizedCallSite: DevirtualizationAnalysis.DevirtualizedCallSite? by irAttribute(copyByDefault = true)
@@ -454,6 +454,108 @@ internal object DevirtualizationAnalysis {
                 condensation.forEachNode(multiNode) { node -> node.priority = index }
             }
 
+            fun Node.root(): Node {
+                if (multiNodeSize <= 1) return this
+
+                return constraintGraph.nodes[condensation.multiNodes[multiNodeStart]]
+            }
+
+            val canonicalRoot = IntArray(constraintGraph.nodes.size) { Int.MAX_VALUE }
+
+            for (node in constraintGraph.nodes) {
+                val rootId = node.root().id
+                canonicalRoot[rootId] = Math.min(canonicalRoot[rootId], node.id)
+            }
+
+            fun Int.canonical() = canonicalRoot[this]
+
+            fun dumpGraphTo(file: String) {
+                PrintWriter(file).use { out ->
+                    for (node in constraintGraph.nodes) {
+                        val canonicalRootId = canonicalRoot[node.root().id]
+
+                        if (node.id != canonicalRootId) {
+                            if (node.types.toBitSet() != node.root().types.toBitSet()) error("Type mismatch for node ${node.id} ${node.root().id}")
+                            continue
+                        }
+
+                        val allEdges = mutableSetOf<Int>()
+                        val allEdgesReversed = mutableSetOf<Int>()
+                        val allCastEdges = mutableMapOf<Int, BitSet>()
+                        val allCastEdgesReversed = mutableMapOf<Int, BitSet>()
+                        condensation.forEachNode(node) {
+                            directEdges.forEachEdge(it.id) { e ->
+                                val vId = constraintGraph.nodes[e].root().id
+                                if (vId != node.root().id) {
+                                    allEdges.add(vId.canonical())
+                                }
+                            }
+                            reversedEdges.forEachEdge(it.id) { e ->
+                                val vId = constraintGraph.nodes[e].root().id
+                                if (vId != node.root().id) {
+                                    allEdgesReversed.add(vId.canonical())
+                                }
+                            }
+                            it.directCastEdges?.forEach { edge ->
+                                val rootId = edge.node.root().id
+                                if (rootId != node.root().id) {
+                                    allCastEdges.getOrPut(rootId.canonical()) { BitSet() }.or(edge.suitableTypes.toBitSet())
+                                }
+                            }
+                            it.reversedCastEdges?.forEach { edge ->
+                                val rootId = edge.node.root().id
+                                if (rootId != node.root().id) {
+                                    allCastEdgesReversed.getOrPut(rootId.canonical()) { BitSet() }.or(edge.suitableTypes.toBitSet())
+                                }
+                            }
+                        }
+
+                        val typesHash = node.types.toBitSet().hashCode().toHexString()
+                        val edgesHash = allEdges.sorted().hashCode().toHexString()
+                        val castEdgesHash = allCastEdges.entries.map { (k, v) -> k to v }.sortedBy { it.first }.hashCode().toHexString()
+                        val edgesReversedHash = allEdgesReversed.sorted().hashCode().toHexString()
+                        val castEdgesReversedHash = allCastEdgesReversed.entries.map { (k, v) -> k to v }.sortedBy { it.first }.hashCode().toHexString()
+                        out.println("${node.id} ${allEdges.size} ${allCastEdges.size} $typesHash $edgesHash $castEdgesHash $edgesReversedHash $castEdgesReversedHash")
+                    }
+                }
+            }
+
+            fun checkInvariant() {
+                for (node in constraintGraph.nodes) {
+                    directEdges.forEachEdge(node.id) { j ->
+                        val jN = constraintGraph.nodes[j]
+
+                        val tbs = node.types.copy()
+                        tbs.andNot(jN.types)
+                        require(tbs.cardinality() == 0) { "Node #${node.id} has edge to node #${jN.id}, but types ${tbs.toBitSet().hashCode().toHexString()} don't match" }
+                    }
+
+                    node.directCastEdges?.forEach { edge ->
+                        val tbs = node.types.copy()
+                        tbs.and(edge.suitableTypes)
+                        tbs.andNot(edge.node.types)
+                        require(tbs.cardinality() == 0) { "Node #${node.id} has edge to node #${edge.node.id}, but types ${tbs.toBitSet().hashCode().toHexString()} don't match" }
+                    }
+                }
+            }
+
+            fun dumpTypesTo(file: String) {
+                PrintWriter(file).use { out ->
+                    for (node in topologicalOrder) {
+                        if (node !== node.root()) {
+                            if (node.types != node.root().types) {
+                                error("Type mismatch for node ${node.id} ${node.root().id}")
+                            }
+                        }
+                        out.println("${node.id.canonical()} ${node.types.toBitSet().hashCode().toHexString()}")
+                    }
+                }
+            }
+
+            dumpGraphTo("/Volumes/case_sensitive/vcs/kotlin_a/igdmp")
+            dumpTypesTo("/Volumes/case_sensitive/vcs/kotlin_a/tdmp")
+
+
             val badEdges = mutableListOf<Pair<Node, Node.CastEdge>>()
             for (node in constraintGraph.nodes) {
                 node.directCastEdges
@@ -488,6 +590,10 @@ internal object DevirtualizationAnalysis {
                     }
                     condensation.forEachNode(multiNode) { node -> node.types.or(types) }
                 }
+
+                dumpGraphTo("/Volumes/case_sensitive/vcs/kotlin_a/igdmp-ff${iterations}")
+                dumpTypesTo("/Volumes/case_sensitive/vcs/kotlin_a/tdmp-ff${iterations}")
+
                 if (iterations >= maxNumberOfIterations) break
 
                 var end = true
@@ -546,10 +652,17 @@ internal object DevirtualizationAnalysis {
                 }
             }
 
+            dumpTypesTo("/Volumes/case_sensitive/vcs/kotlin_a/tdmp-end")
+            dumpGraphTo("/Volumes/case_sensitive/vcs/kotlin_a/igdmp-end")
+
+            checkInvariant()
+
             println("Second phase took ${System.currentTimeMillis() - secondPhaseStartTime} ms")
 
             if (entryPoint == null)
                 propagateFinalTypesFromExternalVirtualCalls(directEdges)
+
+            dumpTypesTo("/Volumes/case_sensitive/vcs/kotlin_a/tdmp-pex")
 
             context.logMultiple {
                 topologicalOrder.forEachIndexed { index, multiNode ->
@@ -564,6 +677,8 @@ internal object DevirtualizationAnalysis {
                 }
                 +""
             }
+
+            val dr = mutableListOf<Pair<Node, BitSet>>()
 
             val result = mutableMapOf<DataFlowIR.Node.VirtualCall, Pair<DevirtualizedCallSite, DataFlowIR.FunctionSymbol>>()
             val nothing = symbolTable.classMap[context.symbols.nothing.owner]
@@ -584,6 +699,8 @@ internal object DevirtualizationAnalysis {
                         }
                         return@forEachNonScopeNode
                     }
+
+                    dr.add(receiverNode to receiverNode.types.toBitSet())
 
                     context.logMultiple {
                         +"Devirtualized callsite ${virtualCall.debugString()}"
@@ -614,6 +731,15 @@ internal object DevirtualizationAnalysis {
                             })
                     result[virtualCall] = devirtualizedCallSite to function.symbol
                     virtualCall.irCallSite?.devirtualizedCallSite = devirtualizedCallSite
+                }
+            }
+
+            PrintWriter("/Volumes/case_sensitive/vcs/kotlin_a/devirt").use { out ->
+                out.println(dr.size)
+                dr.sortedBy { it.first.root().id.canonical() }.forEach { (n, t) ->
+                    out.print("${n.root().id.canonical()} ${t.cardinality()}")
+                    t.forEachBit { out.print(" $it") }
+                    out.println()
                 }
             }
 
