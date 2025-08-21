@@ -367,6 +367,26 @@ internal object DevirtualizationAnalysis {
                 require(index == nodesCount)
             }
 
+            private fun mergeDanglingNodes() {
+                for (i in order.size - 1 downTo 0) {
+                    val node = nodes[order[i]]
+                    if (node.reversedCastEdges != null) continue
+
+                    var rootId = -1
+                    reversedEdges.forEachEdge(node.id) {
+                        val nodeId = nodes[it].root().id
+                        if (rootId == -1) {
+                            rootId = nodeId
+                        } else if (rootId != nodeId) {
+                            rootId = -2
+                        }
+                    }
+                    if (rootId < 0) continue
+
+                    node.join(nodes[rootId])
+                }
+            }
+
             private fun mergeEdges() {
                 val numberOfNodes = constraintGraph.nodes.size
 
@@ -455,6 +475,7 @@ internal object DevirtualizationAnalysis {
             fun build(): Condensation {
                 calculateTopologicalSort()
                 mergeMultiNodes()
+                mergeDanglingNodes()
                 mergeEdges()
 
                 return Condensation(topologicalOrder())
