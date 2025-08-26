@@ -35,6 +35,7 @@ import org.jetbrains.kotlin.ir.visitors.IrTransformer
 import org.jetbrains.kotlin.ir.visitors.IrVisitorVoid
 import org.jetbrains.kotlin.ir.visitors.acceptChildrenVoid
 import org.jetbrains.kotlin.name.Name
+import java.io.PrintWriter
 import java.util.*
 
 internal var IrCall.devirtualizedCallSite: DevirtualizationAnalysis.DevirtualizedCallSite? by irAttribute(copyByDefault = true)
@@ -548,6 +549,35 @@ internal object DevirtualizationAnalysis {
                 node.priority = index
             }
 
+            for (node in topologicalOrder) {
+                directEdges.forEachEdge(node.id) {
+                    require(constraintGraph.nodes[it].priority > node.priority)
+                }
+            }
+
+            val canonicalRoot = IntArray(constraintGraph.nodes.size) { Int.MAX_VALUE }
+
+            for (node in constraintGraph.nodes) {
+                val rootId = node.root().id
+                canonicalRoot[rootId] = Math.min(canonicalRoot[rootId], node.id)
+            }
+
+            fun Int.canonical() = canonicalRoot[this]
+
+
+            fun dumpTypesTo(file: String) {
+
+                PrintWriter(file).use { out ->
+                    for (node in topologicalOrder) {
+                        if (node !== node.root()) error("Non root node in top order")
+                        out.println("${node.id.canonical()} ${node.types.toBitSet().hashCode().toHexString()}")
+                    }
+                }
+            }
+
+            dumpTypesTo("/Volumes/case_sensitive/vcs/kotlin_a/tdmp")
+
+
             val badEdges = mutableListOf<Pair<Node, Node.CastEdge>>()
             for (node in topologicalOrder) {
                 node.directCastEdges
@@ -640,6 +670,8 @@ internal object DevirtualizationAnalysis {
             if (entryPoint == null)
                 propagateFinalTypesFromExternalVirtualCalls(directEdges)
 
+            dumpTypesTo("/Volumes/case_sensitive/vcs/kotlin_a/tdmp-end")
+
 //            context.logMultiple {
 //                topologicalOrder.forEachIndexed { index, multiNode ->
 //                    +"Types of multi-node #$index"
@@ -653,6 +685,8 @@ internal object DevirtualizationAnalysis {
 //                }
 //                +""
 //            }
+
+            val dr = mutableListOf<Pair<Node, CustomBitSet>>()
 
             val result = mutableMapOf<DataFlowIR.Node.VirtualCall, Pair<DevirtualizedCallSite, DataFlowIR.FunctionSymbol>>()
             val nothing = symbolTable.classMap[context.symbols.nothing.owner]
@@ -673,6 +707,8 @@ internal object DevirtualizationAnalysis {
                         }
                         return@forEachNonScopeNode
                     }
+
+                    dr.add(receiverNode to receiverNode.types)
 
                     context.logMultiple {
                         +"Devirtualized callsite ${virtualCall.debugString()}"
@@ -703,6 +739,15 @@ internal object DevirtualizationAnalysis {
                             })
                     result[virtualCall] = devirtualizedCallSite to function.symbol
                     virtualCall.irCallSite?.devirtualizedCallSite = devirtualizedCallSite
+                }
+            }
+
+            PrintWriter("/Volumes/case_sensitive/vcs/kotlin_a/devirt").use { out ->
+                out.println(dr.size)
+                dr.sortedBy { it.first.root().id.canonical() }.forEach { (n, t) ->
+                    out.print("${n.root().id.canonical()} ${t.cardinality()}")
+                    t.forEachBit { out.print(" $it") }
+                    out.println()
                 }
             }
 
