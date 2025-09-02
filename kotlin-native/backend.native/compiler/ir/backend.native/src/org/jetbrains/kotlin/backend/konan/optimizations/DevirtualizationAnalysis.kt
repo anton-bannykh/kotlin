@@ -35,6 +35,7 @@ import org.jetbrains.kotlin.ir.visitors.IrTransformer
 import org.jetbrains.kotlin.ir.visitors.IrVisitorVoid
 import org.jetbrains.kotlin.ir.visitors.acceptChildrenVoid
 import org.jetbrains.kotlin.name.Name
+import java.io.PrintWriter
 import java.util.*
 
 internal var IrCall.devirtualizedCallSite: DevirtualizationAnalysis.DevirtualizedCallSite? by irAttribute(copyByDefault = true)
@@ -300,6 +301,8 @@ internal object DevirtualizationAnalysis {
 
         private inner class Condensation(val topologicalOrder: IntArray)
 
+        data class Pr(val a: Int, val b: BitSet)
+
         private inner class CondensationBuilder(val directEdges: IntArray, val reversedEdges: IntArray) {
             val nodes = constraintGraph.nodes
             val nodesCount = nodes.size
@@ -367,23 +370,53 @@ internal object DevirtualizationAnalysis {
                 require(index == nodesCount)
             }
 
+            fun Node.toKey(): List<Any> {
+                val re = mutableSetOf<Int>()
+                reversedEdges.forEachEdge(id) {
+                    re.add(nodes[it].root().id)
+                }
+
+                val rc = mutableSetOf<Pr>()
+                reversedCastEdges?.forEach {
+                    rc += Pr(it.node.root().id, it.suitableTypes.toBitSet())
+                }
+
+                return re.toList().sorted() + rc.toList().sortedBy { it.a }
+            }
+
             private fun mergeDanglingNodes() {
+
+                val ms = mutableMapOf<List<Any>, Int>()
+
                 for (i in order.size - 1 downTo 0) {
                     val node = nodes[order[i]]
-                    if (node.reversedCastEdges != null) continue
+                    if (!node.isRoot) continue
+                    if (node is Node.Source) continue
 
-                    var rootId = -1
-                    reversedEdges.forEachEdge(node.id) {
-                        val nodeId = nodes[it].root().id
-                        if (rootId == -1) {
-                            rootId = nodeId
-                        } else if (rootId != nodeId) {
-                            rootId = -2
+                    if (node.reversedCastEdges == null) {
+                        var rootId = -1
+                        reversedEdges.forEachEdge(node.id) {
+                            val nodeId = nodes[it].root().id
+                            if (rootId == -1) {
+                                rootId = nodeId
+                            } else if (rootId != nodeId) {
+                                rootId = -2
+                            }
+                        }
+                        if (rootId >= 0) {
+                            node.join(nodes[rootId])
+                            continue
                         }
                     }
-                    if (rootId < 0) continue
 
-                    node.join(nodes[rootId])
+                    val k = node.toKey()
+                    val existing = ms[k]
+                    if (existing == null) {
+                        ms[k] = node.id
+                    } else {
+                        require(nodes[existing].isRoot)
+                        node.join(nodes[existing])
+                    }
                 }
             }
 
@@ -547,6 +580,64 @@ internal object DevirtualizationAnalysis {
             val condensation = CondensationBuilder(directEdges, reversedEdges).build()
             val topologicalOrder = condensation.topologicalOrder.map { constraintGraph.nodes[it] }
 
+            fun Node.isCore() = directEdges.edgeCount(id) + (directCastEdges?.size ?: 0) > 0
+
+            var totalNodes = 0
+            var totalEdges = 0
+            PrintWriter("/Volumes/case_sensitive/vcs/kotlin/graph3.dot").use { out ->
+                out.println("""
+                        digraph {
+                        graph [splines=false,
+                        overlap=prism0,
+                        outputorder=nodesfirst
+                        ];
+                        node [fillcolor=black,
+                            label="",
+                            shape=circle,
+                            fixedsize=true,
+                            width=0.001,
+                            height=0.001
+                            style=invis,
+                            penwidth=0,
+                        ];
+                        edge [arrowhead=vee,
+                        arrowsize=0.1,
+                        penwidth=0.05,
+                        color="#888",
+                        headclip=false,
+                        tailclip=false,
+                        ];""".trimIndent())
+                for (node in topologicalOrder) {
+                    var anyEdges = false
+                    if (node.isCore()) {
+                        directEdges.forEachEdge(node.id) {
+                            if (constraintGraph.nodes[it].isCore()) {
+                                out.println("  ${node.id} -> $it")
+                                ++totalEdges
+                                anyEdges = true
+                            }
+                        }
+                        node.directCastEdges?.forEach {
+                            if (it.node.isCore()) {
+                                out.println("  ${node.id} -> ${it.node.id} [color=\"${it.suitableTypes.hashCode().toColor()}\"]")
+                                ++totalEdges
+                                anyEdges = true
+                            }
+                        }
+                    }
+                    if (anyEdges) {
+                        if (node is Node.Source) {
+                            out.println("  ${node.id} [style=filled]")
+                        }
+                        ++totalNodes
+                    }
+                }
+                out.println("}")
+            }
+
+            println("Total nodes: $totalNodes")
+            println("Total edges: $totalEdges")
+
 //            context.logMultiple {
 //                +"CONDENSATION"
 //                topologicalOrder.forEachIndexed { index, multiNode ->
@@ -559,6 +650,37 @@ internal object DevirtualizationAnalysis {
             topologicalOrder.forEachIndexed { index, node ->
                 node.priority = index
             }
+
+            for (node in topologicalOrder) {
+                directEdges.forEachEdge(node.id) {
+                    require(constraintGraph.nodes[it].priority > node.priority)
+                }
+            }
+
+            val canonicalRoot = IntArray(constraintGraph.nodes.size) { Int.MAX_VALUE }
+
+            for (node in constraintGraph.nodes) {
+                val rootId = node.root().id
+                canonicalRoot[rootId] = Math.min(canonicalRoot[rootId], node.id)
+            }
+
+            fun Int.canonical() = canonicalRoot[this]
+
+
+            fun dumpTypesTo(file: String) {
+                PrintWriter(file).use { out ->
+                    for (node in constraintGraph.nodes) {
+                        out.println("${node.id} ${node.root().types.toBitSet().hashCode().toHexString()}")
+                    }
+//                    for (node in topologicalOrder) {
+//                        if (node !== node.root()) error("Non root node in top order")
+//                        out.println("${node.id.canonical()} ${node.types.toBitSet().hashCode().toHexString()}")
+//                    }
+                }
+            }
+
+            dumpTypesTo("/Volumes/case_sensitive/vcs/kotlin/tdmp")
+
 
             val badEdges = mutableListOf<Pair<Node, Node.CastEdge>>()
             for (node in topologicalOrder) {
@@ -652,6 +774,8 @@ internal object DevirtualizationAnalysis {
             if (entryPoint == null)
                 propagateFinalTypesFromExternalVirtualCalls(directEdges)
 
+            dumpTypesTo("/Volumes/case_sensitive/vcs/kotlin/tdmp-end")
+
 //            context.logMultiple {
 //                topologicalOrder.forEachIndexed { index, multiNode ->
 //                    +"Types of multi-node #$index"
@@ -665,6 +789,8 @@ internal object DevirtualizationAnalysis {
 //                }
 //                +""
 //            }
+
+            val dr = mutableListOf<Pair<Node, CustomBitSet>>()
 
             val result = mutableMapOf<DataFlowIR.Node.VirtualCall, Pair<DevirtualizedCallSite, DataFlowIR.FunctionSymbol>>()
             val nothing = symbolTable.classMap[context.symbols.nothing.owner]
@@ -685,6 +811,8 @@ internal object DevirtualizationAnalysis {
                         }
                         return@forEachNonScopeNode
                     }
+
+                    dr.add(constraintGraph.virtualCallSiteReceivers[virtualCall]!! to receiverNode.types)
 
                     context.logMultiple {
                         +"Devirtualized callsite ${virtualCall.debugString()}"
@@ -715,6 +843,15 @@ internal object DevirtualizationAnalysis {
                             })
                     result[virtualCall] = devirtualizedCallSite to function.symbol
                     virtualCall.irCallSite?.devirtualizedCallSite = devirtualizedCallSite
+                }
+            }
+
+            PrintWriter("/Volumes/case_sensitive/vcs/kotlin/devirt").use { out ->
+                out.println(dr.size)
+                dr.sortedBy { it.first.id }.forEach { (n, t) ->
+                    out.print("${n.id} ${t.cardinality()}")
+                    t.forEachBit { out.print(" $it") }
+                    out.println()
                 }
             }
 
@@ -1662,5 +1799,58 @@ internal object DevirtualizationAnalysis {
             +"Devirtualized: ${devirtualizedCallSitesCount * 100.0 / callSitesCount}%"
             +"Actually devirtualized: ${actuallyDevirtualizedCallSitesCount * 100.0 / callSitesCount}%"
         }
+    }
+}
+
+
+private fun Int.toColor(): String = UIntToHexColor.hexFromUInt(toUInt())
+
+private object UIntToHexColor {
+    // Map UInt ∈ [0, 2^32-1] to a CSS hex "#RRGGBB"
+    fun hexFromUInt(u: UInt): String {
+        // Use 2^32 in the denominator so the max value maps just below 1.0 (no duplicate hue at 0/1)
+        val h = (u.toDouble() / 4294967296.0) // ∈ [0, 1)
+        val s = 1.0
+        val l = 0.5
+        val (r, g, b) = hslToRgb(h, s, l)
+        return "#%02X%02X%02X".format(r, g, b)
+    }
+
+    // --- HSL → RGB (inputs in [0,1]) ---
+    private fun hslToRgb(h: Double, s: Double, l: Double): Triple<Int, Int, Int> {
+        val (rr, gg, bb) = if (s == 0.0) {
+            Triple(l, l, l) // gray
+        } else {
+            val q = if (l < 0.5) l * (1 + s) else l + s - l * s
+            val p = 2 * l - q
+            Triple(
+                    hueToRgb(p, q, h + 1.0 / 3.0),
+                    hueToRgb(p, q, h),
+                    hueToRgb(p, q, h - 1.0 / 3.0)
+            )
+        }
+        return Triple(toByte(rr), toByte(gg), toByte(bb))
+    }
+
+    private fun hueToRgb(p: Double, q: Double, t0: Double): Double {
+        var t = t0
+        if (t < 0) t += 1.0
+        if (t > 1) t -= 1.0
+        return when {
+            t < 1.0 / 6.0 -> p + (q - p) * 6.0 * t
+            t < 1.0 / 2.0 -> q
+            t < 2.0 / 3.0 -> p + (q - p) * (2.0 / 3.0 - t) * 6.0
+            else -> p
+        }
+    }
+
+    private fun toByte(v: Double): Int {
+        val clamped = when {
+            v.isNaN() -> 0.0
+            v < 0.0 -> 0.0
+            v > 1.0 -> 1.0
+            else -> v
+        }
+        return (clamped * 255.0 + 0.5).toInt()
     }
 }
