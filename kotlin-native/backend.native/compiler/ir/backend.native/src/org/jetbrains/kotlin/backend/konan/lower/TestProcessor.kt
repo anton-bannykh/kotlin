@@ -20,7 +20,7 @@ import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.builders.*
-import org.jetbrains.kotlin.ir.builders.declarations.buildField
+import org.jetbrains.kotlin.ir.builders.declarations.buildFun
 import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.expressions.impl.*
@@ -585,23 +585,22 @@ internal class TestProcessor(private val context: Context) : FileLoweringPass {
         }
 
         if (statements.isNotEmpty()) {
-            context.irFactory.buildField {
+            context.irFactory.buildFun {
                 startOffset = SYNTHETIC_OFFSET
                 endOffset = SYNTHETIC_OFFSET
                 name = "createTestSuites".synthesizedName
                 visibility = DescriptorVisibilities.PRIVATE
-                isFinal = true
-                isStatic = true
-                type = context.irBuiltIns.unitType
+                returnType = context.irBuiltIns.unitType
             }.apply {
                 parent = irFile
                 irFile.declarations.add(this)
-                annotations += buildSimpleAnnotation(context.irBuiltIns, startOffset, endOffset, context.symbols.eagerInitialization.owner)
-                annotations += buildSimpleAnnotation(context.irBuiltIns, startOffset, endOffset, context.symbols.threadLocal.owner)
-                statements.forEach { it.accept(SetDeclarationsParentVisitor, this) }
-                initializer = context.irFactory.createExpressionBody(SYNTHETIC_OFFSET, SYNTHETIC_OFFSET,
-                        IrCompositeImpl(SYNTHETIC_OFFSET, SYNTHETIC_OFFSET, context.irBuiltIns.unitType, null, statements)
-                )
+                annotations += buildSimpleAnnotation(context.irBuiltIns, startOffset, endOffset, symbols.testInitializer.owner)
+                body = context.createIrBuilder(symbol, SYNTHETIC_OFFSET, SYNTHETIC_OFFSET).irBlockBody {
+                    statements.forEach {
+                        it.accept(SetDeclarationsParentVisitor, this@apply)
+                        +it
+                    }
+                }
             }
         }
     }
