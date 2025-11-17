@@ -12,6 +12,10 @@ import kotlin.IllegalArgumentException
 @PublishedApi
 internal annotation class TestInitializer
 
+@Target(AnnotationTarget.FILE)
+@PublishedApi
+internal annotation class TestsProcessed
+
 /**
  * Represents a test case, that is a Kotlin test method marked with `@Test` annotaion.
  *
