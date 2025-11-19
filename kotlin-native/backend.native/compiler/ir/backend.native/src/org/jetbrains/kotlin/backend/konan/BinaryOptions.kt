@@ -113,6 +113,8 @@ object BinaryOptions : BinaryOptionRegistry() {
     val stackProtector by option<StackProtectorMode>()
 
     val minidumpLocation by stringOption()
+
+    val enableRamUsageReporting by booleanOption()
 }
 
 open class BinaryOption<T : Any>(

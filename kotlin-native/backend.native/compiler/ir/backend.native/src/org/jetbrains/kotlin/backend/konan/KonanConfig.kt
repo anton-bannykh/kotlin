@@ -34,6 +34,9 @@ import java.nio.file.Files
 import java.nio.file.Paths
 
 class KonanConfig(val project: Project, val configuration: CompilerConfiguration) {
+
+    val monitorHeap: Boolean = configuration.getBoolean(BinaryOptions.enableRamUsageReporting)
+
     internal val distribution = run {
         val overridenProperties = mutableMapOf<String, String>().apply {
             configuration.get(KonanConfigKeys.OVERRIDE_KONAN_PROPERTIES)?.let(this::putAll)

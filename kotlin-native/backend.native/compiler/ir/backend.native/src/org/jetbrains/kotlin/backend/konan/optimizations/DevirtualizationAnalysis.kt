@@ -10,6 +10,8 @@ import org.jetbrains.kotlin.backend.common.push
 import org.jetbrains.kotlin.backend.common.lower.createIrBuilder
 import org.jetbrains.kotlin.backend.common.lower.irBlock
 import org.jetbrains.kotlin.backend.konan.*
+import org.jetbrains.kotlin.backend.konan.driver.utilities.dumpHeap
+import org.jetbrains.kotlin.backend.konan.driver.utilities.liveHeapSize
 import org.jetbrains.kotlin.backend.konan.ir.isBoxOrUnboxCall
 import org.jetbrains.kotlin.backend.konan.lower.loweredConstructorFunction
 import org.jetbrains.kotlin.backend.konan.util.IntArrayList
@@ -35,7 +37,11 @@ import org.jetbrains.kotlin.ir.visitors.IrTransformer
 import org.jetbrains.kotlin.ir.visitors.IrVisitorVoid
 import org.jetbrains.kotlin.ir.visitors.acceptChildrenVoid
 import org.jetbrains.kotlin.name.Name
+import java.lang.Thread.sleep
 import java.util.*
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicLong
+import kotlin.concurrent.thread
 
 internal var IrCall.devirtualizedCallSite: DevirtualizationAnalysis.DevirtualizedCallSite? by irAttribute(copyByDefault = true)
 
@@ -405,6 +411,9 @@ internal object DevirtualizationAnalysis {
                     }
                 }
 
+                println("Merge2: ${liveHeapSize()}")
+                // dumpHeap("/Volumes/case_sensitive/vcs/kotlin_a/devirt-merge-edges2.hprof")
+
                 directEdges.fill(0)
                 var index = numberOfNodes + 1
                 for (v in 0..numberOfNodes) {
@@ -654,6 +663,9 @@ internal object DevirtualizationAnalysis {
                 +""
             }
 
+            println("Calc: ${liveHeapSize()}")
+//            dumpHeap("/Volumes/case_sensitive/vcs/kotlin_a/devirt-calc.hprof")
+
             val result = mutableMapOf<DataFlowIR.Node.VirtualCall, Pair<DevirtualizedCallSite, DataFlowIR.FunctionSymbol>>()
             val nothing = symbolTable.classMap[context.symbols.nothing.owner]
             for (function in functions.values) {
@@ -732,6 +744,9 @@ internal object DevirtualizationAnalysis {
                     }
                 }
             }
+
+            println("Final: ${liveHeapSize()}")
+//            dumpHeap("/Volumes/case_sensitive/vcs/kotlin_a/devirt-final.hprof")
         }
 
         /*
@@ -1341,8 +1356,26 @@ internal object DevirtualizationAnalysis {
 
     class DevirtualizedCallSite(val callee: DataFlowIR.FunctionSymbol, val possibleCallees: List<DevirtualizedCallee>)
 
-    fun run(context: Context, irModule: IrModuleFragment, moduleDFG: ModuleDFG) =
-            DevirtualizationAnalysisImpl(context, irModule, moduleDFG).analyze()
+    fun run(context: Context, irModule: IrModuleFragment, moduleDFG: ModuleDFG) = run {
+//        dumpHeap("/Volumes/case_sensitive/vcs/kotlin_a/devirt-before.hprof")
+        println("Before: ${liveHeapSize()}")
+
+        val isRunning = AtomicBoolean(true)
+        val maxHeapSize = AtomicLong(0)
+
+        context.config.monitorHeap
+
+        thread(start = true, isDaemon = true, name = "Devirtualization Heap Monitor") {
+            while (isRunning.get()) {
+                maxHeapSize.set(maxOf(maxHeapSize.get(), liveHeapSize()))
+                sleep(50)
+            }
+        }
+
+        DevirtualizationAnalysisImpl(context, irModule, moduleDFG).analyze()
+
+        println("Max heap size: ${maxHeapSize.get() / 1024 / 1024} MB")
+    }
 
     fun devirtualize(irModule: IrModuleFragment, moduleDFG: ModuleDFG, generationState: NativeGenerationState,
                      maxVTableUnfoldFactor: Int, maxITableUnfoldFactor: Int) {
