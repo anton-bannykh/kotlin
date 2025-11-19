@@ -14,6 +14,7 @@ dependencies {
 
     testFixturesApi(project(":compiler:ir.objcinterop"))
     testFixturesApi(project(":compiler:ir.backend.native"))
+    testFixturesApi(project(":kotlin-native:backend.native"))
     testFixturesApi(project(":compiler:ir.serialization.native"))
     testFixturesApi(project(":compiler:test-infrastructure"))
     testFixturesApi(project(":kotlin-util-klib-abi"))
