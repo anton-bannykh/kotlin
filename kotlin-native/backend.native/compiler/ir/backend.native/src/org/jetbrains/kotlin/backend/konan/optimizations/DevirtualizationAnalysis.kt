@@ -297,7 +297,6 @@ internal object DevirtualizationAnalysis {
         }
 
         private inner class CondensationBuilder(val directEdges: IntArray, val reversedEdges: IntArray) {
-            val startTime = System.currentTimeMillis()
             val nodes = constraintGraph.nodes
             val nodesCount = nodes.size
             val order = IntArray(nodesCount)
