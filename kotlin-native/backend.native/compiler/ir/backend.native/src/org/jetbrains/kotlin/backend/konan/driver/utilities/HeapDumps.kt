@@ -7,25 +7,32 @@ package org.jetbrains.kotlin.backend.konan.driver.utilities
 
 import com.sun.management.HotSpotDiagnosticMXBean
 import java.lang.management.ManagementFactory
+import java.nio.file.Files
+import java.nio.file.Paths
 
 
 private const val MXBEAN_NAME = "com.sun.management:type=HotSpotDiagnostic"
 
 fun dumpHeap(filePath: String, live: Boolean = true) {
-    try {
-        val mx: HotSpotDiagnosticMXBean =
-                ManagementFactory.newPlatformMXBeanProxy<HotSpotDiagnosticMXBean?>(
-                        ManagementFactory.getPlatformMBeanServer(),
-                        MXBEAN_NAME,
-                        HotSpotDiagnosticMXBean::class.java)!!
-        mx.dumpHeap(filePath, live) // live=true keeps only reachable objects
-        println("Heap dump written to " + filePath)
-    } catch (e: Exception) {
-        throw RuntimeException("Heap dump failed", e)
-    }
+//    Files.deleteIfExists(Paths.get(filePath))
+//    try {
+//        val mx: HotSpotDiagnosticMXBean =
+//                ManagementFactory.newPlatformMXBeanProxy<HotSpotDiagnosticMXBean?>(
+//                        ManagementFactory.getPlatformMBeanServer(),
+//                        MXBEAN_NAME,
+//                        HotSpotDiagnosticMXBean::class.java)!!
+//        mx.dumpHeap(filePath, live) // live=true keeps only reachable objects
+//        println("Heap dump written to " + filePath)
+//    } catch (e: Exception) {
+//        throw RuntimeException("Heap dump failed", e)
+//    }
 }
 
 fun liveHeapSize(): Long {
     System.gc()
     return Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()
+}
+
+fun Long.bytesToHumanReadableString(): String {
+    return "${this / 1024 / 1024} MB"
 }

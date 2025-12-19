@@ -10,6 +10,7 @@ import org.jetbrains.kotlin.backend.common.push
 import org.jetbrains.kotlin.backend.common.lower.createIrBuilder
 import org.jetbrains.kotlin.backend.common.lower.irBlock
 import org.jetbrains.kotlin.backend.konan.*
+import org.jetbrains.kotlin.backend.konan.driver.utilities.bytesToHumanReadableString
 import org.jetbrains.kotlin.backend.konan.driver.utilities.dumpHeap
 import org.jetbrains.kotlin.backend.konan.driver.utilities.liveHeapSize
 import org.jetbrains.kotlin.backend.konan.ir.isBoxOrUnboxCall
@@ -37,11 +38,34 @@ import org.jetbrains.kotlin.ir.visitors.IrTransformer
 import org.jetbrains.kotlin.ir.visitors.IrVisitorVoid
 import org.jetbrains.kotlin.ir.visitors.acceptChildrenVoid
 import org.jetbrains.kotlin.name.Name
+import java.io.PrintWriter
 import java.lang.Thread.sleep
 import java.util.*
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.concurrent.thread
+
+private class TimeLogger {
+
+    private val startTime = System.currentTimeMillis()
+
+    private var lastEpoch = startTime
+
+    fun markEpoch(name: String) {
+        val time = System.currentTimeMillis()
+        println("        $name took ${fmt(time - lastEpoch)}s")
+        lastEpoch = time
+    }
+
+    fun total() {
+        println("        Total: ${fmt(System.currentTimeMillis() - startTime)}s")
+    }
+
+    private fun fmt(tm: Long): String {
+        return String.format("%.3f", tm / 1000.0)
+    }
+
+}
 
 internal var IrCall.devirtualizedCallSite: DevirtualizationAnalysis.DevirtualizedCallSite? by irAttribute(copyByDefault = true)
 
@@ -71,6 +95,8 @@ object DevirtualizationUnfoldFactors {
 // See http://web.cs.ucla.edu/~palsberg/tba/papers/sundaresan-et-al-oopsla00.pdf for details.
 internal object DevirtualizationAnalysis {
     private val TAKE_NAMES = false // Take fqNames for all functions and types (for debug purposes).
+
+    private val timeLogger = TimeLogger()
 
     private inline fun takeName(block: () -> String) = if (TAKE_NAMES) block() else null
 
@@ -164,12 +190,23 @@ internal object DevirtualizationAnalysis {
             val isRoot get() = parent == this
 
             fun root(): Node {
-                require(parent.isRoot)
-                return parent
+                var r = this
+                while (r.parent !== r) {
+                    r = r.parent
+                }
+
+                var curr = this
+                while (curr.parent !== r) {
+                    val next = curr.parent
+                    curr.parent = r
+                    curr = next
+                }
+
+                return r
             }
 
             fun join(other: Node) {
-                parent = other.root()
+                root().parent = other.root()
             }
 
             class Source(id: Int, val typeId: Int, nameBuilder: () -> String) : Node(id) {
@@ -237,6 +274,7 @@ internal object DevirtualizationAnalysis {
             for (i in this[v] until this[v + 1])
                 block(this[i])
         }
+
         private fun IntArray.getEdge(v: Int, id: Int) = this[this[v] + id]
         private fun IntArray.edgeCount(v: Int) = this[v + 1] - this[v]
 
@@ -258,7 +296,7 @@ internal object DevirtualizationAnalysis {
             front.add(node)
             visited.set(node.id)
             lateinit var source: Node.Source
-            bfs@while (front.isNotEmpty()) {
+            bfs@ while (front.isNotEmpty()) {
                 val prevFront = front
                 front = mutableListOf()
                 for (from in prevFront) {
@@ -312,6 +350,7 @@ internal object DevirtualizationAnalysis {
             val order = IntArray(nodesCount)
             val multiNodes = IntArray(nodesCount)
             val visited = CustomBitSet(nodesCount)
+            val potentialExternalVirtualCall = CustomBitSet(nodesCount)
 
             private fun calculateTopologicalSort() {
                 require(directEdges.size == reversedEdges.size)
@@ -345,7 +384,7 @@ internal object DevirtualizationAnalysis {
                 require(index == nodesCount)
             }
 
-            private fun mergeMultiNodes() {
+            private fun mergeStronglyConnectedComponents() {
                 visited.clear()
                 var index = 0
                 for (i in order.size - 1 downTo 0) {
@@ -547,14 +586,120 @@ internal object DevirtualizationAnalysis {
                 return result.toIntArray()
             }
 
+            fun Node.toKey(): List<Any> {
+                val re = mutableSetOf<Int>()
+                reversedEdges.forEachEdge(id) {
+                    re.add(nodes[it].root().id)
+                }
+
+                val rc = mutableSetOf<Pr>()
+                reversedCastEdges?.forEach {
+                    rc += Pr(it.node.root().id, it.suitableTypes.toBitSet())
+                }
+
+                return re.toList().sorted() + rc.toList().sortedBy { it.a }
+            }
+
+
+            fun mergeEquivalentNodes() {
+                // These nodes might receive a final type from external world. See [propagateFinalTypesFromExternalVirtualCalls]
+                var skippedNodes = 0
+                constraintGraph.externalVirtualCalls.forEach {
+                    ++skippedNodes
+                    potentialExternalVirtualCall.set(it.returnsNode.root().id)
+                }
+
+                println("Skipped due to external virtual call: $skippedNodes (${String.format("%.2f", skippedNodes.toDouble() / nodes.size * 100.0)}%)")
+
+                val random = Random(234239874) // Just some number for reproducibility
+                val nodeRandomIds = LongArray(nodes.size) { random.nextLong() }
+
+                val signatureMap = hashMapOf<Long, Node>()
+
+                val ms = mutableMapOf<List<Any>, Int>()
+
+                var seenColor = 0
+                val seenEdgeFrom = IntArray(nodes.size)
+
+                for (i in order.size - 1 downTo 0) {
+                    val nodeIndex = order[i]
+                    val node = nodes[nodeIndex]
+                    if (!node.isRoot) continue
+                    if (node is Node.Source) continue
+                    if (potentialExternalVirtualCall[nodeIndex]) continue
+
+                    if (!node.types.isEmpty) error("Ordinary node types should be empty (${nodeIndex})")
+
+                    if (node.reversedCastEdges == null) {
+                        var singleParent = -1
+                        reversedEdges.forEachEdge(nodeIndex) {
+                            val rootId = nodes[it].root().id
+                            if (rootId == nodeIndex) return@forEachEdge
+
+                            if (singleParent == -1) {
+                                singleParent = rootId
+                            } else if (singleParent != rootId) {
+                                singleParent = -2
+                            }
+                        }
+
+                        if (singleParent >= 0) {
+                            val singleParentNode = nodes[singleParent]
+                            if (singleParentNode !is Node.Source) {
+                                if (!node.types.isEmpty) error("Ordinary node types should be empty (${singleParentNode})")
+                                node.join(singleParentNode)
+                            }
+                            continue
+                        }
+                    }
+
+                    val k = node.toKey()
+                    val existing = ms[k]
+                    if (existing == null) {
+                        ms[k] = node.id
+                    } else {
+                        require(nodes[existing].isRoot)
+                        node.join(nodes[existing])
+                    }
+
+
+//                    ++seenColor
+//                    var signature = 0L
+//                    reversedEdges.forEachEdge(nodeIndex) {
+//                        val r = nodes[it].root().id
+//                        if (seenEdgeFrom[r] != seenColor) {
+//                            signature = signature xor nodeRandomIds[r]
+//                            seenEdgeFrom[r] = seenColor
+//                        }
+//                    }
+//
+//                    val mergeWith = signatureMap[signature]
+//                    if (mergeWith != null) {
+//                        // TODO: check that the edges are actually equivalent
+//                        node.join(mergeWith)
+//                    } else {
+//                        signatureMap[signature] = node
+//                    }
+                }
+            }
+
             fun build(): Condensation {
                 calculateTopologicalSort()
-                mergeMultiNodes()
+                timeLogger.markEpoch("topological sort")
+                mergeStronglyConnectedComponents()
+                timeLogger.markEpoch("merge scc")
                 mergeEdges()
+                timeLogger.markEpoch("merge edges 1")
+                mergeEquivalentNodes()
+                timeLogger.markEpoch("marge equivalent nodes")
+                mergeEdges()
+                timeLogger.markEpoch("merge edges 2")
 
                 return Condensation(topologicalOrder())
             }
         }
+
+        data class Pr(val a: Int, val b: BitSet)
 
         private fun DataFlowIR.Node.VirtualCall.debugString() =
                 irCallSite?.let { ir2stringWhole(it).trimEnd() } ?: this.toString()
@@ -572,6 +717,24 @@ internal object DevirtualizationAnalysis {
             })
         }
 
+        fun Iterable<CustomBitSet>.totalSize(): Long {
+            var totalBitmaps = 0L
+            this.forEach { totalBitmaps += it.size }
+            return totalBitmaps
+        }
+
+        fun Iterable<CustomBitSet>.totalCardinality(): Long {
+            var result = 0L
+            this.forEach { result += it.cardinality() }
+            return result
+        }
+
+        fun Iterable<Node>.totalCastEdges(): Long {
+            var result = 0L
+            this.forEach { result += it.directCastEdges?.size?.toLong() ?: 0L }
+            return result
+        }
+
         fun analyze() {
             resetCallSitesAttributeOwnerIds()
 
@@ -585,7 +748,17 @@ internal object DevirtualizationAnalysis {
 
             val nodesMap = mutableMapOf<DataFlowIR.Node, Node>()
 
+            timeLogger.markEpoch("initialization")
             val (instantiatingClasses, directEdges, reversedEdges) = buildConstraintGraph(nodesMap, functions, rootSet)
+            timeLogger.markEpoch("reversed graph building")
+
+
+            println("Original number of nodes: ${constraintGraph.nodes.size}")
+            println("Direct edges size: ${(directEdges[constraintGraph.nodes.size] * 4L).bytesToHumanReadableString()}")
+            println("Cast edges: ${constraintGraph.nodes.totalCastEdges()}")
+
+            println("Total bitmap sizes before = ${(nodesMap.values.map { it.types }.totalSize() * 8L).bytesToHumanReadableString()}")
+            println("Total bitmap cardinality before = ${nodesMap.values.map { it.types }.totalCardinality()}")
 
             context.logMultiple {
                 +"FULL CONSTRAINT GRAPH"
@@ -618,8 +791,25 @@ internal object DevirtualizationAnalysis {
                 +""
             }
 
+            timeLogger.markEpoch("some printing")
             val condensation = CondensationBuilder(directEdges, reversedEdges).build()
             val topologicalOrder = condensation.topologicalOrder.map { constraintGraph.nodes[it] }
+            timeLogger.markEpoch("finalizing condensation")
+
+            fun dumpTypesTo(file: String) {
+                PrintWriter(file).use { out ->
+                    for (node in constraintGraph.nodes) {
+                        out.println("${node.id} ${node.root().types.toBitSet().hashCode().toHexString()}")
+                    }
+                }
+            }
+
+            dumpTypesTo("/Volumes/case_sensitive/vcs/kotlin/before.td")
+
+
+            println("Number of nodes: ${topologicalOrder.size} (${String.format("%.2f", topologicalOrder.size.toDouble() / constraintGraph.nodes.size * 100.0)}%)")
+            println("Direct edges size: ${(directEdges[constraintGraph.nodes.size] * 4L).bytesToHumanReadableString()}")
+            println("Cast edges: ${constraintGraph.nodes.totalCastEdges()}")
 
             context.logMultiple {
                 +"CONDENSATION"
@@ -629,6 +819,66 @@ internal object DevirtualizationAnalysis {
                 }
                 +""
             }
+
+            timeLogger.markEpoch("dumping types")
+
+            val virtualNodes = CustomBitSet()
+
+            fun markVirtualNodes(node: Node) {
+                if (virtualNodes[node.id]) return
+                virtualNodes.set(node.id)
+
+                directEdges.forEachEdge(node.id) {
+                    markVirtualNodes(constraintGraph.nodes[it])
+                }
+
+                node.directCastEdges?.forEach {
+                    if (it.suitableTypes[VIRTUAL_TYPE_ID]) {
+                        markVirtualNodes(it.node)
+                    }
+                }
+            }
+
+            topologicalOrder.forEach {
+                if (it.types[VIRTUAL_TYPE_ID]) {
+                    markVirtualNodes(it)
+                }
+            }
+
+            timeLogger.markEpoch("propagating virtual nodes")
+
+            val seenNodes = CustomBitSet(constraintGraph.nodes.size)
+
+            fun markReachableFrom(nodeId: Int) {
+                if (seenNodes[nodeId]) return
+                seenNodes.set(nodeId)
+                reversedEdges.forEachEdge(nodeId) {
+                    if (!seenNodes[it]) {
+                        markReachableFrom(it)
+                    }
+                }
+                constraintGraph.nodes[nodeId].reversedCastEdges?.forEach {
+                    if (!seenNodes[it.node.id]) {
+                        markReachableFrom(it.node.id)
+                    }
+                }
+            }
+
+            for (function in functions.values) {
+                if (!constraintGraph.functions.containsKey(function.symbol)) continue
+                function.body.forEachNonScopeNode { node ->
+                    val virtualCall = node as? DataFlowIR.Node.VirtualCall ?: return@forEachNonScopeNode
+                    assert(nodesMap[virtualCall] != null) { "Node for virtual call $virtualCall has not been built" }
+                    val receiverNode = constraintGraph.virtualCallSiteReceivers[virtualCall]?.root()
+                            ?: error("virtualCallSiteReceivers were not built for virtual call $virtualCall")
+
+                    if (!virtualNodes[receiverNode.id]) {
+                        markReachableFrom(receiverNode.id)
+                    }
+                }
+            }
+
+            timeLogger.markEpoch("marking reachable nodes")
 
             topologicalOrder.forEachIndexed { index, node ->
                 node.priority = index
@@ -650,6 +900,22 @@ internal object DevirtualizationAnalysis {
                 }
             }
 
+            timeLogger.markEpoch("checking topological order")
+
+            if (entryPoint == null) {
+                constraintGraph.externalVirtualCalls.forEach { call ->
+                    val returnsNode = call.returnsNode.root()
+                    if (virtualNodes[call.receiverNode.root().id]) { // Called from external world.
+                        returnsNode.types.set(call.returnType.index)
+                    }
+                }
+            }
+
+            timeLogger.markEpoch("propagating final types from external virtual calls")
+
+//            topologicalOrder = topologicalOrder.filter { seenNodes[it.id] }
+
+            val startTime = System.currentTimeMillis()
 
             val badEdges = mutableListOf<Pair<Node, Node.CastEdge>>()
             for (node in topologicalOrder) {
@@ -658,6 +924,8 @@ internal object DevirtualizationAnalysis {
                         ?.forEach { badEdges += node to it }
             }
             badEdges.sortBy { it.second.node.priority } // Heuristic.
+
+            timeLogger.markEpoch("Collecting bad cast edges")
 
             // First phase - greedy phase.
             var iterations = 0
@@ -669,6 +937,8 @@ internal object DevirtualizationAnalysis {
                 for (node in topologicalOrder) {
                     if (node is Node.Source)
                         continue // A source has no incoming edges.
+
+                    if (!seenNodes[node.id]) continue
 
                     reversedEdges.forEachEdge(node.id) {
                         node.types.or(constraintGraph.nodes[it].types)
@@ -689,6 +959,10 @@ internal object DevirtualizationAnalysis {
                     }
                 }
             } while (!end)
+
+            timeLogger.markEpoch("First stage")
+
+//            dumpTypesTo("/Volumes/case_sensitive/vcs/kotlin/mid.td")
 
             // Second phase - do BFS.
             val nodesCount = topologicalOrder.size
@@ -715,6 +989,8 @@ internal object DevirtualizationAnalysis {
                     val node = constraintGraph.nodes[prevFront[i]]
                     directEdges.forEachEdge(node.id) { distNodeId ->
                         val distNode = constraintGraph.nodes[distNodeId]
+                        if (!seenNodes[distNode.id]) return@forEachEdge
+
                         if (marked[distNode.id])
                             distNode.types.or(node.types)
                         else {
@@ -726,6 +1002,7 @@ internal object DevirtualizationAnalysis {
                     }
                     node.directCastEdges?.forEach { edge ->
                         val distNode = edge.node
+                        if (!seenNodes[distNode.id]) return@forEach
                         if (distNode.types.orWithFilterHasChanged(node.types, edge.suitableTypes) && !marked[distNode.id]) {
                             marked.set(distNode.id)
                             front[frontSize++] = distNode.id
@@ -734,8 +1011,16 @@ internal object DevirtualizationAnalysis {
                 }
             }
 
-            if (entryPoint == null)
-                propagateFinalTypesFromExternalVirtualCalls(directEdges)
+            timeLogger.markEpoch("Second stage")
+
+            println("Main algorithm time: ${System.currentTimeMillis() - startTime} ms")
+
+            dumpTypesTo("/Volumes/case_sensitive/vcs/kotlin/end.td")
+
+//            if (entryPoint == null)
+//                propagateFinalTypesFromExternalVirtualCalls(directEdges)
+
+            dumpTypesTo("/Volumes/case_sensitive/vcs/kotlin/post.td")
 
             context.logMultiple {
                 topologicalOrder.forEachIndexed { index, multiNode ->
@@ -749,8 +1034,18 @@ internal object DevirtualizationAnalysis {
                 +""
             }
 
-            println("Calc: ${liveHeapSize()}")
-//            dumpHeap("/Volumes/case_sensitive/vcs/kotlin_a/devirt-calc.hprof")
+            println("Total bitmap sizes after = ${(nodesMap.values.map { it.types }.totalSize() * 8L).bytesToHumanReadableString()}")
+            println("Total bitmap cardinality after = ${nodesMap.values.map { it.types }.totalCardinality()}")
+
+            println("Calc: ${liveHeapSize().bytesToHumanReadableString()}")
+            dumpHeap("/Volumes/case_sensitive/vcs/kotlin/devirt-calc.hprof")
+
+
+            timeLogger.markEpoch("Some debug info")
+
+//            val out = PrintWriter("/Users/Anton.Bannykh/cs/vcs/kotlin/vta.ans")
+
+            val usefulTypes = CustomBitSet()
 
             val result = mutableMapOf<DataFlowIR.Node.VirtualCall, Pair<DevirtualizedCallSite, DataFlowIR.FunctionSymbol>>()
             val nothing = symbolTable.classMap[context.symbols.nothing.owner]
@@ -761,7 +1056,11 @@ internal object DevirtualizationAnalysis {
                     assert(nodesMap[virtualCall] != null) { "Node for virtual call $virtualCall has not been built" }
                     val receiverNode = constraintGraph.virtualCallSiteReceivers[virtualCall]?.root()
                             ?: error("virtualCallSiteReceivers were not built for virtual call $virtualCall")
-                    if (receiverNode.types[VIRTUAL_TYPE_ID]) {
+
+                    usefulTypes.or(typeHierarchy.inheritorsOf(virtualCall.receiverType))
+
+//                    val originalReceiver = constraintGraph.virtualCallSiteReceivers[virtualCall]!!
+                    if (virtualNodes[receiverNode.id] || receiverNode.types[VIRTUAL_TYPE_ID]) {
                         context.logMultiple {
                             +"Unable to devirtualize callsite ${virtualCall.debugString()}"
                             +"from ${function.symbol}"
@@ -769,6 +1068,7 @@ internal object DevirtualizationAnalysis {
                             logPathToType(reversedEdges, receiverNode, VIRTUAL_TYPE_ID)
                             +""
                         }
+//                        out.println("${originalReceiver.id} -1")
                         return@forEachNonScopeNode
                     }
 
@@ -791,6 +1091,10 @@ internal object DevirtualizationAnalysis {
                     }
                     context.log { "" }
 
+//                    out.print("${originalReceiver.id} ${possibleReceivers.size}")
+//                    possibleReceivers.forEach { type -> out.print(" ${type.index}") }
+//                    out.println()
+
                     val devirtualizedCallSite = DevirtualizedCallSite(virtualCall.callee,
                             possibleReceivers.map { possibleReceiverType ->
                                 val callee = possibleReceiverType.calleeAt(virtualCall)
@@ -803,6 +1107,14 @@ internal object DevirtualizationAnalysis {
                     virtualCall.irCallSite?.devirtualizedCallSite = devirtualizedCallSite
                 }
             }
+//            out.close()
+
+            timeLogger.markEpoch("Calculating devirtualized call sites")
+
+            println("Useful types cardinality = ${usefulTypes.cardinality()} (${String.format("%.2f", usefulTypes.cardinality() / allTypes.size.toDouble() * 100.0)}%)")
+            println("Useful nodes = ${seenNodes.cardinality()} (${String.format("%.2f", seenNodes.cardinality() / constraintGraph.nodes.size.toDouble() * 100.0)}%)")
+            println("Total useful bitmap sizes after = ${(nodesMap.values.filter { seenNodes[it.id] }.map { it.types }.totalSize() * 8L).bytesToHumanReadableString()}")
+            println("Total useful bitmap cardinality after = ${nodesMap.values.filter { seenNodes[it.id] }.map { it.types }.totalCardinality()}")
 
             context.logMultiple {
                 +"Devirtualized from current module:"
@@ -831,52 +1143,11 @@ internal object DevirtualizationAnalysis {
                 }
             }
 
-            println("Final: ${liveHeapSize()}")
+            println("Final: ${liveHeapSize().bytesToHumanReadableString()}")
 //            dumpHeap("/Volumes/case_sensitive/vcs/kotlin_a/devirt-final.hprof")
-        }
 
-        /*
-         * If a virtual function is called on a receiver coming from external world and
-         * the return type of the function is a final class, then we conservatively assume
-         * that instance of this class could have been created by the call.
-         */
-        private fun propagateFinalTypesFromExternalVirtualCalls(directEdges: IntArray) {
-            val nodesCount = constraintGraph.nodes.size
-            constraintGraph.externalVirtualCalls
-                    .groupBy { it.returnType }
-                    .forEach { (type, list) ->
-                        val visited = CustomBitSet(nodesCount)
-                        val stack = mutableListOf<Node>()
-                        list.forEach { call ->
-                            val returnsNode = call.returnsNode.root()
-                            if (call.receiverNode.root().types[VIRTUAL_TYPE_ID] // Called from external world.
-                                    && !returnsNode.types[type.index] && !visited[returnsNode.id]
-                            ) {
-                                returnsNode.types.set(type.index)
-                                stack.push(returnsNode)
-                                visited.set(returnsNode.id)
-                            }
-                        }
-                        while (stack.isNotEmpty()) {
-                            val node = stack.pop()
-                            directEdges.forEachEdge(node.id) { distNodeId ->
-                                val distNode = constraintGraph.nodes[distNodeId]
-                                if (!distNode.types[type.index] && !visited[distNode.id]) {
-                                    distNode.types.set(type.index)
-                                    visited.set(distNode.id)
-                                    stack.push(distNode)
-                                }
-                            }
-                            node.directCastEdges?.forEach { edge ->
-                                val distNode = edge.node
-                                if (!distNode.types[type.index] && !visited[distNode.id] && edge.suitableTypes[type.index]) {
-                                    distNode.types.set(type.index)
-                                    visited.set(distNode.id)
-                                    stack.push(distNode)
-                                }
-                            }
-                        }
-                    }
+            timeLogger.markEpoch("Some finalization info")
+            timeLogger.total()
         }
 
         // Both [directEdges] and [reversedEdges] are the array representation of a graph:
@@ -894,6 +1165,7 @@ internal object DevirtualizationAnalysis {
                                          rootSet: List<DataFlowIR.FunctionSymbol>
         ): ConstraintGraphBuildResult {
             val precursor = buildConstraintGraphPrecursor(nodesMap, functions, rootSet)
+            timeLogger.markEpoch("Precursor graph building")
             return ConstraintGraphBuildResult(precursor.instantiatingClasses, precursor.directEdges,
                     buildReversedEdges(precursor.directEdges, precursor.reversedEdgesCount))
         }
@@ -927,6 +1199,7 @@ internal object DevirtualizationAnalysis {
         ): ConstraintGraphPrecursor {
             val constraintGraphBuilder = ConstraintGraphBuilder(nodesMap, functions, rootSet, true)
             constraintGraphBuilder.build()
+            timeLogger.markEpoch("Constraint graph building")
             val bagOfEdges = constraintGraphBuilder.bagOfEdges
             val directEdgesCount = constraintGraphBuilder.directEdgesCount
             val reversedEdgesCount = constraintGraphBuilder.reversedEdgesCount
@@ -971,6 +1244,7 @@ internal object DevirtualizationAnalysis {
             val instantiatingClasses = CustomBitSet()
 
             val bagOfEdges = LongArrayList()
+
             // Only filter duplicate edges within a function scope. That covers up to 98% of duplicates in practice.
             private var localBagOfEdges = LongHashSet(10, 0.4f)
             val directEdgesCount = IntArrayList()
@@ -1443,24 +1717,30 @@ internal object DevirtualizationAnalysis {
     class DevirtualizedCallSite(val callee: DataFlowIR.FunctionSymbol, val possibleCallees: List<DevirtualizedCallee>)
 
     fun run(context: Context, irModule: IrModuleFragment, moduleDFG: ModuleDFG) = run {
-//        dumpHeap("/Volumes/case_sensitive/vcs/kotlin_a/devirt-before.hprof")
-        println("Before: ${liveHeapSize()}")
+        dumpHeap("/Volumes/case_sensitive/vcs/kotlin/devirt-before.hprof")
+        println("Before: ${liveHeapSize().bytesToHumanReadableString()}")
+
+        val enableRamMonitoring = context.config.monitorHeap
 
         val isRunning = AtomicBoolean(true)
         val maxHeapSize = AtomicLong(0)
 
-        context.config.monitorHeap
-
-        thread(start = true, isDaemon = true, name = "Devirtualization Heap Monitor") {
-            while (isRunning.get()) {
-                maxHeapSize.set(maxOf(maxHeapSize.get(), liveHeapSize()))
-                sleep(50)
+        if (enableRamMonitoring) {
+            thread(start = true, isDaemon = true, name = "Devirtualization Heap Monitor") {
+                while (isRunning.get()) {
+                    maxHeapSize.set(maxOf(maxHeapSize.get(), liveHeapSize()))
+                    sleep(500)
+                }
             }
         }
 
+        val start = System.currentTimeMillis()
         DevirtualizationAnalysisImpl(context, irModule, moduleDFG).analyze()
+        println("Devirtualization took ${(System.currentTimeMillis() - start) / 1000.0} s")
 
-        println("Max heap size: ${maxHeapSize.get() / 1024 / 1024} MB")
+        if (enableRamMonitoring) {
+            println("Max heap size: ${maxHeapSize.get().bytesToHumanReadableString()}")
+        }
     }
 
     fun devirtualize(irModule: IrModuleFragment, moduleDFG: ModuleDFG, generationState: NativeGenerationState,
