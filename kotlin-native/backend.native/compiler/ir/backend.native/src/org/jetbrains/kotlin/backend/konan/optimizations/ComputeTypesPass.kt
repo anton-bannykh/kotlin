@@ -208,7 +208,7 @@ internal class ComputeTypesPass(val context: Context) : BodyLoweringPass {
             val returnableBlockCFMPInfos = mutableMapOf<IrReturnableBlockSymbol, ControlFlowMergePointInfo>()
             val breaksCFMPInfos = mutableMapOf<IrLoop, ControlFlowMergePointInfo>()
             val continuesCFMPInfos = mutableMapOf<IrLoop, ControlFlowMergePointInfo>()
-            val getValueVariablesValues = mutableMapOf<IrGetValue, BitSet>()
+            val getValueVariablesWrites = mutableMapOf<IrGetValue, BitSet>()
             val doWhileLoopForWhileLoops = mutableMapOf<IrWhileLoop, IrDoWhileLoop>()
 
             fun controlFlowMergePoint(cfmpInfo: ControlFlowMergePointInfo, value: IrExpression, variablesValues: BitSet): BitSet {
@@ -375,10 +375,10 @@ internal class ComputeTypesPass(val context: Context) : BodyLoweringPass {
 
             override fun visitGetValue(expression: IrGetValue, data: BitSet): BitSet {
                 val variable = expression.symbol.owner as? IrVariable ?: return data
-                val mergedVariablesValues = getValueVariablesValues.getOrPut(expression) { BitSet() }
-                mergedVariablesValues.or(data)
+                val mergedVariablesWrites = getValueVariablesWrites.getOrPut(expression) { BitSet() }
+                mergedVariablesWrites.or(data)
                 val variableValues = variableWrites[variable]?.copy()?.let { writes ->
-                    writes.and(mergedVariablesValues)
+                    writes.and(mergedVariablesWrites)
                     writes.mapEachBit { allVariablesWrites[it].value }
                 } ?: error("A use of uninitialized variable ${variable.render()}")
                 val actualType = variableValues.computeType()
@@ -391,7 +391,7 @@ internal class ComputeTypesPass(val context: Context) : BodyLoweringPass {
                     +"    ${mergedVariableWrites.format()}"
                 }
 
-                return mergedVariablesValues
+                return mergedVariablesWrites.copy()
             }
 
             fun setVariable(variable: IrVariable, value: IrExpression, variablesValues: BitSet): BitSet {
