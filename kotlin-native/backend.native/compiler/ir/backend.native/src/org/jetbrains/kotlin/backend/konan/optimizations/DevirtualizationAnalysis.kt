@@ -480,8 +480,7 @@ internal object DevirtualizationAnalysis {
                                 if (seenEdgeTo[toRootId] != seenColor) {
                                     val bitSetTo = seenBitSetTo[toRootId]
                                     if (bitSetTo == null) {
-                                        // No need to clone here as cast edges don't share bitsets
-                                        seenBitSetTo[toRootId] = edge.suitableTypes
+                                        seenBitSetTo[toRootId] = edge.suitableTypes.copy()
                                         // Since root always go first we can safely add new edge in place
                                         nodes[fromRootId].addCastEdge(Node.CastEdge(nodes[toRootId], edge.suitableTypes))
                                     } else {
@@ -586,21 +585,6 @@ internal object DevirtualizationAnalysis {
                 return result.toIntArray()
             }
 
-            fun Node.toKey(): List<Any> {
-                val re = mutableSetOf<Int>()
-                reversedEdges.forEachEdge(id) {
-                    re.add(nodes[it].root().id)
-                }
-
-                val rc = mutableSetOf<Pr>()
-                reversedCastEdges?.forEach {
-                    rc += Pr(it.node.root().id, it.suitableTypes.toBitSet())
-                }
-
-                return re.toList().sorted() + rc.toList().sortedBy { it.a }
-            }
-
-
             fun mergeEquivalentNodes() {
                 // These nodes might receive a final type from external world. See [propagateFinalTypesFromExternalVirtualCalls]
                 var skippedNodes = 0
@@ -616,10 +600,9 @@ internal object DevirtualizationAnalysis {
 
                 val signatureMap = hashMapOf<Long, Node>()
 
-                val ms = mutableMapOf<List<Any>, Int>()
-
                 var seenColor = 0
                 val seenEdgeFrom = IntArray(nodes.size)
+                val castEdges = arrayOfNulls<CustomBitSet>(nodes.size)
 
                 for (i in order.size - 1 downTo 0) {
                     val nodeIndex = order[i]
@@ -653,34 +636,69 @@ internal object DevirtualizationAnalysis {
                         }
                     }
 
-                    val k = node.toKey()
-                    val existing = ms[k]
-                    if (existing == null) {
-                        ms[k] = node.id
-                    } else {
-                        require(nodes[existing].isRoot)
-                        node.join(nodes[existing])
+
+                    ++seenColor
+                    var signature = 0L
+                    var totalEdges = 0
+                    reversedEdges.forEachEdge(nodeIndex) {
+                        val r = nodes[it].root().id
+                        if (seenEdgeFrom[r] != seenColor) {
+                            signature = signature xor nodeRandomIds[r]
+                            seenEdgeFrom[r] = seenColor
+                            ++totalEdges
+                        }
+                    }
+                    node.reversedCastEdges?.forEach {
+                        val r = it.node.root().id
+                        if (seenEdgeFrom[r] != seenColor) {
+                            seenEdgeFrom[r] = seenColor
+                            signature = signature xor mixHash(nodeRandomIds[r], it.suitableTypes.hashCodeLong())
+                            ++totalEdges
+                            castEdges[r] = it.suitableTypes
+                        }
                     }
 
 
-//                    ++seenColor
-//                    var signature = 0L
-//                    reversedEdges.forEachEdge(nodeIndex) {
-//                        val r = nodes[it].root().id
-//                        if (seenEdgeFrom[r] != seenColor) {
-//                            signature = signature xor nodeRandomIds[r]
-//                            seenEdgeFrom[r] = seenColor
-//                        }
-//                    }
-//
-//                    val mergeWith = signatureMap[signature]
-//                    if (mergeWith != null) {
-//                        // TODO: check that the edges are actually equivalent
-//                        node.join(mergeWith)
-//                    } else {
-//                        signatureMap[signature] = node
-//                    }
+                    val mergeWith = signatureMap[signature]
+                    if (mergeWith != null) {
+                        var eq = true
+                        reversedEdges.forEachEdge(mergeWith.id) {
+                            val r = nodes[it].root().id
+                            if (seenEdgeFrom[r] != seenColor) {
+                                eq = false
+                            }
+                            seenEdgeFrom[r] = 0
+                        }
+                        mergeWith.reversedCastEdges?.forEach {
+                            val r = it.node.root().id
+                            if (seenEdgeFrom[r] != seenColor) {
+                                eq = false
+                            } else {
+                                val tp = castEdges[r]
+                                if (tp?.equals(it.suitableTypes) != true) {
+                                    eq = false
+                                }
+                            }
+                            seenEdgeFrom[r] = 0
+                        }
+
+                        if (eq) node.join(mergeWith)
+                    } else {
+                        signatureMap[signature] = node
+                    }
                 }
+            }
+
+            // Bijective mixer to ensure Hash(A, Mask) ^ Hash(B) doesn't accidentally equal Hash(A) ^ Hash(B, Mask)
+            // Inspired by MurmurHash3 fmix64 by Austin Appleby (https://github.com/aappleby/smhasher/blob/0ff96f7835817a27d0487325b6c16033e2992eb5/src/MurmurHash3.cpp#L81)
+            private fun mixHash(nodeId: Long, maskHash: Long): Long {
+                var k = (nodeId xor maskHash).toULong()
+                k = k xor (k shr 33)
+                k *= 0xff51afd7ed558ccdUL
+                k = k xor (k shr 33)
+                k *= 0xc4ceb9fe1a85ec53UL
+                k = k xor (k shr 33)
+                return k.toLong()
             }
 
             fun build(): Condensation {
@@ -698,8 +716,6 @@ internal object DevirtualizationAnalysis {
                 return Condensation(topologicalOrder())
             }
         }
-
-        data class Pr(val a: Int, val b: BitSet)
 
         private fun DataFlowIR.Node.VirtualCall.debugString() =
                 irCallSite?.let { ir2stringWhole(it).trimEnd() } ?: this.toString()
@@ -913,8 +929,6 @@ internal object DevirtualizationAnalysis {
 
             timeLogger.markEpoch("propagating final types from external virtual calls")
 
-//            topologicalOrder = topologicalOrder.filter { seenNodes[it.id] }
-
             val startTime = System.currentTimeMillis()
 
             val badEdges = mutableListOf<Pair<Node, Node.CastEdge>>()
@@ -1038,12 +1052,12 @@ internal object DevirtualizationAnalysis {
             println("Total bitmap cardinality after = ${nodesMap.values.map { it.types }.totalCardinality()}")
 
             println("Calc: ${liveHeapSize().bytesToHumanReadableString()}")
-            dumpHeap("/Volumes/case_sensitive/vcs/kotlin/devirt-calc.hprof")
+//            dumpHeap("/Volumes/case_sensitive/vcs/kotlin/devirt-calc.hprof")
 
 
             timeLogger.markEpoch("Some debug info")
 
-//            val out = PrintWriter("/Users/Anton.Bannykh/cs/vcs/kotlin/vta.ans")
+            val out = PrintWriter("/Users/Anton.Bannykh/cs/vcs/kotlin/vta.ans")
 
             val usefulTypes = CustomBitSet()
 
@@ -1059,7 +1073,7 @@ internal object DevirtualizationAnalysis {
 
                     usefulTypes.or(typeHierarchy.inheritorsOf(virtualCall.receiverType))
 
-//                    val originalReceiver = constraintGraph.virtualCallSiteReceivers[virtualCall]!!
+                    val originalReceiver = constraintGraph.virtualCallSiteReceivers[virtualCall]!!
                     if (virtualNodes[receiverNode.id] || receiverNode.types[VIRTUAL_TYPE_ID]) {
                         context.logMultiple {
                             +"Unable to devirtualize callsite ${virtualCall.debugString()}"
@@ -1068,7 +1082,7 @@ internal object DevirtualizationAnalysis {
                             logPathToType(reversedEdges, receiverNode, VIRTUAL_TYPE_ID)
                             +""
                         }
-//                        out.println("${originalReceiver.id} -1")
+                        out.println("${originalReceiver.id} -1")
                         return@forEachNonScopeNode
                     }
 
@@ -1091,9 +1105,9 @@ internal object DevirtualizationAnalysis {
                     }
                     context.log { "" }
 
-//                    out.print("${originalReceiver.id} ${possibleReceivers.size}")
-//                    possibleReceivers.forEach { type -> out.print(" ${type.index}") }
-//                    out.println()
+                    out.print("${originalReceiver.id} ${possibleReceivers.size}")
+                    possibleReceivers.forEach { type -> out.print(" ${type.index}") }
+                    out.println()
 
                     val devirtualizedCallSite = DevirtualizedCallSite(virtualCall.callee,
                             possibleReceivers.map { possibleReceiverType ->
@@ -1107,7 +1121,7 @@ internal object DevirtualizationAnalysis {
                     virtualCall.irCallSite?.devirtualizedCallSite = devirtualizedCallSite
                 }
             }
-//            out.close()
+            out.close()
 
             timeLogger.markEpoch("Calculating devirtualized call sites")
 
@@ -1717,7 +1731,7 @@ internal object DevirtualizationAnalysis {
     class DevirtualizedCallSite(val callee: DataFlowIR.FunctionSymbol, val possibleCallees: List<DevirtualizedCallee>)
 
     fun run(context: Context, irModule: IrModuleFragment, moduleDFG: ModuleDFG) = run {
-        dumpHeap("/Volumes/case_sensitive/vcs/kotlin/devirt-before.hprof")
+//        dumpHeap("/Volumes/case_sensitive/vcs/kotlin/devirt-before.hprof")
         println("Before: ${liveHeapSize().bytesToHumanReadableString()}")
 
         val enableRamMonitoring = context.config.monitorHeap
@@ -1725,11 +1739,13 @@ internal object DevirtualizationAnalysis {
         val isRunning = AtomicBoolean(true)
         val maxHeapSize = AtomicLong(0)
 
+        val currentThread = Thread.currentThread()
+
         if (enableRamMonitoring) {
             thread(start = true, isDaemon = true, name = "Devirtualization Heap Monitor") {
                 while (isRunning.get()) {
-                    maxHeapSize.set(maxOf(maxHeapSize.get(), liveHeapSize()))
-                    sleep(500)
+                    maxHeapSize.set(maxOf(maxHeapSize.get(), liveHeapSize(currentThread)))
+                    sleep(100)
                 }
             }
         }
@@ -1738,6 +1754,7 @@ internal object DevirtualizationAnalysis {
         DevirtualizationAnalysisImpl(context, irModule, moduleDFG).analyze()
         println("Devirtualization took ${(System.currentTimeMillis() - start) / 1000.0} s")
 
+        isRunning.set(false)
         if (enableRamMonitoring) {
             println("Max heap size: ${maxHeapSize.get().bytesToHumanReadableString()}")
         }

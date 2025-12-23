@@ -14,23 +14,33 @@ import java.nio.file.Paths
 private const val MXBEAN_NAME = "com.sun.management:type=HotSpotDiagnostic"
 
 fun dumpHeap(filePath: String, live: Boolean = true) {
-//    Files.deleteIfExists(Paths.get(filePath))
-//    try {
-//        val mx: HotSpotDiagnosticMXBean =
-//                ManagementFactory.newPlatformMXBeanProxy<HotSpotDiagnosticMXBean?>(
-//                        ManagementFactory.getPlatformMBeanServer(),
-//                        MXBEAN_NAME,
-//                        HotSpotDiagnosticMXBean::class.java)!!
-//        mx.dumpHeap(filePath, live) // live=true keeps only reachable objects
-//        println("Heap dump written to " + filePath)
-//    } catch (e: Exception) {
-//        throw RuntimeException("Heap dump failed", e)
-//    }
+    Files.deleteIfExists(Paths.get(filePath))
+    try {
+        val mx: HotSpotDiagnosticMXBean =
+                ManagementFactory.newPlatformMXBeanProxy<HotSpotDiagnosticMXBean?>(
+                        ManagementFactory.getPlatformMBeanServer(),
+                        MXBEAN_NAME,
+                        HotSpotDiagnosticMXBean::class.java)!!
+        mx.dumpHeap(filePath, live) // live=true keeps only reachable objects
+        println("Heap dump written to " + filePath)
+    } catch (e: Exception) {
+        throw RuntimeException("Heap dump failed", e)
+    }
 }
 
-fun liveHeapSize(): Long {
+fun liveHeapSize(currentThread: Thread? = null): Long {
     System.gc()
-    return Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()
+    return (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()).also {
+        println("Heap size is ${it.bytesToHumanReadableString()}")
+        currentThread?.let {
+            println(it.stackTrace.firstOrNull { it.className.startsWith("org.jetbrains.kotlin.backend.konan.optimizations.DevirtualizationAnalysis")})
+        }
+
+        if (it > 1800L * 1024 * 1024) {
+            println("Max heap reached: " + it.bytesToHumanReadableString())
+//            dumpHeap("/Volumes/case_sensitive/vcs/kotlin/devirt-${it / 1024 / 1024}.hprof")
+        }
+    }
 }
 
 fun Long.bytesToHumanReadableString(): String {

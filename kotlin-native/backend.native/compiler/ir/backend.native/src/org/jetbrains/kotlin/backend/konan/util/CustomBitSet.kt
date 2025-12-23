@@ -5,7 +5,7 @@
 
 package org.jetbrains.kotlin.backend.konan.util
 
-import java.util.BitSet
+import java.util.*
 
 /**
  * Provides some bulk operations needed for devirtualization
@@ -162,6 +162,33 @@ internal class CustomBitSet private constructor(size: Int, data: LongArray) {
             }
             return true
         }
+
+    override fun hashCode(): Int {
+        val h = hashCodeLong()
+        return ((h shr 32) xor h).toInt()
+    }
+
+    override fun equals(other: Any?): Boolean {
+        if (other !is CustomBitSet) return false
+        if (size != other.size) return false
+
+        for (i in 0 until size) {
+            if (data[i] != other.data[i]) return false
+        }
+
+        return true
+    }
+
+    // TODO: Copied from BitSet#hashCode
+    fun hashCodeLong(): Long {
+        var h = 1234L
+
+        for (i in size - 1 downTo 0) {
+            h = h xor (data[i] * (i + 1))
+        }
+
+        return h
+    }
 
     companion object {
         private val EMPTY = LongArray(0)
