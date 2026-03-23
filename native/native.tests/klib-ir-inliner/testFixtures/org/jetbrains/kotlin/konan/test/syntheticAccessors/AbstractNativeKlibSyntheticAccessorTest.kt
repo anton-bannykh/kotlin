@@ -22,6 +22,7 @@ import org.jetbrains.kotlin.test.directives.configureFirParser
 import org.jetbrains.kotlin.test.frontend.fir.FirOutputArtifact
 import org.jetbrains.kotlin.test.model.*
 import org.jetbrains.kotlin.test.runners.AbstractKotlinCompilerWithTargetBackendTest
+import org.jetbrains.kotlin.test.services.configuration.CommonEnvironmentConfigurator
 import org.jetbrains.kotlin.test.services.configuration.NativeFirstStageEnvironmentConfigurator
 
 // Base class for IR dump synthetic accessors test, configured with FIR frontend, in Native-specific way.
@@ -53,6 +54,7 @@ open class AbstractNativeKlibSyntheticAccessorTest : AbstractKotlinCompilerWithT
             targetPlatform = NativePlatforms.unspecifiedNativePlatform
         }
         useConfigurators(
+            ::CommonEnvironmentConfigurator,
             ::NativeFirstStageEnvironmentConfigurator,
         )
         configureFirParser(parser)

@@ -9,12 +9,8 @@ import org.jetbrains.kotlin.backend.common.LoadedNativeKlibs
 import org.jetbrains.kotlin.backend.common.eliminateLibrariesWithDuplicatedUniqueNames
 import org.jetbrains.kotlin.backend.common.loadFriendLibraries
 import org.jetbrains.kotlin.backend.common.reportLoadingProblemsIfAny
-import org.jetbrains.kotlin.config.CompilerConfiguration
-import org.jetbrains.kotlin.config.klibAbiCompatibilityLevel
-import org.jetbrains.kotlin.config.messageCollector
-import org.jetbrains.kotlin.config.metadataKlib
-import org.jetbrains.kotlin.config.skipLibrarySpecialCompatibilityChecks
-import org.jetbrains.kotlin.config.zipFileSystemAccessor
+import org.jetbrains.kotlin.cli.common.testEnvironment
+import org.jetbrains.kotlin.config.*
 import org.jetbrains.kotlin.konan.config.*
 import org.jetbrains.kotlin.konan.library.KLIB_INTEROP_IR_PROVIDER_IDENTIFIER
 import org.jetbrains.kotlin.konan.library.KlibNativeDistributionLibraryProvider
@@ -69,7 +65,7 @@ fun loadNativeKlibsInProductionPipeline(
         includedPaths = configuration.konanIncludedLibraries,
         platformChecker = platformChecker,
         nativeTarget = nativeTarget,
-        useStricterChecks = false,
+        useStricterChecks = configuration.testEnvironment,
     )
 }
 

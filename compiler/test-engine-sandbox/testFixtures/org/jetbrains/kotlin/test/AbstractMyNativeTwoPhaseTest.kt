@@ -34,6 +34,7 @@ import org.jetbrains.kotlin.test.model.DependencyKind
 import org.jetbrains.kotlin.test.model.FrontendKinds
 import org.jetbrains.kotlin.test.services.CompilationStage
 import org.jetbrains.kotlin.test.services.LibraryProvider
+import org.jetbrains.kotlin.test.services.configuration.CommonEnvironmentConfigurator
 import org.jetbrains.kotlin.test.services.configuration.NativeFirstStageEnvironmentConfigurator
 import org.jetbrains.kotlin.test.services.configuration.NativeSecondStageEnvironmentConfigurator
 import org.jetbrains.kotlin.utils.bind
@@ -78,7 +79,10 @@ abstract class AbstractMyNativeTwoPhaseTest : AbstractTwoStageKotlinCompilerTest
         }
 
         nonGroupingPhase {
-            useConfigurators(::NativeFirstStageEnvironmentConfigurator)
+            useConfigurators(
+                ::CommonEnvironmentConfigurator,
+                ::NativeFirstStageEnvironmentConfigurator,
+            )
 
             commonConfigurationForNativeFirstStageUpToSerialization(
                 FrontendKinds.FIR,
