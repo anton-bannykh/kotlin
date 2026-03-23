@@ -5,19 +5,18 @@
 
 package org.jetbrains.kotlin.konan.test
 
-import org.jetbrains.kotlin.backend.common.serialization.metadata.DynamicTypeDeserializer
-import org.jetbrains.kotlin.backend.konan.serialization.loadNativeKlibsInTestPipeline
 import org.jetbrains.kotlin.builtins.KotlinBuiltIns
 import org.jetbrains.kotlin.builtins.konan.KonanBuiltIns
 import org.jetbrains.kotlin.cli.common.diagnosticsCollector
 import org.jetbrains.kotlin.cli.pipeline.withNewDiagnosticCollector
-import org.jetbrains.kotlin.config.CompilerConfiguration
+import org.jetbrains.kotlin.config.LanguageVersionSettings
 import org.jetbrains.kotlin.config.languageVersionSettings
 import org.jetbrains.kotlin.descriptors.impl.ModuleDescriptorImpl
 import org.jetbrains.kotlin.diagnostics.impl.DiagnosticsCollectorImpl
 import org.jetbrains.kotlin.incremental.components.LookupTracker
 import org.jetbrains.kotlin.library.KotlinLibrary
 import org.jetbrains.kotlin.library.isNativeStdlib
+import org.jetbrains.kotlin.library.loader.KlibLoader
 import org.jetbrains.kotlin.library.metadata.KlibMetadataFactories
 import org.jetbrains.kotlin.library.metadata.NullFlexibleTypeDeserializer
 import org.jetbrains.kotlin.native.pipeline.*
@@ -30,13 +29,8 @@ import org.jetbrains.kotlin.test.frontend.classic.moduleDescriptorProvider
 import org.jetbrains.kotlin.test.frontend.fir.Fir2IrCliBasedOutputArtifact
 import org.jetbrains.kotlin.test.frontend.fir.Fir2IrCliFacade
 import org.jetbrains.kotlin.test.frontend.fir.FirCliFacade
-import org.jetbrains.kotlin.test.frontend.fir.getAllNativeDependenciesPaths
 import org.jetbrains.kotlin.test.model.*
-import org.jetbrains.kotlin.test.services.TestServices
-import org.jetbrains.kotlin.test.services.configuration.nativeEnvironmentConfigurator
-import org.jetbrains.kotlin.test.services.defaultsProvider
-import org.jetbrains.kotlin.test.services.libraryProvider
-import org.jetbrains.kotlin.test.services.service
+import org.jetbrains.kotlin.test.services.*
 import java.io.File
 
 // NativeCliBasedFacades
@@ -70,6 +64,9 @@ class NativePreSerializationLoweringCliFacade(
 class KlibSerializerNativeCliFacade(
     testServices: TestServices
 ) : IrBackendFacade<BinaryArtifacts.KLib>(testServices, ArtifactKinds.KLib) {
+    override val additionalServices: List<ServiceRegistrationData>
+        get() = super.additionalServices + listOf(service(::ModuleDescriptorProvider))
+
     override fun transform(
         module: TestModule,
         inputArtifact: IrBackendInput,
@@ -79,69 +76,100 @@ class KlibSerializerNativeCliFacade(
         val input = cliArtifact.withNewDiagnosticCollector(diagnosticsCollector)
         val serializedOutput = NativeIrSerializationPipelinePhase.executePhase(input) ?: return null
         val output = NativeKlibWritingPipelinePhase.executePhase(serializedOutput)
-        val outputFile = File(output.outputKlibPath)
-        updateTestConfiguration(input.configuration, module, input.fir2IrOutput.fir2irActualizedResult.irModuleFragment, outputFile)
-        return BinaryArtifacts.KLib(outputFile, input.configuration.diagnosticsCollector)
+
+        updateTestConfiguration(
+            module = module,
+            outputKlibPath = output.outputKlibPath,
+            dependencyLibraries = input.phaseContext.config.loadedKlibs.all,
+            languageVersionSettings = input.configuration.languageVersionSettings,
+        )
+
+        return BinaryArtifacts.KLib(File(output.outputKlibPath), input.configuration.diagnosticsCollector)
     }
 
     private fun updateTestConfiguration(
-        configuration: CompilerConfiguration,
         module: TestModule,
-        irModuleFragment: IrModuleFragment,
-        outputFile: File
+        outputKlibPath: String,
+        dependencyLibraries: Collection<KotlinLibrary>,
+        languageVersionSettings: LanguageVersionSettings,
     ) {
-        val allLibraries = loadNativeKlibsInTestPipeline(
-            configuration = configuration,
-            runtimeLibraryProviders = testServices.nativeEnvironmentConfigurator.getRuntimeLibraryProviders(module),
-            libraryPaths = listOf(outputFile.path),
-            nativeTarget = testServices.nativeEnvironmentConfigurator.getNativeTarget(module),
-        ).all
-        val stdlibLibrary = allLibraries.single { it.isNativeStdlib }
-        val moduleLibrary = allLibraries.single { it.location.path == outputFile.path }
+        val (builtIns, dependencyModuleDescriptors) = loadDependencies(dependencyLibraries, languageVersionSettings)
 
-        fun createDescriptorOptionalBuiltIns(factories: KlibMetadataFactories, library: KotlinLibrary, builtIns: KotlinBuiltIns?): ModuleDescriptorImpl =
-            factories.DefaultDeserializedDescriptorFactory.createDescriptorOptionalBuiltIns(
-                library,
-                configuration.languageVersionSettings,
-                // TODO: check safety of the approach of creating a separate storage manager per library
-                LockBasedStorageManager("ModulesStructure"),
-                builtIns,
-
-                lookupTracker = LookupTracker.DO_NOTHING
-            )
-
-        val stdlibModuleDescriptor = createDescriptorOptionalBuiltIns(
-            KlibMetadataFactories(::KonanBuiltIns, DynamicTypeDeserializer),
-            stdlibLibrary,
-            builtIns = null, // create new KonanBuiltins for the first created ModuleDescriptorImpl
-        ).also {
-            it.setDependencies(listOf(it))
+        val libraryLoadingResult = KlibLoader { libraryPaths(outputKlibPath) }.load()
+        testServices.assertions.assertTrue(!libraryLoadingResult.hasProblems && libraryLoadingResult.librariesStdlibFirst.size == 1) {
+            "Failed to load just compiled library: $outputKlibPath"
         }
-        val moduleDescriptor = createDescriptorOptionalBuiltIns(
-            KlibMetadataFactories(::KonanBuiltIns, NullFlexibleTypeDeserializer),
-            moduleLibrary,
-            stdlibModuleDescriptor.builtIns,
+
+        val library = libraryLoadingResult.librariesStdlibFirst.single()
+
+        val moduleDescriptor = klibFactories.DefaultDeserializedDescriptorFactory.createDescriptorOptionalBuiltIns(
+            library,
+            languageVersionSettings,
+            // TODO: check safety of the approach of creating a separate storage manager per library
+            LockBasedStorageManager("ModulesStructure"),
+            builtIns,
+            lookupTracker = LookupTracker.DO_NOTHING
         )
-        val descriptorDependencies = buildList {
-            // TODO Now, the same stdlib module descriptor is used for each platformlib and transitive dependency as well,
-            //      see identical values of map `testServices.libraryProvider.stdlibPathDoDescriptor` after calculation of `descriptorDependencies`.
-            //      It's weird it works at all. Consider improving it please.
-            getAllNativeDependenciesPaths(module, testServices).mapTo(this) {
-                testServices.libraryProvider.getOrCreateStdlibByPath(it) {
-                    stdlibModuleDescriptor to stdlibLibrary
-                } as ModuleDescriptorImpl
-            }
-            add(moduleDescriptor)
-        }
-        moduleDescriptor.setDependencies(descriptorDependencies)
+        moduleDescriptor.setDependencies(dependencyModuleDescriptors + moduleDescriptor)
 
-        testServices.register(service(::ModuleDescriptorProvider), skipAlreadyRegistered = true)
+        testServices.libraryProvider.setDescriptorAndLibraryByName(outputKlibPath, moduleDescriptor, library)
         testServices.moduleDescriptorProvider.replaceModuleDescriptorForModule(module, moduleDescriptor)
-        testServices.libraryProvider.setDescriptorAndLibraryByName(outputFile.path, moduleDescriptor, moduleLibrary)
+    }
+
+    private fun loadDependencies(
+        dependencyLibraries: Collection<KotlinLibrary>,
+        languageVersionSettings: LanguageVersionSettings,
+    ): Pair<KotlinBuiltIns?, List<ModuleDescriptorImpl>> {
+        val allModuleDescriptors = ArrayList<ModuleDescriptorImpl>()
+        val createdModuleDescriptors = ArrayList<ModuleDescriptorImpl>()
+
+        val stdlib: KotlinLibrary? = dependencyLibraries.firstOrNull { it.isNativeStdlib }
+        var builtIns: KotlinBuiltIns? = null
+
+        fun loadOrCreateModuleDescriptor(library: KotlinLibrary): ModuleDescriptorImpl {
+            val moduleDescriptor = testServices.libraryProvider.getOrCreateStdlibByPath(library.libraryFile.absolutePath) {
+                val moduleDescriptor = klibFactories.DefaultDeserializedDescriptorFactory.createDescriptorOptionalBuiltIns(
+                    library,
+                    languageVersionSettings,
+                    // TODO: check safety of the approach of creating a separate storage manager per library
+                    LockBasedStorageManager("ModulesStructure"),
+                    builtIns,
+                    lookupTracker = LookupTracker.DO_NOTHING
+                )
+
+                createdModuleDescriptors += moduleDescriptor
+
+                Pair(moduleDescriptor, library)
+            } as ModuleDescriptorImpl
+
+            allModuleDescriptors += moduleDescriptor
+
+            return moduleDescriptor
+        }
+
+        // first, create or load stdlib
+        builtIns = stdlib?.let { loadOrCreateModuleDescriptor(it) }?.builtIns
+
+        // then, other dependencies
+        for (library in dependencyLibraries) {
+            if (library == stdlib) continue
+            loadOrCreateModuleDescriptor(library)
+        }
+
+        // for all newly created modules, set dependencies
+        for (moduleDescriptor in createdModuleDescriptors) {
+            moduleDescriptor.setDependencies(allModuleDescriptors.toList())
+        }
+
+        return builtIns to allModuleDescriptors
     }
 
     override fun shouldTransform(module: TestModule): Boolean {
         return testServices.defaultsProvider.backendKind == inputKind && SKIP_GENERATING_KLIB !in module.directives
+    }
+
+    companion object {
+        private val klibFactories = KlibMetadataFactories(::KonanBuiltIns, NullFlexibleTypeDeserializer)
     }
 }
 
