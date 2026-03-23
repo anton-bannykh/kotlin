@@ -6,17 +6,14 @@
 package org.jetbrains.kotlin.test.services.configuration
 
 import org.jetbrains.kotlin.config.CompilerConfiguration
-import org.jetbrains.kotlin.konan.config.NativeConfigurationKeys
-import org.jetbrains.kotlin.konan.config.konanFriendLibraries
-import org.jetbrains.kotlin.konan.config.konanHome
-import org.jetbrains.kotlin.konan.config.konanLibraries
-import org.jetbrains.kotlin.konan.config.konanProducedArtifactKind
+import org.jetbrains.kotlin.konan.config.*
 import org.jetbrains.kotlin.konan.target.CompilerOutputKind
 import org.jetbrains.kotlin.platform.konan.isNative
-import org.jetbrains.kotlin.test.model.ArtifactKinds
-import org.jetbrains.kotlin.test.model.DependencyRelation
 import org.jetbrains.kotlin.test.model.TestModule
-import org.jetbrains.kotlin.test.services.*
+import org.jetbrains.kotlin.test.services.CompilationStage
+import org.jetbrains.kotlin.test.services.TestServices
+import org.jetbrains.kotlin.test.services.cliBasedFacadesEnabled
+import org.jetbrains.kotlin.test.services.targetPlatform
 import java.io.File
 
 class NativeFirstStageEnvironmentConfigurator(testServices: TestServices, private val customNativeHome: File? = null) :
@@ -32,25 +29,16 @@ class NativeFirstStageEnvironmentConfigurator(testServices: TestServices, privat
             configuration.konanHome = it.absolutePath
             System.setProperty("kotlin.native.home", it.absolutePath) // TODO KT-84799: remove the line after dropping forward testing against 2.3 compiler
         }
+
         configuration.konanProducedArtifactKind = CompilerOutputKind.LIBRARY
-        val klibService = testServices.klibEnvironmentConfigurator
-        configuration.put(
-            NativeConfigurationKeys.KONAN_OUTPUT_PATH,
-            klibService.getKlibArtifactFile(testServices, module.name).absolutePath
-        )
-        configuration.put(NativeConfigurationKeys.KONAN_DONT_COMPRESS_KLIB, true)
-        val include = mutableListOf<String>()
-        val friendInclude = mutableListOf<String>()
-        for ((dependencyModule, _, relation) in module.allDependencies) {
-            if (relation == DependencyRelation.DependsOnDependency) continue
-            val dependencyKlib = testServices.artifactsProvider.getArtifact(dependencyModule, ArtifactKinds.KLib).outputFile.absolutePath
-            include += dependencyKlib
-            if (relation == DependencyRelation.FriendDependency) {
-                friendInclude += dependencyKlib
-            }
-        }
-        configuration.konanLibraries += include
-        configuration.konanFriendLibraries += friendInclude
+        configuration.konanOutputPath = getKlibArtifactDir(testServices, module.name).absolutePath
+        configuration.konanDontCompressKlib = true
+
+        val dependencies = module.regularDependencies.map { getKlibArtifactDir(testServices, it.dependencyModule.name).absolutePath }
+        val friends = module.friendDependencies.map { getKlibArtifactDir(testServices, it.dependencyModule.name).absolutePath }
+
+        configuration.konanLibraries = dependencies + friends
+        configuration.konanFriendLibraries = friends
 
         if (testServices.cliBasedFacadesEnabled) {
             configuration.addSourcesForDependsOnClosure(module, testServices)
