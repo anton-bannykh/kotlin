@@ -17,9 +17,10 @@ import org.jetbrains.kotlin.test.services.cliBasedFacadesEnabled
 import org.jetbrains.kotlin.test.services.targetPlatform
 import java.io.File
 
-class NativeFirstStageEnvironmentConfigurator(testServices: TestServices, private val customNativeHome: File? = null) :
-    NativeEnvironmentConfigurator(testServices, customNativeHome)
-{
+class NativeFirstStageEnvironmentConfigurator(
+    testServices: TestServices,
+    private val customNativeHome: File? = null
+) : NativeEnvironmentConfigurator(testServices, customNativeHome) {
     override val compilationStage: CompilationStage
         get() = CompilationStage.FIRST
 

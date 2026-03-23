@@ -22,9 +22,10 @@ import org.jetbrains.kotlin.utils.addToStdlib.firstIsInstanceOrNull
 import org.jetbrains.kotlin.utils.addToStdlib.runIf
 import java.io.File
 
-abstract class NativeEnvironmentConfigurator(testServices: TestServices, customNativeHome: File? = null) : EnvironmentConfigurator(testServices),
-    KlibBasedEnvironmentConfigurator
-{
+abstract class NativeEnvironmentConfigurator(
+    testServices: TestServices,
+    customNativeHome: File? = null
+) : EnvironmentConfigurator(testServices), KlibBasedEnvironmentConfigurator {
     companion object {
         private const val TEST_PROPERTY_NATIVE_HOME = "kotlin.internal.native.test.nativeHome"
         private const val TEST_PROPERTY_TEST_TARGET = "kotlin.internal.native.test.target"
@@ -53,7 +54,8 @@ abstract class NativeEnvironmentConfigurator(testServices: TestServices, customN
     }
 
     private val nativeHome: File by lazy {
-        customNativeHome ?: System.getProperty(TEST_PROPERTY_NATIVE_HOME)?.let(::File)
+        customNativeHome
+            ?: System.getProperty(TEST_PROPERTY_NATIVE_HOME)?.let(::File)
             ?: testServices.assertions.fail {
                 "No '$TEST_PROPERTY_NATIVE_HOME' provided. Are you sure the test are executed within :native:native.tests?"
             }
