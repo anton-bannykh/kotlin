@@ -8,20 +8,17 @@ package org.jetbrains.kotlin.test.services.configuration
 import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.konan.config.konanProducedArtifactKind
 import org.jetbrains.kotlin.konan.target.CompilerOutputKind
-import org.jetbrains.kotlin.platform.konan.isNative
 import org.jetbrains.kotlin.test.model.TestModule
 import org.jetbrains.kotlin.test.services.CompilationStage
 import org.jetbrains.kotlin.test.services.TestServices
-import org.jetbrains.kotlin.test.services.targetPlatform
 
-class NativeSecondStageEnvironmentConfigurator(testServices: TestServices) : NativeEnvironmentConfigurator(testServices) {
+class NativeSecondStageEnvironmentConfigurator(testServices: TestServices) : NativeEnvironmentConfigurator(testServices, null) {
     override val compilationStage: CompilationStage
         get() = CompilationStage.SECOND
 
     override fun configureCompilerConfiguration(configuration: CompilerConfiguration, module: TestModule) {
-        if (!module.targetPlatform(testServices).isNative()) return
-
         super.configureCompilerConfiguration(configuration, module)
+
         configuration.konanProducedArtifactKind = CompilerOutputKind.PROGRAM
     }
 }

@@ -5,6 +5,10 @@
 
 package org.jetbrains.kotlin.test.services.configuration
 
+import org.jetbrains.kotlin.config.CompilerConfiguration
+import org.jetbrains.kotlin.konan.config.konanFriendLibraries
+import org.jetbrains.kotlin.konan.config.konanHome
+import org.jetbrains.kotlin.konan.config.konanLibraries
 import org.jetbrains.kotlin.konan.library.KlibNativeDistributionLibraryProvider
 import org.jetbrains.kotlin.konan.library.isFromKotlinNativeDistribution
 import org.jetbrains.kotlin.konan.target.HostManager
@@ -12,6 +16,7 @@ import org.jetbrains.kotlin.konan.target.KonanTarget
 import org.jetbrains.kotlin.library.Klib
 import org.jetbrains.kotlin.library.loader.DefaultKlibLibraryProvider
 import org.jetbrains.kotlin.library.loader.KlibLibraryProvider
+import org.jetbrains.kotlin.platform.konan.isNative
 import org.jetbrains.kotlin.test.directives.ConfigurationDirectives
 import org.jetbrains.kotlin.test.directives.KlibBasedCompilerTestDirectives
 import org.jetbrains.kotlin.test.directives.NativeEnvironmentConfigurationDirectives
@@ -24,7 +29,7 @@ import java.io.File
 
 abstract class NativeEnvironmentConfigurator(
     testServices: TestServices,
-    customNativeHome: File? = null
+    private val customNativeHome: File?,
 ) : EnvironmentConfigurator(testServices), KlibBasedEnvironmentConfigurator {
     companion object {
         private const val TEST_PROPERTY_NATIVE_HOME = "kotlin.internal.native.test.nativeHome"
@@ -105,6 +110,30 @@ abstract class NativeEnvironmentConfigurator(
 
     override val directiveContainers: List<DirectivesContainer>
         get() = listOf(NativeEnvironmentConfigurationDirectives, KlibBasedCompilerTestDirectives)
+
+    override fun configureCompilerConfiguration(configuration: CompilerConfiguration, module: TestModule) {
+        if (!module.targetPlatform(testServices).isNative()) return
+
+        super.configureCompilerConfiguration(configuration, module)
+
+        customNativeHome?.let {
+            configuration.konanHome = it.absolutePath
+
+            // TODO KT-84799: remove the line after dropping forward testing against 2.3 compiler
+            System.setProperty("kotlin.native.home", it.absolutePath)
+        }
+
+        val dependencies = module.regularDependencies.map { getKlibArtifactDir(testServices, it.dependencyModule.name).absolutePath }
+        val friends = module.friendDependencies.map { getKlibArtifactDir(testServices, it.dependencyModule.name).absolutePath }
+
+        val runtimeDependencies = getRuntimeLibraryProviders(module).flatMap { provider ->
+            // Ignore `KlibNativeDistributionLibraryProvider`, because it is anyway applied in loadNativeKlibsInProductionPipeline().
+            if (provider is KlibNativeDistributionLibraryProvider) emptyList() else provider.getLibraryPaths()
+        }
+
+        configuration.konanLibraries = runtimeDependencies + dependencies + friends
+        configuration.konanFriendLibraries = friends
+    }
 }
 
 val TestServices.nativeEnvironmentConfigurator: NativeEnvironmentConfigurator
