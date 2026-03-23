@@ -16,8 +16,6 @@ import org.jetbrains.kotlin.config.languageVersionSettings
 import org.jetbrains.kotlin.descriptors.impl.ModuleDescriptorImpl
 import org.jetbrains.kotlin.diagnostics.impl.DiagnosticsCollectorImpl
 import org.jetbrains.kotlin.incremental.components.LookupTracker
-import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
-import org.jetbrains.kotlin.konan.library.isFromKotlinNativeDistribution
 import org.jetbrains.kotlin.library.KotlinLibrary
 import org.jetbrains.kotlin.library.isNativeStdlib
 import org.jetbrains.kotlin.library.metadata.KlibMetadataFactories
@@ -99,7 +97,7 @@ class KlibSerializerNativeCliFacade(
             nativeTarget = testServices.nativeEnvironmentConfigurator.getNativeTarget(module),
         ).all
         val stdlibLibrary = allLibraries.single { it.isNativeStdlib }
-        val moduleLibrary = allLibraries.single { !it.isFromKotlinNativeDistribution }
+        val moduleLibrary = allLibraries.single { it.location.path == outputFile.path }
 
         fun createDescriptorOptionalBuiltIns(factories: KlibMetadataFactories, library: KotlinLibrary, builtIns: KotlinBuiltIns?): ModuleDescriptorImpl =
             factories.DefaultDeserializedDescriptorFactory.createDescriptorOptionalBuiltIns(
