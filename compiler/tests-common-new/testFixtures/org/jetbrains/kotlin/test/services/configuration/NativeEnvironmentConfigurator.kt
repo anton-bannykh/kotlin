@@ -9,6 +9,8 @@ import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.konan.config.konanFriendLibraries
 import org.jetbrains.kotlin.konan.config.konanHome
 import org.jetbrains.kotlin.konan.config.konanLibraries
+import org.jetbrains.kotlin.konan.config.konanNoDefaultLibs
+import org.jetbrains.kotlin.konan.config.konanNoStdlib
 import org.jetbrains.kotlin.konan.library.KlibNativeDistributionLibraryProvider
 import org.jetbrains.kotlin.konan.library.isFromKotlinNativeDistribution
 import org.jetbrains.kotlin.konan.target.HostManager
@@ -129,6 +131,8 @@ abstract class NativeEnvironmentConfigurator(
             if (provider is KlibNativeDistributionLibraryProvider) emptyList() else provider.getLibraryPaths()
         }
 
+        configuration.konanNoStdlib = ConfigurationDirectives.WITH_STDLIB !in module.directives
+        configuration.konanNoDefaultLibs = NativeEnvironmentConfigurationDirectives.WITH_PLATFORM_LIBS !in module.directives
         configuration.konanLibraries = runtimeDependencies + dependencies + friends
         configuration.konanFriendLibraries = friends
     }
