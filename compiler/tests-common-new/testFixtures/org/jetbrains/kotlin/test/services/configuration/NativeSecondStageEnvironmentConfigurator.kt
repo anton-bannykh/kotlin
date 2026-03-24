@@ -12,7 +12,7 @@ import org.jetbrains.kotlin.test.model.TestModule
 import org.jetbrains.kotlin.test.services.CompilationStage
 import org.jetbrains.kotlin.test.services.TestServices
 
-class NativeSecondStageEnvironmentConfigurator(testServices: TestServices) : NativeEnvironmentConfigurator(testServices, null) {
+class NativeSecondStageEnvironmentConfigurator(testServices: TestServices) : NativeEnvironmentConfigurator(testServices, customNativeHome = null) {
     override val compilationStage: CompilationStage
         get() = CompilationStage.SECOND
 

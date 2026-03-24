@@ -114,8 +114,6 @@ abstract class NativeEnvironmentConfigurator(
     override fun configureCompilerConfiguration(configuration: CompilerConfiguration, module: TestModule) {
         if (!module.targetPlatform(testServices).isNative()) return
 
-        super.configureCompilerConfiguration(configuration, module)
-
         customNativeHome?.let {
             configuration.konanHome = it.absolutePath
 
