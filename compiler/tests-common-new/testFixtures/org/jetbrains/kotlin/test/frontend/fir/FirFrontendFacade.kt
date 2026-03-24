@@ -12,7 +12,6 @@ import com.intellij.psi.PsiElementFinder
 import com.intellij.psi.search.ProjectScope
 import org.jetbrains.kotlin.asJava.finder.JavaElementFinder
 import org.jetbrains.kotlin.backend.common.loadMetadataKlibs
-import org.jetbrains.kotlin.backend.konan.serialization.loadNativeKlibsInTestPipeline
 import org.jetbrains.kotlin.cli.common.contentRoots
 import org.jetbrains.kotlin.cli.jvm.compiler.PsiBasedProjectFileSearchScope
 import org.jetbrains.kotlin.cli.jvm.compiler.TopDownAnalyzerFacadeForJVM
@@ -37,6 +36,7 @@ import org.jetbrains.kotlin.fir.resolve.providers.impl.syntheticFunctionInterfac
 import org.jetbrains.kotlin.fir.session.*
 import org.jetbrains.kotlin.fir.session.AbstractFirMetadataSessionFactory.JarMetadataProviderComponents
 import org.jetbrains.kotlin.library.KotlinLibrary
+import org.jetbrains.kotlin.library.loader.KlibLoader
 import org.jetbrains.kotlin.library.metadata.isCInteropLibrary
 import org.jetbrains.kotlin.load.kotlin.PackageAndMetadataPartProvider
 import org.jetbrains.kotlin.name.Name
@@ -430,14 +430,8 @@ open class FirFrontendFacade(testServices: TestServices) : FrontendFacade<FirOut
                             val allPaths = (runtimeLibraryProviders.flatMap { it.getLibraryPaths() } + transitiveLibraries.map { it.path }).distinct()
                             val friendPaths = friendLibraries.map { it.path }
 
-                            val loadedKlibs = loadNativeKlibsInTestPipeline(
-                                configuration,
-                                allPaths,
-                                friendPaths,
-                                nativeTarget = nativeEnvironmentConfigurator.getNativeTarget(mainModule)
-                            )
-
-                            val (interopLibs, regularLibs) = loadedKlibs.all.partition { it.isCInteropLibrary() }
+                            val loadedKlibs = KlibLoader { libraryPaths(allPaths) }.load().librariesStdlibFirst
+                            val (interopLibs, regularLibs) = loadedKlibs.partition { it.isCInteropLibrary() }
 
                             dependencies(regularLibs.map { it.libraryFile.absolutePath })
                             friendDependencies(friendPaths)

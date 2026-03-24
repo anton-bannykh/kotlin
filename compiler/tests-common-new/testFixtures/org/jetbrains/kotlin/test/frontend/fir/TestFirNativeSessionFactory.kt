@@ -5,7 +5,7 @@
 
 package org.jetbrains.kotlin.test.frontend.fir
 
-import org.jetbrains.kotlin.backend.konan.serialization.loadNativeKlibsInTestPipeline
+import org.jetbrains.kotlin.backend.konan.serialization.loadNativeKlibs
 import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.deserialization.ModuleDataProvider
@@ -28,12 +28,7 @@ object TestFirNativeSessionFactory {
         configuration: CompilerConfiguration,
         extensionRegistrars: List<FirExtensionRegistrar>,
     ): FirSession {
-        val libraries = loadNativeKlibsInTestPipeline(
-            configuration = configuration,
-            libraryPaths = getTransitivesAndFriendsPaths(module, testServices),
-            runtimeLibraryProviders = testServices.nativeEnvironmentConfigurator.getRuntimeLibraryProviders(module),
-            nativeTarget = testServices.nativeEnvironmentConfigurator.getNativeTarget(module),
-        ).all
+        val libraries = loadNativeKlibs(configuration, testServices.nativeEnvironmentConfigurator.getNativeTarget(module)).all
 
         val sharedLibrarySession = FirNativeSessionFactory.createSharedLibrarySession(
             mainModuleName,

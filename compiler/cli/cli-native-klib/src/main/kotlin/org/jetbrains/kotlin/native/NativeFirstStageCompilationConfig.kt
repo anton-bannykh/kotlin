@@ -8,7 +8,7 @@ package org.jetbrains.kotlin.native
 import org.jetbrains.kotlin.backend.common.LoadedNativeKlibs
 import org.jetbrains.kotlin.backend.konan.NativeCompilationConfig
 import org.jetbrains.kotlin.backend.konan.driver.NativePhaseContext
-import org.jetbrains.kotlin.backend.konan.serialization.loadNativeKlibsInProductionPipeline
+import org.jetbrains.kotlin.backend.konan.serialization.loadNativeKlibs
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
 import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.config.messageCollector
@@ -64,6 +64,6 @@ internal fun createFirstStageCompilationConfig(configuration: CompilerConfigurat
     return NativeFirstStageCompilationConfig(
         configuration = configuration,
         target = target,
-        loadedKlibs = loadNativeKlibsInProductionPipeline(configuration, target),
+        loadedKlibs = loadNativeKlibs(configuration, target),
     )
 }

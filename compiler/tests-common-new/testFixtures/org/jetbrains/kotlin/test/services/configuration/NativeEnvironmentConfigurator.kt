@@ -127,7 +127,7 @@ abstract class NativeEnvironmentConfigurator(
         val friends = module.friendDependencies.map { getKlibArtifactDir(testServices, it.dependencyModule.name).absolutePath }
 
         val runtimeDependencies = getRuntimeLibraryProviders(module).flatMap { provider ->
-            // Ignore `KlibNativeDistributionLibraryProvider`, because it is anyway applied in loadNativeKlibsInProductionPipeline().
+            // Ignore `KlibNativeDistributionLibraryProvider`, because it is anyway applied in loadNativeKlibs().
             if (provider is KlibNativeDistributionLibraryProvider) emptyList() else provider.getLibraryPaths()
         }
 

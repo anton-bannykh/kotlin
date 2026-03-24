@@ -15,13 +15,10 @@ import org.jetbrains.kotlin.konan.config.*
 import org.jetbrains.kotlin.konan.library.KLIB_INTEROP_IR_PROVIDER_IDENTIFIER
 import org.jetbrains.kotlin.konan.library.KlibNativeDistributionLibraryProvider
 import org.jetbrains.kotlin.konan.library.KlibNativeManifestTransformer
-import org.jetbrains.kotlin.konan.library.isFromKotlinNativeDistribution
 import org.jetbrains.kotlin.konan.target.KonanTarget
-import org.jetbrains.kotlin.library.Klib
 import org.jetbrains.kotlin.library.KotlinAbiVersion
 import org.jetbrains.kotlin.library.KotlinLibrary
 import org.jetbrains.kotlin.library.irProviderName
-import org.jetbrains.kotlin.library.loader.KlibLibraryProvider
 import org.jetbrains.kotlin.library.loader.KlibLoader
 import org.jetbrains.kotlin.library.loader.KlibLoaderResult
 import org.jetbrains.kotlin.library.loader.KlibLoaderResult.ProblemCase.OtherCheckMismatch
@@ -32,12 +29,13 @@ import org.jetbrains.kotlin.utils.addToStdlib.runIf
 import java.io.File
 
 /**
- * This is the entry point to load Kotlin/Native KLIBs in the production pipeline.
+ * This is the entry point to load Kotlin/Native KLIBs.
+ * All library paths are read from the corresponding parameters of [CompilerConfiguration].
  *
  * @param configuration The current compiler configuration.
  * @param nativeTarget The Kotlin/Native-specific target.
  */
-fun loadNativeKlibsInProductionPipeline(
+fun loadNativeKlibs(
     configuration: CompilerConfiguration,
     nativeTarget: KonanTarget,
 ): LoadedNativeKlibs {
@@ -57,85 +55,30 @@ fun loadNativeKlibsInProductionPipeline(
     else
         KlibPlatformChecker.Native(nativeTarget.name)
 
-    return loadNativeKlibs(
-        configuration = configuration,
-        runtimeLibraryProviders = listOfNotNull(distributionLibrariesProvider),
-        libraryPaths = configuration.konanLibraries,
-        friendPaths = configuration.konanFriendLibraries,
-        includedPaths = configuration.konanIncludedLibraries,
-        platformChecker = platformChecker,
-        nativeTarget = nativeTarget,
-        useStricterChecks = configuration.testEnvironment,
-    )
-}
-
-/**
- * This is the entry point to load Kotlin/Native KLIBs in the test pipeline.
- *
- * @param configuration The current compiler configuration.
- * @param libraryPaths Paths of libraries to load.
- * @param friendPaths Paths of friend libraries to load.
- *   Note: It is assumed that [friendPaths] are already included in [libraryPaths].
- * @param includedPaths Paths of the libraries to process as the included modules.
- *   Note: It is assumed that [includedPaths] is already included in [libraryPaths].
- * @param runtimeLibraryProviders List of library providers to load runtime libraries.
- *   Note: It is essential to load libraries from the Kotlin/Native distribution through a special provider
- *   that marks such libraries with [Klib.isFromKotlinNativeDistribution] flag.
- * @param nativeTarget The Kotlin/Native specific target (it's used with [KlibPlatformChecker.Native] to avoid
- *  loading KLIBs for the wrong platform and the wrong Kotlin/Native target).
- */
-fun loadNativeKlibsInTestPipeline(
-    configuration: CompilerConfiguration,
-    libraryPaths: List<String>,
-    friendPaths: List<String> = emptyList(),
-    includedPaths: List<String> = emptyList(),
-    runtimeLibraryProviders: List<KlibLibraryProvider> = emptyList(),
-    nativeTarget: KonanTarget
-): LoadedNativeKlibs = loadNativeKlibs(
-    configuration = configuration,
-    libraryPaths = libraryPaths,
-    friendPaths = friendPaths,
-    includedPaths = includedPaths,
-    runtimeLibraryProviders = runtimeLibraryProviders,
-    platformChecker = KlibPlatformChecker.Native(nativeTarget.name),
-    nativeTarget = nativeTarget,
-    useStricterChecks = true
-)
-
-private fun loadNativeKlibs(
-    configuration: CompilerConfiguration,
-    libraryPaths: List<String>,
-    friendPaths: List<String>,
-    includedPaths: List<String>,
-    runtimeLibraryProviders: List<KlibLibraryProvider>,
-    platformChecker: KlibPlatformChecker,
-    nativeTarget: KonanTarget,
-    useStricterChecks: Boolean,
-): LoadedNativeKlibs {
     val result = KlibLoader {
-        libraryProviders(runtimeLibraryProviders)
-        libraryPaths(libraryPaths)
+        libraryProviders(listOfNotNull(distributionLibrariesProvider))
+        libraryPaths(configuration.konanLibraries)
         platformChecker(platformChecker)
         maxPermittedAbiVersion(KotlinAbiVersion.CURRENT)
         configuration.zipFileSystemAccessor?.let { zipFileSystemAccessor(it) }
         manifestTransformer(KlibNativeManifestTransformer(nativeTarget))
     }.load()
         .checkForUnknownIrProviders()
-        .apply { reportLoadingProblemsIfAny(configuration, allAsErrors = useStricterChecks) }
+        .apply { reportLoadingProblemsIfAny(configuration, allAsErrors = configuration.testEnvironment) }
         // TODO (KT-76785): Handling of duplicated names is a workaround that needs to be removed in the future.
         .eliminateLibrariesWithDuplicatedUniqueNames(configuration)
 
+    if (!configuration.skipLibrarySpecialCompatibilityChecks) {
+        KonanLibrarySpecialCompatibilityChecker.check(
+            result.librariesStdlibFirst, configuration.messageCollector, configuration.klibAbiCompatibilityLevel
+        )
+    }
+
     return LoadedNativeKlibs(
         all = result.librariesStdlibFirst,
-        friends = result.loadFriendLibraries(friendPaths),
-        included = result.loadFriendLibraries(includedPaths),
-    ).also { klibs ->
-        if (!configuration.skipLibrarySpecialCompatibilityChecks) {
-            KonanLibrarySpecialCompatibilityChecker.check(
-                klibs.all, configuration.messageCollector, configuration.klibAbiCompatibilityLevel
-            )
-        }
-    }
+        friends = result.loadFriendLibraries(configuration.konanFriendLibraries),
+        included = result.loadFriendLibraries(configuration.konanIncludedLibraries),
+    )
 }
 
 /**
