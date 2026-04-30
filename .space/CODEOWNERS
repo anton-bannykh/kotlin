@@ -445,7 +445,7 @@
 /native/native.tests/klib-ir-inliner/ "Kotlin Common Backend"
 /native/objcexport-header-generator/ "Kotlin Native"
 /native/objcexport-header-generator/impl/analysis-api/ "Kotlin Native"
-/native/swift/ artem.olkov@jetbrains.com gleb.lukianets@jetbrains.com
+/native/swift/ artem.olkov@jetbrains.com gleb.lukianets@jetbrains.com anton.bannykh@jetbrains.com aleksei.glushko@jetbrains.com
 
 /plugins/allopen/ "Kotlin Frontend"
 /plugins/assign-plugin/ "Kotlin Frontend"
