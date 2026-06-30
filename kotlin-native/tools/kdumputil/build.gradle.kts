@@ -4,6 +4,7 @@ plugins {
     id("com.autonomousapps.dependency-analysis")
     kotlin("jvm")
     application
+    id("test-inputs-check")
 }
 
 group = "org.jetbrains.kdumputil"

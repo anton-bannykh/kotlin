@@ -4,6 +4,7 @@ plugins {
     id("com.autonomousapps.dependency-analysis")
     kotlin("jvm")
     id("java-test-fixtures")
+    id("test-inputs-check")
 }
 
 description = "Kotlin/Native utils"
@@ -36,6 +37,16 @@ configureKotlinCompileTasksGradleCompatibility()
 tasks {
     withType<Test>().configureEach {
         useJUnitPlatform()
+        testInputsCheck {
+            extraPermissions.addAll(
+                // CurrentXcodeTest executes xcrun to query the Xcode version
+                """permission java.io.FilePermission "/usr/bin/xcrun", "execute";""",
+                // CurrentXcodeTest.bundleVersion invokes PlistBuddy via bash
+                """permission java.io.FilePermission "/bin/bash", "execute";""",
+                // HostManagerTest.hostManagerWorksInUnknownOs sets os.name to simulate other platforms
+                """permission java.util.PropertyPermission "os.name", "write";""",
+            )
+        }
     }
 }
 
