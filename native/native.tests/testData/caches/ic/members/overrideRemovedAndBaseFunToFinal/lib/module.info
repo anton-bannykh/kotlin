@@ -1,0 +1,12 @@
+STEP 0:
+    modifications:
+        U : file1.kt -> file1.kt
+        U : file2.kt -> file2.kt
+    added cache: file1.kt, file2.kt
+
+// file1.1.kt: B loses its own override and A.foo becomes final at the same time, so B#foo turns into
+// a final fake override and its virtual trampoline symbol disappears; file2.kt must be recompiled.
+STEP 1:
+    modifications:
+        U : file1.1.kt -> file1.kt
+    modified cache: file1.kt, file2.kt
