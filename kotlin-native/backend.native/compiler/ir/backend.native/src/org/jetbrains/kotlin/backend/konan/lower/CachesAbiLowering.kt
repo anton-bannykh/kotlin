@@ -44,7 +44,7 @@ private val IrSimpleFunction.isPrivateOrBelongsToPrivateClass: Boolean
         return DescriptorVisibilities.isPrivate(owner.visibility) || owner.isOriginallyLocal
     }
 
-private val IrSimpleFunction.needsFakeOverrideAccessor: Boolean
+internal val IrSimpleFunction.needsFakeOverrideAccessor: Boolean
     get() {
         if (this.isPrivateOrBelongsToPrivateClass) return false
         if (!this.isFakeOverride) return false

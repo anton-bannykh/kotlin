@@ -12,8 +12,11 @@ import org.jetbrains.kotlin.backend.konan.NativeGenerationState
 import org.jetbrains.kotlin.backend.konan.RuntimeNames
 import org.jetbrains.kotlin.backend.konan.binaryTypeIsReference
 import org.jetbrains.kotlin.backend.konan.cgen.CBridgeOrigin
+import org.jetbrains.kotlin.backend.konan.ir.BridgesPolicy
 import org.jetbrains.kotlin.backend.konan.ir.ClassGlobalHierarchyInfo
+import org.jetbrains.kotlin.backend.konan.ir.allOverriddenFunctions
 import org.jetbrains.kotlin.backend.konan.ir.isAbstract
+import org.jetbrains.kotlin.backend.konan.ir.needBridgeTo
 import org.jetbrains.kotlin.backend.konan.llvm.ThreadState.Native
 import org.jetbrains.kotlin.backend.konan.llvm.ThreadState.Runnable
 import org.jetbrains.kotlin.backend.konan.llvm.objc.ObjCDataGenerator
@@ -303,6 +306,19 @@ internal object VirtualTablesLookup {
 internal val IrSimpleFunction.needsVirtualTrampoline: Boolean
     get() = isOverridable && bridgeTarget == null
 
+/**
+ * True iff the public symbol name a virtual trampoline occupies is guaranteed to stay available once this function
+ * stops being overridable - which is what a weak dependency edge on the trampoline assumes (see
+ * [getVirtualFunctionTrampolineImpl]).
+ *
+ * A real declaration keeps the name occupied by its own body (see [computeSymbolName]), and a fake override, which has
+ * no body, gets [emitFakeOverrideForwarder] instead. Neither works when the inherited implementation has a different
+ * signature and is only reachable through a bridge, so callers of such a method are not allowed to stay cached against
+ * its trampoline and have to be recompiled instead (KT-87777).
+ */
+internal fun IrSimpleFunction.hasStableVirtualTrampolineSymbol(policy: BridgesPolicy): Boolean =
+        bridgeTarget == null && allOverriddenFunctions.none { needBridgeTo(it, policy) }
+
 /*
  * Special trampoline function that performs the vtable/itable lookup and dispatches to the actual virtual
  * implementation (which lives at `<name>-impl`). The trampoline occupies the public symbol name,
@@ -329,7 +345,11 @@ private fun CodeGenerator.getVirtualFunctionTrampolineImpl(irFunction: IrSimpleF
                     name = targetName,
                     signature = LlvmFunctionSignature(irFunction, this),
                     // A link-time dependency only: recompilation is not needed if only the trampoline's impl has changed.
-                    origin = FunctionOrigin.OwnedBy(irFunction.parentAsClass, weak = true),
+                    // This holds as long as the name itself stays available.
+                    origin = FunctionOrigin.OwnedBy(
+                            irFunction.parentAsClass,
+                            weak = irFunction.hasStableVirtualTrampolineSymbol(context.config.bridgesPolicy)
+                    ),
                     linkage = linkageOf(irFunction)
             )
             if (isExternal(irFunction))
@@ -366,6 +386,33 @@ private fun CodeGenerator.getVirtualFunctionTrampolineImpl(irFunction: IrSimpleF
                 }
             }
         }
+
+/**
+ * A fake override has no body of its own, and as long as it is overridable, its public symbol name is taken by the
+ * virtual trampoline. Once it stops being overridable - the inherited implementation became final, or its class did -
+ * neither of the two is emitted and the name disappears from the binary altogether. Callers cached against it are not
+ * recompiled, a trampoline being only a weak dependency, and fail to link (KT-87777).
+ *
+ * Keep such a name available by emitting a forwarder to the inherited implementation. Just like the trampoline it
+ * stands in for, the forwarder belongs to the file of [irFunction]'s class, which is exactly where cached callers
+ * expect the symbol to come from. Nothing in a fresh compilation refers to it, so it is dropped by LTO/strip.
+ */
+internal fun CodeGenerator.emitFakeOverrideForwarder(irFunction: IrSimpleFunction) {
+    // The implementation is external to the module for an intrinsic or an Objective-C method, and those are
+    // never called through a plain symbol anyway.
+    val implementation = getLlvmFunctionOrNullFrom(irFunction.target) ?: return
+    val signature = LlvmFunctionSignature(irFunction, this)
+    val proto = signature.toProto(
+            name = irFunction.computeSymbolName(context, forImplementation = false),
+            origin = FunctionOrigin.OwnedBy(irFunction.parentAsClass),
+            linkage = linkageOf(irFunction)
+    )
+    generateFunction(this, proto, needSafePoint = false) {
+        // KT-45468: an alias may not be handled properly by LLVM when the callee comes from a cache, so use a wrapper.
+        val args = signature.parameterTypes.indices.map { param(it) }
+        ret(call(implementation, args, exceptionHandler = ExceptionHandler.Caller, verbatim = true))
+    }
+}
 
 /**
  * There're cases when we don't need end position or it is meaningless.

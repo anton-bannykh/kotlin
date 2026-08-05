@@ -1,5 +1,5 @@
-// KT-87777: linking fails when an inherited open method becomes final
-// DISABLE_NATIVE
+// This is a reproducer for KT-87777
+// DISABLE_NATIVE: targetFamily=MINGW
 MODULES: lib1, lib2, main
 
 STEP 0:
