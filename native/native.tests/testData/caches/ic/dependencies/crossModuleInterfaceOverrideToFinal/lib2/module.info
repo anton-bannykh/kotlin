@@ -5,10 +5,11 @@ STEP 0:
         U : file2.kt -> file2.kt
     added cache: file1.kt, file2.kt
 
-// file1.1.kt: cross-module child override open -> final
+// file1.1.kt: cross-module child override open -> final.
+// Child#foo overrides Parent.foo/I.foo, so it may degrade into a fake override in a later edit and lose
+// its symbol; callers of such a method are conservatively rebuilt (see KT-87777).
 STEP 1:
     dependencies: lib1
     modifications:
         U : file1.1.kt -> file1.kt
-    modified cache: file1.kt
-    unchanged cache: file2.kt
+    modified cache: file1.kt, file2.kt

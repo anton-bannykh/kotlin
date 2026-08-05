@@ -4,9 +4,9 @@ STEP 0:
         U : file2.kt -> file2.kt
     added cache: file1.kt, file2.kt
 
-// file1.1.kt: Parent.foo open -> final while Child still implements I via Parent.foo
+// file1.1.kt: Parent.foo open -> final while Child still implements I via Parent.foo.
+// file2.kt has to be recompiled because Child#foo, being a fake override, loses its symbol entirely.
 STEP 1:
     modifications:
         U : file1.1.kt -> file1.kt
-    modified cache: file1.kt
-    unchanged cache: file2.kt
+    modified cache: file1.kt, file2.kt

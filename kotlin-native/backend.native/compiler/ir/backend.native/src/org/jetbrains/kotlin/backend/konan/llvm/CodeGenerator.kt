@@ -303,6 +303,21 @@ internal object VirtualTablesLookup {
 internal val IrSimpleFunction.needsVirtualTrampoline: Boolean
     get() = isOverridable && bridgeTarget == null
 
+/**
+ * True iff the public symbol name a virtual trampoline occupies is guaranteed to still be emitted after this
+ * function's class has been recompiled on its own - which is exactly what a weak dependency edge on the trampoline
+ * assumes (see [getVirtualFunctionTrampolineImpl]).
+ *
+ * Only a declaration that doesn't override anything qualifies: when it loses its virtuality, its body takes over
+ * the public symbol name (see [computeSymbolName]), so callers cached against the trampoline keep linking.
+ * Anything else may lose the symbol altogether: a fake override has no body of its own, and a real override may
+ * degrade into a fake override once the overriding declaration is deleted. As soon as such a method stops being
+ * overridable, neither a trampoline nor a body is emitted under its name and cached callers fail to link (KT-87777),
+ * so they have to be recompiled instead.
+ */
+private val IrSimpleFunction.hasStableVirtualTrampolineSymbol: Boolean
+    get() = isReal && overriddenSymbols.isEmpty()
+
 /*
  * Special trampoline function that performs the vtable/itable lookup and dispatches to the actual virtual
  * implementation (which lives at `<name>-impl`). The trampoline occupies the public symbol name,
@@ -329,7 +344,8 @@ private fun CodeGenerator.getVirtualFunctionTrampolineImpl(irFunction: IrSimpleF
                     name = targetName,
                     signature = LlvmFunctionSignature(irFunction, this),
                     // A link-time dependency only: recompilation is not needed if only the trampoline's impl has changed.
-                    origin = FunctionOrigin.OwnedBy(irFunction.parentAsClass, weak = true),
+                    // This holds as long as the trampoline's symbol name outlives the trampoline itself.
+                    origin = FunctionOrigin.OwnedBy(irFunction.parentAsClass, weak = irFunction.hasStableVirtualTrampolineSymbol),
                     linkage = linkageOf(irFunction)
             )
             if (isExternal(irFunction))
