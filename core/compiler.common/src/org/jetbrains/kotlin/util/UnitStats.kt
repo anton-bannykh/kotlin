@@ -221,7 +221,8 @@ data class GarbageCollectionStats(val kind: String, val millis: Long, val count:
  * Heap usage observed around a measured phase, in bytes.
  *
  * [peakBytes] is the maximum heap usage sampled while the phase was running, [endBytes] the usage sampled
- * right after it finished.
+ * right after it finished. The peak includes whatever was already allocated when the phase began, so it says
+ * how much heap was in use during the phase rather than how much the phase itself needed.
  *
  * Unlike [Time], these values don't add up. When a phase is measured several times under the same name
  * (for instance, a file lowering applied to every file of a module), [peakBytes] keeps the maximum over all

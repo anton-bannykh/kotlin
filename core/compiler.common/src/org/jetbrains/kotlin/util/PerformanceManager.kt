@@ -69,6 +69,12 @@ abstract class PerformanceManager(val targetPlatform: TargetPlatform, val presen
     internal var heapSampler: HeapSampler? = null
     private var ownsHeapSampler: Boolean = false
 
+    /**
+     * The JFR event for the dynamic phase currently being measured, if a recording asked for those events.
+     * Each manager measures its phases on its own thread, so this doesn't have to be shared the way the sampler is.
+     */
+    private var currentPhaseEvent: CompilationPhaseEvent? = null
+
     private val klibElementStats: SortedMap<String, Long> = sortedMapOf()
 
     var isExtendedStatsEnabled: Boolean = false
@@ -272,6 +278,9 @@ abstract class PerformanceManager(val targetPlatform: TargetPlatform, val presen
     fun notifyDynamicPhaseStarted(name: String) {
         // Drop the peak of the previous phase, otherwise this one would inherit it
         heapSampler?.markPeak()
+        if (heapSampler != null && CompilationPhaseEvent.isEnabled) {
+            currentPhaseEvent = CompilationPhaseEvent().also { it.begin() }
+        }
         currentDynamicPhaseTime = currentTime()
         currentDynamicPhase = name
     }
@@ -293,7 +302,19 @@ abstract class PerformanceManager(val targetPlatform: TargetPlatform, val presen
             val measured = MemoryStats(peakBytes = sampler.peakBytes, endBytes = endBytes)
             val key = parentPhaseType to name
             dynamicMemoryMeasurements[key] = dynamicMemoryMeasurements[key]?.plus(measured) ?: measured
+
+            // Unlike the report, the recording keeps every run of a repeatedly measured phase as its own event,
+            // so the runs stay distinguishable on the timeline instead of being merged into one peak
+            currentPhaseEvent?.let { event ->
+                event.end()
+                event.parentPhase = parentPhaseType.name
+                event.phase = name
+                event.peakBytes = measured.peakBytes
+                event.endBytes = measured.endBytes
+                event.commit()
+            }
         }
+        currentPhaseEvent = null
         currentDynamicPhaseTime = null
     }
 
