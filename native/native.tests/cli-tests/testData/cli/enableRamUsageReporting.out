@@ -1,0 +1,2 @@
+error: -Xbinary=enableRamUsageReporting=true has nowhere to report the measurements to. Pass -Xdump-perf=<file>, or both -Xreport-perf and -Xdetailed-perf.
+COMPILATION_ERROR

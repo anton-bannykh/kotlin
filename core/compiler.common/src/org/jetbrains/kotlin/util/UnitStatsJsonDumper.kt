@@ -38,10 +38,14 @@ object UnitStatsJsonDumper {
                     backendStats?.let { appendTime(::backendStats, it, indent = 1, trailingComma = true) }
 
                     dynamicStats?.let {
-                        appendArray(::dynamicStats, dynamicStats, indent = 1, trailingComma = true) {
-                            appendKeyValue(it::parentPhaseType, it.parentPhaseType.name, indent = 3)
-                            appendKeyValue(it::name, it.name, indent = 3)
-                            appendTime(it::time, it.time, indent = 3, trailingComma = false)
+                        appendArray(::dynamicStats, dynamicStats, indent = 1, trailingComma = true) { dynamicStat ->
+                            appendKeyValue(dynamicStat::parentPhaseType, dynamicStat.parentPhaseType.name, indent = 3)
+                            appendKeyValue(dynamicStat::name, dynamicStat.name, indent = 3)
+                            val memory = dynamicStat.memory
+                            appendTime(dynamicStat::time, dynamicStat.time, indent = 3, trailingComma = memory != null)
+                            if (memory != null) {
+                                appendMemory(dynamicStat::memory, memory, indent = 3, trailingComma = false)
+                            }
                         }
                     }
 
@@ -84,6 +88,13 @@ object UnitStatsJsonDumper {
                 appendKeyValue(::count, count, indent + 1)
                 appendTime(::time, time, indent + 1, trailingComma = false)
             }
+        }
+    }
+
+    private fun StringBuilder.appendMemory(key: KProperty<*>, memory: MemoryStats, indent: Int, trailingComma: Boolean) {
+        appendObject(key, memory, indent, trailingComma) {
+            appendKeyValue(it::peakBytes, it.peakBytes, indent + 1)
+            appendKeyValue(it::endBytes, it.endBytes, indent + 1, trailingComma = false)
         }
     }
 

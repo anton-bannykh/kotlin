@@ -1,0 +1,4 @@
+$TESTDATA_DIR$/enableRamUsageReporting.kt
+-o
+$TEMP_DIR$/enableRamUsageReporting
+-Xbinary=enableRamUsageReporting=true

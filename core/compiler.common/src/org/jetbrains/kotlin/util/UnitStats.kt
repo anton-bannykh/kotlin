@@ -217,7 +217,33 @@ data class GarbageCollectionStats(val kind: String, val millis: Long, val count:
     }
 }
 
-data class DynamicStats(val parentPhaseType: PhaseType, val name: String, val time: Time)
+/**
+ * Heap usage observed around a measured phase, in bytes.
+ *
+ * [peakBytes] is the maximum heap usage sampled while the phase was running, [endBytes] the usage sampled
+ * right after it finished.
+ *
+ * Unlike [Time], these values don't add up. When a phase is measured several times under the same name
+ * (for instance, a file lowering applied to every file of a module), [peakBytes] keeps the maximum over all
+ * the runs and [endBytes] the value of the last one; that's what [plus] implements.
+ * For the same reason the values are only meaningful when a single unit is measured at a time: the heap is
+ * shared by the whole process, so peaks of units running in parallel are indistinguishable, see [UnitStats].
+ */
+data class MemoryStats(val peakBytes: Long, val endBytes: Long) {
+    /** Merges two measurements of the same phase: the maximum of the peaks and the most recent end usage. */
+    operator fun plus(other: MemoryStats?): MemoryStats {
+        if (other == null) return this
+        return MemoryStats(maxOf(peakBytes, other.peakBytes), other.endBytes)
+    }
+}
+
+data class DynamicStats(
+    val parentPhaseType: PhaseType,
+    val name: String,
+    val time: Time,
+    /** Heap usage around the phase, or `null` if memory tracking is disabled, see `PerformanceManager.enableMemoryTracking`. */
+    val memory: MemoryStats? = null,
+)
 
 data class KlibElementStats(val path: String, val size: Long)
 
@@ -273,14 +299,14 @@ fun PerformanceManager.forEachStringMeasurement(action: (String) -> Unit) {
 
             dynamicStats?.filter { it.parentPhaseType == phaseType }?.let { filteredDynamicStats ->
                 if (detailedPerf) {
-                    filteredDynamicStats.forEach { (val _ = parentPhaseType, val dynamicName = name, val dynamicTime = time) ->
+                    filteredDynamicStats.forEach { (val _ = parentPhaseType, val dynamicName = name, val dynamicTime = time, val dynamicMemory = memory) ->
                         action(
                             "%20s%8s ms".format("DYNAMIC PHASE", dynamicTime.millis) +
                                     if (linesCount != 0) {
                                         "%12.3f loc/s ($dynamicName)".format(Locale.ENGLISH, getLinesPerSecond(dynamicTime))
                                     } else {
                                         " ($dynamicName)"
-                                    }
+                                    } + dynamicMemory.renderSuffix()
                         )
                     }
                 } else {
@@ -324,6 +350,12 @@ fun PerformanceManager.forEachStringMeasurement(action: (String) -> Unit) {
         extendedStats?.forEach { action(it) }
     }
 }
+
+private const val BYTES_IN_MB = 1024 * 1024
+
+/** Renders the heap usage as a suffix of a measurement line, or nothing at all when it wasn't tracked. */
+private fun MemoryStats?.renderSuffix(): String =
+    if (this == null) "" else " peak %d MB, %d MB at end".format(peakBytes / BYTES_IN_MB, endBytes / BYTES_IN_MB)
 
 val nanosInSecond = TimeUnit.SECONDS.toNanos(1)
 

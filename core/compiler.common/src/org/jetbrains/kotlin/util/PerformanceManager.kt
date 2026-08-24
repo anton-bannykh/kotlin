@@ -60,6 +60,14 @@ abstract class PerformanceManager(val targetPlatform: TargetPlatform, val presen
     private var currentDynamicPhaseTime: Time? = null
     private var currentDynamicPhase: String? = null
     private val dynamicPhaseMeasurements = LinkedHashMap<Pair<PhaseType, String>, Time>()
+    private val dynamicMemoryMeasurements = LinkedHashMap<Pair<PhaseType, String>, MemoryStats>()
+
+    /**
+     * Shared with the child managers, see [enableMemoryTracking]. Only the manager that enabled the tracking
+     * ([ownsHeapSampler]) is allowed to stop it, otherwise the first child to finish would stop sampling for everyone.
+     */
+    internal var heapSampler: HeapSampler? = null
+    private var ownsHeapSampler: Boolean = false
 
     private val klibElementStats: SortedMap<String, Long> = sortedMapOf()
 
@@ -152,7 +160,7 @@ abstract class PerformanceManager(val targetPlatform: TargetPlatform, val presen
             backendTime,
             dynamicPhaseMeasurements.map { [key, time] ->
                 val [phaseType, name] = key
-                DynamicStats(phaseType, name, time)
+                DynamicStats(phaseType, name, time, dynamicMemoryMeasurements[key])
             },
             klibElementStats.map { [path, size] -> KlibElementStats(path, size) },
             findJavaClassStats,
@@ -180,8 +188,11 @@ abstract class PerformanceManager(val targetPlatform: TargetPlatform, val presen
             }
         }
 
-        otherUnitStats.dynamicStats?.forEach { (val phaseType = parentPhaseType, val name, val time) ->
+        otherUnitStats.dynamicStats?.forEach { (val phaseType = parentPhaseType, val name, val time, val memory) ->
             dynamicPhaseMeasurements[phaseType to name] = (dynamicPhaseMeasurements[phaseType to name] ?: Time.ZERO) + time
+            if (memory != null) {
+                dynamicMemoryMeasurements[phaseType to name] = dynamicMemoryMeasurements[phaseType to name]?.plus(memory) ?: memory
+            }
         }
 
         otherUnitStats.klibElementStats?.forEach { (path, size) ->
@@ -237,6 +248,20 @@ abstract class PerformanceManager(val targetPlatform: TargetPlatform, val presen
         }
     }
 
+    /**
+     * Starts recording the heap usage of the phases measured by this manager and by its children.
+     *
+     * A single [HeapSampler] serves the whole manager tree: the heap it observes belongs to the process rather than
+     * to a unit, so units measured in parallel would report peaks that can't be attributed to any of them.
+     * See [MemoryStats] for the guarantees this gives on the resulting numbers.
+     */
+    fun enableMemoryTracking(sampler: HeapSampler = HeapSampler()) {
+        check(heapSampler == null) { "Memory tracking is already enabled" }
+        heapSampler = sampler
+        ownsHeapSampler = true
+        sampler.start()
+    }
+
     open fun addSourcesStats(files: Int, lines: Int) {
         ensureNotFinalizedAndSameThread()
 
@@ -245,6 +270,8 @@ abstract class PerformanceManager(val targetPlatform: TargetPlatform, val presen
     }
 
     fun notifyDynamicPhaseStarted(name: String) {
+        // Drop the peak of the previous phase, otherwise this one would inherit it
+        heapSampler?.markPeak()
         currentDynamicPhaseTime = currentTime()
         currentDynamicPhase = name
     }
@@ -258,6 +285,14 @@ abstract class PerformanceManager(val targetPlatform: TargetPlatform, val presen
         if (localCurrentDynamicPhaseTime != null) {
             dynamicPhaseMeasurements[parentPhaseType to name] =
                 (dynamicPhaseMeasurements[parentPhaseType to name] ?: Time.ZERO) + (currentTime() - localCurrentDynamicPhaseTime)
+        }
+        heapSampler?.let { sampler ->
+            // Sampling here also folds the final usage into the peak, so a phase shorter than the sampling
+            // interval still gets a peak of at least its own end usage
+            val endBytes = sampler.sample()
+            val measured = MemoryStats(peakBytes = sampler.peakBytes, endBytes = endBytes)
+            val key = parentPhaseType to name
+            dynamicMemoryMeasurements[key] = dynamicMemoryMeasurements[key]?.plus(measured) ?: measured
         }
         currentDynamicPhaseTime = null
     }
@@ -287,6 +322,10 @@ abstract class PerformanceManager(val targetPlatform: TargetPlatform, val presen
     open fun notifyCompilationFinished() {
         ensureNotFinalizedAndSameThread()
         isFinalized = true
+
+        if (ownsHeapSampler) {
+            heapSampler?.stop()
+        }
 
         if (currentPhaseType != PhaseType.Backend || phaseStartTime != null) {
             hasErrors = true
@@ -453,6 +492,8 @@ class PerformanceManagerImpl(targetPlatform: TargetPlatform, presentableName: St
                         it.notifyPhaseFinished(PhaseType.Initialization)
                     }
                     it.compilerType = mainPerformanceManager.compilerType
+                    // The children measure the phases the memory tracking is about, so they must sample the same heap
+                    it.heapSampler = mainPerformanceManager.heapSampler
                 }
             } else {
                 null

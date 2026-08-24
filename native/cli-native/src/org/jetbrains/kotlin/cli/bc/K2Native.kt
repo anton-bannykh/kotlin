@@ -52,6 +52,7 @@ import org.jetbrains.kotlin.progress.CompilationCanceledException
 import org.jetbrains.kotlin.progress.CompilationCanceledStatus
 import org.jetbrains.kotlin.progress.ProgressIndicatorAndCompilationCanceledStatus
 import org.jetbrains.kotlin.util.CompilerType
+import org.jetbrains.kotlin.util.PerformanceManager
 import org.jetbrains.kotlin.util.PerformanceManagerImpl
 import org.jetbrains.kotlin.util.forEachStringMeasurement
 import org.jetbrains.kotlin.util.profile
@@ -115,6 +116,7 @@ class K2Native : CLICompiler<K2NativeCompilerArguments>() {
             withRootDisposable { rootDisposable ->
                 setupCommonArguments(configuration, arguments)
                 configuration.setupFromArguments(arguments, rootDisposable)
+                setupRamUsageReporting(configuration, arguments, performanceManager)
                 if (CheckDiagnosticCollector.checkHasErrorsAndReportToMessageCollector(configuration)) {
                     return ExitCode.COMPILATION_ERROR
                 }
@@ -161,6 +163,43 @@ class K2Native : CLICompiler<K2NativeCompilerArguments>() {
         } finally {
             collector.flush()
         }
+    }
+
+    /**
+     * Starts recording the heap usage of every measured compilation phase if `enableRamUsageReporting` is on.
+     *
+     * The measurements are reported next to the phase times, so the option needs a destination that actually
+     * prints per-phase numbers. Asking for the tracking without one is reported as an error instead of silently
+     * collecting measurements nobody will see.
+     */
+    private fun setupRamUsageReporting(
+        configuration: CompilerConfiguration,
+        arguments: K2NativeCompilerArguments,
+        performanceManager: PerformanceManager,
+    ) {
+        if (!configuration.getBoolean(BinaryOptions.enableRamUsageReporting)) return
+
+        val option = "-Xbinary=enableRamUsageReporting=true"
+        if (arguments.dumpPerf == null && !(arguments.reportPerf && arguments.detailedPerf)) {
+            configuration.report(
+                CliDiagnostics.KONAN_ARGUMENT_ERROR,
+                "$option has nowhere to report the measurements to. " +
+                        "Pass -Xdump-perf=<file>, or both -Xreport-perf and -Xdetailed-perf."
+            )
+            return
+        }
+
+        // A module split into several fragments compiles them in parallel, and they all allocate from the same heap,
+        // so a peak observed during one phase may well have been caused by a phase of another fragment.
+        if (arguments.backendThreads != "1") {
+            configuration.report(
+                CliDiagnostics.KONAN_ARGUMENT_STRONG_WARNING,
+                "$option measures the heap of the whole process. With -Xbackend-threads=${arguments.backendThreads} " +
+                        "the measurements of a module compiled as several fragments cannot be attributed to a single phase."
+            )
+        }
+
+        performanceManager.enableMemoryTracking()
     }
 
     private fun setupCommonArguments(configuration: CompilerConfiguration, arguments: K2NativeCompilerArguments) {

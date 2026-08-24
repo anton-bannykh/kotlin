@@ -62,7 +62,11 @@ class UnitStatsSerializationTest {
         backendStats = Time(5_000_000L, 5_000_001L, 5_000_002L),
         dynamicStats = listOf(
             DynamicStats(PhaseType.IrPreLowering, "Dynamic 1", Time(5_100_000L, 5_100_001L, 5_100_002L)),
-            DynamicStats(PhaseType.IrLowering, "Dynamic 2", Time(5_200_000L, 5_200_001L, 5_200_002L)),
+            // The second one also carries memory measurements, so both the present and the absent case are covered
+            DynamicStats(
+                PhaseType.IrLowering, "Dynamic 2", Time(5_200_000L, 5_200_001L, 5_200_002L),
+                MemoryStats(peakBytes = 5_300_000L, endBytes = 5_300_001L),
+            ),
         ),
         findJavaClassStats = SideStats(1, Time(6_000_000L, 6_000_001L, 6_000_002L)),
         findKotlinClassStats = SideStats(2, Time(7_000_000L, 7_000_001L, 7_000_002L)),
