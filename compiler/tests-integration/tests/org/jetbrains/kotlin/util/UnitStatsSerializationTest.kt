@@ -6,6 +6,7 @@
 package org.jetbrains.kotlin.util
 
 import com.google.gson.GsonBuilder
+import com.google.gson.Strictness
 import java.time.LocalDateTime
 import java.time.ZoneOffset
 import kotlin.test.assertEquals
@@ -55,7 +56,7 @@ class UnitStatsSerializationTest {
 
         val serialized = UnitStatsJsonDumper.dump(moduleStats)
 
-        val deserialized = GsonBuilder().create().fromJson(serialized, UnitStats::class.java)
+        val deserialized = GsonBuilder().setStrictness(Strictness.STRICT).create().fromJson(serialized, UnitStats::class.java)
 
         assertEquals(moduleStats, deserialized)
     }
