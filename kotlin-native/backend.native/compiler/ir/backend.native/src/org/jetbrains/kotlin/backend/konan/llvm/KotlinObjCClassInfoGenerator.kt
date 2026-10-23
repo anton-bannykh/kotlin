@@ -33,7 +33,7 @@ internal class KotlinObjCClassInfoGenerator(override val generationState: Native
         val protocolNames = irClass.getSuperInterfaces().map {
             llvm.dependenciesTracker.add(it)
             it.name.asString().removeSuffix("Protocol")
-        }
+        }.distinct() // The same Objective-C protocol can be imported by several cinterop libraries (KT-87579).
 
         val exportedClassName = selectExportedClassName(irClass)
         val className = exportedClassName ?: selectInternalClassName(irClass)
