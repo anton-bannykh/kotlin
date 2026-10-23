@@ -6,6 +6,7 @@
 package org.jetbrains.kotlin.konan.test.blackbox
 
 import com.intellij.testFramework.TestDataPath
+import org.jetbrains.kotlin.cli.common.ExitCode
 import org.jetbrains.kotlin.codegen.forTestCompile.ForTestCompileRuntime
 import org.jetbrains.kotlin.config.LanguageFeature
 import org.jetbrains.kotlin.config.LanguageVersion
@@ -28,6 +29,7 @@ import org.junit.jupiter.api.Assumptions
 import org.junit.jupiter.api.Test
 import java.io.File
 import kotlin.test.assertContains
+import kotlin.test.assertEquals
 import kotlin.test.assertIs
 
 abstract class CompilerOutputTestBase : AbstractNativeSimpleTest() {
@@ -248,6 +250,21 @@ abstract class CompilerOutputTestBase : AbstractNativeSimpleTest() {
         val goldenData = rootDir.resolve("output.txt")
 
         TestDataAssertions.assertEqualsToFile(goldenData, output)
+    }
+
+    // KT-89552: `-p library` must not silently produce an empty klib when there is nothing to compile.
+    @Test
+    fun testNoCompilationArguments() {
+        for (produce in listOf("library", "program")) {
+            val output = buildDir.resolve("noCompilationArguments-$produce")
+            val result = callCompilerWithoutOutputInterceptor(arrayOf("-p", produce, "-o", output.absolutePath))
+
+            assertEquals(ExitCode.COMPILATION_ERROR, result.exitCode, "-p $produce:\n${result.toolOutput}")
+            assertContains(result.toolOutput, "error: you have not specified any compilation arguments. No output has been produced.")
+            assertFalse(buildDir.listFiles().orEmpty().any { it.name.startsWith(output.name) }) {
+                "-p $produce: no output is expected, but found: ${buildDir.listFiles()?.toList()}"
+            }
+        }
     }
 
     private fun compileToExecutableInTwoStages(

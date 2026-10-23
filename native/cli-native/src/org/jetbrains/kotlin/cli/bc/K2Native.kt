@@ -23,6 +23,7 @@ import org.jetbrains.kotlin.cli.common.arguments.K2NativeCompilerArguments
 import org.jetbrains.kotlin.cli.common.arguments.isNativeSecondStage
 import org.jetbrains.kotlin.cli.common.arguments.parseCommandLineArguments
 import org.jetbrains.kotlin.cli.common.environment.setIdeaIoUseFallback
+import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity.ERROR
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity.LOGGING
 import org.jetbrains.kotlin.cli.common.messages.GroupingMessageCollector
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
@@ -72,6 +73,12 @@ class K2Native : CLICompiler<K2NativeCompilerArguments>() {
     ): ExitCode {
         if (arguments.isNativeSecondStage()) {
             return doExecuteInAnOldWay(basicMessageCollector, services, arguments)
+        }
+        if (!arguments.hasEnoughArguments) {
+            // The version has already been printed by `CLICompiler.exec`, there is nothing else to do.
+            if (arguments.version) return ExitCode.OK
+            basicMessageCollector.report(ERROR, NOT_ENOUGH_ARGUMENTS_MESSAGE)
+            return ExitCode.COMPILATION_ERROR
         }
         return doExecutePhasedKlibCompilation(arguments, services, basicMessageCollector, isOneStageCompilation = false)
     }
@@ -191,9 +198,8 @@ class K2Native : CLICompiler<K2NativeCompilerArguments>() {
             )
             if (pluginLoadResult != ExitCode.OK) return pluginLoadResult
 
-            val enoughArguments = arguments.freeArgs.isNotEmpty() || arguments.isUsefulWithoutFreeArgs
-            if (!enoughArguments) {
-                configuration.report(CliDiagnostics.KONAN_ARGUMENT_ERROR, "You have not specified any compilation arguments. No output has been produced.")
+            if (!arguments.hasEnoughArguments) {
+                configuration.report(CliDiagnostics.KONAN_ARGUMENT_ERROR, NOT_ENOUGH_ARGUMENTS_MESSAGE)
             }
             val environment = prepareEnvironment(arguments, configuration, rootDisposable)
             if (CheckDiagnosticCollector.checkHasErrorsAndReportToMessageCollector(configuration)) {
@@ -332,6 +338,9 @@ class K2Native : CLICompiler<K2NativeCompilerArguments>() {
         konanDriver.run()
     }
 
+    private val K2NativeCompilerArguments.hasEnoughArguments: Boolean
+        get() = freeArgs.isNotEmpty() || isUsefulWithoutFreeArgs
+
     private val K2NativeCompilerArguments.isUsefulWithoutFreeArgs: Boolean
         get() {
             if (listTargets || listPhases || checkDependencies) {
@@ -354,6 +363,8 @@ class K2Native : CLICompiler<K2NativeCompilerArguments>() {
     override fun executableScriptFileName() = "kotlinc-native"
 
     companion object {
+        private const val NOT_ENOUGH_ARGUMENTS_MESSAGE = "You have not specified any compilation arguments. No output has been produced."
+
         @JvmStatic
         fun main(args: Array<String>) {
             profile("Total compiler main()") {
