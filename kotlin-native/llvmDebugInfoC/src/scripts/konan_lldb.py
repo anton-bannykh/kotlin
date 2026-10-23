@@ -156,7 +156,7 @@ def _is_string_or_array(value):
     string_addr = _symbol_loaded_address("kclass:kotlin.String")
     expr = (
         f"(int)Konan_DebugIsInstance({value_str}, {_hex(string_addr)}) ? 1 "
-        f": ((int)Konan_DebugIsArray({value_str})) ? 2 : 0)"
+        f": ((int)Konan_DebugIsArray({value_str})) ? 2 : 0"
     )
     soa = _evaluate(expr).unsigned
     logging.debug("%s: %s", value_str, soa)
