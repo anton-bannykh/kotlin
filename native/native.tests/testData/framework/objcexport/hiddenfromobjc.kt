@@ -130,3 +130,19 @@ fun <T : InterfaceNotAvailableInSwift> useUnavailable(a : T): String {
 }
 
 class WrapperOverUnavailable<T: InterfaceNotAvailableInSwift>(val arg: T)
+// KT-87537: the accessors of a hidden property are hidden too, even if they have their own annotations.
+// On Native, `@Throws` is not applicable to accessors, but the common `@Throws` is (see KT-63047),
+// so such accessors can reach ObjC export from common code. The suppression imitates that.
+@Suppress("WRONG_ANNOTATION_TARGET_WITH_USE_SITE_TARGET")
+class ClassWithHiddenThrowingProperty {
+    @OptIn(ExperimentalObjCRefinement::class)
+    @HiddenFromObjC
+    @get:Throws(IllegalStateException::class)
+    val hiddenThrowingProperty: Boolean get() = error("Must not be called")
+
+    @OptIn(ExperimentalObjCRefinement::class)
+    @HiddenFromObjC
+    @set:Throws(IllegalStateException::class)
+    var hiddenThrowingMutableProperty: Boolean = false
+        set(value) = error("Must not be called with $value")
+}

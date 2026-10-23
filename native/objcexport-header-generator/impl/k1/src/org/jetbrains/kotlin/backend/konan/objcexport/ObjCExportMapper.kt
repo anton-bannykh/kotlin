@@ -154,6 +154,8 @@ private fun AnnotationDescriptor.hidesFromObjC(): Boolean =
 private fun CallableMemberDescriptor.isHiddenFromObjC(): Boolean = when {
     // Note: the front-end checker requires all overridden descriptors to be either refined or not refined.
     overriddenDescriptors.isNotEmpty() -> overriddenDescriptors.first().isHiddenFromObjC()
+    // Accessors of a hidden property are hidden too (KT-87537).
+    this is PropertyAccessorDescriptor && correspondingProperty.isHiddenFromObjC() -> true
     else -> annotations.any(AnnotationDescriptor::hidesFromObjC)
 }
 
