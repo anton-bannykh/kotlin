@@ -39,6 +39,18 @@ def _bench(start, msg):
         print(f"{msg()}: {time.monotonic() - start}")
 
 
+def _expression_options(target):
+    # The same options SBFrame.EvaluateExpression(expr) uses by default,
+    # except that Fix-Its are disabled: they are not applied by every LLDB build
+    # (e.g. on Linux), so an expression relying on them works on one host and fails on another.
+    options = lldb.SBExpressionOptions()
+    options.SetFetchDynamicValue(target.GetPreferDynamicValue())
+    options.SetUnwindOnError(True)
+    options.SetIgnoreBreakpoints(True)
+    options.SetAutoApplyFixIts(False)
+    return options
+
+
 def _evaluate(expr):
     target = lldb.debugger.GetSelectedTarget()
     if not target:
@@ -70,7 +82,7 @@ def _evaluate(expr):
     original_frame = frame
     original_frame_id = frame.GetFrameID()
 
-    result = frame.EvaluateExpression(expr)
+    result = frame.EvaluateExpression(expr, _expression_options(target))
 
     # Try to find and restore the original frame
     current_frame = thread.GetSelectedFrame()
