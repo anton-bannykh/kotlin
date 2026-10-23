@@ -36,6 +36,9 @@ internal fun prepareKlibArgumentsForOneStage(
     klibArgs.outputName = intermediateKlibPath
     klibArgs.includes = emptyArray()
     klibArgs.exportedLibraries = emptyArray()
+    // Native libraries are linked into the final binary by the second stage, which keeps the original `-native-library` arguments.
+    // If they were also embedded into the intermediate KLib, the second stage would link each of them twice.
+    klibArgs.nativeLibraries = emptyArray()
     return klibArgs
 }
 

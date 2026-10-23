@@ -173,6 +173,52 @@ abstract class ComplexCInteropTestBase : AbstractNativeSimpleTest() {
         runExecutableAndVerify(testCase, testExecutable)
     }
 
+    // Tests the `-native-library` compiler flag with one-stage compilation (sources -> executable).
+    // Regression test for KT-89909: the bitcode must be linked into the final binary only once.
+    @Test
+    @TestMetadata("embedStaticLibraries.kt")
+    fun testNativeLibrariesOneStage() {
+        // Reuse the test data from the previous test for simplicity.
+        val embedStaticLibrariesDir = interopDir.resolve("embedStaticLibraries")
+        val bcFiles = (1..4).map {
+            val source = embedStaticLibrariesDir.resolve("$it.c")
+            compileWithClang(
+                testRunSettings = testRunSettings,
+                clangDistribution = ClangDistribution.Llvm, // To be compatible with the K/N LLVM IR.
+                sourceFiles = listOf(source),
+                outputFile = buildDir.resolve("$it.bc"),
+                additionalClangFlags = listOf("-emit-llvm", "-c"),
+                debug = false, // K/N LLVM IR uses incompatible DWARF version 2, while Clang defaults to 4.
+            ).assertSuccess().resultingArtifact.path
+        }
+        val defFile = buildDir.resolve("nativeLibrariesOneStage.def").also {
+            it.writeText("")
+        }
+
+        val cinteropKlib = cinteropToLibrary(
+            defFile = defFile,
+            outputDir = buildDir,
+            freeCompilerArgs = TestCompilerArgs(
+                compilerArgs = emptyList(),
+                cinteropArgs = listOf(
+                    "-header", embedStaticLibrariesDir.resolve("embedStaticLibraries.h").absolutePath,
+                    "-pkg", "embedStaticLibraries",
+                )
+            )
+        ).assertSuccess().resultingArtifact
+
+        val testCase = generateTestCaseWithSingleFile(
+            embedStaticLibrariesDir.resolve("embedStaticLibraries.kt"),
+            freeCompilerArgs = TestCompilerArgs(
+                listOf("-opt-in=kotlinx.cinterop.ExperimentalForeignApi") + bcFiles.flatMap { listOf("-native-library", it) }
+            ),
+            testKind = TestKind.STANDALONE_NO_TR,
+            extras = TestCase.NoTestRunnerExtras("main"),
+        )
+        val compilationResult = compileToExecutableInOneStage(testCase, cinteropKlib.asLibraryDependency()).assertSuccess()
+        runExecutableAndVerify(testCase, TestExecutable.fromCompilationResult(testCase, compilationResult))
+    }
+
     @Test
     @TestMetadata("smoke.kt")
     fun testInteropObjCSmokeGC() {
