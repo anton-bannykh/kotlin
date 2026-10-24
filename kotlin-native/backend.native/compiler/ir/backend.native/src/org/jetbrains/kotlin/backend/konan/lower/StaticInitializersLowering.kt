@@ -8,6 +8,7 @@ package org.jetbrains.kotlin.backend.konan.lower
 import org.jetbrains.kotlin.backend.common.FileLoweringPass
 import org.jetbrains.kotlin.backend.common.lower.ExpressionBodyTransformer
 import org.jetbrains.kotlin.backend.common.lower.createIrBuilder
+import org.jetbrains.kotlin.backend.common.lower.irComposite
 import org.jetbrains.kotlin.backend.common.phaser.PhasePrerequisites
 import org.jetbrains.kotlin.backend.common.serialization.kotlinLibrary
 import org.jetbrains.kotlin.backend.konan.*
@@ -32,6 +33,7 @@ import org.jetbrains.kotlin.ir.symbols.IrFieldSymbol
 import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
 import org.jetbrains.kotlin.ir.types.classOrFail
 import org.jetbrains.kotlin.ir.util.*
+import org.jetbrains.kotlin.ir.visitors.IrTransformer
 import org.jetbrains.kotlin.ir.visitors.IrVisitorVoid
 import org.jetbrains.kotlin.ir.visitors.acceptChildrenVoid
 import org.jetbrains.kotlin.ir.visitors.acceptVoid
@@ -107,6 +109,41 @@ internal class StaticInitializersLowering(val context: NativeLoweringContext) : 
                 declaration.acceptChildrenVoid(this)
             }
         })
+        irFile.transformChildren(StaticLateinitFieldAccessTransformer(irFile), null)
+    }
+
+    /**
+     * Initializers of a class are triggered by its static functions (including the accessors of its static properties)
+     * and its constructors. A `lateinit` backing field can be accessed directly though, without the getter:
+     * [org.jetbrains.kotlin.backend.common.lower.LateinitLowering] lowers `::prop.isInitialized` into a null check of the field.
+     * When this happens outside the class (e.g. in a nested class), nothing initializes the class first,
+     * so the check might observe the field before its initializer has run (KT-89375).
+     *
+     * Trigger the class initialization before such accesses.
+     * The [IrClass] passed down is the innermost class containing the current element.
+     */
+    private inner class StaticLateinitFieldAccessTransformer(val irFile: IrFile) : IrTransformer<IrClass?>() {
+        override fun visitClass(declaration: IrClass, data: IrClass?): IrStatement =
+                super.visitClass(declaration, declaration)
+
+        override fun visitGetField(expression: IrGetField, data: IrClass?): IrExpression {
+            expression.transformChildren(this, data)
+
+            val field = expression.symbol.owner
+            if (!field.isStatic) return expression
+            if (field.correspondingPropertySymbol?.owner?.isLateinit != true) return expression
+            val fieldOwner = field.parent as? IrClass ?: return expression
+            // Members of the class itself are either static (and trigger the initialization on their own) or require an instance.
+            if (fieldOwner == data) return expression
+            // `lateinit` backing fields can only be accessed directly from the same module, but let's be careful.
+            if (fieldOwner.fileOrNull?.module != irFile.module) return expression
+
+            val trigger = fieldOwner.getClinitTriggerFunction()
+            return context.irBuiltIns.createIrBuilder(irFile.symbol, expression.startOffset, expression.endOffset).irComposite(expression) {
+                +irCall(trigger)
+                +expression
+            }
+        }
     }
 
     // An internal static method to trigger class initialization:
