@@ -109,6 +109,12 @@ public class LLNativeDiagnosticsTestGenerated extends AbstractLLNativeDiagnostic
   }
 
   @Test
+  @TestMetadata("identifierWithNullCharacter.kt")
+  public void testIdentifierWithNullCharacter() {
+    run("identifierWithNullCharacter.kt");
+  }
+
+  @Test
   @TestMetadata("identifiers.kt")
   public void testIdentifiers() {
     run("identifiers.kt");
