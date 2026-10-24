@@ -88,6 +88,24 @@ internal class BuiltinOperatorLowering(val context: NativeLoweringContext) : Fil
 
     private val anyEquals = irBuiltins.anyClass.owner.simpleFunctions().single { it.name.asString() == "equals" }
 
+    /**
+     * `equals(other: Float)` and `equals(other: Double)` of the primitive classes.
+     *
+     * The generic equality of floating-point values (e.g. `==` on a type parameter after inlining, or the default `equals` of
+     * a value class over such a value) is reflexive: all NaNs are equal to each other, and `-0.0` is not equal to `0.0`.
+     * This is what these functions implement, unlike the raw bits comparison of [KonanSymbols.areEqualByValue] (KT-90351).
+     * The IEEE 754 comparison of statically typed floating-point values is a different builtin, see [ieee754EqualsSymbols].
+     */
+    private val floatingPointEquals: Map<PrimitiveBinaryType, IrSimpleFunctionSymbol> = mapOf(
+            PrimitiveBinaryType.FLOAT to irBuiltins.floatClass.owner.equalsWithParameterOf(irBuiltins.floatType),
+            PrimitiveBinaryType.DOUBLE to irBuiltins.doubleClass.owner.equalsWithParameterOf(irBuiltins.doubleType),
+    )
+
+    private fun IrClass.equalsWithParameterOf(type: IrType): IrSimpleFunctionSymbol = simpleFunctions().single {
+        it.name.asString() == "equals" && it.parameters.size == 2 && it.parameters[1].type.isMarkedNullable() == false
+                && it.parameters[1].type.classifierOrNull == type.classifierOrNull
+    }.symbol
+
     private fun lowerEqeq(expression: IrCall): IrExpression {
         // TODO: optimize boxing?
 
@@ -144,6 +162,12 @@ internal class BuiltinOperatorLowering(val context: NativeLoweringContext) : Fil
         val lhsBinaryType = lhs.type.computeBinaryType()
         return when (lhsBinaryType) {
             is BinaryType.Primitive -> {
+                floatingPointEquals[lhsBinaryType.type]?.let { equals ->
+                    return irCall(equals).apply {
+                        arguments[0] = reinterpret(lhs, equals.owner.parameters[0].type)
+                        arguments[1] = reinterpret(rhs, equals.owner.parameters[1].type)
+                    }
+                }
                 val areEqualByValue = symbols.areEqualByValue[lhsBinaryType.type]!!.owner
                 irCall(areEqualByValue).apply {
                     arguments[0] = reinterpret(lhs, areEqualByValue.parameters[0].type)
