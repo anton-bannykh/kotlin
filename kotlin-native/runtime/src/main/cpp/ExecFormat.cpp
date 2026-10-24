@@ -103,14 +103,14 @@ void initSymbols() {
   }
 }
 
-const char* addressToSymbol(const void* address, ptrdiff_t& resultOffset) {
+// [info] is the result of a successful `dladdr(address)`, or `nullptr` if it failed.
+const char* addressToSymbol(const void* address, const Dl_info* info, ptrdiff_t& resultOffset) {
   if (address == nullptr) return nullptr;
 
   // First, look up in dynamically loaded symbols.
-  Dl_info info;
-  if (dladdr(address, &info) != 0 && info.dli_sname != nullptr) {
-    resultOffset = reinterpret_cast<ptrdiff_t>(address) - reinterpret_cast<ptrdiff_t>(info.dli_saddr);
-    return info.dli_sname;
+  if (info != nullptr && info->dli_sname != nullptr) {
+    resultOffset = reinterpret_cast<ptrdiff_t>(address) - reinterpret_cast<ptrdiff_t>(info->dli_saddr);
+    return info->dli_sname;
   }
 
   // Otherwise, consult symbol table of the file.
@@ -135,17 +135,26 @@ const char* addressToSymbol(const void* address, ptrdiff_t& resultOffset) {
   return nullptr;
 }
 
-}  // namespace
-
-extern "C" bool AddressToSymbol(const void* address, char* resultBuffer, size_t resultBufferSize, ptrdiff_t &resultOffset) {
-  const char* result = addressToSymbol(address, resultOffset);
-  if (result == nullptr) {
+bool copySymbol(const char* symbol, char* resultBuffer, size_t resultBufferSize) {
+  if (symbol == nullptr) {
     return false;
   } else {
-    strncpy(resultBuffer, result, resultBufferSize);
+    strncpy(resultBuffer, symbol, resultBufferSize);
     resultBuffer[resultBufferSize - 1] = '\0';
     return true;
   }
+}
+
+}  // namespace
+
+bool AddressToSymbolWithDlInfo(const void* address, const Dl_info& info, char* resultBuffer, size_t resultBufferSize, ptrdiff_t& resultOffset) {
+  return copySymbol(addressToSymbol(address, &info, resultOffset), resultBuffer, resultBufferSize);
+}
+
+extern "C" bool AddressToSymbol(const void* address, char* resultBuffer, size_t resultBufferSize, ptrdiff_t &resultOffset) {
+  Dl_info info;
+  const Dl_info* infoOrNull = dladdr(address, &info) != 0 ? &info : nullptr;
+  return copySymbol(addressToSymbol(address, infoOrNull, resultOffset), resultBuffer, resultBufferSize);
 }
 
 #elif USE_PE_COFF_SYMBOLS
