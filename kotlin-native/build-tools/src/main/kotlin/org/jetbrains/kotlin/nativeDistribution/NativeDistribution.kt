@@ -206,11 +206,13 @@ val Project.nativeDistribution: Provider<NativeDistribution>
 
 /**
  * Get released Native distribution of [version].
+ *
+ * The distribution is unpacked into `build/nativeDistribution[name]`, where [name] defaults to `V<version>`.
  */
-fun Project.registerNativeReleasedDistribution(version: String): Provider<NativeDistribution> {
+fun Project.registerNativeReleasedDistribution(version: String, name: String = "V$version"): Provider<NativeDistribution> {
     val configuration = releasedNativeDistributionConfiguration(version)
     val distributionFiles = configuration.incoming.files
-    val targetDirectory = layout.buildDirectory.dir("nativeDistributionV$version")
+    val targetDirectory = layout.buildDirectory.dir("nativeDistribution$name")
 
     /*
     Setup a 'sync' task to unpack the native distribution archive.
@@ -218,7 +220,7 @@ fun Project.registerNativeReleasedDistribution(version: String): Provider<Native
     distribution is ment to used, as is, for further builds. Such builds might store files within the distribution
     which would violate Gradle invariants for artifact transforms (which are ment to stay immutable).
      */
-    val syncTaskName = "syncNativeDistributionV$version"
+    val syncTaskName = "syncNativeDistribution$name"
     val syncTask = if (syncTaskName !in tasks.names) tasks.register<Sync>(syncTaskName) {
         from(project.files({
             distributionFiles.map { archive ->
@@ -257,11 +259,14 @@ fun Project.registerNativeReleasedDistribution(version: String): Provider<Native
         }
     } else tasks.named<Sync>(syncTaskName)
 
-    return syncTask.map { NativeDistribution(project.layout.buildDirectory.dir("nativeDistributionV$version").get()) }
+    return syncTask.map { NativeDistribution(targetDirectory.get()) }
 }
 
 /**
  * Get Native bootstrap distribution.
+ *
+ * It is unpacked into `build/nativeDistributionBootstrap` regardless of the bootstrap version,
+ * so that updating the bootstrap replaces the previous distribution instead of keeping all of them (KT-89062).
  */
 fun Project.registerNativeBootstrapDistribution(): Provider<NativeDistribution> =
-        registerNativeReleasedDistribution(bootstrapKotlinVersion)
+        registerNativeReleasedDistribution(bootstrapKotlinVersion, name = "Bootstrap")
