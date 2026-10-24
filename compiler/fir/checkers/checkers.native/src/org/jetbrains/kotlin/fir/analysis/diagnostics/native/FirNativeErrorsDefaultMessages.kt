@@ -24,6 +24,8 @@ import org.jetbrains.kotlin.fir.analysis.diagnostics.native.FirNativeErrors.FORW
 import org.jetbrains.kotlin.fir.analysis.diagnostics.native.FirNativeErrors.IDENTITY_HASH_CODE_ON_VALUE_TYPE
 import org.jetbrains.kotlin.fir.analysis.diagnostics.native.FirNativeErrors.INAPPLICABLE_EAGER_INITIALIZATION
 import org.jetbrains.kotlin.fir.analysis.diagnostics.native.FirNativeErrors.INAPPLICABLE_EXACT_OBJC_NAME
+import org.jetbrains.kotlin.fir.analysis.diagnostics.native.FirNativeErrors.INAPPLICABLE_OBJC_ENUM
+import org.jetbrains.kotlin.fir.analysis.diagnostics.native.FirNativeErrors.INAPPLICABLE_OBJC_ENUM_ENTRY_NAME
 import org.jetbrains.kotlin.fir.analysis.diagnostics.native.FirNativeErrors.INAPPLICABLE_OBJC_NAME
 import org.jetbrains.kotlin.fir.analysis.diagnostics.native.FirNativeErrors.INAPPLICABLE_OBJC_OVERRIDE
 import org.jetbrains.kotlin.fir.analysis.diagnostics.native.FirNativeErrors.INAPPLICABLE_SHARED_IMMUTABLE_PROPERTY
@@ -110,6 +112,11 @@ object FirNativeErrorsDefaultMessages : BaseDiagnosticRendererFactory() {
         map.put(INAPPLICABLE_EXACT_OBJC_NAME, "Exact '@ObjCName' is only applicable to classes, objects, and interfaces.")
         map.put(MISSING_EXACT_OBJC_NAME, "Exact '@ObjCName' is required to have an ObjC name.")
         map.put(NON_LITERAL_OBJC_NAME_ARG, "'@ObjCName' accepts only literal 'String' and 'Boolean' values.")
+        map.put(INAPPLICABLE_OBJC_ENUM, "'@ObjCEnum' is only applicable to enum classes.")
+        map.put(
+            INAPPLICABLE_OBJC_ENUM_ENTRY_NAME,
+            "'@ObjCEnum.EntryName' is only applicable to entries of enum classes annotated with '@ObjCEnum'."
+        )
         map.put(SUBTYPE_OF_HIDDEN_FROM_OBJC, "Only '@HiddenFromObjC' declaration can be a subtype of '@HiddenFromObjC' declaration.")
 
 

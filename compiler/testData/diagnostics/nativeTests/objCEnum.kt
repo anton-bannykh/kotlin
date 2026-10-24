@@ -1,4 +1,5 @@
 // RUN_PIPELINE_TILL: CODEGEN
+// IGNORE_FIR_DIAGNOSTICS
 // ISSUE: KT-85011
 // OPT_IN: kotlin.experimental.ExperimentalObjCEnum
 
@@ -17,30 +18,30 @@ enum class GoodNamedEnum {
 }
 
 enum class EnumWithoutObjCEnum {
-    @ObjCEnum.EntryName("first") FIRST,
+    <!INAPPLICABLE_OBJC_ENUM_ENTRY_NAME!>@ObjCEnum.EntryName("first")<!> FIRST,
     SECOND,
 }
 
-@ObjCEnum
+<!INAPPLICABLE_OBJC_ENUM!>@ObjCEnum<!>
 class NotAnEnum {
-    @ObjCEnum.EntryName("property") val property: Int = 0
+    <!INAPPLICABLE_OBJC_ENUM_ENTRY_NAME!>@ObjCEnum.EntryName("property")<!> val property: Int = 0
 }
 
-@ObjCEnum
+<!INAPPLICABLE_OBJC_ENUM!>@ObjCEnum<!>
 interface NotAnEnumInterface
 
-@ObjCEnum
+<!INAPPLICABLE_OBJC_ENUM!>@ObjCEnum<!>
 object NotAnEnumObject
 
-@ObjCEnum
+<!INAPPLICABLE_OBJC_ENUM!>@ObjCEnum<!>
 annotation class NotAnEnumAnnotation
 
-@ObjCEnum.EntryName("topLevelProperty")
+<!INAPPLICABLE_OBJC_ENUM_ENTRY_NAME!>@ObjCEnum.EntryName("topLevelProperty")<!>
 val topLevelProperty: Int = 0
 
 @ObjCEnum
 enum class EnumWithMembers {
     ENTRY;
 
-    @ObjCEnum.EntryName("member") val member: Int = 0
+    <!INAPPLICABLE_OBJC_ENUM_ENTRY_NAME!>@ObjCEnum.EntryName("member")<!> val member: Int = 0
 }

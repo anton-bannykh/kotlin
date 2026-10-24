@@ -62,6 +62,8 @@ object NATIVE_DIAGNOSTICS_LIST : DiagnosticList("FirNativeErrors") {
         val INAPPLICABLE_EXACT_OBJC_NAME by error<KtElement>()
         val MISSING_EXACT_OBJC_NAME by error<KtElement>()
         val NON_LITERAL_OBJC_NAME_ARG by error<KtElement>()
+        val INAPPLICABLE_OBJC_ENUM by error<KtElement>()
+        val INAPPLICABLE_OBJC_ENUM_ENTRY_NAME by error<KtElement>()
         val INVALID_OBJC_HIDES_TARGETS by error<KtElement>()
         val INVALID_REFINES_IN_SWIFT_TARGETS by error<KtElement>()
         val SUBTYPE_OF_HIDDEN_FROM_OBJC by error<KtElement>()

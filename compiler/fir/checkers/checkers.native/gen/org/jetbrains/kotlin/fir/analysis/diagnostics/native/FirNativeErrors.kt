@@ -54,6 +54,8 @@ object FirNativeErrors : KtDiagnosticsContainer() {
     val INAPPLICABLE_EXACT_OBJC_NAME: KtDiagnosticFactory0 = KtDiagnosticFactory0("INAPPLICABLE_EXACT_OBJC_NAME", ERROR, SourceElementPositioningStrategies.DEFAULT, KtElement::class, getRendererFactory())
     val MISSING_EXACT_OBJC_NAME: KtDiagnosticFactory0 = KtDiagnosticFactory0("MISSING_EXACT_OBJC_NAME", ERROR, SourceElementPositioningStrategies.DEFAULT, KtElement::class, getRendererFactory())
     val NON_LITERAL_OBJC_NAME_ARG: KtDiagnosticFactory0 = KtDiagnosticFactory0("NON_LITERAL_OBJC_NAME_ARG", ERROR, SourceElementPositioningStrategies.DEFAULT, KtElement::class, getRendererFactory())
+    val INAPPLICABLE_OBJC_ENUM: KtDiagnosticFactory0 = KtDiagnosticFactory0("INAPPLICABLE_OBJC_ENUM", ERROR, SourceElementPositioningStrategies.DEFAULT, KtElement::class, getRendererFactory())
+    val INAPPLICABLE_OBJC_ENUM_ENTRY_NAME: KtDiagnosticFactory0 = KtDiagnosticFactory0("INAPPLICABLE_OBJC_ENUM_ENTRY_NAME", ERROR, SourceElementPositioningStrategies.DEFAULT, KtElement::class, getRendererFactory())
     val INVALID_OBJC_HIDES_TARGETS: KtDiagnosticFactory0 = KtDiagnosticFactory0("INVALID_OBJC_HIDES_TARGETS", ERROR, SourceElementPositioningStrategies.DEFAULT, KtElement::class, getRendererFactory())
     val INVALID_REFINES_IN_SWIFT_TARGETS: KtDiagnosticFactory0 = KtDiagnosticFactory0("INVALID_REFINES_IN_SWIFT_TARGETS", ERROR, SourceElementPositioningStrategies.DEFAULT, KtElement::class, getRendererFactory())
     val SUBTYPE_OF_HIDDEN_FROM_OBJC: KtDiagnosticFactory0 = KtDiagnosticFactory0("SUBTYPE_OF_HIDDEN_FROM_OBJC", ERROR, SourceElementPositioningStrategies.DEFAULT, KtElement::class, getRendererFactory())

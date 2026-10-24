@@ -15,6 +15,7 @@ object NativeDeclarationCheckers : DeclarationCheckers() {
         FirNativeThreadLocalChecker,
         FirNativeIdentifierChecker,
         FirNativeObjCNameChecker,
+        FirNativeObjCEnumChecker,
         FirNativeExternalDeclarationChecker,
     )
 
