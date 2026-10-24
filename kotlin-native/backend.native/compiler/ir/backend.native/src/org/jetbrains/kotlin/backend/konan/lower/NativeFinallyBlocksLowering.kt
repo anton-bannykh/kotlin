@@ -10,6 +10,11 @@ import org.jetbrains.kotlin.backend.common.lower.FinallyBlocksLowering
 import org.jetbrains.kotlin.backend.common.lower.LocalDeclarationPopupLowering
 import org.jetbrains.kotlin.backend.common.lower.TailrecLowering
 import org.jetbrains.kotlin.backend.common.phaser.PhasePrerequisites
+import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
 
 @PhasePrerequisites(InitializersLowering::class, LocalDeclarationPopupLowering::class, TailrecLowering::class)
-internal class NativeFinallyBlocksLowering(context: CommonBackendContext) : FinallyBlocksLowering(context, context.irBuiltIns.throwableType)
+internal class NativeFinallyBlocksLowering(context: CommonBackendContext) : FinallyBlocksLowering(context, context.irBuiltIns.throwableType) {
+    // Compiler temporaries get no debug info, so the debugger doesn't show this variable.
+    override val syntheticCatchParameterOrigin: IrDeclarationOrigin
+        get() = IrDeclarationOrigin.IR_TEMPORARY_VARIABLE
+}
