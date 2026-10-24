@@ -207,9 +207,42 @@ abstract class CompilerOutputTestBase : AbstractNativeSimpleTest() {
 
         assertIs<TestCompilationResult.Failure>(compilationResult)
 
-        // Check only the first 5 lines because the rest contains a stack trace.
+        // The errors of the cache build are already reported, so no stack trace should follow them (KT-89477).
         val output = compilationResult.toOutput().sanitizeCompilationOutput()
-            .lines().take(5).joinToString("\n")
+
+        val goldenData = rootDir.resolve("output.txt")
+
+        TestDataAssertions.assertEqualsToFile(goldenData, output)
+    }
+
+    @Test
+    fun testCacheBuildCompilationExceptionMessage() {
+        // Disable when not using cache:
+        Assumptions.assumeFalse(testRunSettings.get<CacheMode>() == CacheMode.WithoutCache)
+        // MinGW support for caches is limited to stdlib, so these tests won't work as expected.
+        Assumptions.assumeFalse(targets.testTarget == KonanTarget.MINGW_X64)
+
+        val rootDir = ForTestCompileRuntime.transformTestDataPath("native/native.tests/testData/compilerOutput/cacheBuildCompilationExceptionMessage")
+
+        // Make sure the stdlib cache is built. Otherwise, it will fail instead of the main.klib cache.
+        compileToExecutableInTwoStages(rootDir).assertSuccess()
+
+        val autoCacheDir = buildDir.resolve("cache")
+        autoCacheDir.mkdirs()
+
+        val secondStageCompilerArgs = listOf(
+            // Make the cache compilation fail with a KonanCompilationException by passing an invalid flag value:
+            "-Xoverride-konan-properties=additionalCacheFlags=-Xbackend-threads=invalid",
+
+            "-Xauto-cache-from=$buildDir",
+            "-Xauto-cache-dir=$autoCacheDir",
+        )
+        val compilationResult = compileToExecutableInTwoStages(rootDir, secondStageCompilerArgs)
+
+        assertIs<TestCompilationResult.Failure>(compilationResult)
+
+        // The error is reported without the stack trace of the exception (KT-89477).
+        val output = compilationResult.toOutput().sanitizeCompilationOutput()
 
         val goldenData = rootDir.resolve("output.txt")
 
@@ -241,9 +274,8 @@ abstract class CompilerOutputTestBase : AbstractNativeSimpleTest() {
 
         assertIs<TestCompilationResult.Failure>(compilationResult)
 
-        // Check only the first 5 lines because the rest contains a stack trace.
+        // The errors of the cache build are already reported, so no stack trace should follow them (KT-89477).
         val output = compilationResult.toOutput().sanitizeCompilationOutput()
-            .lines().take(5).joinToString("\n")
 
         val goldenData = rootDir.resolve("output.txt")
 

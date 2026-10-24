@@ -803,7 +803,14 @@ class CacheBuilder(
 
                                     Also, consider filing an issue with full Gradle log here: https://kotl.in/issue
                                     """.trimIndent()
-                        "$extraUserInfo\n\n${t.message}\n\n${t.stackTraceToString()}"
+                        when (t) {
+                            // The cache build has already reported the errors that caused it to fail,
+                            // so its stack trace would only hide them (KT-89477).
+                            is CompilationErrorException -> extraUserInfo
+                            is KonanCompilationException -> listOfNotNull(extraUserInfo, t.message?.takeIf { it.isNotBlank() })
+                                    .joinToString("\n\n")
+                            else -> "$extraUserInfo\n\n${t.message}\n\n${t.stackTraceToString()}"
+                        }
                     }
             configuration.reportCompilationErrorAndThrow(message)
         }
