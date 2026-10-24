@@ -285,12 +285,15 @@ abstract class CompilerOutputTestBase : AbstractNativeSimpleTest() {
         return compilation.result
     }
 
-    fun String.sanitizeCompilationOutput(): String = lines().joinToString(separator = "\n") { line ->
-        when {
-            DEPRECATED_K1_LANGUAGE_VERSIONS_DIAGNOSTIC_REGEX.matches(line) -> ""
-            else -> line
+    fun String.sanitizeCompilationOutput(): String = lines()
+        // Whether the caches of the dependencies get built depends on which tests ran before (KT-80961).
+        .filterNot { it.startsWith(BUILDING_DEPENDENCY_CACHES_MESSAGE_PREFIX) }
+        .joinToString(separator = "\n") { line ->
+            when {
+                DEPRECATED_K1_LANGUAGE_VERSIONS_DIAGNOSTIC_REGEX.matches(line) -> ""
+                else -> line
+            }
         }
-    }
 
     private fun doBuildObjCFrameworkWithNameCollisions(rootDir: File, additionalOptions: List<String>): TestCompilationResult<out TestCompilationArtifact.ObjCFramework> {
         Assumptions.assumeTrue(targets.hostTarget.family.isAppleFamily)
@@ -463,3 +466,5 @@ class CompilerOutputTest : CompilerOutputTestBase() {
         )
     }
 }
+
+private const val BUILDING_DEPENDENCY_CACHES_MESSAGE_PREFIX = "info: building compiler caches for the dependencies"

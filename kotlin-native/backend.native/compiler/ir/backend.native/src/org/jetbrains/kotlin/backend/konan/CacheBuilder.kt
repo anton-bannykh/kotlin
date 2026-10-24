@@ -13,6 +13,7 @@ import org.jetbrains.kotlin.backend.common.serialization.SerializedIrFileFingerp
 import org.jetbrains.kotlin.backend.common.serialization.SerializedKlibFingerprint
 import org.jetbrains.kotlin.backend.konan.util.compilerFingerprint
 import org.jetbrains.kotlin.backend.konan.util.reportCompilationErrorAndThrow
+import org.jetbrains.kotlin.cli.reportInfo
 import org.jetbrains.kotlin.cli.reportLog
 import org.jetbrains.kotlin.config.CommonConfigurationKeys
 import org.jetbrains.kotlin.config.CompilerConfiguration
@@ -68,6 +69,7 @@ class CacheBuilder(
     private val uniqueNameToLibrary by lazy { config.klibDag.librariesReverseTopoSorted.associateBy { it.uniqueName } }
 
     private val caches = mutableMapOf<KotlinLibrary, CachedLibraries.Cache>()
+    private var externalCacheBuildReported = false
     private val cacheRootDirectories = mutableMapOf<KotlinLibrary, String>()
 
     /**
@@ -614,6 +616,16 @@ class CacheBuilder(
 
         configuration.reportLog("CACHING ${library.path}")
         filesToCache.forEach { configuration.reportLog("    $it") }
+
+        if (isExternal && !externalCacheBuildReported) {
+            // Building the caches of the dependencies takes a while (minutes for the platform libraries)
+            // and normally happens only on the first debug build, so explain the pause once (KT-80961).
+            externalCacheBuildReported = true
+            configuration.reportInfo(
+                    "Building compiler caches for the dependencies, starting with '${library.uniqueName}'. " +
+                            "This takes a while, but happens only once: later builds reuse the caches."
+            )
+        }
 
         // Produce monolithic caches for external libraries for now, except debug stdlib:
         // its cache is per-file by default (see [NativeSecondStageCompilationConfig.perFileCacheForStdlib]),
