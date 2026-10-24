@@ -10,6 +10,9 @@ import org.gradle.api.InvalidUserDataException
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.file.FileCollection
+import org.gradle.api.provider.ListProperty
+import org.gradle.api.provider.Property
+import org.gradle.api.provider.Provider
 import org.gradle.api.plugins.BasePlugin
 import org.gradle.api.tasks.*
 import org.gradle.kotlin.dsl.*
@@ -57,35 +60,51 @@ abstract class ToolExecutionTask @Inject constructor(private val execOperations:
     @get:InputFiles
     abstract var input: List<File>
 
+    // Providers, so that the tool and its arguments (e.g. clang ones, which depend on the Xcode setup on macOS)
+    // are only computed when the task is executed, rather than when it is configured (KT-90283).
     @get:Input
-    abstract var cmd: String
+    abstract val cmd: Property<String>
 
     @get:Input
-    abstract var args: List<String>
+    abstract val args: ListProperty<String>
 
     @TaskAction
     fun action() {
         if (output.exists()) output.delete()
         execOperations.exec {
-            executable(cmd)
-            args(*this@ToolExecutionTask.args.toTypedArray())
+            executable(cmd.get())
+            args(*this@ToolExecutionTask.args.get().toTypedArray())
         }
     }
 }
 
 class ToolPatternImpl(val extension: NativeToolsExtension, val output:String, vararg val input: String):ToolPattern {
-    val tool = mutableListOf<String>()
-    val args = mutableListOf<String>()
+    private val toolParts = mutableListOf<() -> List<String>>()
+    private val argsParts = mutableListOf<() -> List<String>>()
+
+    private val tool: Provider<List<String>> = extension.project.provider { toolParts.flatMap { it() } }
+    private val args: Provider<List<String>> = extension.project.provider { argsParts.flatMap { it() } }
+
     override fun ruleOut(): String = output
     override fun ruleInFirst(): String = input.first()
     override fun ruleInAll(): Array<String> = arrayOf(*input)
 
     override fun flags(vararg args: String) {
-        this.args.addAll(args)
+        val list = args.toList()
+        argsParts += { list }
+    }
+
+    override fun flags(args: () -> List<String>) {
+        argsParts += args
     }
 
     override fun tool(vararg arg: String) {
-        tool.addAll(arg)
+        val list = arg.toList()
+        toolParts += { list }
+    }
+
+    override fun tool(arg: () -> List<String>) {
+        toolParts += arg
     }
 
     override fun env(name: String) = emptyArray<String>()
@@ -113,8 +132,8 @@ class ToolPatternImpl(val extension: NativeToolsExtension, val output:String, va
         val file = extension.project.file(output)
         file.parentFile.mkdirs()
         task.output = file
-        task.cmd = tool.first()
-        task.args = listOf(*tool.drop(1).toTypedArray(), *args.toTypedArray())
+        task.cmd.set(tool.map { it.first() })
+        task.args.set(tool.zip(args) { tool, args -> tool.drop(1) + args })
     }
 }
 
@@ -203,6 +222,14 @@ interface ToolPattern {
     fun ruleInAll(): Array<String>
     fun flags(vararg args: String): Unit
     fun tool(vararg arg: String): Unit
+
+    /**
+     * Like [flags] and [tool], but [args] are computed only when they are needed, i.e. when the task is executed.
+     * Use these for arguments that require the host toolchain to be set up, e.g. `hostPlatform.clang...`:
+     * on macOS, computing those runs `xcrun`, and a broken Xcode setup must not fail the build configuration (KT-90283).
+     */
+    fun flags(args: () -> List<String>): Unit
+    fun tool(args: () -> List<String>): Unit
     fun env(name: String): Array<String>
 }
 

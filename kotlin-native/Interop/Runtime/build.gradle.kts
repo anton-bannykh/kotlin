@@ -25,15 +25,16 @@ native {
     val isWindows = PlatformInfo.isWindows()
     val obj = if (isWindows) "obj" else "o"
     val lib = if (isWindows) "lib" else "a"
-    val cflags = listOf(
+    // Computed lazily: the host compiler arguments depend on the Xcode setup on macOS.
+    fun cflags() = listOf(
             "-I${nativeDependencies.libffiPath}/include",
             *hostPlatform.clangForJni.hostCompilerArgsForJni,
             *reproducibilityCompilerFlags,
     )
     suffixes {
         (".c" to ".$obj") {
-            tool(*hostPlatform.clangForJni.clangC("").toTypedArray())
-            flags( *cflags.toTypedArray(), "-c", "-o", ruleOut(), ruleInFirst())
+            tool { hostPlatform.clangForJni.clangC("") }
+            flags { cflags() + listOf("-c", "-o", ruleOut(), ruleInFirst()) }
         }
     }
     sourceSet {
@@ -44,7 +45,7 @@ native {
     val objSet = sourceSets["callbacks"]!!.transform(".c" to ".$obj")
 
     target(library, objSet) {
-        tool(*hostPlatform.clangForJni.clangCXX("").toTypedArray())
+        tool { hostPlatform.clangForJni.clangCXX("") }
         flags("-shared",
               "-o",ruleOut(), *ruleInAll(),
               "-L${project(":kotlin-native:libclangext").isolated.projectDirectory.dir("build").asFile}",

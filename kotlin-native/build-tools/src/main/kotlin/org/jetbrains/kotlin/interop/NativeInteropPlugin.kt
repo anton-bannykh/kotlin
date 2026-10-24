@@ -213,9 +213,9 @@ open class NativeInteropPlugin : Plugin<Project> {
             finalizeValue()
             get()
         }
-        val linkerArgs = nativeInteropPlugin.linkerArgs.run {
-            finalizeValue()
-            get()
+        // Not resolved right away: it may depend on the host toolchain (e.g. the macOS SDK path), see KT-90283.
+        val linkerArgs = nativeInteropPlugin.linkerArgs.apply {
+            finalizeValueOnRead()
         }
         val additionalLinkedStaticLibraries = nativeInteropPlugin.additionalLinkedStaticLibraries.run {
             finalizeValue()
@@ -272,7 +272,7 @@ open class NativeInteropPlugin : Plugin<Project> {
             suffixes {
                 val sortedIncludeFlags = reproduciblySortedFilePaths(includeDirs).map { "-I${it.absolutePath}" }
                 (".c" to ".$obj") {
-                    tool(*hostPlatform.clangForJni.clangC("").toTypedArray())
+                    tool { hostPlatform.clangForJni.clangC("") }
 
                     // Ideally, this shouldn't be here.
                     // https://youtrack.jetbrains.com/issue/KT-77091 tracks that.
@@ -298,13 +298,13 @@ open class NativeInteropPlugin : Plugin<Project> {
                             reproducibilityCompilerFlags +
                             ignoreWarningFlags +
                             "-Werror" +
-                            sortedIncludeFlags +
-                            hostPlatform.clangForJni.hostCompilerArgsForJni
+                            sortedIncludeFlags
 
-                    flags(*cflags.toTypedArray(), "-c", "-o", ruleOut(), ruleInFirst())
+                    // The host compiler arguments depend on the Xcode setup on macOS, so compute them lazily.
+                    flags { cflags + hostPlatform.clangForJni.hostCompilerArgsForJni + listOf("-c", "-o", ruleOut(), ruleInFirst()) }
                 }
                 (".cpp" to ".$obj") {
-                    tool(*hostPlatform.clang.clangCXX("").toTypedArray())
+                    tool { hostPlatform.clang.clangCXX("") }
                     val cxxflags = cppCompilerArgs +
                             commonCompilerArgs +
                             reproducibilityCompilerFlags +
@@ -325,8 +325,8 @@ open class NativeInteropPlugin : Plugin<Project> {
                     sourceSets["main-cpp"]!!.transform(".cpp" to ".$obj"))
 
             target(library, *objSet) {
-                tool(*hostPlatform.clangForJni.clangCXX("").toTypedArray())
-                val ldflags = buildList {
+                tool { hostPlatform.clangForJni.clangCXX("") }
+                val ldflagsBeforeLinkerArgs = buildList {
                     addAll(reproduciblySortedFilePaths(linkedStaticLibraries).map { it.absolutePath })
                     addAll(additionalLinkedStaticLibraries) // Do not additionally sort them, because they may have to be linked in a specific order.
                     reproduciblySortedFilePaths(cppLink.incoming.artifactView {
@@ -334,8 +334,8 @@ open class NativeInteropPlugin : Plugin<Project> {
                             attribute(LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE, objects.named(LibraryElements.DYNAMIC_LIB))
                         }
                     }.files).flatMapTo(this) { listOf("-L${it.parentFile.absolutePath}", "-l${libname(it)}") }
-                    addAll(linkerArgs)
-
+                }
+                val ldflagsAfterLinkerArgs = buildList {
                     if (HostManager.hostIsMac) {
                         // Set install_name to a non-absolute path.
                         add("-Wl,-install_name,@rpath/$library")
@@ -350,7 +350,7 @@ open class NativeInteropPlugin : Plugin<Project> {
                         add("-Wl,/Brepro")
                     }
                 }
-                flags("-shared", "-o", ruleOut(), *ruleInAll(), *ldflags.toTypedArray())
+                flags { listOf("-shared", "-o", ruleOut(), *ruleInAll()) + ldflagsBeforeLinkerArgs + linkerArgs.get() + ldflagsAfterLinkerArgs }
             }
         }
 

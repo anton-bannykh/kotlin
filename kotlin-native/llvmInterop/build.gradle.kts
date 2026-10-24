@@ -30,7 +30,8 @@ nativeInteropPlugin {
     cppCompilerArgs.set(listOf("-std=c++11"))
     selfHeaders.set(emptyList<String>())
     systemIncludeDirs.set(listOf("${nativeDependencies.llvmPath}/include"))
-    linkerArgs.set(buildList {
+    // A provider: the macOS SDK path below requires the Xcode setup, which must not be resolved at configuration time (KT-90283).
+    linkerArgs.set(provider { buildList {
         add("-fvisibility-inlines-hidden")
         addAll(listOf("-Wall", "-W", "-Wno-unused-parameter", "-Wwrite-strings", "-Wcast-qual", "-Wmissing-field-initializers"))
         addAll(listOf("-pedantic", "-Wno-long-long", "-Wcovered-switch-default", "-Wnon-virtual-dtor", "-Wdelete-non-virtual-dtor"))
@@ -63,7 +64,7 @@ nativeInteropPlugin {
         } else if (PlatformInfo.isWindows()) {
             addAll(listOf("-lpsapi", "-lshell32", "-lole32", "-luuid", "-ladvapi32", "-lntdll"))
         }
-    })
+    } })
     additionalLinkedStaticLibraries.set(buildList {
         val llvmLibs = if (PlatformInfo.isMac()) {
             // Produced by the following command:

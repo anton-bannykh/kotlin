@@ -105,7 +105,7 @@ native {
     val obj = if (HostManager.hostIsMingw) "obj" else "o"
     suffixes {
         (".cc" to ".$obj") {
-            tool(*hostPlatform.clang.clangCXX("").toTypedArray())
+            tool { hostPlatform.clang.clangCXX("") }
             flags(
                     "-I$breakpadRootAsFile/src",
                     "-I${projectDir.resolve("src/main/include")}",
@@ -117,7 +117,7 @@ native {
                     "-c", "-o", ruleOut(), ruleInFirst())
         }
         (".c" to ".$obj") {
-            tool(*hostPlatform.clang.clangC("").toTypedArray())
+            tool { hostPlatform.clang.clangC("") }
             flags(
                     *reproducibilityCompilerFlags,
                     "-c", "-o", ruleOut(), ruleInFirst())
@@ -136,7 +136,7 @@ native {
     val objSetC = sourceSets["main"]!!.transform(".c" to ".$obj")
 
     target(executable, objSetCpp, objSetC) {
-        tool(*hostPlatform.clang.clangCXX("").toTypedArray())
+        tool { hostPlatform.clang.clangCXX("") }
         flags("-o", ruleOut(), *ruleInAll())
     }
 }

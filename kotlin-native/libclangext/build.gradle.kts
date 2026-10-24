@@ -46,7 +46,7 @@ native {
     }
     suffixes {
         (".cpp" to ".$obj") {
-            tool(*hostPlatform.clangForJni.clangCXX("").toTypedArray())
+            tool { hostPlatform.clangForJni.clangCXX("") }
             flags(*cxxflags.toTypedArray(), "-c", "-o", ruleOut(), ruleInFirst())
         }
     }
@@ -57,7 +57,7 @@ native {
     }
     val objSet = sourceSets["main"]!!.transform(".cpp" to ".$obj")
     target(library, objSet) {
-        tool(*hostPlatform.clangForJni.llvmAr("").toTypedArray())
+        tool { hostPlatform.clangForJni.llvmAr("") }
         flags("-qcv", ruleOut(), *ruleInAll())
     }
 }
