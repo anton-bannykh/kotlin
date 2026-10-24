@@ -16,6 +16,7 @@
 
 package org.jetbrains.kotlin.native.interop.gen
 
+import org.jetbrains.kotlin.name.FqName
 import kotlin.reflect.KProperty
 
 interface KotlinScope {
@@ -164,6 +165,12 @@ data class KotlinFunctionType(
 internal val cnamesStructsPackageName = "cnames.structs"
 internal val objcnamesClassesPackageName = "objcnames.classes"
 internal val objcnamesProtocolsPackageName = "objcnames.protocols"
+
+/** The root packages of [cnamesStructsPackageName], [objcnamesClassesPackageName] and [objcnamesProtocolsPackageName]. */
+internal val forwardDeclarationsRootPackages: List<FqName> =
+        listOf(cnamesStructsPackageName, objcnamesClassesPackageName, objcnamesProtocolsPackageName)
+                .map { FqName(it.substringBefore('.')) }
+                .distinct()
 
 object KotlinTypes {
     val independent = Classifier.topLevel("kotlin.native.internal", "Independent")

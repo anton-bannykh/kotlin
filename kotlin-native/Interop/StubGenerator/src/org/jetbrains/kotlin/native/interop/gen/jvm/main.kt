@@ -548,6 +548,12 @@ fun checkPackageName(outKtPkg: String) {
         "Bindings cannot be placed under a package \"kotlin\" or \"kotlinx.cinterop\", as they are reserved for the Kotlin standard library. " +
                 "Please specify a different package via a \"-pkg\" CLI option or a \"package\" directive in the .def file."
     }
+    // See KT-86193: declarations from these packages are synthesized as forward declarations rather than looked up in klibs.
+    val reservedPackage = forwardDeclarationsRootPackages.firstOrNull { pkgFqName.isSubpackageOf(it) }
+    check(reservedPackage == null) {
+        "Bindings cannot be placed under a package \"$reservedPackage\", as it is reserved for forward declarations of C and Objective-C types. " +
+                "Please specify a different package via a \"-pkg\" CLI option or a \"package\" directive in the .def file."
+    }
 }
 
 private fun checkCCallModeCompatibility(
