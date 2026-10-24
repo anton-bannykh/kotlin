@@ -14,6 +14,8 @@ import org.jetbrains.kotlin.backend.konan.PrimitiveBinaryType
 import org.jetbrains.kotlin.backend.konan.RuntimeNames
 import org.jetbrains.kotlin.backend.konan.ir.BackendNativeSymbols
 import org.jetbrains.kotlin.backend.konan.ir.buildSimpleAnnotation
+import org.jetbrains.kotlin.backend.konan.ir.isArrayOfOrArrayDotOfCall
+import org.jetbrains.kotlin.backend.konan.ir.varargArgument
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.descriptors.Modality
@@ -430,8 +432,8 @@ private fun KotlinToCCallBuilder.unwrapVariadicArguments(
         is IrExpression -> listOf(it)
         is IrSpreadElement -> {
             val expression = it.expression
-            require(expression is IrCall && expression.symbol == irBuiltIns.arrayOf) { stubs.renderCompilerError(it) }
-            handleArgumentForVarargParameter(expression.arguments[0]) { _, elements ->
+            require(expression is IrCall && expression.isArrayOfOrArrayDotOfCall(irBuiltIns)) { stubs.renderCompilerError(it) }
+            handleArgumentForVarargParameter(expression.varargArgument) { _, elements ->
                 unwrapVariadicArguments(elements)
             }
         }

@@ -16,7 +16,9 @@ import org.jetbrains.kotlin.backend.konan.checkers.EscapeAnalysisChecker
 import org.jetbrains.kotlin.backend.konan.ir.BackendNativeSymbols
 import org.jetbrains.kotlin.backend.konan.ir.allOverriddenFunctions
 import org.jetbrains.kotlin.backend.konan.ir.getSuperClassNotAny
+import org.jetbrains.kotlin.backend.konan.ir.isArrayOfOrArrayDotOfCall
 import org.jetbrains.kotlin.backend.konan.ir.tryGetIntrinsicType
+import org.jetbrains.kotlin.backend.konan.ir.varargArgument
 import org.jetbrains.kotlin.backend.konan.IntrinsicType
 import org.jetbrains.kotlin.backend.konan.driver.NativePhaseContext
 import org.jetbrains.kotlin.backend.konan.reportCompilationError
@@ -708,8 +710,8 @@ private fun BackendChecker.checkCanUnwrapVariadicArguments(elements: List<IrVara
             checkCanMapCalleeFunctionParameter(element.type, isObjCMethod, variadic = true, parameter = null, argument = element)
         is IrSpreadElement -> {
             val expression = element.expression
-            if (expression is IrCall && expression.symbol == irBuiltIns.arrayOf)
-                checkCanHandleArgumentForVarargParameter(expression.arguments[0], isObjCMethod)
+            if (expression is IrCall && expression.isArrayOfOrArrayDotOfCall(irBuiltIns))
+                checkCanHandleArgumentForVarargParameter(expression.varargArgument, isObjCMethod)
             else
                 reportError(element, "When calling variadic " +
                         (if (isObjCMethod) "Objective-C methods " else "C functions ") +

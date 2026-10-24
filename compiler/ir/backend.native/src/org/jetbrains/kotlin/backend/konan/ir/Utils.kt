@@ -14,6 +14,8 @@ import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.declarations.inlineClassRepresentation
 import org.jetbrains.kotlin.ir.declarations.isInlineClass
 import org.jetbrains.kotlin.ir.expressions.IrAnnotation
+import org.jetbrains.kotlin.ir.expressions.IrCall
+import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.impl.IrAnnotationImpl
 import org.jetbrains.kotlin.ir.expressions.impl.IrConstImpl
 import org.jetbrains.kotlin.ir.expressions.impl.fromSymbolOwner
@@ -29,6 +31,8 @@ import org.jetbrains.kotlin.ir.util.constructors
 import org.jetbrains.kotlin.ir.util.isFunction
 import org.jetbrains.kotlin.ir.util.isInterface
 import org.jetbrains.kotlin.ir.util.isSuspendFunction
+import org.jetbrains.kotlin.ir.util.isVararg
+import org.jetbrains.kotlin.util.OperatorNameConventions
 import org.jetbrains.kotlin.utils.atMostOne
 
 private fun IrClass.isClassTypeWithSignature(signature: IdSignature.CommonSignature): Boolean {
@@ -91,3 +95,23 @@ val IrClass.isInlineClass: Boolean
 @OptIn(ValueClassBackendAgnosticApi::class)
 val IrClass.inlineClassRepresentation: InlineClassRepresentation<IrSimpleType>?
     get() = inlineClassRepresentation(treatCompatibleFullValueClassesAsInline = true)
+
+/**
+ * Whether [this] is `arrayOf(...)` or `Array.of(...)`. The latter is what collection literals are resolved to,
+ * so `*[...]` can be spread into variadic C and Objective-C calls like `*arrayOf(...)` (KT-82852).
+ */
+fun IrCall.isArrayOfOrArrayDotOfCall(irBuiltIns: IrBuiltIns): Boolean {
+    if (symbol == irBuiltIns.arrayOf) return true
+    val function = symbol.owner
+    if (function.name != OperatorNameConventions.OF) return false
+    // `Array.of` is declared in a companion block, i.e. directly in `Array`, but it could be in a companion object as well.
+    val parentClass = function.parent as? IrClass ?: return false
+    val arrayClass = if (parentClass.isCompanion) parentClass.parent as? IrClass else parentClass
+    return arrayClass?.symbol == irBuiltIns.arrayClass
+}
+
+/**
+ * The argument of the single vararg parameter of the callee, e.g. the elements of `arrayOf(...)` or `Array.of(...)`.
+ */
+val IrCall.varargArgument: IrExpression?
+    get() = arguments[symbol.owner.parameters.single { it.isVararg }.indexInParameters]
