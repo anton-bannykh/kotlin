@@ -12,6 +12,24 @@ library {
       public final external fun useNonnull(p: kotlinx/cinterop/CValuesRef<kotlinx/cinterop/IntVarOf<kotlin/Int> /* = kotlinx/cinterop/IntVar^ */>?): kotlin/Unit
 
       @kotlinx/cinterop/ExperimentalForeignApi
+      public typealias NonnullIntPtr = kotlinx/cinterop/CPointer<kotlinx/cinterop/IntVar^> /* = kotlinx/cinterop/CPointer<kotlinx/cinterop/IntVarOf<kotlin/Int> /* = kotlinx/cinterop/IntVar^ */> */
+
+      @kotlinx/cinterop/ExperimentalForeignApi
+      public typealias NonnullIntPtrVar = kotlinx/cinterop/CPointerVarOf<dependency/NonnullIntPtr^> /* = kotlinx/cinterop/CPointerVarOf<kotlinx/cinterop/CPointer<kotlinx/cinterop/IntVarOf<kotlin/Int> /* = kotlinx/cinterop/IntVar^ */> /* = dependency/NonnullIntPtr^ */> */
+
+      @kotlinx/cinterop/ExperimentalForeignApi
+      public typealias NullUnspecifiedIntPtr = kotlinx/cinterop/CPointer<kotlinx/cinterop/IntVar^> /* = kotlinx/cinterop/CPointer<kotlinx/cinterop/IntVarOf<kotlin/Int> /* = kotlinx/cinterop/IntVar^ */> */
+
+      @kotlinx/cinterop/ExperimentalForeignApi
+      public typealias NullUnspecifiedIntPtrVar = kotlinx/cinterop/CPointerVarOf<dependency/NullUnspecifiedIntPtr^> /* = kotlinx/cinterop/CPointerVarOf<kotlinx/cinterop/CPointer<kotlinx/cinterop/IntVarOf<kotlin/Int> /* = kotlinx/cinterop/IntVar^ */> /* = dependency/NullUnspecifiedIntPtr^ */> */
+
+      @kotlinx/cinterop/ExperimentalForeignApi
+      public typealias NullableIntPtr = kotlinx/cinterop/CPointer<kotlinx/cinterop/IntVar^> /* = kotlinx/cinterop/CPointer<kotlinx/cinterop/IntVarOf<kotlin/Int> /* = kotlinx/cinterop/IntVar^ */> */
+
+      @kotlinx/cinterop/ExperimentalForeignApi
+      public typealias NullableIntPtrVar = kotlinx/cinterop/CPointerVarOf<dependency/NullableIntPtr^> /* = kotlinx/cinterop/CPointerVarOf<kotlinx/cinterop/CPointer<kotlinx/cinterop/IntVarOf<kotlin/Int> /* = kotlinx/cinterop/IntVar^ */> /* = dependency/NullableIntPtr^ */> */
+
+      @kotlinx/cinterop/ExperimentalForeignApi
       public typealias PlainIntPtr = kotlinx/cinterop/CPointer<kotlinx/cinterop/IntVar^> /* = kotlinx/cinterop/CPointer<kotlinx/cinterop/IntVarOf<kotlin/Int> /* = kotlinx/cinterop/IntVar^ */> */
 
       @kotlinx/cinterop/ExperimentalForeignApi

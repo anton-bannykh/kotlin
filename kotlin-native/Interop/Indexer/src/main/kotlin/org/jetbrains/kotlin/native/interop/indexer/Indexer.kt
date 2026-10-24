@@ -631,8 +631,12 @@ public open class NativeIndexImpl(val library: NativeLibrary, val verbose: Boole
         }
     }
 
-    fun getTypedef(type: CValue<CXType>): Type {
-        val declCursor = clang_getTypeDeclaration(type)
+    fun getTypedef(type: CValue<CXType>): Type = getTypedefAt(clang_getTypeDeclaration(type), type)
+
+    /**
+     * [declCursor] is the declaration of the typedef [type].
+     */
+    private fun getTypedefAt(declCursor: CValue<CXCursor>, type: CValue<CXType>): Type {
         val name = getCursorSpelling(declCursor)
 
         val underlying = convertType(clang_getTypedefDeclUnderlyingType(declCursor))
@@ -1027,8 +1031,10 @@ public open class NativeIndexImpl(val library: NativeLibrary, val verbose: Boole
             CXIdxEntity_Typedef -> {
                 // todo: KT-81201
                 if (isAvailable(cursor)) {
-                    val type = clang_getCursorType(cursor)
-                    getTypedef(type)
+                    // Use the declaration cursor directly rather than the declaration of `clang_getCursorType(cursor)`:
+                    // when the underlying type has a nullability specifier, e.g. `typedef int * _Nonnull T;`,
+                    // libclang strips the typedef from the cursor type, so the typedef declaration can't be found from it (KT-71674).
+                    getTypedefAt(cursor, clang_getCursorType(cursor))
                 }
             }
 
