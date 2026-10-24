@@ -26,6 +26,15 @@
 
 namespace kotlin::alloc {
 
+namespace internal {
+
+void markCurrentThreadAsFinalizerThread() noexcept;
+
+} // namespace internal
+
+// Whether the current thread is the one running the finalizers (see [FinalizerProcessor]).
+bool isFinalizerThread() noexcept;
+
 template <typename FinalizerQueue, typename FinalizerQueueTraits>
 class FinalizerProcessor : private Pinned {
 public:
@@ -71,6 +80,7 @@ public:
         if (finalizerThread_.joinable()) return;
 
         finalizerThread_ = ScopedThread(ScopedThread::attributes().name("GC finalizer processor"), [this] {
+            internal::markCurrentThreadAsFinalizerThread();
             processingLoop_->initThreadData();
             Kotlin_initRuntimeIfNeeded();
             {

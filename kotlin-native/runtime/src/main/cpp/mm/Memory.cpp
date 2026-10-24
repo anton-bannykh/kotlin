@@ -7,6 +7,7 @@
 #include "mm/MemoryPrivate.hpp"
 
 #include "alloc/Allocator.hpp"
+#include "alloc/FinalizerProcessor.hpp"
 #include "CallsChecker.hpp"
 #include "Exceptions.h"
 #include "ExternalRCRef.hpp"
@@ -14,6 +15,7 @@
 #include "gc/GC.hpp"
 #include "mm/GlobalsRegistry.hpp"
 #include "KAssert.h"
+#include "Logging.hpp"
 #include "Natives.h"
 #include "mm/ObjectOps.hpp"
 #include "Porting.h"
@@ -222,8 +224,25 @@ extern "C" RUNTIME_NOTHROW ObjHeader** LookupTLS(void** key, int index) {
     return threadData->tls().Lookup(key, index);
 }
 
+namespace {
+
+void collectAndWait() noexcept {
+    auto& gcScheduler = mm::GlobalData::Instance().gcScheduler();
+    if (alloc::isFinalizerThread()) {
+        // The finalizers of this collection would have to run on this very thread, so waiting for them would hang forever.
+        // This happens e.g. when `GC.collect()` is called by a finalizer, or by an eager thread-local initializer, as these
+        // run on every thread, including the finalizer thread (KT-89843).
+        RuntimeLogWarning({kTagGC}, "GC.collect() called on the finalizer thread does not wait for the finalizers to run");
+        gcScheduler.scheduleAndWaitFinished();
+        return;
+    }
+    gcScheduler.scheduleAndWaitFinalized();
+}
+
+} // namespace
+
 extern "C" void Kotlin_native_internal_GC_collect(ObjHeader*) {
-    mm::GlobalData::Instance().gcScheduler().scheduleAndWaitFinalized();
+    collectAndWait();
 }
 
 extern "C" void Kotlin_native_internal_GC_schedule(ObjHeader*) {
@@ -359,7 +378,7 @@ extern "C" void Kotlin_native_runtime_GC_MainThreadFinalizerProcessor_setBatchSi
 }
 
 extern "C" RUNTIME_NOTHROW void PerformFullGC(MemoryState* memory) {
-    mm::GlobalData::Instance().gcScheduler().scheduleAndWaitFinalized();
+    collectAndWait();
 }
 
 // Used in C export.
