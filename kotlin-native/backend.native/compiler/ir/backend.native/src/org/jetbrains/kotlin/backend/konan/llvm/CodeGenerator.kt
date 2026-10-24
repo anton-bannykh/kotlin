@@ -314,6 +314,9 @@ internal val IrSimpleFunction.needsVirtualTrampoline: Boolean
 context(config: NativeSecondStageCompilationConfig)
 internal val IrSimpleFunction.needsCacheEntryPointForFinalFakeOverride: Boolean
     get() = config.produce.isCache && isFakeOverride && !isOverridable && isExported
+            // KT-90589: an external Objective-C method has no Kotlin implementation the entry point could call.
+            // Kotlin code doesn't reference such methods by their Kotlin symbols anyway, they are called via `objc_msgSend`.
+            && resolveFakeOverride()?.isExternalObjCClassMethod() != true
 
 /*
  * Special trampoline function that performs the vtable/itable lookup and dispatches to the actual virtual
