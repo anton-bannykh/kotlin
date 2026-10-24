@@ -1,19 +1,20 @@
 // RUN_PIPELINE_TILL: CODEGEN
+// IGNORE_FIR_DIAGNOSTICS
 // ISSUE: KT-86193
 // Packages `cnames` and `objcnames` are reserved for forward declarations of C and Objective-C types.
 
 // FILE: cnames.kt
-package cnames
+<!FORWARD_DECLARATIONS_PACKAGE!>package cnames<!>
 
 class A
 
 // FILE: cnamesStructs.kt
-package cnames.structs
+<!FORWARD_DECLARATIONS_PACKAGE!>package cnames.structs<!>
 
 class B
 
 // FILE: objcnames.kt
-package objcnames.classes.nested
+<!FORWARD_DECLARATIONS_PACKAGE!>package objcnames.classes.nested<!>
 
 class C
 

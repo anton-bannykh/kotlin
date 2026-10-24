@@ -41,6 +41,9 @@ object NATIVE_DIAGNOSTICS_LIST : DiagnosticList("FirNativeErrors") {
         val INVALID_CHARACTERS_NATIVE_ERROR by error<PsiElement>(PositioningStrategy.NAME_IDENTIFIER) {
             parameter<String>("message")
         }
+        val FORWARD_DECLARATIONS_PACKAGE by error<KtElement> {
+            parameter<FqName>("packageName")
+        }
         val REDUNDANT_SWIFT_REFINEMENT by error<KtElement>()
         val INCOMPATIBLE_OBJC_REFINEMENT_OVERRIDE by error<KtElement> {
             parameter<FirBasedSymbol<*>>("declaration")

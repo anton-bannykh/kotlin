@@ -13,19 +13,19 @@ abstract class ObjCObjectBase : ObjCObject
 
 // FILE: cnames.kt
 
-package cnames.structs
+<!FORWARD_DECLARATIONS_PACKAGE!>package cnames.structs<!>
 
 class FwdStruct {}
 
 // FILE: objcnamesClasses.kt
 
-package objcnames.classes
+<!FORWARD_DECLARATIONS_PACKAGE!>package objcnames.classes<!>
 
 class FwdObjcClass {}
 
 // FILE: objcnamesProtocols.kt
 
-package objcnames.protocols
+<!FORWARD_DECLARATIONS_PACKAGE!>package objcnames.protocols<!>
 
 interface FwdProtocol {}
 
