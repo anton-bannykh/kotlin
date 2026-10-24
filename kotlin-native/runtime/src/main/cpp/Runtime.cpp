@@ -28,6 +28,11 @@ using kotlin::internal::FILE_BEING_INITIALIZED;
 using kotlin::internal::FILE_INITIALIZED;
 using kotlin::internal::FILE_FAILED_TO_INITIALIZE;
 
+uintptr_t kotlin::internal::currentThreadInitializationMarker() noexcept {
+    alignas(4) static THREAD_LOCAL_VARIABLE char marker;
+    return reinterpret_cast<uintptr_t>(&marker);
+}
+
 namespace {
 
 InitNode* initHeadNode = nullptr;
@@ -330,14 +335,14 @@ NO_INLINE void CallInitGlobalPossiblyLock(uintptr_t* state, void (*init)(), cons
     if (localState == FILE_INITIALIZED) return;
     if (localState == FILE_FAILED_TO_INITIALIZE)
         StaticInitializationFailure(nullptr, typeInfo);
-    uintptr_t threadId = konan::currentThreadId();
+    uintptr_t threadMarker = internal::currentThreadInitializationMarker();
     if ((localState & 3) == FILE_BEING_INITIALIZED) {
-        if ((localState & ~3) != (threadId << 2)) {
+        if ((localState & ~3) != threadMarker) {
             CallInitGlobalAwaitInitialized(state, typeInfo);
         }
         return;
     }
-    if (std_support::atomic_compare_swap_strong(std_support::atomic_ref{*state}, FILE_NOT_INITIALIZED, FILE_BEING_INITIALIZED | (threadId << 2)) == FILE_NOT_INITIALIZED) {
+    if (std_support::atomic_compare_swap_strong(std_support::atomic_ref{*state}, FILE_NOT_INITIALIZED, FILE_BEING_INITIALIZED | threadMarker) == FILE_NOT_INITIALIZED) {
         // actual initialization
         try {
             CurrentFrameGuard guard;
