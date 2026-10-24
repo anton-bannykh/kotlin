@@ -97,6 +97,12 @@ public class LLReversedNativeDiagnosticsTestGenerated extends AbstractLLReversed
   }
 
   @Test
+  @TestMetadata("forwardDeclarationPackages.kt")
+  public void testForwardDeclarationPackages() {
+    run("forwardDeclarationPackages.kt");
+  }
+
+  @Test
   @TestMetadata("forwardDeclarations.kt")
   public void testForwardDeclarations() {
     run("forwardDeclarations.kt");
