@@ -254,15 +254,26 @@ private fun parseAndLinkBitcodeFile(generationState: NativeGenerationState, llvm
 }
 
 private fun embedAppleLinkerOptionsToBitcode(llvm: CodegenLlvmHelpers, config: NativeSecondStageCompilationConfig) {
+    // Only libraries and frameworks are embedded. Other options are skipped (KT-85865),
+    // as well as the arguments of the linker options that start with `-l` but don't link a library.
+    val nonLibraryOptionsWithArgument = setOf("-lto_library", "-lazy_library", "-lazy_framework")
+
     fun findEmbeddableOptions(options: List<String>): List<List<String>> {
         val result = mutableListOf<List<String>>()
         val iterator = options.iterator()
-        loop@while (iterator.hasNext()) {
+        while (iterator.hasNext()) {
             val option = iterator.next()
-            result += when {
-                option.startsWith("-l") -> listOf(option)
-                option == "-framework" && iterator.hasNext() -> listOf(option, iterator.next())
-                else -> break@loop // Ignore the rest.
+            when {
+                option in nonLibraryOptionsWithArgument -> {
+                    // Skip the argument.
+                    if (iterator.hasNext()) {
+                        val _ = iterator.next()
+                    }
+                }
+                option.startsWith("-lazy-l") -> {}
+                option.startsWith("-l") -> result += listOf(option)
+                option == "-framework" && iterator.hasNext() -> result += listOf(option, iterator.next())
+                else -> {}
             }
         }
         return result

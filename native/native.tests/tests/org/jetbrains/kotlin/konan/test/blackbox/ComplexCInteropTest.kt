@@ -576,6 +576,57 @@ abstract class ComplexCInteropTestBase : AbstractNativeSimpleTest() {
         runExecutableAndVerify(testCase, TestExecutable.fromCompilationResult(testCase, compilationResult))
     }
 
+    // KT-85865: all `-l` and `-framework` options from `linkerOpts` must be embedded into a static framework,
+    // not only those preceding the first option of another kind.
+    @Test
+    fun testEmbeddedLinkerOptsOfStaticFramework() {
+        Assumptions.assumeTrue(targets.testTarget.family.isAppleFamily)
+        Assumptions.assumeFalse(targets.areDifferentTargets())
+
+        val defFile = buildDir.resolve("embeddedLinkerOpts.def").apply {
+            writeText(
+                """
+                linkerOpts = -lbefore -L/nonexistent/KT-85865 -lafter -framework Accelerate -lto_library /nonexistent/libLTO.dylib -Wl,-dead_strip -lend
+                ---
+                int embeddedLinkerOptsAnswer(void);
+                """.trimIndent()
+            )
+        }
+        val cinteropKlib = cinteropToLibrary(defFile, buildDir, TestCompilerArgs.EMPTY).assertSuccess().resultingArtifact
+
+        val source = buildDir.resolve("embeddedLinkerOpts.kt").apply {
+            writeText(
+                """
+                @file:OptIn(kotlinx.cinterop.ExperimentalForeignApi::class)
+                fun answer() = embeddedLinkerOpts.embeddedLinkerOptsAnswer()
+                """.trimIndent()
+            )
+        }
+        val output = buildDir.resolve("embeddedLinkerOpts")
+        val compilerArgs = buildList {
+            addAll(listOf("-p", "framework", "-Xstatic-framework", source.absolutePath, "-l", cinteropKlib.klibFile.absolutePath, "-o", output.absolutePath))
+            testRunSettings.get<PlatformLibs>().compilerFlag?.let { add(it) }
+            addAll(provisionedXcodeCompilerArgs)
+        }.toTypedArray()
+        val result = callCompiler(compilerArgs, testRunSettings.get<KotlinNativeClassLoader>().classLoader)
+        assertEquals(org.jetbrains.kotlin.cli.common.ExitCode.OK, result.exitCode, result.toolOutput)
+
+        val frameworkBinary = buildDir.resolve("embeddedLinkerOpts.framework/embeddedLinkerOpts")
+        // `otool -l` prints each LC_LINKER_OPTION argument as `string #<n> <value>`.
+        val embeddedOptions = runProcess("/usr/bin/otool", "-l", frameworkBinary.absolutePath).stdout.lineSequence()
+            .map { it.trim() }
+            .filter { it.startsWith("string #") }
+            .map { it.substringAfter(' ').substringAfter(' ') }
+            .toList()
+
+        for (expected in listOf("-lbefore", "-lafter", "Accelerate", "-lend")) {
+            assertTrue(expected in embeddedOptions, "'$expected' is not embedded: $embeddedOptions")
+        }
+        for (unexpected in listOf("-L/nonexistent/KT-85865", "-lto_library", "/nonexistent/libLTO.dylib", "-Wl,-dead_strip")) {
+            assertTrue(unexpected !in embeddedOptions, "'$unexpected' must not be embedded: $embeddedOptions")
+        }
+    }
+
     @Test
     @TestMetadata("safepointSignposts")
     fun safepointSignposts() {
