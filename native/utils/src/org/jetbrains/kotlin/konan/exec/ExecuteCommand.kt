@@ -134,7 +134,42 @@ open class Command(
         }
     }
 
-    class Result(val exitCode: Int, val outputLines: List<String>)
+    /**
+     * Runs the command and returns its exit code, standard output and standard error, captured separately.
+     * Unlike [getResult], doesn't throw on a non-zero exit code and doesn't pass the standard error through to the current process.
+     */
+    fun getResultCapturingErrors(): Result {
+        log()
+
+        val outputFile = Files.createTempFile(null, null).toFile()
+        val errorFile = Files.createTempFile(null, null).toFile()
+        outputFile.deleteOnExit()
+        errorFile.deleteOnExit()
+
+        try {
+            val builder = ProcessBuilder(command)
+
+            workingDirectory?.let { builder.directory(it) }
+            builder.environment().putAll(environment)
+            if (redirectInputFile == null) {
+                builder.redirectInput(Redirect.INHERIT)
+            } else {
+                builder.redirectInput(redirectInputFile)
+            }
+            builder.redirectOutput(Redirect.to(outputFile))
+            builder.redirectError(Redirect.to(errorFile))
+
+            val code = builder.start().waitFor()
+            return Result(code, outputFile.readLines(), errorFile.readLines())
+        } finally {
+            outputFile.delete()
+            errorFile.delete()
+        }
+    }
+
+    class Result(val exitCode: Int, val outputLines: List<String>, val errorLines: List<String>) {
+        constructor(exitCode: Int, outputLines: List<String>) : this(exitCode, outputLines, emptyList())
+    }
 
     private fun handleExitCode(code: Int, output: List<String> = emptyList()) {
         if (code != 0) throw KonanExternalToolFailure("""

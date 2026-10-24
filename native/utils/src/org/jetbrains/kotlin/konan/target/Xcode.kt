@@ -163,18 +163,44 @@ internal class InstalledXcode(private val developerDir: String? = null) : Xcode 
         }
     }
 
-    private fun xcrun(vararg args: String): String = try {
-        Command(listOf("/usr/bin/xcrun", *args), environment = environment).getOutputLines().first()
-    } catch (e: KonanExternalToolFailure) {
-        // TODO: we should make the message below even more clear and actionable.
-        //  Maybe add a link to the documentation.
-        //  See https://youtrack.jetbrains.com/issue/KT-50923.
-        val message = """
-                An error occurred during an xcrun execution. Make sure that Xcode and its command line tools are properly installed.
-                Failed command: /usr/bin/xcrun ${args.joinToString(" ")}
-                Try running this command in Terminal and fix the errors by making Xcode (and its command line tools) configuration correct.
-            """.trimIndent()
-        throw MissingXcodeException(message, e)
+    private fun xcrun(vararg args: String): String {
+        val result = Command(listOf("/usr/bin/xcrun", *args), environment = environment).getResultCapturingErrors()
+        result.outputLines.firstOrNull()?.takeIf { result.exitCode == 0 }?.let { return it }
+        throw MissingXcodeException(xcrunFailureMessage(args.toList(), result))
+    }
+
+    // See also https://youtrack.jetbrains.com/issue/KT-50923.
+    private fun xcrunFailureMessage(args: List<String>, result: Command.Result): String = buildString {
+        val developerDirPrefix = developerDir?.let { "DEVELOPER_DIR=$it " }.orEmpty()
+        val errors = result.errorLines.joinToString("\n")
+
+        appendLine("An error occurred during an xcrun execution. Make sure that Xcode and its command line tools are properly installed.")
+        appendLine("Failed command: $developerDirPrefix/usr/bin/xcrun ${args.joinToString(" ")}")
+        appendLine("Xcode: ${describeXcode()}")
+        appendLine("Exit code: ${result.exitCode}")
+        if (errors.isNotBlank()) {
+            appendLine("xcrun output:")
+            result.errorLines.forEach { appendLine("    $it") }
+        }
+        append(xcrunFailureHint(errors, developerDir))
+    }
+
+    private fun describeXcode(): String = when {
+        developerDir != null -> "$developerDir (passed to xcrun as DEVELOPER_DIR)"
+        else -> {
+            val inheritedDeveloperDir = System.getenv("DEVELOPER_DIR")
+            val selectedPath = try {
+                Command(listOf("/usr/bin/xcode-select", "-print-path")).getResultCapturingErrors()
+                    .takeIf { it.exitCode == 0 }?.outputLines?.firstOrNull()?.trim()
+            } catch (e: Exception) {
+                null
+            }
+            when {
+                inheritedDeveloperDir != null -> "$inheritedDeveloperDir (set by the DEVELOPER_DIR environment variable)"
+                selectedPath != null -> "$selectedPath (selected with xcode-select)"
+                else -> "unknown: 'xcode-select -print-path' failed"
+            }
+        }
     }
 
     private fun bash(command: String): String =
@@ -184,5 +210,32 @@ internal class InstalledXcode(private val developerDir: String? = null) : Xcode 
 
     private fun String.parseXcodeVersion(): XcodeVersion {
         return XcodeVersion.parse(this) ?: throw MissingXcodeException("Couldn't parse Xcode version from '$this'")
+    }
+}
+
+/**
+ * A suggestion for fixing a failed `xcrun` invocation, based on its standard error output [errors].
+ * [developerDir] is the `DEVELOPER_DIR` xcrun was invoked with, if any.
+ */
+internal fun xcrunFailureHint(errors: String, developerDir: String?): String {
+    val developerDirPrefix = developerDir?.let { "DEVELOPER_DIR=$it " }.orEmpty()
+    return when {
+        errors.contains("license", ignoreCase = true) ->
+            // E.g. "You have not agreed to the Xcode license agreements. Please run 'sudo xcodebuild -license' ..."
+            "The Xcode license agreement has not been accepted for this Xcode. " +
+                    "To accept it, run 'sudo ${developerDirPrefix}xcodebuild -license accept', or launch this Xcode once and accept it there."
+        errors.contains("runFirstLaunch") ->
+            // E.g. "A required plugin failed to load. ... try running 'xcodebuild -runFirstLaunch'."
+            "This Xcode has not finished its first launch setup. " +
+                    "To finish it, run 'sudo ${developerDirPrefix}xcodebuild -runFirstLaunch', or launch this Xcode once."
+        errors.contains("missing DEVELOPER_DIR path") ->
+            "There is no Xcode at the DEVELOPER_DIR path. Make sure that DEVELOPER_DIR points to the 'Contents/Developer' directory of an installed Xcode."
+        errors.contains("command line tools instance") || errors.contains("invalid active developer path") ->
+            // A Command Line Tools-only setup, or no developer tools at all.
+            "The full Xcode is required, but it is not installed or not selected. " +
+                    "Install Xcode, launch it once to finish its setup, and select it with 'sudo xcode-select --switch /Applications/Xcode.app' " +
+                    "(use the path to your Xcode)."
+        else ->
+            "Try running the failed command in Terminal and fix the errors by making Xcode (and its command line tools) configuration correct."
     }
 }
