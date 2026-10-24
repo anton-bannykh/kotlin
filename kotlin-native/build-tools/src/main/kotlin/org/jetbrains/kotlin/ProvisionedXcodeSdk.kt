@@ -20,7 +20,7 @@ fun Project.isInternalServerEnabled(): Boolean =
         DependencyProcessor.isInternalSeverAvailable ||
                 kotlinBuildProperties.booleanProperty(USE_INTERNAL_SERVER_PROPERTY, false).get()
 
-private const val WHOLE_XCODE_PROPERTY = "kotlin.native.internalServer.wholeXcode"
+internal const val WHOLE_XCODE_PROPERTY = "kotlin.native.internalServer.wholeXcode"
 
 private const val USE_INTERNAL_SERVER_PROPERTY = "kotlin.native.useInternalServer"
 
