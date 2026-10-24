@@ -1,0 +1,19 @@
+/* MODULE name=<lib> */
+
+/* FILE package=test fileName=lib.kt */
+
+private val x: String
+    /* TARGET declaration */ private fun <get-x>(): String
+internal inline fun foo(p: Function1<String, Unit>)
+    /* ACCESSOR use-site */ access$<get-x>$tLibKt()
+/* ACCESSOR declaration */ internal fun access$<get-x>$tLibKt(): String
+    /* TARGET use-site */ <get-x>()
+
+
+/* MODULE name=<main> */
+
+/* FILE package=<root> fileName=main.kt */
+
+public fun box(): String
+    val tmp0: String
+        /* ACCESSOR use-site */ access$<get-x>$tLibKt()
