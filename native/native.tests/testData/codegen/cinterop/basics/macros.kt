@@ -46,6 +46,12 @@ int global_var = 5;
 #define FOO_STRING "foo"
 // This one should be ignored:
 #define WIDE_FOO_STRING L"foo"
+// KT-85610: parenthesized string literals.
+#define FOO_STRING_IN_PARENS ("foo")
+#define FOO_BAR_STRING_IN_PARENS ("foo" "bar")
+#define FOO_STRING_IN_DOUBLE_PARENS (("foo"))
+// This one should be ignored, as WIDE_FOO_STRING:
+#define WIDE_FOO_STRING_IN_PARENS (L"foo")
 #define FOURTY_TWO 42
 #define SEVENTEEN ((long long) 17)
 #define ONE_POINT_ZERO 1.0
@@ -102,6 +108,13 @@ import kotlinx.cinterop.*
 
 fun box(): String {
     assertEquals("foo", FOO_STRING)
+    // Explicit types make sure these are imported as constants rather than as pointer-typed macro bridges.
+    val fooStringInParens: String = FOO_STRING_IN_PARENS
+    val fooBarStringInParens: String = FOO_BAR_STRING_IN_PARENS
+    val fooStringInDoubleParens: String = FOO_STRING_IN_DOUBLE_PARENS
+    assertEquals("foo", fooStringInParens)
+    assertEquals("foobar", fooBarStringInParens)
+    assertEquals("foo", fooStringInDoubleParens)
     assertEquals(0, ZERO)
     assertEquals(1, ONE)
     assertEquals(Long.MAX_VALUE, MAX_LONG)

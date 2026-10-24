@@ -202,6 +202,7 @@ private fun processCodeSnippet(
     var state = VisitorState.EXPECT_NODES_TO_SKIP
     var evalResultOrNull: CXEvalResult? = null
     var typeOrNull: Type? = null
+    var valueCursorOrNull: CValue<CXCursor>? = null
 
     val visitor: CursorVisitor = { cursor, _ ->
         val kind = cursor.kind
@@ -214,6 +215,7 @@ private fun processCodeSnippet(
 
             state == VisitorState.EXPECT_VARIABLE_VALUE && clang_isExpression(kind) != 0 -> {
                 typeOrNull = typeConverter(clang_getCursorType(cursor))
+                valueCursorOrNull = cursor
                 state = VisitorState.EXPECT_END
                 CXChildVisitResult.CXChildVisit_Continue
             }
@@ -242,6 +244,13 @@ private fun processCodeSnippet(
         }
 
         val type = typeOrNull!!
+        if (evalResultOrNull == null && type.canonicalIsPointerToChar()) {
+            // libclang can't evaluate a variable initialized with a parenthesized string literal, e.g. `("foo" "bar")`:
+            // it only recognizes a string literal right under the implicit array-to-pointer conversion (KT-85610).
+            clang_Cursor_getOrdinaryStringLiteralValue(valueCursorOrNull!!).convertAndDispose()?.let {
+                return StringConstantDef(name, type, it)
+            }
+        }
         return if (evalResultOrNull == null) {
             // The macro cannot be evaluated as a constant so we will wrap it in a bridge.
             when(type.unwrapTypedefs()) {

@@ -67,6 +67,11 @@ unsigned clang_Cursor_isObjCConsumingSelfMethod(CXCursor cursor);
 
 CString clang_Cursor_getSwiftName(CXCursor cursor);
 
+// If `cursor` is an expression that is an ordinary (narrow) string literal, possibly in parentheses
+// and under implicit conversions, returns the value of the literal. Otherwise, returns null.
+// Unlike `clang_Cursor_Evaluate`, handles parenthesized string literals, e.g. `("foo" "bar")`.
+CString clang_Cursor_getOrdinaryStringLiteralValue(CXCursor cursor);
+
 void clang_disposeCString(CString str);
 
 CString clang_Cursor_getObjCProtocolRuntimeName(CXCursor cursor);

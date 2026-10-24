@@ -27,6 +27,7 @@
 
 #include <clang/AST/Attr.h>
 #include <clang/AST/DeclObjC.h>
+#include <clang/AST/Expr.h>
 #include <clang/Frontend/ASTUnit.h>
 
 #endif // LIBCLANGEXT_ENABLE
@@ -59,6 +60,10 @@ static const Attr* getCursorAttr(CXCursor cursor) {
 
 static const Decl *getCursorDecl(CXCursor Cursor) {
   return static_cast<const Decl *>(Cursor.data[0]);
+}
+
+static const Stmt *getCursorStmt(CXCursor cursor) {
+  return static_cast<const Stmt *>(cursor.data[1]);
 }
 
 static const QualType unwrapCXType(CXType type) {
@@ -242,6 +247,21 @@ extern "C" {
       if (decl) {
         if (const auto *attr = decl->getAttr<SwiftNameAttr>()) {
           return createCString(attr->getName());
+        }
+      }
+    }
+#endif
+    return nullCString();
+  }
+
+  CString clang_Cursor_getOrdinaryStringLiteralValue(CXCursor cursor) {
+#if LIBCLANGEXT_ENABLE
+    if (clang_isExpression(cursor.kind)) {
+      if (const auto *expr = dyn_cast_or_null<Expr>(getCursorStmt(cursor))) {
+        if (const auto *literal = dyn_cast<StringLiteral>(expr->IgnoreParenImpCasts())) {
+          if (literal->isOrdinary()) {
+            return createCString(literal->getString());
+          }
         }
       }
     }
