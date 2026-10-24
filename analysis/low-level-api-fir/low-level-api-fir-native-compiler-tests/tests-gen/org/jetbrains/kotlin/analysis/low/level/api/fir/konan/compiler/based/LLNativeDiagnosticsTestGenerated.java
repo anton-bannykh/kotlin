@@ -533,6 +533,12 @@ public class LLNativeDiagnosticsTestGenerated extends AbstractLLNativeDiagnostic
       }
 
       @Test
+      @TestMetadata("t65.kt")
+      public void testT65() {
+        run("t65.kt");
+      }
+
+      @Test
       @TestMetadata("t8.kt")
       public void testT8() {
         run("t8.kt");
@@ -836,6 +842,12 @@ public class LLNativeDiagnosticsTestGenerated extends AbstractLLNativeDiagnostic
       @TestMetadata("t62.kt")
       public void testT62() {
         run("t62.kt");
+      }
+
+      @Test
+      @TestMetadata("t63.kt")
+      public void testT63() {
+        run("t63.kt");
       }
 
       @Test
