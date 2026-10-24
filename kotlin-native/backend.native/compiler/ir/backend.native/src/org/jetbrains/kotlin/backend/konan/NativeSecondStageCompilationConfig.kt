@@ -31,6 +31,7 @@ import org.jetbrains.kotlin.konan.config.*
 import org.jetbrains.kotlin.konan.library.isExplicitlySpecifiedByUserInCLIArgument
 import org.jetbrains.kotlin.konan.target.*
 import org.jetbrains.kotlin.library.KotlinLibrary
+import org.jetbrains.kotlin.library.uniqueName
 import org.jetbrains.kotlin.utils.KotlinNativePaths
 import java.nio.file.Files
 import java.nio.file.Path
@@ -603,7 +604,23 @@ class NativeSecondStageCompilationConfig(
     internal val ignoreCacheReason = when {
         optimizationsEnabled && !enableReleaseBinaryCache -> "with global optimizations"
         forceNativeThreadStateForFunctions != defaultForceNativeThreadStateForFunctions -> "with non-default forceNativeThreadStateForFunctions"
-        else -> null
+        else -> duplicatedUniqueNameCacheReason()
+    }
+
+    // Caches are identified by the unique name of their library, so libraries sharing a unique name
+    // (see -Xklib-duplicated-unique-name-strategy) would share a cache, which breaks linkage (KT-90221).
+    // Until caches support them (KT-90232), compile such binaries without caches, like with caches disabled.
+    private fun duplicatedUniqueNameCacheReason(): String? {
+        val duplicates = klibDag.librariesReverseTopoSorted
+                .groupBy { it.uniqueName }
+                .filterValues { it.size > 1 }
+        if (duplicates.isEmpty()) return null
+        return duplicates.entries.joinToString(
+                separator = "; ",
+                prefix = "because compiler caches do not support several libraries with the same unique name: "
+        ) { [uniqueName, libraries] ->
+            "'$uniqueName' (${libraries.joinToString { it.path.toString() }})"
+        }
     }
 
     internal var cacheSupport: CacheSupport = createCacheSupport()

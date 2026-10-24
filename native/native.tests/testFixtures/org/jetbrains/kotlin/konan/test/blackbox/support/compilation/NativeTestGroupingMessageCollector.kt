@@ -16,7 +16,7 @@ import org.jetbrains.kotlin.cli.common.messages.MessageCollector
  * compiler warnings to errors, this way failing the tests.
  */
 internal class NativeTestGroupingMessageCollector(
-    compilerArgs: Array<String>,
+    private val compilerArgs: Array<String>,
     delegate: MessageCollector,
 ) : GroupingMessageCollector(
     delegate,
@@ -76,6 +76,7 @@ internal class NativeTestGroupingMessageCollector(
                     || isK1LanguageVersionWarning(message)
                     || isArgumentPassedMultipleTimesWarning(message)
                     || isOutdatedRuntimeJdkWarning(message)
+                    || isCachesIgnoredForDuplicatedUniqueNameWarning(message)
                 -> {
                 // These warnings are known and should not be reported as errors.
                 severity
@@ -132,6 +133,11 @@ internal class NativeTestGroupingMessageCollector(
 
     private fun isOutdatedRuntimeJdkWarning(message: String): Boolean = message.matches(OUTDATED_RUNTIME_JDK_WARNING_REGEX)
 
+    // Expected only when the test explicitly allows libraries with the same unique name.
+    private fun isCachesIgnoredForDuplicatedUniqueNameWarning(message: String): Boolean =
+        message.startsWith(CACHES_IGNORED_FOR_DUPLICATED_UNIQUE_NAME_WARNING_PREFIX)
+                && compilerArgs.any { it.startsWith("-Xklib-duplicated-unique-name-strategy=allow-all") }
+
     override fun hasErrors() = hasWarningsWithRaisedSeverity || super.hasErrors()
 
     companion object {
@@ -142,6 +148,8 @@ internal class NativeTestGroupingMessageCollector(
         private const val K2_NATIVE_EXPERIMENTAL_WARNING_PREFIX = "Language version 2.0 is experimental"
         private const val KLIB_LOADER_WARNING_PREFIX = "KLIB loader: "
         private const val CONTEXT_RECEIVERS_WARNING_PREFIX = "Experimental context receivers are superseded by context parameters"
+        private const val CACHES_IGNORED_FOR_DUPLICATED_UNIQUE_NAME_WARNING_PREFIX =
+            "Cached libraries will not be used because compiler caches do not support several libraries with the same unique name"
 
         private val K1_LANGUAGE_VERSIONS_WARNING_REGEX = Regex("Language version 1.[0-9.]+ is deprecated and its support will be removed in a future version of Kotlin")
         private val PARTIAL_LINKAGE_WARNING_REGEX = Regex("^<[^<>]+>( @ (?:(?!: ).)+)?: .*")

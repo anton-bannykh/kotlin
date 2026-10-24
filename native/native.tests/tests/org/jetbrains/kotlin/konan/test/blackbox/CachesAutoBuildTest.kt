@@ -175,6 +175,24 @@ class CachesAutoBuildTest : AbstractNativeSimpleTest() {
         }
     }
 
+    // KT-90221: caches don't support libraries with the same unique name (KT-90232), as such libraries would share
+    // a cache. The compiler must build such binaries without caches instead of failing.
+    @Test
+    @TestMetadata("duplicatedUniqueName")
+    fun testDuplicatedUniqueName() {
+        val rootDir = ForTestCompileRuntime.transformTestDataPath("$TEST_SUITE_PATH/duplicatedUniqueName")
+        // Both libraries get `unique_name=clash` from the name of their source directory.
+        val libA = compileToLibrary(rootDir.resolve("a/clash"), buildDir.resolve("a"))
+        val libB = compileToLibrary(rootDir.resolve("b/clash"), buildDir.resolve("b"))
+        val main = compileToExecutable(
+            rootDir.resolve("main"), autoCacheFrom = buildDir, emptyList(),
+            listOf("-Xklib-duplicated-unique-name-strategy=allow-all-with-warning"), libA, libB
+        )
+
+        runExecutableAndVerify(main.testCase, main.testExecutable)
+        assertFalse(autoCacheDir.resolve(cacheFlavor).resolve("clash").exists())
+    }
+
     private fun ByteArray.contains(pattern: ByteArray): Boolean =
         (0..size - pattern.size).any { start -> pattern.indices.all { this[start + it] == pattern[it] } }
 
