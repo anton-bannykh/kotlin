@@ -18,9 +18,10 @@ import org.jetbrains.kotlin.name.Name
 
 object FirNativeIdentifierChecker : FirBasicDeclarationChecker(MppCheckerKind.Common) {
     // Also includes characters used by IR mangler (see MangleConstant).
+    // NUL can't be used in LLVM symbol names: they are passed to LLVM as C strings (KT-63685).
     private val invalidChars = setOf(
         '.', ';', ',', '(', ')', '[', ']', '{', '}', '/', '<', '>',
-        ':', '\\', '$', '&', '~', '*', '?', '#', '|', '§', '%', '@',
+        ':', '\\', '$', '&', '~', '*', '?', '#', '|', '§', '%', '@', '\u0000',
     )
 
     override val platformSpecificCheckerEnabledInMetadataCompilation: Boolean
@@ -51,7 +52,9 @@ object FirNativeIdentifierChecker : FirBasicDeclarationChecker(MppCheckerKind.Co
             val message = when {
                 text.isEmpty() -> "should not be empty"
                 text.any { it in invalidChars } -> "contains illegal characters: " +
-                        invalidChars.intersect(text.toSet()).joinToString("", prefix = "\"", postfix = "\"")
+                        invalidChars.intersect(text.toSet()).joinToString("", prefix = "\"", postfix = "\"") {
+                            if (it == '\u0000') "\\u0000" else it.toString()
+                        }
                 else -> null
             }
 
