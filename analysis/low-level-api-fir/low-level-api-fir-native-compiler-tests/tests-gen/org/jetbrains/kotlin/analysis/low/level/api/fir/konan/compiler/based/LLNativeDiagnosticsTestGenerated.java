@@ -175,6 +175,12 @@ public class LLNativeDiagnosticsTestGenerated extends AbstractLLNativeDiagnostic
   }
 
   @Test
+  @TestMetadata("objCEnum.kt")
+  public void testObjCEnum() {
+    run("objCEnum.kt");
+  }
+
+  @Test
   @TestMetadata("objCName.kt")
   public void testObjCName() {
     run("objCName.kt");
