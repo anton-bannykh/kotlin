@@ -32,6 +32,13 @@ val SYNTHETIC_CATCH_FOR_FINALLY_EXPRESSION by IrStatementOriginImpl
 
 open class FinallyBlocksLowering(val context: CommonBackendContext, private val throwableType: IrType): FileLoweringPass, IrElementTransformerVoidWithContext() {
 
+    /**
+     * The origin of the catch parameter of the synthetic catch-all block that runs the finally expression.
+     * Backends may override it to tell this compiler-generated variable apart from user-written catch parameters.
+     */
+    protected open val syntheticCatchParameterOrigin: IrDeclarationOrigin
+        get() = IrDeclarationOrigin.CATCH_PARAMETER
+
     private interface HighLevelJump {
         fun toIr(context: CommonBackendContext, startOffset: Int, endOffset: Int, value: IrExpression): IrExpression
     }
@@ -215,7 +222,7 @@ open class FinallyBlocksLowering(val context: CommonBackendContext, private val 
         irBuilder.run {
             val transformedFinallyExpression = finallyExpression.transform(transformer, null)
             val catchParameter = buildVariable(
-                scope.getLocalDeclarationParent(), startOffset, endOffset, IrDeclarationOrigin.CATCH_PARAMETER, Name.identifier("t"),
+                scope.getLocalDeclarationParent(), startOffset, endOffset, syntheticCatchParameterOrigin, Name.identifier("t"),
                 throwableType
             )
 

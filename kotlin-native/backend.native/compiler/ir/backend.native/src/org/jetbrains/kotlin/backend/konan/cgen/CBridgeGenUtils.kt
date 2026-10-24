@@ -223,9 +223,11 @@ internal class KotlinCallBuilder(private val irBuilder: IrBuilderWithScope, priv
                     // Note: generating try-catch as finally blocks are already lowered.
                     val result = irTemporary(IrTryImpl(startOffset, endOffset, kotlinCall.type).apply {
                         tryResult = kotlinCall
+                        // A compiler temporary rather than a CATCH_PARAMETER, so that it gets no debug info:
+                        // otherwise the debugger shows an extra `e` variable for every such bridge call.
                         val catchParameter = buildVariable(
                                 irBuilder.parent, startOffset, endOffset,
-                                IrDeclarationOrigin.CATCH_PARAMETER,
+                                IrDeclarationOrigin.IR_TEMPORARY_VARIABLE,
                                 Name.identifier("e"),
                                 context.irBuiltIns.throwableType
                         )
