@@ -1,0 +1,21 @@
+library {
+  // module name: <dependency.def>
+
+  library fragment {
+    // package name: dependency
+
+    package {
+
+      @kotlinx/cinterop/internal/CCall.Direct(name = "useNonnull")
+      @kotlinx/cinterop/internal/CCall(id = "knifunptr_dependency_useNonnull_0")
+      @kotlinx/cinterop/ExperimentalForeignApi
+      public final external fun useNonnull(p: kotlinx/cinterop/CValuesRef<kotlinx/cinterop/IntVarOf<kotlin/Int> /* = kotlinx/cinterop/IntVar^ */>?): kotlin/Unit
+
+      @kotlinx/cinterop/ExperimentalForeignApi
+      public typealias PlainIntPtr = kotlinx/cinterop/CPointer<kotlinx/cinterop/IntVar^> /* = kotlinx/cinterop/CPointer<kotlinx/cinterop/IntVarOf<kotlin/Int> /* = kotlinx/cinterop/IntVar^ */> */
+
+      @kotlinx/cinterop/ExperimentalForeignApi
+      public typealias PlainIntPtrVar = kotlinx/cinterop/CPointerVarOf<dependency/PlainIntPtr^> /* = kotlinx/cinterop/CPointerVarOf<kotlinx/cinterop/CPointer<kotlinx/cinterop/IntVarOf<kotlin/Int> /* = kotlinx/cinterop/IntVar^ */> /* = dependency/PlainIntPtr^ */> */
+    }
+  }
+}
