@@ -709,6 +709,8 @@ static const TypeInfo* createTypeInfo(
   }
 
   result->superType_ = superType;
+  // Keep the extended info of the type the layout is taken from, so that the debugger can inspect the object.
+  result->extendedInfo_ = fieldsInfo == nullptr ? superType->extendedInfo_ : fieldsInfo->extendedInfo_;
   if (fieldsInfo == nullptr) {
     result->instanceSize_ = superType->instanceSize_;
     result->instanceAlignment_ = superType->instanceAlignment_;
