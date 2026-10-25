@@ -26,11 +26,13 @@ import org.jetbrains.kotlin.konan.test.blackbox.support.settings.KotlinNativeCla
 import org.jetbrains.kotlin.konan.test.blackbox.support.settings.KotlinNativeHome
 import org.jetbrains.kotlin.konan.test.blackbox.support.settings.Timeouts
 import org.jetbrains.kotlin.konan.test.blackbox.support.settings.provisionedXcodeCompilerArgs
+import org.jetbrains.kotlin.konan.test.blackbox.support.settings.withPlatformLibs
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assumptions.assumeFalse
 import org.junit.jupiter.api.Assumptions.assumeTrue
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.fail
@@ -554,6 +556,103 @@ class NativeStaticCacheSanityTest : AbstractNativeSimpleTest() {
         )
     }
 
+    // KT-89304: the caches of platform libraries may be built in any order, e.g. a library before its dependencies.
+    @Test
+    @Disabled("KT-89304")
+    fun platformLibraryCachesCanBeBuiltInAnyOrder() {
+        assumeExecutableIsRun()
+        // Platform libraries are built only for the test tasks that require them.
+        assumeTrue(testRunSettings.withPlatformLibs)
+        val isApple = HostManager.host.family.isAppleFamily
+        val platformLibrariesDir = testRunSettings.get<KotlinNativeHome>().librariesDir.resolve("platform/${HostManager.host.name}")
+        val stdlibCache = systemCacheDir.resolve("stdlib-per-file-cache").takeIf { it.isDirectory }
+            ?: systemCacheDir.resolve("stdlib-cache")
+        val cacheDir = createDir("platformCaches")
+        val commonArgs = arrayOf(
+            "-g",
+            "-Xcached-library=${testRunSettings.get<KotlinNativeHome>().stdlibFile.absolutePath},${stdlibCache.absolutePath}",
+            "-Xcache-directory=${cacheDir.absolutePath}",
+        )
+
+        // Start with the library itself, then go from the dependents to the dependencies.
+        for (library in platformLibraryWithDependencies(platformLibrariesDir, if (isApple) "Foundation" else "zlib").reversed()) {
+            callNativeCompiler(
+                "-p", "static_cache",
+                *commonArgs,
+                "-Xadd-cache=${platformLibrariesDir.resolve(library).absolutePath}",
+            )
+        }
+
+        val appFile = createFile("platformCachesApp.kexe")
+        callNativeCompiler(
+            createFile("platformCachesMain.kt") {
+                if (isApple) """
+                    import kotlinx.cinterop.*
+                    import platform.Foundation.*
+
+                    @OptIn(ExperimentalForeignApi::class)
+                    fun main() {
+                        val array = NSMutableArray()
+                        array.addObject("a")
+                        array.addObject("b")
+                        println("${'$'}{NSMakeRange(1u, 3u).useContents { length }} ${'$'}{array.count}")
+                    }
+                """.trimIndent() else """
+                    import kotlinx.cinterop.*
+                    import platform.zlib.*
+
+                    @OptIn(ExperimentalForeignApi::class)
+                    fun main() {
+                        val data = "hello".encodeToByteArray()
+                        val crc = data.usePinned { crc32(0u, it.addressOf(0).reinterpret(), data.size.toUInt()) }
+                        println(crc)
+                    }
+                """.trimIndent()
+            }.absolutePath,
+            "-p", "program",
+            *commonArgs,
+            "-o", appFile.absolutePath,
+        )
+
+        runExecutableAndVerify(
+            testCase = TestCase(
+                id = TestCaseId.Named("main"),
+                kind = TestKind.STANDALONE_NO_TR,
+                modules = emptySet(),
+                freeCompilerArgs = TestCompilerArgs.EMPTY,
+                nominalPackageName = PackageName.EMPTY,
+                checks = TestRunChecks.Default(testRunSettings.get<Timeouts>().executionTimeout).copy(
+                    outputMatcher = TestRunCheck.OutputMatcher { output ->
+                        assertEquals(if (isApple) "3 2" else "907060870", output.trim())
+                        true
+                    }
+                ),
+                extras = TestCase.NoTestRunnerExtras(entryPoint = "main")
+            ),
+            executable = TestExecutable(
+                executable = TestCompilationArtifact.Executable(appFile),
+                loggedCompilationToolCall = LoggedData.NoopCompilerCall(appFile),
+                testNames = listOf(TestName("main"))
+            ),
+        )
+    }
+
+    // Returns the platform library [name] with all its platform library dependencies, each one after its dependencies.
+    private fun platformLibraryWithDependencies(platformLibrariesDir: File, name: String): List<String> {
+        val result = mutableListOf<String>()
+        fun visit(library: String) {
+            if (library in result) return
+            platformLibrariesDir.resolve(library).resolve("default/manifest").readLines()
+                .firstOrNull { it.startsWith("depends=") }
+                ?.substringAfter("=")?.split(" ")
+                ?.filter { it.startsWith(PLATFORM_LIBRARY_PREFIX) }
+                ?.forEach(::visit)
+            result += library
+        }
+        visit(PLATFORM_LIBRARY_PREFIX + name)
+        return result
+    }
+
     private fun assumeExecutableIsRun() {
         // The eager initialization order is checked against the output of the executable, which is not run in the compile-only mode.
         assumeFalse(testRunSettings.get<ForcedNoopTestRunner>().value) { "The test requires running the executable" }
@@ -600,6 +699,8 @@ class NativeStaticCacheSanityTest : AbstractNativeSimpleTest() {
     }
 
     companion object {
+        private const val PLATFORM_LIBRARY_PREFIX = "org.jetbrains.kotlin.native.platform."
+
         private fun assumeHostTargetIsCacheable() {
             assumeTrue(HostManager.host.family == Family.OSX || HostManager.host.family == Family.LINUX)
         }
