@@ -340,8 +340,9 @@ class FrameworkTest : AbstractNativeSimpleTest() {
     @Test
     fun testUseFoundationModule() {
         val testName = "use_foundation_module"
-        generateObjCFramework(testName)
-        val modulemap = buildDir.resolve("$testName.framework/Modules/module.modulemap")
+        val moduleName = "Use_foundation_module"
+        generateObjCFramework(testName, moduleName = moduleName)
+        val modulemap = buildDir.resolve("$moduleName.framework/Modules/module.modulemap")
         val modulemapContents = modulemap.readText()
         val expectedPattern = "use Foundation"
         assertTrue(modulemapContents.contains(expectedPattern)) {
