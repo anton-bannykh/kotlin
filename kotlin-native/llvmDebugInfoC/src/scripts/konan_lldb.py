@@ -622,6 +622,10 @@ class KonanProxyTypeProvider:
 
 
 def _get_runtime_type(variable):
+    # Only Kotlin objects have a runtime type. Calling the runtime on other
+    # values, like C pointers or primitives, would read arbitrary memory.
+    if variable.GetTypeName() != "ObjHeader *" or variable.unsigned == 0:
+        return ""
     type_name = _evaluate(
         f"(char *)Konan_DebugGetTypeName({_hex(variable.unsigned)})"
     ).summary
