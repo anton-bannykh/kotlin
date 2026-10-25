@@ -1,5 +1,3 @@
-// IGNORE_BACKEND: NATIVE
-// ^^^ KT-69848: references to private declarations with the same name in different files are equal
 // IGNORE_KLIB_RUNTIME_ERRORS_WITH_CUSTOM_SECOND_STAGE: JS:2.3
 // ^^^ KT-15101 js: Same callable references are not equal
 
