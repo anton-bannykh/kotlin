@@ -4,6 +4,7 @@
  */
 package org.jetbrains.kotlin.backend.konan
 
+import kotlinx.cinterop.toCValues
 import llvm.*
 import org.jetbrains.kotlin.backend.konan.llvm.*
 import org.jetbrains.kotlin.backend.konan.llvm.objc.patchObjCRuntimeModule
@@ -112,7 +113,6 @@ private fun collectLlvmModules(generationState: NativeGenerationState, generated
     fun MutableList<String>.add(module: RuntimeModule) = add(runtimeModulesConfig.absolutePathFor(module))
 
     val additionalBitcodeFiles = buildList<String> {
-        addAll(config.nativeLibraries)
         if (config.produce == CompilerOutputKind.PROGRAM) {
             add(RuntimeModule.LAUNCHER)
         }
@@ -191,11 +191,40 @@ private fun collectLlvmModules(generationState: NativeGenerationState, generated
     val runtimeModules = parseBitcodeFiles(
             runtimeBitcodeFiles.takeIf { generationState.shouldLinkRuntimeNativeLibraries }.orEmpty()
     )
-    val additionalModules = parseBitcodeFiles(additionalBitcodeFiles)
+    val nativeLibraryModules = parseBitcodeFiles(config.nativeLibraries)
+    if (config.cachedLibraries.hasStaticCaches || config.cachedLibraries.hasDynamicCaches) {
+        // Native libraries are linked into the final module, which is then internalized as a closed world.
+        // But their functions can be used by cinterop stubs from caches, which are outside of this module (KT-89938).
+        nativeLibraryModules.forEach { addExternalDefinitionsToLlvmUsed(it) }
+    }
+    val additionalModules = nativeLibraryModules + parseBitcodeFiles(additionalBitcodeFiles)
     return LlvmModules(
             runtimeModules.ifNotEmpty { this + generationState.generateRuntimeConstantsModule() } ?: emptyList(),
             additionalModules + listOfNotNull(patchObjCRuntimeModule(generationState))
     )
+}
+
+/**
+ * Adds the externally visible definitions of [module] to `llvm.used`, so that LLVM doesn't internalize and remove them.
+ */
+private fun addExternalDefinitionsToLlvmUsed(module: LLVMModuleRef) {
+    val externalLinkages = setOf(LLVMLinkage.LLVMExternalLinkage, LLVMLinkage.LLVMWeakAnyLinkage, LLVMLinkage.LLVMWeakODRLinkage)
+    val definitions = (getFunctions(module) + getGlobals(module) + getGlobalAliases(module))
+            .filter { LLVMIsDeclaration(it) == 0 && LLVMGetLinkage(it) in externalLinkages }
+            .toList()
+    if (definitions.isEmpty()) return
+
+    val oldLlvmUsed = LLVMGetNamedGlobal(module, "llvm.used")
+    val oldElements = oldLlvmUsed?.let { getOperands(LLVMGetInitializer(it)!!) }.orEmpty()
+    oldLlvmUsed?.let { LLVMDeleteGlobal(it) }
+
+    val elements = (oldElements + definitions).distinct()
+    val pointerType = LLVMPointerTypeInContext(LLVMGetModuleContext(module), 0)!!
+    val arrayType = LLVMArrayType(pointerType, elements.size)!!
+    val llvmUsed = LLVMAddGlobal(module, arrayType, "llvm.used")!!
+    LLVMSetInitializer(llvmUsed, LLVMConstArray(pointerType, elements.toCValues(), elements.size))
+    LLVMSetLinkage(llvmUsed, LLVMLinkage.LLVMAppendingLinkage)
+    LLVMSetSection(llvmUsed, "llvm.metadata")
 }
 
 private fun linkAllDependencies(generationState: NativeGenerationState, generatedBitcodeFiles: List<String>) {
