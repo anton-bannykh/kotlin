@@ -152,6 +152,17 @@ bitcode {
             (konanOptions + otherOptions).map { "-D$it" } + fixBrokenMacroExpansionInXcode15_3 + ignoreUnknownSdkAttributesInXcode27
         }
 
+        // Compile the runtime for the same CPU as Kotlin code. Otherwise, LLVM refuses to inline runtime functions into
+        // Kotlin code (KT-89545). ClangArgs passes the same flags, but the build uses ClangArgs from the bootstrap
+        // compiler, so this can be removed after the bootstrap update.
+        val targetCpuArgs: List<String> = platformManager.platform(target).configurables.targetCpu?.let { cpu ->
+            when (target) {
+                KonanTarget.LINUX_ARM64, KonanTarget.ANDROID_ARM64 -> listOf("-mcpu=$cpu")
+                KonanTarget.ANDROID_X86 -> listOf("-march=$cpu")
+                else -> null
+            }
+        }.orEmpty()
+
         defaultCompilerArgs.addAll(listOfNotNull(
                 "-gdwarf-2".takeIf { kotlinBuildProperties.isNativeRuntimeDebugInfoEnabled },
                 "-std=c++17",
@@ -161,7 +172,7 @@ bitcode {
                 "-Wall",
                 "-Wextra",
                 "-Wno-unused-parameter",  // False positives with polymorphic functions.
-        ) + clangArgsSpecificForKonanSources)
+        ) + clangArgsSpecificForKonanSources + targetCpuArgs)
 
         module("runtime") {
             srcRoot.set(layout.projectDirectory.dir("src/main"))

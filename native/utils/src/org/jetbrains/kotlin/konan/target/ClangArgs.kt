@@ -154,12 +154,21 @@ sealed class ClangArgs(
         else -> emptyList()
     }
 
+    // Compile C and C++ code, the runtime in particular, for the same CPU as Kotlin code. Otherwise, LLVM refuses to
+    // inline runtime functions into Kotlin code (see KT-89545). On the other targets, the clang default already matches
+    // targetCpu from konan.properties.
+    private val targetCpuClangArgs: List<String> = when (target) {
+        KonanTarget.LINUX_ARM64, KonanTarget.ANDROID_ARM64 -> listOfNotNull(configurables.targetCpu?.let { "-mcpu=$it" })
+        KonanTarget.ANDROID_X86 -> listOfNotNull(configurables.targetCpu?.let { "-march=$it" })
+        else -> emptyList()
+    }
+
     val clangPaths = listOf("$absoluteLlvmHome/bin", binDir)
 
     /**
      * Clang args for Objectice-C and plain C compilation.
      */
-    val clangArgs: Array<String> = (commonClangArgs + specificClangArgs).toTypedArray()
+    val clangArgs: Array<String> = (commonClangArgs + specificClangArgs + targetCpuClangArgs).toTypedArray()
 
     /**
      * Clang args for C++ compilation.
