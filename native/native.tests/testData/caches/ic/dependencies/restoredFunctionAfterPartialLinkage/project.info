@@ -1,5 +1,4 @@
-// DISABLE_NATIVE
-// ^^^ KT-87402: the cache with the partial linkage stub is reused
+// DISABLE_NATIVE: targetFamily=MINGW
 
 // KT-87402: a per-file cache compiled with a partial linkage stub for a missing declaration must not be
 // reused once the declaration is back: the stub doesn't record any dependency on the declaration's file.

@@ -268,6 +268,7 @@ class CacheBuilder(
         val reversedPerFileDependencies = mutableMapOf<LibraryFile, MutableList<LibraryFile>>()
         val reversedWeakPerFileDependencies = mutableMapOf<LibraryFile, MutableList<LibraryFile>>()
         val reversedWholeLibraryDependencies = mutableMapOf<KotlinLibrary, MutableList<LibraryFile>>()
+        val filesWithPartialLinkageIssues = mutableListOf<LibraryFile>()
         for (library in icedLibraries) {
             if (library in needFullRebuild) continue
             val cache = caches[library] ?: continue
@@ -303,6 +304,8 @@ class CacheBuilder(
                             .partition { it.libName in uniqueNameToLibrary }
                     if (previousContentHash != actualContentHash || removedDependencies.isNotEmpty())
                         changedFiles.add(libraryFile)
+                    if (cache.getPartialLinkageIssues(cachedFile).isNotEmpty())
+                        filesWithPartialLinkageIssues.add(libraryFile)
 
                     for (dependency in knownDependencies) {
                         val dependentLibrary = uniqueNameToLibrary[dependency.libName]!!
@@ -320,6 +323,22 @@ class CacheBuilder(
             }
             for (newFile in actualFiles.keys)
                 addedFiles.add(LibraryFile(library, newFile))
+        }
+
+        // The partial linkage engine replaces the code using a missing declaration with a stub, which records no dependency
+        // on the file that would declare it. So when the declaration comes back (e.g. it is restored, or the library declaring it
+        // is added, KT-87402), nothing marks the file with the stub as dirty. Such a file has partial linkage issues recorded
+        // in its cache, so rebuild it whenever any of its library's dependencies changes. Otherwise, the cache is reused,
+        // and its issues are replayed (KT-78253).
+        val changedLibraries = buildSet {
+            (changedFiles + addedFiles + removedFiles).mapTo(this) { it.library }
+            icedLibraries.filterTo(this) { caches[it] == null }
+            addAll(needFullRebuild)
+            addAll(externalLibrariesToCache)
+        }
+        filesWithPartialLinkageIssues.forEach { libraryFile ->
+            if (libraryFile !in changedFiles && config.klibDag.getAllDependencies(libraryFile.library).any { it in changedLibraries })
+                changedFiles.add(libraryFile)
         }
 
         configuration.reportLog("IC analysis results")
