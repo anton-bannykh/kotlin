@@ -91,7 +91,7 @@ projectTests {
     nativeTestTask("kotlinTestLibraryTest", "kotlin-test")
     nativeTestTask("partialLinkageTest", "partial-linkage")
     nativeTestTask("cinteropTest", "cinterop")
-    nativeTestTask("debuggerTest", "debugger")
+    nativeTestTask("debuggerTest", "debugger", requirePlatformLibs = true) // Objective-C interop tests need platform libraries.
     nativeTestTask("cachesTest", "caches")
     nativeTestTask("klibTest", "klib")
     nativeTestTask("standaloneTest", "standalone")
