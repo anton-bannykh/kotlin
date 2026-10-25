@@ -95,6 +95,20 @@ abstract class ComplexCInteropTestBase : AbstractNativeSimpleTest() {
     @Test
     @TestMetadata("embedStaticLibraries.kt")
     fun testNativeLibraries() {
+        testNativeLibraries(autoCache = false)
+    }
+
+    // KT-89938: the native libraries passed to the final link must not be removed when they are used from caches.
+    @Test
+    @TestMetadata("embedStaticLibraries.kt")
+    fun testNativeLibrariesWithAutoCache() {
+        Assumptions.assumeFalse(testRunSettings.get<CacheMode>() == CacheMode.WithoutCache)
+        // MinGW support for caches is limited to stdlib.
+        Assumptions.assumeFalse(testRunSettings.get<KotlinNativeTargets>().testTarget == KonanTarget.MINGW_X64)
+        testNativeLibraries(autoCache = true)
+    }
+
+    private fun testNativeLibraries(autoCache: Boolean) {
         // Reuse the test data from the previous test for simplicity.
         val embedStaticLibrariesDir = interopDir.resolve("embedStaticLibraries")
         val bcFiles = (1..4).map {
@@ -145,7 +159,12 @@ abstract class ComplexCInteropTestBase : AbstractNativeSimpleTest() {
                     // But we better check it anyway, in case someone relies on that behavior.
                     "-native-library", bcFiles[2],
                     "-native-library", bcFiles[3],
-                ),
+                ) + if (autoCache) listOf(
+                    // Caches both klibs, so that the cinterop stubs calling the functions from bcFiles[2] and bcFiles[3]
+                    // are not in the module of the executable.
+                    "-Xauto-cache-from=$buildDir",
+                    "-Xauto-cache-dir=${buildDir.resolve("cache").also { it.mkdirs() }}",
+                ) else emptyList(),
             ),
             nominalPackageName = PackageName("nativeLibraries"),
             checks = TestRunChecks.Default(testRunSettings.get<Timeouts>().executionTimeout),
