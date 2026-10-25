@@ -1,0 +1,9 @@
+STEP 0:
+    dependencies: lib2
+    modifications:
+        U : lib1.kt -> lib1.kt
+    added cache: lib1.kt
+
+// The cache of `lib1.kt` has a partial linkage stub instead of the call to `bar`, so it has to be rebuilt.
+STEP 1:
+    modified cache: lib1.kt

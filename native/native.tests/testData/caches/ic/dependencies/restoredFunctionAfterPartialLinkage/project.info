@@ -1,0 +1,18 @@
+// DISABLE_NATIVE
+// ^^^ KT-87402: the cache with the partial linkage stub is reused
+
+// KT-87402: a per-file cache compiled with a partial linkage stub for a missing declaration must not be
+// reused once the declaration is back: the stub doesn't record any dependency on the declaration's file.
+
+MODULES: a, b, main
+
+STEP 0:
+    libs: a, b, main
+
+// `a` drops `foo`, while `b` is not recompiled: the cache of `b.kt` follows the change and gets a stub.
+STEP 1:
+    libs: a, main
+
+// `foo` is back, and `b` is still not recompiled.
+STEP 2:
+    libs: a, main

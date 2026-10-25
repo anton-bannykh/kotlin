@@ -1,0 +1,15 @@
+// DISABLE_NATIVE
+// ^^^ KT-87402: the cache with the partial linkage stub is reused
+
+// KT-87402: a per-file cache compiled while a dependency was missing (and thus with a partial linkage stub)
+// must not be reused once the dependency is provided.
+
+MODULES: lib2, lib1, main
+
+STEP 0:
+    libs: lib2, lib1, main
+
+// The binary is linked against `lib1` only, without its dependency `lib2`.
+// Now `lib2` is added, while `lib1` is not recompiled.
+STEP 1:
+    libs: main
