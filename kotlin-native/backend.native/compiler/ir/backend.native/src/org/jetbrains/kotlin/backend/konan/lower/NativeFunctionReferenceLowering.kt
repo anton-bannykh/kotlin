@@ -14,6 +14,7 @@ import org.jetbrains.kotlin.backend.konan.NativeBackendContext
 import org.jetbrains.kotlin.backend.konan.NativeGenerationState
 import org.jetbrains.kotlin.backend.konan.descriptors.synthesizedName
 import org.jetbrains.kotlin.backend.konan.llvm.computeFullName
+import org.jetbrains.kotlin.backend.konan.llvm.isExported
 import org.jetbrains.kotlin.ir.builders.*
 import org.jetbrains.kotlin.ir.customNameInReflection
 import org.jetbrains.kotlin.ir.declarations.*
@@ -24,6 +25,7 @@ import org.jetbrains.kotlin.ir.expressions.IrStatementOrigin
 import org.jetbrains.kotlin.ir.irFlag
 import org.jetbrains.kotlin.ir.types.*
 import org.jetbrains.kotlin.ir.util.fields
+import org.jetbrains.kotlin.ir.util.fileOrNull
 import org.jetbrains.kotlin.ir.util.fqNameForIrSerialization
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.name.Name
@@ -159,7 +161,13 @@ internal class NativeFunctionReferenceLowering(val generationState: NativeGenera
         fun getFqName(): String {
             return when {
                 isFunInterfaceConstructorAdapter() -> functionReference.invokeFunction.returnType.getClass()!!.fqNameForIrSerialization.toString()
-                else -> functionReferenceReflectionTarget.computeFullName()
+                else -> {
+                    val fullName = functionReferenceReflectionTarget.computeFullName()
+                    // Non-exported declarations, like private top-level functions, with the same name can live in different files.
+                    // Like the JVM facade class, the file name tells them apart without embedding the file path into the binary.
+                    val file = functionReferenceReflectionTarget.takeUnless { it.isExported }?.fileOrNull
+                    if (file != null) "$fullName@${file.name}" else fullName
+                }
             }
         }
 
