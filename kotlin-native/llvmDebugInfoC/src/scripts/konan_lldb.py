@@ -272,6 +272,10 @@ def _render_object(addr):
             f");"
         )
     ).signed
+    # The runtime renders nothing for objects without extended type info,
+    # like Objective-C objects. Show the address instead.
+    if buff_len <= 0:
+        return _hex(addr)
     return _read_string(buff_addr, buff_len)
 
 
