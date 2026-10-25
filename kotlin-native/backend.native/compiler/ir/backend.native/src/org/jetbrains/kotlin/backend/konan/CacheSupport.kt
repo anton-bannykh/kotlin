@@ -19,10 +19,12 @@ import org.jetbrains.kotlin.konan.config.filesToCache
 import org.jetbrains.kotlin.konan.config.konanLibraryToAddToCache
 import org.jetbrains.kotlin.konan.config.makePerFileCache
 import org.jetbrains.kotlin.konan.config.preLinkCaches
+import org.jetbrains.kotlin.konan.library.isImplicitlyLoadedFromKotlinNativeDistribution
 import org.jetbrains.kotlin.konan.target.CompilerOutputKind
 import org.jetbrains.kotlin.konan.target.KonanTarget
 import org.jetbrains.kotlin.library.KotlinLibrary
 import org.jetbrains.kotlin.library.components.irOrFail
+import org.jetbrains.kotlin.library.metadata.isCInteropLibrary
 import org.jetbrains.kotlin.protobuf.ExtensionRegistryLite
 import java.nio.file.Path
 import kotlin.io.path.Path
@@ -186,6 +188,9 @@ class CacheSupport(
                 "${if (fqName == "") "ROOT" else fqName}.${filePath.hashCode().toString(Character.MAX_RADIX)}"
     }
 
+    private val KotlinLibrary.isPlatformLibrary: Boolean
+        get() = isImplicitlyLoadedFromKotlinNativeDistribution && isCInteropLibrary()
+
     fun checkConsistency() {
         // Note: The libraries should be in the reverse topo-order here.
         for (library in klibDag.librariesReverseTopoSorted) {
@@ -193,6 +198,10 @@ class CacheSupport(
             if (cache != null || library in librariesToCache) {
                 val dependencies = klibDag.getAllDependencies(library)
                 for (dependency in dependencies) {
+                    // A cache of a cinterop library from the distribution (a platform library) has no metadata the caches
+                    // of its dependents could rely on, so these caches may be built in any order. A binary, however,
+                    // still needs the caches of all the dependencies of a cached library.
+                    if (produce.isCache && dependency.isPlatformLibrary) continue
                     if (!cachedLibraries.isLibraryCached(dependency) && dependency !in librariesToCache) {
                         val description = if (cache != null) "cached (in ${cache.path})" else "going to be cached"
                         configuration.reportCompilationErrorAndThrow("${library.path} is $description, but its dependency isn't: ${dependency.path}")

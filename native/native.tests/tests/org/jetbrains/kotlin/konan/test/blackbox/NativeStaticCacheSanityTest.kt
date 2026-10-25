@@ -32,7 +32,6 @@ import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assumptions.assumeFalse
 import org.junit.jupiter.api.Assumptions.assumeTrue
 import org.junit.jupiter.api.BeforeEach
-import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.fail
@@ -558,7 +557,6 @@ class NativeStaticCacheSanityTest : AbstractNativeSimpleTest() {
 
     // KT-89304: the caches of platform libraries may be built in any order, e.g. a library before its dependencies.
     @Test
-    @Disabled("KT-89304")
     fun platformLibraryCachesCanBeBuiltInAnyOrder() {
         assumeExecutableIsRun()
         // Platform libraries are built only for the test tasks that require them.

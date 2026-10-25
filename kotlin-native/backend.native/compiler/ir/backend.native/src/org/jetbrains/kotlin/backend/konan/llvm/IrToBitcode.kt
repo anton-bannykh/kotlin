@@ -39,6 +39,7 @@ import org.jetbrains.kotlin.konan.ForeignExceptionMode
 import org.jetbrains.kotlin.konan.target.CompilerOutputKind
 import org.jetbrains.kotlin.konan.target.Family
 import org.jetbrains.kotlin.library.KotlinLibrary
+import org.jetbrains.kotlin.library.metadata.isCInteropLibrary
 import org.jetbrains.kotlin.library.uniqueName
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.utils.addToStdlib.ifTrue
@@ -2807,9 +2808,14 @@ internal class CodeGeneratorVisitor(
                 }
 
                 val cache = context.config.cachedLibraries.getLibraryCache(library)
-                        ?: error("Library ${library.path} is expected to be cached")
 
                 when (cache) {
+                    // A platform library may be cached after its dependents (see CacheSupport.checkConsistency).
+                    // Its cache is going to be monolithic, as for any cinterop library.
+                    null -> if (context.config.produce.isCache && library.isCInteropLibrary())
+                        listOf(ctorProto(ctorName))
+                    else
+                        error("Library ${library.path} is expected to be cached")
                     is CachedLibraries.Cache.Monolithic -> listOf(ctorProto(ctorName))
                     is CachedLibraries.Cache.PerFile -> {
                         val files = when (dependency.kind) {
