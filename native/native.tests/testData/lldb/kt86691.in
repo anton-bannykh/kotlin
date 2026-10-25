@@ -1,0 +1,6 @@
+b main.kt:11
+r
+field_type point
+field_type point.x
+field_type pointer
+q
