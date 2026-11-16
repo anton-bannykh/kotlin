@@ -17,40 +17,68 @@ debug the compiler is in [HACKING.md](../../kotlin-native/HACKING.md).
 
 Then read the page for the part you are going to work on.
 
-## The compiler
+## How the guide is organized
+
+```
+docs/native/
+├── tour.md, llvm-primer.md, code-map.md      start here
+├── compiler/            klibs → binary: the pipeline, klibs, code generation, caches
+│   ├── lowerings/       how language features are rewritten into simpler IR; a page per lowering
+│   └── optimizations/   whole-program optimizations
+├── features/            language features followed end to end
+├── runtime/             the C++ runtime: objects, threads, memory
+├── interop/             calling C and Objective-C, and being called from them
+├── build-and-tests/     targets, toolchains, building, tests
+└── debugging.md, glossary.md                 look things up
+```
+
+Each directory's `README.md` is the overview of that topic.
+
+## [compiler/](compiler/README.md)
 
 | Page | What it explains |
 |---|---|
-| [compilation-model.md](compilation-model.md) | The outside view: klibs, binaries, caches, interop, export |
-| [pipeline.md](pipeline.md) | Every step from klibs to a binary, in order |
-| [klibs-and-linking.md](klibs-and-linking.md) | What a klib holds and how several klibs become one program |
-| [lowerings/](lowerings/README.md) | How language features are rewritten into simpler IR; a page per lowering |
-| [optimizations.md](optimizations.md) | Whole-program optimizations: [devirtualization](optimizations/devirtualization.md), [escape analysis](optimizations/escape-analysis.md), [dead code elimination](optimizations/dce.md), [type checks](optimizations/type-checks.md) |
-| [codegen.md](codegen.md) | How Kotlin IR becomes LLVM IR, and LLVM IR becomes a binary |
-| [caches.md](caches.md) | Precompiled libraries and incremental compilation |
+| [compiler/](compiler/README.md) | Every step from klibs to a binary, in order |
+| [compilation-model.md](compiler/compilation-model.md) | The outside view: klibs, binaries, caches, interop, export |
+| [klibs-and-linking.md](compiler/klibs-and-linking.md) | What a klib holds and how several klibs become one program |
+| [lowerings/](compiler/lowerings/README.md) | How language features are rewritten into simpler IR; a page per lowering |
+| [optimizations/](compiler/optimizations/README.md) | Whole-program optimizations: [devirtualization](compiler/optimizations/devirtualization.md), [escape analysis](compiler/optimizations/escape-analysis.md), [dead code elimination](compiler/optimizations/dce.md), [type checks](compiler/optimizations/type-checks.md) |
+| [codegen.md](compiler/codegen.md) | How Kotlin IR becomes LLVM IR, and LLVM IR becomes a binary |
+| [caches.md](compiler/caches.md) | Precompiled libraries and incremental compilation |
 
-## Language features end to end
-
-| Page | What it explains |
-|---|---|
-| [initialization.md](initialization.md) | When top-level properties, objects and enums are initialized |
-| [coroutines.md](coroutines.md) | What a `suspend` function is compiled into |
-| [exceptions.md](exceptions.md) | How `throw` reaches `catch`, including across the Objective-C boundary |
-
-## The runtime
+## [features/](features/README.md)
 
 | Page | What it explains |
 |---|---|
-| [object-model.md](object-model.md) | What an object looks like in memory; type information; virtual calls |
-| [runtime.md](runtime.md) | What the runtime library does; threads and safepoints |
-| [gc-and-allocator.md](gc-and-allocator.md) | How memory is allocated and collected |
+| [initialization.md](features/initialization.md) | When top-level properties, objects and enums are initialized |
+| [coroutines.md](features/coroutines.md) | What a `suspend` function is compiled into |
+| [exceptions.md](features/exceptions.md) | How `throw` reaches `catch`, including across the Objective-C boundary |
 
-## Interop and tooling
+## [runtime/](runtime/README.md)
 
 | Page | What it explains |
 |---|---|
-| [cinterop.md](cinterop.md) | Calling C and Objective-C from Kotlin; platform libraries; the commonizer |
-| [export.md](export.md) | Calling Kotlin from Objective-C, C and Swift |
-| [build-and-tests.md](build-and-tests.md) | Targets, toolchains and how the tests work |
+| [runtime/](runtime/README.md) | What the runtime library does; threads and safepoints |
+| [object-model.md](runtime/object-model.md) | What an object looks like in memory; type information; virtual calls |
+| [gc-and-allocator.md](runtime/gc-and-allocator.md) | How memory is allocated and collected |
+
+## [interop/](interop/README.md)
+
+| Page | What it explains |
+|---|---|
+| [cinterop.md](interop/cinterop.md) | Calling C and Objective-C from Kotlin; platform libraries; the commonizer |
+| [export.md](interop/export.md) | Calling Kotlin from Objective-C, C and Swift |
+
+## [build-and-tests/](build-and-tests/README.md)
+
+| Page | What it explains |
+|---|---|
+| [build-and-tests/](build-and-tests/README.md) | Targets, toolchains and building the compiler |
+| [tests.md](build-and-tests/tests.md) | The kinds of tests, how one test runs, how to add and debug one |
+
+## Looking things up
+
+| Page | What it explains |
+|---|---|
 | [debugging.md](debugging.md) | Something is broken: where to look |
 | [glossary.md](glossary.md) | Terms you will meet in code and in reviews |

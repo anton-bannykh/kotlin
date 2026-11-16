@@ -13,21 +13,21 @@ the source files each page links to. This file only adds what an agent needs on 
 | When you are working on…                                           | Read                                                                                      |
 |--------------------------------------------------------------------|-------------------------------------------------------------------------------------------|
 | A bug report or a failing test, and you do not know where to start | [docs/native/debugging.md](../docs/native/debugging.md)                                   |
-| Running or adding compiler tests, test directives                  | [docs/native/build-and-tests.md](../docs/native/build-and-tests.md), [HACKING.md#testing](HACKING.md#testing) |
-| Klibs vs binaries, the two stages                                  | [docs/native/compilation-model.md](../docs/native/compilation-model.md), [klibs-and-linking.md](../docs/native/klibs-and-linking.md) |
-| What runs when; dump and disable flags                             | [docs/native/pipeline.md](../docs/native/pipeline.md)                                     |
-| A lowering, or wrong code for a language feature                   | [docs/native/lowerings/README.md](../docs/native/lowerings/README.md) (index, one page per lowering) |
-| Devirtualization, DCE, escape analysis, `-opt`-only bugs           | [docs/native/optimizations.md](../docs/native/optimizations.md) and the pages it links    |
-| IR → LLVM IR, runtime bitcode, LLVM passes, linker, debug info     | [docs/native/codegen.md](../docs/native/codegen.md), [llvm-primer.md](../docs/native/llvm-primer.md) |
-| Object layout, type info, anything touching both `llvm/` and `runtime/` | [docs/native/object-model.md](../docs/native/object-model.md)                        |
-| Runtime C++ (thread states, safepoints, GC, allocator)             | [docs/native/runtime.md](../docs/native/runtime.md), [gc-and-allocator.md](../docs/native/gc-and-allocator.md), [runtime/README.md](runtime/README.md), [runtime/codestyle/cpp/README.md](runtime/codestyle/cpp/README.md) |
-| Global, object and enum initialization                             | [docs/native/initialization.md](../docs/native/initialization.md)                         |
-| Suspend functions, coroutine state machines, spilling              | [docs/native/coroutines.md](../docs/native/coroutines.md)                                 |
-| Exceptions, unwinding, `@Throws`/`NSError`                         | [docs/native/exceptions.md](../docs/native/exceptions.md)                                 |
-| cinterop, platform libraries, the commonizer                       | [docs/native/cinterop.md](../docs/native/cinterop.md)                                     |
-| ObjC/C export                                                      | [docs/native/export.md](../docs/native/export.md)                                         |
-| Caches, incremental compilation                                    | [docs/native/caches.md](../docs/native/caches.md)                                         |
-| Targets, toolchains, `konan.properties`, the distribution          | [docs/native/build-and-tests.md](../docs/native/build-and-tests.md)                       |
+| Running or adding compiler tests, test directives                  | [docs/native/build-and-tests/tests.md](../docs/native/build-and-tests/tests.md), [HACKING.md#testing](HACKING.md#testing) |
+| Klibs vs binaries, the two stages                                  | [docs/native/compiler/compilation-model.md](../docs/native/compiler/compilation-model.md), [klibs-and-linking.md](../docs/native/compiler/klibs-and-linking.md) |
+| What runs when; dump and disable flags                             | [docs/native/compiler/](../docs/native/compiler/README.md)                                     |
+| A lowering, or wrong code for a language feature                   | [docs/native/compiler/lowerings/](../docs/native/compiler/lowerings/README.md) (index, one page per lowering) |
+| Devirtualization, DCE, escape analysis, `-opt`-only bugs           | [docs/native/compiler/optimizations/](../docs/native/compiler/optimizations/README.md) and the pages it links    |
+| IR → LLVM IR, runtime bitcode, LLVM passes, linker, debug info     | [docs/native/compiler/codegen.md](../docs/native/compiler/codegen.md), [llvm-primer.md](../docs/native/llvm-primer.md) |
+| Object layout, type info, anything touching both `llvm/` and `runtime/` | [docs/native/runtime/object-model.md](../docs/native/runtime/object-model.md)                        |
+| Runtime C++ (thread states, safepoints, GC, allocator)             | [docs/native/runtime/](../docs/native/runtime/README.md), [gc-and-allocator.md](../docs/native/runtime/gc-and-allocator.md), [runtime/README.md](runtime/README.md), [runtime/codestyle/cpp/README.md](runtime/codestyle/cpp/README.md) |
+| Global, object and enum initialization                             | [docs/native/features/initialization.md](../docs/native/features/initialization.md)                         |
+| Suspend functions, coroutine state machines, spilling              | [docs/native/features/coroutines.md](../docs/native/features/coroutines.md)                                 |
+| Exceptions, unwinding, `@Throws`/`NSError`                         | [docs/native/features/exceptions.md](../docs/native/features/exceptions.md)                                 |
+| cinterop, platform libraries, the commonizer                       | [docs/native/interop/cinterop.md](../docs/native/interop/cinterop.md)                                     |
+| ObjC/C export                                                      | [docs/native/interop/export.md](../docs/native/interop/export.md)                                         |
+| Caches, incremental compilation                                    | [docs/native/compiler/caches.md](../docs/native/compiler/caches.md)                                         |
+| Targets, toolchains, `konan.properties`, the distribution          | [docs/native/build-and-tests/](../docs/native/build-and-tests/README.md)                       |
 | Cross-module inlining in klibs                                     | [docs/inlining/klib-inining.md](../docs/inlining/klib-inining.md)                         |
 | LLVM IR dumps, a debugger on the compiler                          | [HACKING.md](HACKING.md) (LLVM and Debugging sections)                                    |
 | Swift export                                                       | [docs/swift-export/README.md](../docs/swift-export/README.md)                             |

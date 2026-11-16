@@ -154,7 +154,7 @@ All Native test directives are defined in
 #### Test infrastructure overview
 
 An introduction to the kinds of tests and how one test is run is in
-[docs/native/build-and-tests.md](../docs/native/build-and-tests.md). The infrastructure lives in
+[docs/native/build-and-tests/tests.md](../docs/native/build-and-tests/tests.md). The infrastructure lives in
 [native/native.tests/testFixtures](../native/native.tests/testFixtures/org/jetbrains/kotlin/konan/test/blackbox):
 * `Abstract*Test.kt` are the base classes of the generated tests: `AbstractNativeBlackBoxTest` for test data–driven tests,
   `AbstractNativeSimpleTest` for hand-written ones, and specializations for cinterop, ObjC/C export, partial linkage, etc.

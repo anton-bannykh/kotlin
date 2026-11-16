@@ -100,14 +100,14 @@ To compile a faster, optimized binary, use `-opt`:
 To import a C or Objective-C library, use `./dist/bin/cinterop` tool.
 See the [documentation](https://kotlinlang.org/docs/native-c-interop.html) for more details.
 
-Note: on macOS aarch64, [JDK aarch64 is required](./README.md#building-from-source)
+Note: on macOS aarch64, [JDK aarch64 is required](README.md#building-from-source)
 
 
 ### Running tests
 
 For tests, use `./gradlew :nativeCompilerTest :nativeCompilerUnitTest --continue`.
 
-Note: on macOS aarch64, [JDK aarch64 is required](./README.md#building-from-source)
+Note: on macOS aarch64, [JDK aarch64 is required](README.md#building-from-source)
 
 For more details see [Testing](HACKING.md#Testing).
 

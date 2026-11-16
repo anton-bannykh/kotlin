@@ -21,7 +21,7 @@ Kotlin/Native writes the first arrow. Everything after it is LLVM, driven throug
 LLVM build into `~/.konan/dependencies/`; that directory also has the command-line tools mentioned below.
 
 LLVM knows nothing about Kotlin: no classes, no objects, no garbage collector. Everything Kotlin-specific must be spelled out
-in LLVM IR by the code generator, usually as calls into the [runtime](runtime.md).
+in LLVM IR by the code generator, usually as calls into the [runtime](runtime/README.md).
 
 ## Reading LLVM IR
 
@@ -91,7 +91,7 @@ landingpad:
 ```
 
 Getting from the `throw` to the landing pad is called **unwinding**. It is done by the same system library that implements
-C++ exceptions, so a Kotlin exception is, at this level, a C++ exception. → [exceptions.md](exceptions.md)
+C++ exceptions, so a Kotlin exception is, at this level, a C++ exception. → [exceptions.md](features/exceptions.md)
 
 ## Modules, bitcode and why the runtime ships as bitcode
 
@@ -119,10 +119,10 @@ produce binaries for many platforms.
 
 | Need | Who provides it |
 |---|---|
-| Objects, classes, virtual calls | Code generation emits structs, constants and indirect calls → [object-model.md](object-model.md) |
-| Memory management | The runtime. The compiler tells it where references are by keeping them in stack slots registered with `EnterFrame` → [runtime.md](runtime.md), [gc-and-allocator.md](gc-and-allocator.md) |
-| Kotlin-aware optimizations (devirtualization, escape analysis) | Done on Kotlin IR before LLVM sees the program → [optimizations.md](optimizations.md) |
-| Calling C and Objective-C | Kotlin/Native runs Clang as a library to parse headers and to compile small C stubs → [cinterop.md](cinterop.md) |
+| Objects, classes, virtual calls | Code generation emits structs, constants and indirect calls → [object-model.md](runtime/object-model.md) |
+| Memory management | The runtime. The compiler tells it where references are by keeping them in stack slots registered with `EnterFrame` → [runtime/](runtime/README.md), [gc-and-allocator.md](runtime/gc-and-allocator.md) |
+| Kotlin-aware optimizations (devirtualization, escape analysis) | Done on Kotlin IR before LLVM sees the program → [optimizations/](compiler/optimizations/README.md) |
+| Calling C and Objective-C | Kotlin/Native runs Clang as a library to parse headers and to compile small C stubs → [cinterop.md](interop/cinterop.md) |
 
 ## Looking at LLVM IR yourself
 

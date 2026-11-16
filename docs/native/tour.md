@@ -73,18 +73,18 @@ default/targets/     for interop libraries: LLVM bitcode of C stubs and bundled 
 ```
 
 A klib contains no machine code and nothing LLVM-specific. It is "half-compiled Kotlin" that is still portable across
-targets. → [klibs-and-linking.md](klibs-and-linking.md), [compilation-model.md](compilation-model.md)
+targets. → [klibs-and-linking.md](compiler/klibs-and-linking.md), [compilation-model.md](compiler/compilation-model.md)
 
 ## Step 2. All klibs → one IR
 
 The second stage loads the program's klib, `stdlib` and every other dependency, and connects them: a call to `listOf` in
 `tour.kt` now points at the actual `listOf` function from the stdlib klib, body included. From here on the compiler works on
-one big IR. → [klibs-and-linking.md](klibs-and-linking.md)
+one big IR. → [klibs-and-linking.md](compiler/klibs-and-linking.md)
 
 ## Step 3. Lowerings
 
 About 80 **lowerings** run one after another. Each rewrites one language feature into simpler IR, until only classes,
-fields, plain functions, calls, branches and loops are left. → [lowerings/](lowerings/README.md)
+fields, plain functions, calls, branches and loops are left. → [lowerings/](compiler/lowerings/README.md)
 
 This is `total` after all lowerings. The `forEach` call was already replaced by a loop in step 1:
 
@@ -123,7 +123,7 @@ fun main() {
 ## Step 4. Whole-program optimizations (only with `-opt`)
 
 Because the compiler sees the entire program, it can work out facts such as "which classes can this variable actually hold?".
-→ [optimizations.md](optimizations.md)
+→ [optimizations/](compiler/optimizations/README.md)
 
 In our program the only lists that can reach `total` come from `listOf(...)`, which returns either an array wrapper (the
 stdlib's internal class `asList$1`) or the empty list. So the interface call `shapes.iterator()` is replaced by a check of the
@@ -143,7 +143,7 @@ drops from 5430 (our code plus the whole stdlib) to 1932.
 
 **LLVM IR** is the input language of LLVM: a typed, low-level language, roughly "portable assembly". If you have not seen it
 before, read [llvm-primer.md](llvm-primer.md) first. Code generation translates each Kotlin function into an LLVM function.
-→ [codegen.md](codegen.md)
+→ [codegen.md](compiler/codegen.md)
 
 A simple one first. `Circle.area()` takes `this` as a pointer and returns a `double`:
 
@@ -183,12 +183,12 @@ define void @"kfun:#main(){}"() {
 What to notice:
 
 - **`@"kclass:Circle"`** is a constant describing the class: its size, its supertypes, its table of virtual functions. Every
-  object starts with a pointer to such a constant. → [object-model.md](object-model.md)
+  object starts with a pointer to such a constant. → [object-model.md](runtime/object-model.md)
 - **`AllocInstance`** is the runtime's allocator. There is no `new` instruction and no `free`: memory is reclaimed by the
-  garbage collector. → [gc-and-allocator.md](gc-and-allocator.md)
+  garbage collector. → [gc-and-allocator.md](runtime/gc-and-allocator.md)
 - **`EnterFrame` / `LeaveFrame`** and the extra `ptr` argument passed to calls that return an object: this is how the GC
   finds references held in local variables. Each function keeps them in a block of stack slots and tells the runtime where
-  the block is. → [runtime.md](runtime.md)
+  the block is. → [runtime/](runtime/README.md)
 - **Safepoints** are places where a thread checks whether the GC wants it to pause. The compiler puts one at the start of
   every function and in every loop.
 - **String literals and class descriptions are constants** in the binary; nothing is built at startup.
@@ -203,14 +203,14 @@ What to notice:
 3. **The system linker** (`ld.lld`, or `ld64` on Apple platforms) links it with system libraries into `tour.kexe`. For this
    program that is 727 KB by default and 551 KB with `-opt`.
 
-→ [codegen.md](codegen.md), [caches.md](caches.md) (how most of this work is skipped for libraries that did not change)
+→ [codegen.md](compiler/codegen.md), [caches.md](compiler/caches.md) (how most of this work is skipped for libraries that did not change)
 
 ## Step 7. Running
 
 The operating system calls the C `main` of the runtime. It initializes the runtime (memory manager, the current thread), then
 calls the compiler-generated function `Konan_start`, which calls our `main` inside a `try`/`catch` that reports uncaught
 exceptions. From here on the program runs with no interpreter or JIT involved. The runtime only does work when the program
-asks for it (allocation, type checks, exceptions) or in the background (the GC thread). → [runtime.md](runtime.md)
+asks for it (allocation, type checks, exceptions) or in the background (the GC thread). → [runtime/](runtime/README.md)
 
 ## Try it yourself
 
@@ -231,6 +231,6 @@ konanc tour.kt -p library -o tour && unzip -l tour.klib
 
 ## Where to go next
 
-- The same pipeline with every step named: [pipeline.md](pipeline.md)
+- The same pipeline with every step named: [compiler/](compiler/README.md)
 - Where all this lives in the repository: [code-map.md](code-map.md)
 - LLVM concepts used above: [llvm-primer.md](llvm-primer.md)
