@@ -1,3 +1,5 @@
+[Kotlin/Native guide](../../README.md) › [compiler](../README.md) › [optimizations](README.md) › dce
+
 # Dead code elimination
 
 *Skip this page if you know what DCE's roots are and why it removes more than a linker could.*

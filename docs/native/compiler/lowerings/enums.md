@@ -1,3 +1,5 @@
+[Kotlin/Native guide](../../README.md) › [compiler](../README.md) › [lowerings](README.md) › enums
+
 # Enums
 
 *Skip this page if you know that a Native enum is a plain class with a name-sorted static array of instances.

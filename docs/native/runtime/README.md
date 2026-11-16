@@ -1,3 +1,5 @@
+[Kotlin/Native guide](../README.md) › runtime
+
 # The runtime
 
 *Skip this page if you know the shadow stack, safepoints, the two thread states and how a Kotlin program starts.*
@@ -133,6 +135,14 @@ Both sides must also agree on the layout of objects and type information. → [o
   `SetCurrentFrame`, because unwinding skips the `LeaveFrame` calls of the frames it leaves. → [exceptions.md](../features/exceptions.md)
 - **The runtime has its own threads**: the GC thread, a timer thread for the GC scheduler and a finalizer thread. Only
   the finalizer thread is registered like a Kotlin thread, because it can run Kotlin cleanup code.
+
+## Go deeper
+
+| Page | What it explains |
+|---|---|
+| [object-model.md](object-model.md) | What an object looks like in memory; type information; virtual calls |
+| [gc-and-allocator.md](gc-and-allocator.md) | How memory is allocated and collected |
+| [exceptions.md](../features/exceptions.md), [initialization.md](../features/initialization.md) | The runtime's part in these two features |
 
 ## Where the code is
 

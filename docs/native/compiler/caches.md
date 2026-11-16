@@ -1,3 +1,5 @@
+[Kotlin/Native guide](../README.md) › [compiler](README.md) › caches
+
 # Caches: precompiled libraries
 
 *Skip this page if you already know what a static cache holds, why `-opt` ignores caches, and what the cache ABI accessors are.*

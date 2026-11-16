@@ -1,3 +1,5 @@
+[Kotlin/Native guide](../../README.md) › [compiler](../README.md) › [lowerings](README.md) › functions
+
 # Functions: default arguments, varargs, constructors
 
 *Skip this page if you know the `foo$default` bit-mask scheme and that a constructor call is "allocate, then call `<init>`".*

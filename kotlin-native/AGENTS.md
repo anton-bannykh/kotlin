@@ -4,7 +4,7 @@ Kotlin/Native (K/N) is the LLVM-based backend, the C++ runtime, and the native t
 commonizer). The code lives in `kotlin-native/`, `native/` and a few `compiler/` modules.
 
 **Read [docs/native/tour.md](../docs/native/tour.md) first.** It follows one program from source to binary and links to
-the page for every step. [docs/native/code-map.md](../docs/native/code-map.md) says where the code lives. The rest of the
+the page for every step. [docs/native/reference/code-map.md](../docs/native/reference/code-map.md) says where the code lives. The rest of the
 [docs/native](../docs/native/README.md) guide explains what each part does and why, in short pages with examples; for how, read
 the source files each page links to. This file only adds what an agent needs on top of that.
 
@@ -12,8 +12,8 @@ the source files each page links to. This file only adds what an agent needs on 
 
 | When you are working on…                                           | Read                                                                                      |
 |--------------------------------------------------------------------|-------------------------------------------------------------------------------------------|
-| A bug report or a failing test, and you do not know where to start | [docs/native/debugging.md](../docs/native/debugging.md)                                   |
-| How to investigate an issue step by step; every dump and test command | [docs/native/first-issue.md](../docs/native/first-issue.md), [cheat-sheet.md](../docs/native/cheat-sheet.md) |
+| A bug report or a failing test, and you do not know where to start | [docs/native/reference/debugging.md](../docs/native/reference/debugging.md)                                   |
+| How to investigate an issue step by step; every dump and test command | [docs/native/first-issue.md](../docs/native/first-issue.md), [cheat-sheet.md](../docs/native/reference/cheat-sheet.md) |
 | Running or adding compiler tests, test directives                  | [docs/native/build-and-tests/tests.md](../docs/native/build-and-tests/tests.md), [HACKING.md#testing](HACKING.md#testing) |
 | Klibs vs binaries, the two stages                                  | [docs/native/compiler/](../docs/native/compiler/README.md), [klibs-and-linking.md](../docs/native/compiler/klibs-and-linking.md) |
 | What runs when; dump and disable flags                             | [docs/native/compiler/](../docs/native/compiler/README.md)                                     |

@@ -1,3 +1,5 @@
+[Kotlin/Native guide](../../README.md) › [compiler](../README.md) › [lowerings](README.md) › inlining
+
 # Inlining
 
 *Skip this page if you know where `inline` functions are inlined and what becomes of `reified`, `typeOf` and `::class`.

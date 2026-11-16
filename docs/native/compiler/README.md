@@ -1,3 +1,5 @@
+[Kotlin/Native guide](../README.md) › compiler
+
 # The pipeline: from klibs to a binary
 
 *Skip this page if you know the two stages, what Gradle's "compile" and "link" tasks run, and the backend's steps in order.*
@@ -129,7 +131,7 @@ native libraries are not available. The code is in `compiler/cli/cli-native-klib
   reads bodies from other files. So all files are brought to the same point before inlining starts.
 - **Phase names are class names.** Each lowering is a phase named after its class, for example `EnumClassLowering`. The
   other steps have names such as `Devirtualization`, `DCEPhase`, `EscapeAnalysis`, `Codegen`, `Linker`. The flags that dump
-  IR before or after a phase, or switch a phase off, take these names. → [cheat-sheet.md](../cheat-sheet.md)
+  IR before or after a phase, or switch a phase off, take these names. → [cheat-sheet.md](../reference/cheat-sheet.md)
 
 ## Where the code is
 
@@ -144,7 +146,7 @@ native libraries are not available. The code is in `compiler/cli/cli-native-klib
 - [NativeKlibCliPipeline.kt](../../../compiler/cli/cli-native-klib/src/main/kotlin/org/jetbrains/kotlin/native/pipeline/NativeKlibCliPipeline.kt):
   the first stage.
 
-## In this directory
+## Go deeper
 
 | Page | What it explains |
 |---|---|

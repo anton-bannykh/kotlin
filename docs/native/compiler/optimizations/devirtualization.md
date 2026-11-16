@@ -1,3 +1,5 @@
+[Kotlin/Native guide](../../README.md) › [compiler](../README.md) › [optimizations](README.md) › devirtualization
+
 # Devirtualization
 
 *Skip this page if you know when a virtual call becomes a direct call or a `when` over classes, and when it does not.*

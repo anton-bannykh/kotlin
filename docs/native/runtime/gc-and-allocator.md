@@ -1,3 +1,5 @@
+[Kotlin/Native guide](../README.md) › [runtime](README.md) › gc-and-allocator
+
 # Garbage collector and allocator
 
 *Skip this page if you know the phases of the concurrent mark-and-sweep cycle, the write barrier and the paged allocator.*

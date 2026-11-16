@@ -1,3 +1,5 @@
+[Kotlin/Native guide](../README.md) › features
+
 # Language features end to end
 
 *Skip this page: it is only the index of the feature pages.*
@@ -12,4 +14,4 @@ and follows it through every part that takes care of it, from the lowerings thro
 | [exceptions.md](exceptions.md) | `throw`, `try`, `catch`, `finally` | a lowering for `finally`, landing pads from code generation, the runtime and the system unwinder |
 
 Features that are handled by lowerings alone (enums, lambdas, default arguments, inner classes, ...) are described on the
-lowering pages: see the [index of lowerings](../compiler/lowerings/README.md).
+lowering pages: see [all lowerings](../compiler/lowerings/all-lowerings.md).

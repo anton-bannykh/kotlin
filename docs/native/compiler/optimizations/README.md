@@ -1,3 +1,5 @@
+[Kotlin/Native guide](../../README.md) › [compiler](../README.md) › optimizations
+
 # Whole-program optimizations
 
 *Skip this page if you know which Kotlin-level optimizations run with `-opt`, in what order, and what the DFG is.*
@@ -73,7 +75,16 @@ somewhere if any path through the function could take it there. In the source co
 - **A library is a half-open world.** When the output is a framework or a dynamic/static library there is no `main`. Every
   public function may be called from outside with any arguments, so the analyses must assume more and find less.
 - **Bugs here show up only in release builds.** If a program misbehaves with `-opt` and works in debug, switch off one
-  step at a time, or dump the IR after a step. → [cheat-sheet.md](../../cheat-sheet.md)
+  step at a time, or dump the IR after a step. → [cheat-sheet.md](../../reference/cheat-sheet.md)
+
+## Go deeper
+
+| Page | What it explains |
+|---|---|
+| [devirtualization.md](devirtualization.md) | Replacing virtual and interface calls with direct calls |
+| [escape-analysis.md](escape-analysis.md) | Finding objects that can live on the stack |
+| [dce.md](dce.md) | Removing everything the program cannot reach |
+| [type-checks.md](type-checks.md) | How `is` and `as` work at run time and when they are checked |
 
 ## Where the code is
 

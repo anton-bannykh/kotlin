@@ -1,3 +1,5 @@
+[Kotlin/Native guide](../README.md) › [compiler](README.md) › klibs-and-linking
+
 # Klibs and linking
 
 *Skip this page if you know how a klib is laid out, what a signature is and what partial linkage does.*
@@ -52,7 +54,7 @@ compiler_version=2.5.255-SNAPSHOT
 | Looks like | `public final fun total(shapes: List<Shape>): Double` | The tree behind `shapes.sumOf { it.area() }` |
 
 The frontend never needs bodies, and the backend needs more than headers, so the two are stored separately. The `klib` tool
-(in `kotlin-native/dist/bin`) prints either. → [cheat-sheet.md](../cheat-sheet.md)
+(in `kotlin-native/dist/bin`) prints either. → [cheat-sheet.md](../reference/cheat-sheet.md)
 
 ## How several klibs become one IR
 

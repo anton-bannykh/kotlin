@@ -1,3 +1,5 @@
+[Kotlin/Native guide](../README.md) › build-and-tests
+
 # Targets, toolchains and building
 
 *Skip this page if you have built `kotlin-native/dist` and know what a target and a sysroot are. Reference material.*
@@ -42,13 +44,20 @@ Mac with Xcode, both to produce binaries for them and to run their tests.
 1. Put `kotlin.native.enabled=true` into `local.properties` in the repository root. Without it the `:kotlin-native:*` Gradle
    projects do not exist and the Native test tasks fail.
 2. `./gradlew :kotlin-native:dist` builds a **distribution** for the host into `kotlin-native/dist`: the same layout a user
-   downloads, described in [code-map.md](../code-map.md#the-built-distribution). A distribution for another target is built by
+   downloads, described in [code-map.md](../reference/code-map.md#the-built-distribution). A distribution for another target is built by
    `:kotlin-native:<target>CrossDist`.
 
 The [tests](tests.md) run the compiler from `kotlin-native/dist`, so they need this build.
 
 The dist has [caches](../compiler/caches.md) only for some flavors. Running the compiler by hand with unusual options plus
 caching flags makes it build a stdlib cache first, inside the dist.
+
+## Go deeper
+
+| Page | What it explains |
+|---|---|
+| [tests.md](tests.md) | The kinds of tests, how one test runs, how to add and investigate one |
+| [cheat-sheet.md](../reference/cheat-sheet.md) | The build and test commands |
 
 ## Where the code is
 

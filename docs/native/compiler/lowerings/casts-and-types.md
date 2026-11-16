@@ -1,3 +1,5 @@
+[Kotlin/Native guide](../../README.md) › [compiler](../README.md) › [lowerings](README.md) › casts-and-types
+
 # Casts and types
 
 *Skip this page if you know how `as`, `as?`, implicit casts and `==` are rewritten in the IR before code generation.*

@@ -1,3 +1,5 @@
+[Kotlin/Native guide](../../README.md) › [compiler](../README.md) › [lowerings](README.md) › control-flow
+
 # Control flow: `tailrec`, `finally`, `for`
 
 *Skip this page if you know that `tailrec` becomes a loop, `finally` is copied onto every exit, and `for` loses its iterator.*

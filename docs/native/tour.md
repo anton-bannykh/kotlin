@@ -1,3 +1,5 @@
+[Kotlin/Native guide](README.md) › tour
+
 # A tour: from source code to a running binary
 
 *Skip this page if you can already say what a klib, a lowering, `EnterFrame` and `runtime.bc` are and where each appears.*
@@ -211,7 +213,7 @@ checks, exceptions) or in the background (the GC thread). → [runtime/](runtime
 kotlin-native/dist/bin/konanc tour.kt -o tour      # both stages in one go; add -opt for an optimized build
 ```
 
-How to dump the Kotlin IR and the LLVM IR shown above: [cheat-sheet.md](cheat-sheet.md).
+How to dump the Kotlin IR and the LLVM IR shown above: [cheat-sheet.md](reference/cheat-sheet.md).
 
 Next: [llvm-primer.md](llvm-primer.md) for the LLVM concepts used above, then the same pipeline with every step named in
 [compiler/](compiler/README.md).

@@ -1,3 +1,5 @@
+[Kotlin/Native guide](../../README.md) › [compiler](../README.md) › [optimizations](README.md) › type-checks
+
 # Type checks: `is` and `as`
 
 *Skip this page if you know how a subtype test is compiled (class-id intervals, interface tables) and when casts are checked.*

@@ -1,3 +1,5 @@
+[Kotlin/Native guide](../README.md) › [features](README.md) › exceptions
+
 # Exceptions: how `throw` reaches `catch`
 
 *Skip this page if you know that a Kotlin exception travels as a C++ exception and what a Kotlin landing pad does.*

@@ -1,3 +1,5 @@
+[Kotlin/Native guide](../README.md) › [runtime](README.md) › object-model
+
 # The object model
 
 *Skip this page if you know the object header and its tag bits, what a TypeInfo holds, and how vtables and itables work.*

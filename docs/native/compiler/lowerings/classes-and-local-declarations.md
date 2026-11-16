@@ -1,3 +1,5 @@
+[Kotlin/Native guide](../../README.md) › [compiler](../README.md) › [lowerings](README.md) › classes-and-local-declarations
+
 # Classes and local declarations
 
 *Skip this page if you know how captured variables, the outer `this` and generated class members become explicit IR.

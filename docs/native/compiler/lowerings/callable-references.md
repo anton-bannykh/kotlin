@@ -1,3 +1,5 @@
+[Kotlin/Native guide](../../README.md) › [compiler](../README.md) › [lowerings](README.md) › callable-references
+
 # Callable references
 
 *Skip this page if you know that a lambda or `::reference` becomes a class, or a constant when it captures nothing.

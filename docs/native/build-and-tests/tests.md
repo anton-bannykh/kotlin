@@ -1,3 +1,5 @@
+[Kotlin/Native guide](../README.md) › [build-and-tests](README.md) › tests
+
 # How Kotlin/Native is tested
 
 *Skip this page if you have added a Native box test, run it in another test mode and found the compiler command in its log.*
@@ -5,7 +7,7 @@
 Almost all tests of the compiler are **black-box tests**: a Kotlin file is compiled by the real compiler into a real binary,
 the binary is run, and its output and exit code are checked. This catches bugs in any step from the frontend to the linker
 and the runtime, but a failing test only says "the program misbehaved"; finding the step is up to you
-([debugging.md](../debugging.md)). The full reference is [HACKING.md](../../../kotlin-native/HACKING.md#testing).
+([debugging.md](../reference/debugging.md)). The full reference is [HACKING.md](../../../kotlin-native/HACKING.md#testing).
 
 ## The life of one box test
 
@@ -38,7 +40,7 @@ for example a FileCheck test, gets its own executable (it is **standalone**).
 ## The kinds of tests
 
 Test data paths without a prefix are under `native/native.tests/testData/`. The Gradle task for each kind is in
-[cheat-sheet.md](../cheat-sheet.md).
+[cheat-sheet.md](../reference/cheat-sheet.md).
 
 | Kind | Test data |
 |---|---|
@@ -99,7 +101,7 @@ The compiler has many configurations, and a bug often shows in only one of them.
 **modes**, chosen with Gradle properties: the optimization mode (debug by default, or `-opt` with the
 [whole-program optimizations](../compiler/optimizations/README.md)), which klibs go through [caches](../compiler/caches.md),
 which [garbage collector](../runtime/gc-and-allocator.md) is linked in, the target, and whether every test gets its own
-executable. The properties and their values are in [cheat-sheet.md](../cheat-sheet.md).
+executable. The properties and their values are in [cheat-sheet.md](../reference/cheat-sheet.md).
 
 ## Adding and running a test
 
@@ -119,7 +121,7 @@ executable. The properties and their values are in [cheat-sheet.md](../cheat-she
 - **Find the log.** Every compiled artifact has a `<artifact>.log` next to it, under `<project>/build/t/bb.out/` for box
   tests. It holds the test data files, the exact command line after `COMPILER ARGUMENTS:`, and the compiler's output.
 - **Reproduce by hand.** Copy that command line into a shell. It starts with `<dist>/bin/kotlinc-native`, which is the
-  same compiler as `konanc`. Then add dump flags from the [cheat sheet](../cheat-sheet.md).
+  same compiler as `konanc`. Then add dump flags from the [cheat sheet](../reference/cheat-sheet.md).
 - **Dozens of sources in the command?** The test shares an executable with its neighbours. Run it in the standalone mode.
 - **"Test did not fail as expected"**: the test has an `IGNORE` directive but now passes. Remove or narrow the directive.
 

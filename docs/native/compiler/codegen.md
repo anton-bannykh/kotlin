@@ -1,3 +1,5 @@
+[Kotlin/Native guide](../README.md) › [compiler](README.md) › codegen
+
 # From Kotlin IR to a binary
 
 *Skip this page if you can read the LLVM IR that Kotlin/Native emits and know how the runtime's bitcode gets into the binary.*
@@ -134,7 +136,7 @@ be combined.
 - **The slot protocol is a contract with the runtime.** A reference that is live across a call but is in no registered
   slot is a bug that shows up only when the GC runs at the wrong moment.
 - **Code generation is deliberately naive.** Speed comes from the Kotlin-level [optimizations](optimizations/README.md) before
-  it and the LLVM passes after it. To see its output for your code: [cheat-sheet.md](../cheat-sheet.md).
+  it and the LLVM passes after it. To see its output for your code: [cheat-sheet.md](../reference/cheat-sheet.md).
 
 ## Where the code is
 

@@ -1,3 +1,5 @@
+[Kotlin/Native guide](../../README.md) › [compiler](../README.md) › [optimizations](README.md) › escape-analysis
+
 # Escape analysis
 
 *Skip this page if you know which objects Kotlin/Native allocates on the stack and what makes an object escape.*

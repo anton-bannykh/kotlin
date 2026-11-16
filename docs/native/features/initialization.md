@@ -1,3 +1,5 @@
+[Kotlin/Native guide](../README.md) › [features](README.md) › initialization
+
 # Initialization of top-level properties, objects and enums
 
 *Skip this page if you already know that globals are initialized lazily per file or class, behind a state-word check in every function.*

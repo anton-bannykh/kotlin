@@ -1,9 +1,11 @@
+[Kotlin/Native guide](README.md) › first-issue
+
 # Your first issue: a worked example
 *Skip this page if you have already traced a wrong program to one compiler phase by comparing IR dumps of two builds.*
 
 A report says: "my program throws `ClassCastException` in a debug build and prints garbage in a release build". This page
 follows it from the report to the responsible line of the compiler. Every command and output is real (Linux x64, compiler
-from `kotlin-native/dist`, output trimmed); the flags are explained in the [cheat sheet](cheat-sheet.md).
+from `kotlin-native/dist`, output trimmed); the flags are explained in the [cheat sheet](reference/cheat-sheet.md).
 
 ## 1. Reduce to one small file and reproduce with `konanc`
 
@@ -34,7 +36,7 @@ as if it were a `String`. With `-g -Xbinary=sourceInfoType=libbacktrace` the deb
 
 ## 2. Decide which part is responsible
 
-"Only with `-opt`" suggests an optimization ([debugging.md](debugging.md)). Test that guess first, because it is cheap:
+"Only with `-opt`" suggests an optimization ([debugging.md](reference/debugging.md)). Test that guess first, because it is cheap:
 disable the whole-program optimizations and the LLVM optimization phases.
 
 ```console
@@ -94,7 +96,7 @@ front of it; with `-opt` it does not. That is the whole difference between the t
 
 ## 4. Find the code
 
-A phase name is a class name, so the suspect is `lower/Autoboxing.kt` in the backend ([code-map.md](code-map.md) says where
+A phase name is a class name, so the suspect is `lower/Autoboxing.kt` in the backend ([code-map.md](reference/code-map.md) says where
 lowerings, optimizations, code generation and the runtime live). Search it for implicit casts and follow the switch:
 ```console
 $ cd kotlin-native/backend.native/compiler/ir/backend.native/src/org/jetbrains/kotlin/backend/konan

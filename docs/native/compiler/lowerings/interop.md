@@ -1,3 +1,5 @@
+[Kotlin/Native guide](../../README.md) › [compiler](../README.md) › [lowerings](README.md) › interop
+
 # Interop lowerings
 
 *Skip this page if you already know how an interop call becomes a C stub plus an `external` bridge in the IR. Reference material.*

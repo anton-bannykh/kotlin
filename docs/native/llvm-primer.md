@@ -1,4 +1,6 @@
-# LLVM in ten minutes
+[Kotlin/Native guide](README.md) › llvm-primer
+
+# LLVM: what you need to know
 
 *Skip this page if you can read LLVM IR and know what a module, bitcode, a pass and a landing pad are.*
 
@@ -111,5 +113,5 @@ stack slots into registers, and many more. After that, LLVM's code generator tur
 object file for the target. Only at this point does anything depend on the target's instruction set, which is why one
 compiler can produce binaries for many platforms.
 
-How to get the LLVM IR of your own code: [cheat-sheet.md](cheat-sheet.md). More tricks (running single passes with `opt`,
+How to get the LLVM IR of your own code: [cheat-sheet.md](reference/cheat-sheet.md). More tricks (running single passes with `opt`,
 debugging the compiler) are in [HACKING.md](../../kotlin-native/HACKING.md).
