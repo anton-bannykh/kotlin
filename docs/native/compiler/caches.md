@@ -74,9 +74,9 @@ cache is in use, the whole-program optimizations are switched off. So some bugs 
 **Release caches** lift the first half of this rule. They are work in progress and off by default. With
 `-Xbinary=enableReleaseBinaryCache=true` an `-opt` build uses caches too, and the distribution already ships `-opt` caches
 of the stdlib and the platform libraries (the `<target>-optSTATIC-system` flavor). The second half still holds: a release
-build that uses caches gets LLVM's optimizations inside each cache, but none of the whole-program ones. For the
-[tour](../tour.md) program this build takes 3 s instead of 11 s, and the binary grows from 550 KB to 716 KB. In Gradle the
-switch is the internal property `kotlin.internal.native.enableReleaseBinaryCache`.
+build that uses caches gets LLVM's optimizations inside each cache, but no whole-program optimizations yet. The binary is
+also larger: 716 KB instead of 550 KB for the [tour](../tour.md) program. In Gradle the switch is the internal property
+`kotlin.internal.native.enableReleaseBinaryCache`.
 
 ## When a cache is thrown away
 
