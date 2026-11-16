@@ -47,6 +47,7 @@ below it, so you can stop at the level of detail you need.
 | What does this term mean? | [glossary.md](reference/glossary.md) |
 | Where is the code for this? | [code-map.md](reference/code-map.md) |
 | What does this lowering do? | [all-lowerings.md](compiler/lowerings/all-lowerings.md) |
+| I am about to change something. What else must change with it? | [before-you-change.md](reference/before-you-change.md) |
 
 ## How pages are built
 

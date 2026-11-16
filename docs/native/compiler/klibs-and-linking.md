@@ -103,6 +103,18 @@ warning: <mid> @ mid.kt:3:39: Function 'removedLater' can not be called:      (s
 Uncaught Kotlin exception: kotlin.internal.IrLinkageError: Function 'removedLater' can not be called: ...
 ```
 
+## What must stay compatible
+
+Klibs are published, and they outlive the compiler that wrote them. When a klib is loaded, the `abi_version` from its
+manifest is checked: this compiler accepts everything from `KotlinAbiVersion.FIRST_SUPPORTED` (1.6.0, written by Kotlin
+1.6) to `CURRENT` (2.5.0), and rejects anything newer. Inside that window nothing else is checked up front; partial
+linkage is the only safety net. So what the first stage writes is a published format, not an internal detail: the
+serialized IR, the signatures, and the shape in which the first stage's own lowerings leave the IR. The second stage must
+keep accepting all the older shapes, and the IDE reads the metadata and the manifest too.
+
+The rules that follow from this are in [before-you-change.md](../reference/before-you-change.md); the tests that pair an
+old compiler with the current one are in [tests.md](../build-and-tests/tests.md#the-kinds-of-tests).
+
 ## Things to know
 
 - **A signature is the declaration's binary identity.** Changing the package, the name or a parameter type gives a

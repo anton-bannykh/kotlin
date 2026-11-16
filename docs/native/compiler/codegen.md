@@ -12,7 +12,7 @@ the binary.
 
 This page is a phrasebook: a Kotlin construct on top, the LLVM IR it becomes below. The snippets are real compiler output
 for the program below, shortened (empty blocks and the lazy [file initialization](../features/initialization.md) check are removed).
-A complete `main` is in the [tour](../tour.md#step-5-kotlin-ir--llvm-ir).
+A complete `main` is in the [tour](../tour.md#step-5-kotlin-ir--llvm-ir); `try`/`catch` is in [exceptions.md](../features/exceptions.md).
 
 ```kotlin
 interface Shape { fun area(): Double }
@@ -70,9 +70,7 @@ Three things here have no counterpart in the Kotlin source:
 - **The frame** (`EnterFrame`, `LeaveFrame`, the slots) is how the GC finds the references a function holds. Functions that
   hold none, like `radius` above, have no frame.
 - **The return slot**: a function that returns an object takes one extra, last parameter, a slot in the *caller's* frame,
-  and writes the result there before returning.
-
-Why both exist: [runtime/](../runtime/README.md#how-the-gc-finds-references).
+  and writes the result there before returning. Why both exist: [runtime/](../runtime/README.md#how-the-gc-finds-references).
 
 ## A virtual call and an interface call
 
@@ -105,6 +103,24 @@ With `-opt`, [devirtualization](optimizations/devirtualization.md) turns many of
 A string literal is a complete `String` object in the binary's constant data, and using it is just using its address
 (`ptr @2267`). Nothing is allocated at run time. → [object-model.md](../runtime/object-model.md#objects-that-are-constants)
 
+## Intrinsics
+
+An **intrinsic** is a stdlib function that the compiler implements itself: marked `@TypedIntrinsic` with a kind, and usually
+`external`, with no Kotlin body. This is `Int.plus` in the Native stdlib (`kotlin/Primitives.kt`), and what a call becomes:
+
+```kotlin
+@TypedIntrinsic(IntrinsicType.PLUS)
+public actual external operator fun plus(other: Int): Int    // fun add(a: Int, b: Int) = a + b  →  %3 = add i32 %0, %1
+```
+
+Code generation emits instructions instead of a call (`IntrinsicGenerator.kt`). Other kinds never get that far, because a
+lowering replaces the call first: `enumValues<Color>()` is inlined to `enumValuesIntrinsic<Color>()` (kind `ENUM_VALUES`),
+which `EnumUsageLowering` turns into `Color.values()`. The kinds are listed twice, in the stdlib and in the compiler.
+→ [before-you-change.md](../reference/before-you-change.md)
+
+Related annotations that make the compiler treat a declaration specially (`@GCUnsafeCall`, `@ExportForCppRuntime`, ...) are in
+`kotlin/native/internal/Annotations.kt`; `@SymbolName` is in `kotlin/native/Annotations.kt`. → [runtime/](../runtime/README.md#calls-in-both-directions)
+
 ## After code generation
 
 1. **The runtime is linked in.** The C++ runtime is compiled by [Clang][clang] to [LLVM bitcode][bitcode] when Kotlin/Native
@@ -119,24 +135,20 @@ A string literal is a complete `String` object in the binary's constant data, an
 4. **System linker.** [`ld.lld`][lld], or `ld64` on Apple platforms, links the object file with system libraries and with the
    [caches](caches.md) of libraries compiled earlier.
 
-How `try`/`catch` is compiled is in [exceptions.md](../features/exceptions.md).
-
 ## Debug information
 
 With `-g` every instruction carries a [source location][dbg] (`!dbg !47372`), and locals and parameters are kept in named
 stack slots that are described to the debugger. LLVM turns this into [DWARF][dwarf] in the object file. To DWARF every
-reference has the same opaque type, `ObjHeader *`, so the [LLDB][lldb] script `konan_lldb.py` (in the distribution's `tools/`
-directory) asks the running program, through debug functions of the runtime, for the class and the fields of an object.
-`-opt` and `-g` cannot be combined.
+reference has the same opaque type, `ObjHeader *`, so the [LLDB][lldb] script `konan_lldb.py` (in the distribution's `tools/`)
+asks the runtime's debug functions for the class and the fields of an object. `-opt` and `-g` cannot be combined.
 
 ## Things to know
 
-- **Raw output is noisy.** Every function has the same blocks (`prologue`, `entry`, `epilogue` with the single return),
-  many of them empty, and [`phi`s][phi] with one input. LLVM removes all that.
+- **Raw output is noisy and deliberately naive**: the same blocks in every function (`prologue`, `entry`, `epilogue`), many
+  empty, and [`phi`s][phi] with one input. LLVM removes that; speed comes from the Kotlin-level [optimizations](optimizations/README.md)
+  before code generation and the LLVM passes after it. For your own code: [cheat-sheet.md](../reference/cheat-sheet.md).
 - **The slot protocol is a contract with the runtime.** A reference that is live across a call but is in no registered
   slot is a bug that shows up only when the GC runs at the wrong moment.
-- **Code generation is deliberately naive.** Speed comes from the Kotlin-level [optimizations](optimizations/README.md) before
-  it and the LLVM passes after it. To see its output for your code: [cheat-sheet.md](../reference/cheat-sheet.md).
 
 ## Where the code is
 

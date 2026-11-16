@@ -49,6 +49,12 @@ need a Mac with Xcode, both to produce binaries for them and to run their tests.
 
 The [tests](tests.md) run the compiler from `kotlin-native/dist`, so they need this build.
 
+**The stdlib klib in the dist is not compiled by the compiler you just built.** It is compiled by the *bootstrap* compiler,
+an earlier build of Kotlin/Native that the build downloads; only the stdlib's [cache](../compiler/caches.md) is made by the
+new one. So a change in the frontend or the first stage does not show up in the stdlib's IR until the bootstrap is
+updated, while a change in the second stage applies to stdlib code at once. More such couplings:
+[before-you-change.md](../reference/before-you-change.md).
+
 The dist has [caches](../compiler/caches.md) only for some flavors. Running the compiler by hand with unusual options plus
 caching flags makes it build a stdlib cache first, inside the dist.
 

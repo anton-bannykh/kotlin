@@ -74,10 +74,17 @@ cache is in use, the whole-program optimizations are switched off. So some bugs 
 
 A cache is valid only for the exact inputs it was built from. Three mechanisms cover this:
 
-- **Options: the flavor directory.** Target, debug or opt, and each option that changes generated code or the runtime (for
-  example the GC) are part of the directory name. Other options, other directory.
-- **Compiler version.** Distribution caches live inside the distribution, so a new compiler has new caches. Incremental
-  caches record a fingerprint of the compiler and are rebuilt when it differs.
+- **Options: the flavor directory.** Target, debug or opt, and each option that changes generated code (sanitizer, lazy
+  initialization, assertions and so on) are part of every flavor name. Options that choose or tune the runtime (GC, GC
+  scheduler, allocator, runtime assertions) are part of the `-system` flavor only, because the runtime is linked into the
+  stdlib cache. The flavor of all other caches (`-user-pl`) leaves them out: one cache of a library is linked with any
+  GC, so the code generated for a library must not depend on these options.
+- **Compiler version.** Incremental caches record a fingerprint of the compiler and are rebuilt when it differs. Caches
+  inside the distribution are not checked this way: the compiler uses whatever it finds at the expected path. A released
+  compiler has a distribution directory of its own, so it starts without caches from another version. `kotlin-native/dist`
+  is rebuilt in place; there the Gradle build (`distInvalidateStaleCaches`) deletes every cache whose recorded compiler or
+  runtime fingerprint no longer matches. A dist changed in any other way, or a cache root outside it (`-Xauto-cache-dir`),
+  keeps the caches made by the previous compiler.
 - **The klib and its dependencies.** A cache of a downloaded library lives in a directory named by a hash of the library and
   all its dependencies. Per-file caches store a hash per file.
 
@@ -134,6 +141,9 @@ fun use(d: Derived) = `$lib.Derived.hello_accessor`(inst = d)
   → [tests.md](../build-and-tests/tests.md)
 - **An option that changes generated code must be added to the flavor string**, or caches built with different values of it
   get mixed silently.
+- **A lowering that puts a fact about another file or library into the current file must record that dependency**
+  (`dependenciesTracker.add`); this is where `bitcode_deps` comes from. Otherwise per-file caches go stale or fail to
+  link. This and the other cache rules: → [before-you-change.md](../reference/before-you-change.md)
 - **Running the compiler with caching flags may write into the distribution** (`<dist>/klib/cache`) if a needed stdlib cache
   flavor does not exist yet. That first build takes about a minute.
 

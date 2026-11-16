@@ -103,8 +103,17 @@ kind of allocation:
 - **Not every object is on this heap.** Stack objects (→ [escape analysis](../compiler/optimizations/escape-analysis.md))
   and permanent objects in the binary's data are told apart by a tag in the header and are never freed by the GC.
   → [object-model.md](object-model.md#objects-that-are-constants)
-- **Objective-C and Swift keep Kotlin objects alive through a counter** of foreign references. While it is above zero the
-  object is a GC root; at zero the record is only a weak reference. → [export.md](../interop/export.md#how-objects-cross-the-boundary)
+- **One kind of record stands behind every reference from outside the heap.** An Objective-C or Swift wrapper, a
+  `StableRef` or C-export handle, a weak reference and a `Cleaner`'s action each hold an `ExternalRCRef`: a pointer to the
+  object plus a counter. While the counter is above zero the object is a GC root; at zero the record is only a weak
+  reference, which the GC clears when the object dies. → [export.md](../interop/export.md#how-objects-cross-the-boundary)
+- **An Objective-C object held by Kotlin is released late.** The collector must first find its Kotlin wrapper dead; the
+  release then happens in step 7, on the finalizer thread. If the object was attached to its wrapper on the main thread,
+  the release is posted to the main run loop instead, provided that loop is running (binary option `objcDisposeOnMain`,
+  on by default).
+- **Running out of memory aborts the process.** The allocator prints `Out of memory trying to allocate N bytes. Aborting.`
+  and calls `abort()`. `OutOfMemoryError` exists, but only a few size checks throw it (a string or a collection capacity
+  that would be too large), never the allocator.
 - **A dead object is not freed at once**, and with a finalizer it may live through one more collection. Never rely on
   the timing of `Cleaner` actions.
 - **The compiler flag `-Xgc=cms` selects `pmcs`**, for historical reasons. The binary option `-Xbinary=gc=cms` means CMS.

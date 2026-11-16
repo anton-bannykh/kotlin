@@ -159,6 +159,7 @@ label_continue:
   containers are certainly initialized whenever a function is entered, and deletes the checks that can never take the slow
   path. In the optimized build of the program above, `lookup` has no check at all, because `main`, its only caller, already
   did it. Over the whole binary (mostly the standard library), 540 slow-path call sites became 132.
+  The analysis relies on the inserted calls being a function's first statements. → [before-you-change.md](../reference/before-you-change.md)
 
 ## Where the code is
 

@@ -14,6 +14,7 @@ the source files each page links to. This file only adds what an agent needs on 
 |--------------------------------------------------------------------|-------------------------------------------------------------------------------------------|
 | A bug report or a failing test, and you do not know where to start | [docs/native/reference/debugging.md](../docs/native/reference/debugging.md)                                   |
 | How to investigate an issue step by step; every dump and test command | [docs/native/first-issue.md](../docs/native/first-issue.md), [cheat-sheet.md](../docs/native/reference/cheat-sheet.md) |
+| Before changing something: what else must change with it          | [docs/native/reference/before-you-change.md](../docs/native/reference/before-you-change.md) |
 | Running or adding compiler tests, test directives                  | [docs/native/build-and-tests/tests.md](../docs/native/build-and-tests/tests.md), [HACKING.md#testing](HACKING.md#testing) |
 | Klibs vs binaries, the two stages                                  | [docs/native/compiler/](../docs/native/compiler/README.md), [klibs-and-linking.md](../docs/native/compiler/klibs-and-linking.md) |
 | What runs when; dump and disable flags                             | [docs/native/compiler/](../docs/native/compiler/README.md)                                     |

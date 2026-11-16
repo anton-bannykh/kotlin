@@ -31,7 +31,7 @@ Terms you will meet in the code, in reviews and in issues, each in one line. The
 - **Phase**: one named step of the pipeline. Flags such as `-Xdisable-phases` take phase names. → [compiler/](../compiler/README.md)
 - **Lowering**: a phase that rewrites one language feature into simpler IR. → [lowerings/](../compiler/lowerings/README.md)
 - **Fragment**: the part of the program that becomes one LLVM module: all of it, or one file. → [compiler/](../compiler/README.md)
-- **Intrinsic**: a function with no Kotlin body, which the compiler implements itself (`@TypedIntrinsic`). → [codegen.md](../compiler/codegen.md)
+- **Intrinsic**: a function with no Kotlin body, which the compiler implements itself (`@TypedIntrinsic`). → [codegen.md](../compiler/codegen.md#intrinsics)
 - **Bridge**: a generated function that adapts one calling convention to another, e.g. boxed to unboxed arguments.
 - [**Boxing**](https://en.wikipedia.org/wiki/Boxing_(computer_programming)): wrapping a primitive value or a value class into a heap object where a reference is needed.
 - **Static initializer**: code that initializes top-level properties and objects, run lazily. → [initialization.md](../features/initialization.md)
@@ -67,6 +67,8 @@ Terms you will meet in the code, in reviews and in issues, each in one line. The
 - **Shadow stack, frame**: per-function blocks of stack slots through which the GC finds local references. → [runtime/](../runtime/README.md)
 - **CMS, PMCS, STWMS, noop**: the garbage collectors; CMS ([concurrent mark and sweep](https://en.wikipedia.org/wiki/Tracing_garbage_collection#Naive_mark-and-sweep)) is the default. → [gc-and-allocator.md](../runtime/gc-and-allocator.md)
 - **Custom allocator**: the runtime's own heap allocator, the default one. → [gc-and-allocator.md](../runtime/gc-and-allocator.md)
+- **`ExternalRCRef`**: the runtime's counted reference to a Kotlin object from outside the heap: a root while the count is above zero, a weak reference at zero. → [gc-and-allocator.md](../runtime/gc-and-allocator.md#things-to-know)
+- **Worker, freezing, legacy memory model**: the old rules for sharing objects between threads. `Worker` remains as an obsolete API; freezing does nothing. → [runtime/](../runtime/README.md#things-to-know)
 - **`@GCUnsafeCall`**, **`@ExportForCppRuntime`**: a Kotlin `external` function implemented in the C++ runtime, and a Kotlin function the runtime calls by name. → [runtime/](../runtime/README.md#calls-in-both-directions)
 
 ## Interop and export

@@ -49,12 +49,14 @@ Test data paths without a prefix are under `native/native.tests/testData/`. The 
 | Programs with their own `main`, checked by output | `standalone/` |
 | Garbage collector; standard library | `gc/`; the stdlib's own tests in `libraries/stdlib` |
 | Klib contents; partial linkage | `klib/`; `compiler/testData/klib/partial-linkage` |
+| Klib compatibility: box tests with one stage done by an old released compiler | the box tests above; project `klib-compatibility/` |
+| First stage only: IR and klib dumps, diagnostics, klib tools | `compiler/testData/ir`, `klib`, ...; project `klib-ir-inliner/` |
 | Caches and incremental compilation | `caches/` |
 | cinterop; Objective-C and C export | `CInterop/`, `interop/`; `ObjCExport/`, `CExport/` |
 | Swift export | `native/swift/*/testData` |
 | Debugger: an [`lldb`](https://lldb.llvm.org/) session against a binary | `lldb/` |
 | Runtime unit tests: C++, [Google Test](https://google.github.io/googletest/), no compiler | `*Test.cpp` next to the runtime sources |
-| Compiler unit tests: no dist needed | `kotlin-native/backend.native/compiler/ir/backend.native/test` |
+| Compiler unit tests, no dist needed; one is `NativeLoweringPrerequisitesTest` (order of lowerings) | `kotlin-native/backend.native/compiler/ir/backend.native/test` |
 
 ## FileCheck tests
 
@@ -132,6 +134,9 @@ executable. The properties and their values are in [cheat-sheet.md](../reference
 - **Grouped tests are changed before compilation**: their declarations are moved into a package made from the file's path
   so that they do not clash. A test can therefore behave differently alone and in a group.
 - **FileCheck tests are skipped in cache modes that cache the test's own klibs.**
+- **Tests do not run the compiler the way you do by hand.** They pass `-Xverify-ir=error -Xphases-to-validate-after=all`,
+  so malformed IR fails a test, while plain `konanc` validates nothing. And unless a cache mode is given, debug tests use
+  the dist's stdlib cache (`STATIC_ONLY_DIST`) and `-opt` tests use no cache. Reproduce with the logged command line.
 
 ## Where the code is
 

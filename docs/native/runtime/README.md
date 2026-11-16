@@ -125,7 +125,8 @@ internal fun ThrowNullPointerException(): Nothing {
 }
 ```
 
-Both sides must also agree on the layout of objects and type information. → [object-model.md](object-model.md)
+Both sides must also agree on the layout of objects and type information (→ [object-model.md](object-model.md)), and a new
+runtime function has to be declared in several places. → [before-you-change.md](../reference/before-you-change.md)
 
 ## Things to know
 
@@ -135,6 +136,10 @@ Both sides must also agree on the layout of objects and type information. → [o
   `SetCurrentFrame`, because unwinding skips the `LeaveFrame` calls of the frames it leaves. → [exceptions.md](../features/exceptions.md)
 - **The runtime has its own threads**: the GC thread, a timer thread for the GC scheduler and a finalizer thread. Only
   the finalizer thread is registered like a Kotlin thread, because it can run Kotlin cleanup code.
+- **Workers and freezing are leftovers of the old memory model**, which you still meet in old issues and tests. `Worker`
+  and `Future` work but are marked `@ObsoleteWorkersApi`. `freeze()` returns its receiver and `isFrozen` is always false
+  (using either is a compile error). The `-memory-model` flag and the `memoryModel` and `freezing` binary options are still
+  parsed: the only accepted values give a deprecation warning, the others an error.
 
 ## Go deeper
 
