@@ -33,7 +33,7 @@ below it, so you can stop at the level of detail you need.
 | The compiler | [compiler/](compiler/README.md) | [klibs-and-linking.md](compiler/klibs-and-linking.md), [codegen.md](compiler/codegen.md), [caches.md](compiler/caches.md) |
 | Lowerings: language features rewritten into simpler IR | [compiler/lowerings/](compiler/lowerings/README.md) | A page per theme: [inlining](compiler/lowerings/inlining.md), [callable references](compiler/lowerings/callable-references.md), [classes and local declarations](compiler/lowerings/classes-and-local-declarations.md), [enums](compiler/lowerings/enums.md), [control flow](compiler/lowerings/control-flow.md), [functions](compiler/lowerings/functions.md), [casts and types](compiler/lowerings/casts-and-types.md), [boxing](compiler/lowerings/boxing.md), [interop](compiler/lowerings/interop.md), [tests and assertions](compiler/lowerings/tests-and-assertions.md) |
 | Whole-program optimizations | [compiler/optimizations/](compiler/optimizations/README.md) | [devirtualization.md](compiler/optimizations/devirtualization.md), [escape-analysis.md](compiler/optimizations/escape-analysis.md), [dce.md](compiler/optimizations/dce.md), [type-checks.md](compiler/optimizations/type-checks.md) |
-| Language features followed end to end | [features/](features/README.md) | [initialization.md](features/initialization.md), [coroutines.md](features/coroutines.md), [exceptions.md](features/exceptions.md) |
+| Language features: an index of where each is explained | [features/](features/README.md) | Followed end to end: [initialization.md](features/initialization.md), [coroutines.md](features/coroutines.md), [exceptions.md](features/exceptions.md) |
 | The runtime | [runtime/](runtime/README.md) | [object-model.md](runtime/object-model.md), [gc-and-allocator.md](runtime/gc-and-allocator.md) |
 | Interop with C, Objective-C and Swift | [interop/](interop/README.md) | [cinterop.md](interop/cinterop.md), [export.md](interop/export.md) |
 | Building and testing | [build-and-tests/](build-and-tests/README.md) | [tests.md](build-and-tests/tests.md) |
@@ -46,6 +46,7 @@ below it, so you can stop at the level of detail you need.
 | What is the command or flag for this? | [cheat-sheet.md](reference/cheat-sheet.md) |
 | What does this term mean? | [glossary.md](reference/glossary.md) |
 | Where is the code for this? | [code-map.md](reference/code-map.md) |
+| Where is this language feature explained? | [features/](features/README.md) |
 | What does this lowering do? | [all-lowerings.md](compiler/lowerings/all-lowerings.md) |
 | I am about to change something. What else must change with it? | [before-you-change.md](reference/before-you-change.md) |
 
