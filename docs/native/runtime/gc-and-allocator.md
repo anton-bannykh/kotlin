@@ -6,8 +6,8 @@
 
 Compiled Kotlin code never frees memory. It asks the [runtime](README.md) for every object, and a **garbage collector**
 (GC) finds the objects the program can no longer reach and gives their memory back to the **allocator**. Both are
-replaceable [runtime modules](README.md#how-it-is-shipped); this page describes the defaults: the concurrent mark-and-sweep
-collector (CMS) and the "custom" allocator.
+replaceable [runtime modules](README.md#how-it-is-shipped); this page describes the defaults: the concurrent
+[mark-and-sweep][marksweep] collector (CMS) and the "custom" allocator.
 
 One collection with the default collector. Time goes left to right. Neither marking nor sweeping happens during a pause:
 
@@ -22,18 +22,18 @@ One collection with the default collector. Time goes left to right. Neither mark
    roots (the shadow stack and thread-local properties of each thread) and turns the write barrier on. Threads resume.
 3. **Mark, concurrently.** The GC thread adds the global roots, then follows references from object to object and sets a
    mark on everything it reaches. The program keeps running and keeps changing the object graph meanwhile.
-4. **Weak references, concurrently.** Every weak reference whose target was not marked is set to null.
+4. **Weak references, concurrently.** Every [weak reference][weakref] whose target was not marked is set to null.
 5. **Pause: switch over.** The barrier is turned off and the allocator is told that a sweep begins.
 6. **Sweep, concurrently.** Every unmarked object is freed and the marks of the survivors are cleared.
-7. **Finalizers.** Dead objects that need cleanup (a `Cleaner`, an attached Objective-C object) were put in a queue by the
-   sweep. A separate finalizer thread processes the queue.
+7. **Finalizers.** Dead objects that need cleanup (a [`Cleaner`][cleaner], an attached Objective-C object) were put in a
+   queue by the sweep. A separate finalizer thread processes the queue.
 
 ## The write barrier
 
-A **barrier** is a small piece of code that runs on every store of a reference into an object or a global. Concurrent
-marking needs one because the program can hide an object from the marker: it reads a reference out of an object the marker
-has not visited yet, keeps it only in a local variable, and overwrites the field. The marker scanned the stack earlier and
-will never see that object, although it is alive.
+A [**barrier**][barrier] is a small piece of code that runs on every store of a reference into an object or a global.
+Concurrent marking needs one because the program can hide an object from the marker: it reads a reference out of an object
+the marker has not visited yet, keeps it only in a local variable, and overwrites the field. The marker scanned the stack
+earlier and will never see that object, although it is alive.
 
 So before a reference is overwritten, the barrier hands the **old** value to the marker. Together with "objects allocated
 during marking are born marked", this means everything that was reachable at the pause in step 2 survives the collection.
@@ -44,10 +44,10 @@ compiled code calls to store references (`UpdateHeapRef` and friends).
 
 ## What kind of collector this is
 
-- **Tracing**: it finds live objects by following references from [roots](README.md#how-the-gc-finds-references). There
-  is no reference counting, so cycles are not a problem.
-- **Non-moving**: an object stays at the same address for its whole life, so pointers held in registers, in the runtime's
-  C++ code or in foreign code stay valid across a collection. The cost is that free memory can become fragmented.
+- [**Tracing**][tracing]: it finds live objects by following references from [roots](README.md#how-the-gc-finds-references).
+  There is no [reference counting][refcount], so cycles are not a problem.
+- [**Non-moving**][nonmoving]: an object stays at the same address for its whole life, so pointers held in registers, in the
+  runtime's C++ code or in foreign code stay valid across a collection. The cost is that free memory can become fragmented.
 - **Non-generational**: there is no "young generation". Every collection marks the whole heap.
 
 ## When a collection starts
@@ -59,11 +59,12 @@ The default scheduler (`adaptive`) triggers a collection in two cases:
   If the heap still passes the target before the collection finishes, Kotlin threads are paused until it does.
 - **Time.** If no collection happened for a while (10 seconds by default), a timer thread starts one.
 
-A program can also ask explicitly with `kotlin.native.runtime.GC.collect()`.
+A program can also ask explicitly with [`kotlin.native.runtime.GC.collect()`][gcapi].
 
 ## The other collectors
 
-Chosen at compile time with the binary option `gc`. All share the cycle above; they differ in what runs during a pause.
+Chosen at compile time with the [binary option][binopts] `gc`. All share the cycle above; they differ in what runs during a
+pause.
 
 | Collector | What is different |
 |---|---|
@@ -92,8 +93,8 @@ kind of allocation:
 
 - **Allocation takes no lock.** Each thread owns one current page per size, and only that thread allocates in it. Shared
   state is touched only when the thread needs another page.
-- **Sweeping is per page.** Walking a page block by block, the sweep rebuilds its free list from the unmarked blocks. A
-  thread that needs a page which has not been swept yet in this cycle sweeps it itself.
+- **Sweeping is per page.** Walking a page block by block, the sweep rebuilds its [free list][freelist] from the unmarked
+  blocks. A thread that needs a page which has not been swept yet in this cycle sweeps it itself.
 - **The GC's mark lives next to the object**: the allocator puts one extra word in front of every heap object for the
   collector. → [object-model.md](object-model.md)
 
@@ -114,3 +115,24 @@ kind of allocation:
   collectors; [gc/cms/](../../../kotlin-native/runtime/src/gc/cms/cpp) has concurrent marking and the barriers
 - [gcScheduler/](../../../kotlin-native/runtime/src/main/cpp/gcScheduler): when to collect; defaults are in `GCSchedulerConfig.hpp`
 - [alloc/custom/](../../../kotlin-native/runtime/src/alloc/custom): the allocator, with its own README
+
+## Further reading
+
+- [Kotlin/Native memory management](https://kotlinlang.org/docs/native-memory-manager.html): this collector as its users
+  see it, with the options for adjusting and monitoring it
+- [Integration with Swift/Objective-C ARC](https://kotlinlang.org/docs/native-arc-integration.html): how the collector
+  lives together with reference counting
+- [Tracing garbage collection](https://en.wikipedia.org/wiki/Tracing_garbage_collection#Tri-color_marking) on Wikipedia:
+  mark-and-sweep, tri-color marking, and stop-the-world, incremental and concurrent collectors
+- [The Garbage Collection Handbook](https://gchandbook.org/): the standard textbook on collectors, barriers and allocators
+
+[marksweep]: https://en.wikipedia.org/wiki/Tracing_garbage_collection#Naive_mark-and-sweep
+[weakref]: https://en.wikipedia.org/wiki/Weak_reference
+[cleaner]: https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.native.ref/-cleaner/
+[barrier]: https://en.wikipedia.org/wiki/Write_barrier
+[tracing]: https://en.wikipedia.org/wiki/Tracing_garbage_collection
+[refcount]: https://en.wikipedia.org/wiki/Reference_counting
+[nonmoving]: https://en.wikipedia.org/wiki/Tracing_garbage_collection#Moving_vs._non-moving
+[gcapi]: https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.native.runtime/-g-c/
+[binopts]: https://kotlinlang.org/docs/native-binary-options.html
+[freelist]: https://en.wikipedia.org/wiki/Free_list

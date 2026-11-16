@@ -52,15 +52,15 @@ Test data paths without a prefix are under `native/native.tests/testData/`. The 
 | Caches and incremental compilation | `caches/` |
 | cinterop; Objective-C and C export | `CInterop/`, `interop/`; `ObjCExport/`, `CExport/` |
 | Swift export | `native/swift/*/testData` |
-| Debugger: an `lldb` session against a binary | `lldb/` |
-| Runtime unit tests: C++, Google Test, no compiler | `*Test.cpp` next to the runtime sources |
+| Debugger: an [`lldb`](https://lldb.llvm.org/) session against a binary | `lldb/` |
+| Runtime unit tests: C++, [Google Test](https://google.github.io/googletest/), no compiler | `*Test.cpp` next to the runtime sources |
 | Compiler unit tests: no dist needed | `kotlin-native/backend.native/compiler/ir/backend.native/test` |
 
 ## FileCheck tests
 
 Some properties cannot be seen from outside: "this object is allocated on the stack", "this call was devirtualized". A
-**FileCheck test** checks the generated LLVM IR instead: LLVM's `FileCheck` tool matches the `// CHECK` comments against
-the IR saved after the named phase, in order. From `codegen/fileCheck/escape_analysis.kt`:
+**FileCheck test** checks the generated LLVM IR instead: LLVM's [`FileCheck`][filecheck] tool matches the `// CHECK` comments
+against the IR saved after the named phase, in order. From `codegen/fileCheck/escape_analysis.kt`:
 
 ```kotlin
 // FILECHECK_STAGE: CStubs                                   ← look at the IR after this compiler phase
@@ -98,7 +98,7 @@ fun box() = Q.S().ok
 ## Test modes
 
 The compiler has many configurations, and a bug often shows in only one of them. So the same tests can run in different
-**modes**, chosen with Gradle properties: the optimization mode (debug by default, or `-opt` with the
+**modes**, chosen with [Gradle properties][gradleprops]: the optimization mode (debug by default, or `-opt` with the
 [whole-program optimizations](../compiler/optimizations/README.md)), which klibs go through [caches](../compiler/caches.md),
 which [garbage collector](../runtime/gc-and-allocator.md) is linked in, the target, and whether every test gets its own
 executable. The properties and their values are in [cheat-sheet.md](../reference/cheat-sheet.md).
@@ -106,7 +106,7 @@ executable. The properties and their values are in [cheat-sheet.md](../reference
 ## Adding and running a test
 
 1. Put a `.kt` file into the right test data directory. There is nothing to register.
-2. Run the test task. It first generates the JUnit classes into `build/tests-gen/` (they are not checked in, and the
+2. Run the test task. It first generates the [JUnit][junit] classes into `build/tests-gen/` (they are not checked in, and the
    repository-wide `./gradlew generateTests` does not make them). The class nests one level per directory and the method
    is `test` plus the file name:
 
@@ -138,3 +138,7 @@ executable. The properties and their values are in [cheat-sheet.md](../reference
 - [native/native.tests/README.md](../../../native/native.tests/README.md): the layout of the test project
 - [testFixtures/.../blackbox/support/](../../../native/native.tests/testFixtures/org/jetbrains/kotlin/konan/test/blackbox/support): the infrastructure: `group/`, `compilation/`, `runner/`
 - [TestDirectives.kt](../../../native/native.tests/testFixtures/org/jetbrains/kotlin/konan/test/blackbox/support/TestDirectives.kt): the Native directives, with descriptions
+
+[filecheck]: https://llvm.org/docs/CommandGuide/FileCheck.html
+[gradleprops]: https://docs.gradle.org/current/userguide/build_environment.html#sec:project_properties
+[junit]: https://junit.org/

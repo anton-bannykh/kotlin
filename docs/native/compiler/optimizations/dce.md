@@ -5,8 +5,8 @@
 *Skip this page if you know what DCE's roots are and why it removes more than a linker could.*
 
 The second stage compiles your code together with the whole standard library and all dependencies. A typical program uses
-a small part of them. Dead code elimination (**DCE**) removes every function the program can never call, before any LLVM IR
-is generated for it. It is one of the [whole-program optimizations](README.md).
+a small part of them. [Dead code elimination][dce] (**DCE**) removes every function the program can never call, before any
+LLVM IR is generated for it. It is one of the [whole-program optimizations](README.md).
 
 The effect on a 50-line sample program (a few classes, a list, some `println` calls), counted as the number of functions
 in the LLVM IR after code generation and as the size of the final executable on Linux x64:
@@ -89,3 +89,5 @@ that sits in a class's function table, because code outside can call them. DCE s
   function `computeRootSet` defines the roots.
 
 **Read next:** [type-checks.md](type-checks.md)
+
+[dce]: https://en.wikipedia.org/wiki/Dead-code_elimination

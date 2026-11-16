@@ -10,8 +10,8 @@ every binary. Compiled Kotlin code calls it constantly.
 
 ## How it is shipped
 
-The runtime is a set of LLVM bitcode files in the distribution (`konan/targets/<target>/native/`): `runtime.bc` with the
-core, and one file for each **module** that has several interchangeable implementations.
+The runtime is a set of [LLVM bitcode][bitcode] files in the distribution (`konan/targets/<target>/native/`): `runtime.bc`
+with the core, and one file for each **module** that has several interchangeable implementations.
 
 | Module | Implementations (one is linked) |
 |---|---|
@@ -19,8 +19,8 @@ core, and one file for each **module** that has several interchangeable implemen
 | GC scheduler (when to collect) | `adaptive_gcScheduler.bc` (default), `manual_gcScheduler.bc`, `aggressive_gcScheduler.bc` |
 | allocator | `custom_alloc.bc` (default), `legacy_alloc.bc` |
 
-The compiler chooses the files from the binary options (for example `-Xbinary=gc=noop`), the target (`objc.bc` on Apple
-targets) and the kind of output (`launcher.bc` for an executable), and merges them into the program's LLVM module.
+The compiler chooses the files from the [binary options][binopts] (for example `-Xbinary=gc=noop`), the target (`objc.bc` on
+Apple targets) and the kind of output (`launcher.bc` for an executable), and merges them into the program's LLVM module.
 → [codegen.md](../compiler/codegen.md#after-code-generation)
 
 ## Startup and shutdown
@@ -66,9 +66,9 @@ again on return.
 
 ## Safepoints
 
-A **safepoint** is a place in compiled code where the thread asks "does the runtime want something from me?". The compiler
-puts one at the start of every function and in the body of every loop, so a runnable thread reaches one after a bounded
-amount of work. In LLVM IR they are the calls to `Kotlin_mm_safePointFunctionPrologue` and
+A [**safepoint**][safepoint] is a place in compiled code where the thread asks "does the runtime want something from me?".
+The compiler puts one at the start of every function and in the body of every loop, so a runnable thread reaches one after a
+bounded amount of work. In LLVM IR they are the calls to `Kotlin_mm_safePointFunctionPrologue` and
 `Kotlin_mm_safePointWhileLoopBody`.
 
 Normally a safepoint costs one load of a global and a branch that is not taken. When the GC has requested a pause, the
@@ -79,7 +79,7 @@ thread stops in the safepoint until the GC lets it go. Switching from native to 
 The GC starts from **roots**: references that are not inside heap objects. It has to know where every one of them is.
 
 - **Globals.** The compiler-generated initializer of each file registers the address of every top-level property that holds
-  a reference. `@ThreadLocal` properties live in a per-thread table instead.
+  a reference. [`@ThreadLocal`][threadlocal] properties live in a per-thread table instead.
 - **Local variables.** LLVM knows nothing about garbage collection, so the compiler cannot ask it where references are in
   registers or on the machine stack. Instead each function keeps a copy of every reference it holds in a block of stack
   slots, and links that block into a per-thread list with `EnterFrame` and unlinks it with `LeaveFrame`. This list is the
@@ -151,3 +151,8 @@ Both sides must also agree on the layout of objects and type information. → [o
 - [Memory.h](../../../kotlin-native/runtime/src/main/cpp/Memory.h): the functions compiled code calls for memory and thread state
 - [mm/](../../../kotlin-native/runtime/src/main/cpp/mm): thread registry, thread states, safepoints, shadow stack, root set
 - [runtime/README.md](../../../kotlin-native/runtime/README.md): the full list of modules and how to build and test them
+
+[bitcode]: https://llvm.org/docs/BitCodeFormat.html
+[binopts]: https://kotlinlang.org/docs/native-binary-options.html
+[safepoint]: https://openjdk.org/groups/hotspot/docs/HotSpotGlossary.html#safepoint
+[threadlocal]: https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.native.concurrent/-thread-local/

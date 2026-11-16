@@ -4,9 +4,9 @@
 
 *Skip this page if you know where box/unbox calls are inserted and why an override may need a bridge function.*
 
-An `Int`, a `Double` or a value class is a raw machine value; an `Any`, a nullable type or a generic `T` is a pointer to a
-heap object (→ [object-model.md](../../runtime/object-model.md)). These lowerings make every crossing between the two
-explicit, and with `-opt` remove the crossings that turn out to be unnecessary. In the order they run:
+An `Int`, a `Double` or a [value class][valueclass] is a raw machine value; an `Any`, a nullable type or a generic `T` is a
+pointer to a heap object (→ [object-model.md](../../runtime/object-model.md)). These lowerings make every crossing between
+the two explicit, and with `-opt` remove the crossings that turn out to be unnecessary. In the order they run:
 
 `BridgesBuilding → GenericCallsReturnTypeEraser → Autoboxing → (devirtualization) → RedundantCoercionsCleaner`
 `→ UnboxInlineLowering`
@@ -123,3 +123,5 @@ fun sum(s: Source<Int>): Int =
 [UnboxInlineLowering.kt](../../../../kotlin-native/backend.native/compiler/ir/backend.native/src/org/jetbrains/kotlin/backend/konan/lower/UnboxInlineLowering.kt)
 · **Runs:** right after devirtualization. The cleaner runs in every build, but devirtualization, its main source of work,
 only with `-opt`.
+
+[valueclass]: https://kotlinlang.org/docs/inline-classes.html

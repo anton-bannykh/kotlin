@@ -7,7 +7,8 @@ Reference material.*
 
 Codegen only knows top-level functions and classes with fields. These lowerings, all after inlining, make explicit what the
 language keeps implicit: the variables a local function or class captures, the outer instance of an inner class, and
-members generated for data classes, annotations and `@Volatile` properties. Only the first two depend on each other.
+members generated for data classes, annotations and [`@Volatile`][volatile] properties. Only the first two depend on each
+other.
 
 ## NativeSharedVariablesPrimitiveBoxSpecializationLowering
 
@@ -176,8 +177,8 @@ shared part in [AnnotationImplementationTransformer.kt](../../../../compiler/ir/
 
 ## VolatileFieldsLowering
 
-The stdlib atomics (`kotlin.concurrent.atomics.AtomicInt` and friends) are ordinary classes with one `@Volatile` field,
-and their operations are intrinsics on a property reference, which must not become a real reference object. For every
+The [stdlib atomics][atomics] (`kotlin.concurrent.atomics.AtomicInt` and friends) are ordinary classes with one `@Volatile`
+field, and their operations are intrinsics on a property reference, which must not become a real reference object. For every
 `@Volatile` property this lowering adds member functions for compare-and-set, exchange and add, and rewrites the
 intrinsics into calls of them. Codegen turns each into a single atomic instruction on the field.
 
@@ -207,3 +208,6 @@ class Job { @Volatile var done: Byte = if (false) 1 else 0 }   // a Boolean is s
 **Source:** [VolatileFieldsLowering.kt](../../../../kotlin-native/backend.native/compiler/ir/backend.native/src/org/jetbrains/kotlin/backend/konan/lower/VolatileFieldsLowering.kt)
 · **Runs:** after inlining, always, before [PropertyReferenceLowering](callable-references.md#propertyreferencelowering),
 which would otherwise turn `this::value` into an object.
+
+[volatile]: https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.concurrent/-volatile/
+[atomics]: https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.concurrent.atomics/

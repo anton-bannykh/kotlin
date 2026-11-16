@@ -93,9 +93,11 @@ somewhere if any path through the function could take it there. In the source co
 - [LTO.kt](../../../../kotlin-native/backend.native/compiler/ir/backend.native/src/org/jetbrains/kotlin/backend/konan/driver/phases/LTO.kt):
   the phase definitions for each step.
 - [optimizations/](../../../../kotlin-native/backend.native/compiler/ir/backend.native/src/org/jetbrains/kotlin/backend/konan/optimizations/):
-  the implementations. `DataFlowIR.kt` and `DFGBuilder.kt` are the data-flow graph, `CallGraphBuilder.kt` the call graph
-  derived from it.
+  the implementations. `DataFlowIR.kt` and `DFGBuilder.kt` are the data-flow graph, `CallGraphBuilder.kt` the
+  [call graph][callgraph] derived from it.
 
 **Read next:** [devirtualization](devirtualization.md), then
 [escape analysis](escape-analysis.md), [dead code elimination](dce.md) and
 [type checks](type-checks.md).
+
+[callgraph]: https://en.wikipedia.org/wiki/Call_graph

@@ -6,8 +6,8 @@
 
 Kotlin/Native does not have its own mechanism for finding the `catch` that handles a `throw`. It reuses the one every
 platform already has for C++: a Kotlin exception is thrown **as a C++ exception** whose only content is a reference to the
-Kotlin exception object, and the system's C++ unwinding library carries it up the stack. The compiler only has to mark which
-calls are inside a `try`, and to check the exception's type once it arrives.
+Kotlin exception object, and the system's [C++ unwinding library][itanium] carries it up the stack. The compiler only has to
+mark which calls are inside a `try`, and to check the exception's type once it arrives.
 
 ```kotlin
 fun risky(x: Int): Int {
@@ -69,7 +69,7 @@ catch:
   ...                                                                ; the catch body; here it produces -1
 ```
 
-A `try` with several `catch` clauses has one landing pad and a chain of such `IsSubtype` checks, in source order.
+A `try` with several `catch` clauses has one [landing pad][eh] and a chain of such `IsSubtype` checks, in source order.
 
 `SetCurrentFrame` repairs the [shadow stack](../runtime/README.md#how-the-gc-finds-references): the frames that were
 skipped during unwinding never ran their `LeaveFrame`, so the catching function resets the list to its own frame.
@@ -103,8 +103,8 @@ private fun Konan_start(args: Array<String>): Int {
 }
 ```
 
-Exceptions that escape elsewhere (for example on a thread that was not started by Kotlin) end in C++ `std::terminate`,
-where a handler installed by the runtime does the same two steps.
+Exceptions that escape elsewhere (for example on a thread that was not started by Kotlin) end in C++
+[`std::terminate`][terminate], where a handler installed by the runtime does the same two steps.
 
 ## Crossing into other languages
 
@@ -113,22 +113,22 @@ behaviour below is taken from the sources, not from a compilation):
 
 | Direction | What happens |
 |---|---|
-| Kotlin function exported to **Objective-C/Swift**, marked `@Throws(E::class)` | The exported method gets an extra `NSError**` parameter (`throws` in Swift). The generated bridge catches the exception; if it is an `E`, it is wrapped into an `NSError` (domain `KotlinException`, the Kotlin object in `userInfo`) and the method returns `NO`/`nil` |
+| Kotlin function exported to **Objective-C/Swift**, marked [`@Throws(E::class)`](https://kotlinlang.org/docs/native-objc-interop.html#errors-and-exceptions) | The exported method gets an extra [`NSError**`](https://developer.apple.com/documentation/foundation/nserror) parameter ([`throws` in Swift](https://developer.apple.com/documentation/swift/about-imported-cocoa-error-parameters)). The generated bridge catches the exception; if it is an `E`, it is wrapped into an `NSError` (domain `KotlinException`, the Kotlin object in `userInfo`) and the method returns `NO`/`nil` |
 | The same, without `@Throws`, or the exception is not an `E` | The bridge treats it as unhandled: hook, report, terminate. See [export.md](../interop/export.md) |
 | Kotlin function exported to **C** (`-p dynamic`/`static`) | Always terminates |
-| Kotlin calls **Objective-C**, which throws an `NSException` | Terminates by default. If the library's `.def` file sets `foreignExceptionMode = objc-wrap`, the call site catches it and throws a Kotlin `ForeignException` holding the `NSException`. See [cinterop.md](../interop/cinterop.md) |
+| Kotlin calls **Objective-C**, which throws an [`NSException`](https://developer.apple.com/documentation/foundation/nsexception) | Terminates by default. If the library's `.def` file sets [`foreignExceptionMode = objc-wrap`](https://kotlinlang.org/docs/native-definition-file.html#handle-objective-c-exceptions), the call site catches it and throws a Kotlin `ForeignException` holding the `NSException`. See [cinterop.md](../interop/cinterop.md) |
 
 ## Things to know
 
 - **A frame without `try` runs nothing during unwinding.** Kotlin has no destructors, so such functions use plain `call`
   and have no landing pads. That is why the catching side must repair the GC's frame list itself.
-- **The type check is done by Kotlin code, not by the unwinder.** C++ would let the unwinder pick the handler by type. Kotlin
-  landing pads catch everything and rethrow what they do not want.
+- **The type check is done by Kotlin code, not by the unwinder.** C++ would let the unwinder
+  [pick the handler by type][personality]. Kotlin landing pads catch everything and rethrow what they do not want.
 - **The stack trace is captured when the exception object is created**, in the constructor of `Throwable`, not when it is
   thrown. Only the return addresses are stored; they are turned into function names when the trace is first requested.
   Creating an exception therefore always costs a stack walk, and a rethrown exception keeps its original trace.
-- **Not throwing is free.** `invoke` adds no instructions to the normal path: the landing pad is found through tables
-  in the binary, which only the unwinder reads.
+- **Not throwing is free.** [`invoke`][invoke] adds no instructions to the normal path: the landing pad is found through
+  [tables][zerocost] in the binary, which only the unwinder reads.
 
 ## Where the code is
 
@@ -139,3 +139,10 @@ behaviour below is taken from the sources, not from a compilation):
 - [IrToBitcode.kt](../../../kotlin-native/backend.native/compiler/ir/backend.native/src/org/jetbrains/kotlin/backend/konan/llvm/IrToBitcode.kt):
   how `try`, `catch` and `throw` are translated (search for `CatchScope`).
 - [ObjCExportErrors.mm](../../../kotlin-native/runtime/src/main/cpp/ObjCExportErrors.mm): Kotlin exception ↔ `NSError`.
+
+[itanium]: https://itanium-cxx-abi.github.io/cxx-abi/abi-eh.html
+[eh]: https://llvm.org/docs/ExceptionHandling.html
+[terminate]: https://en.cppreference.com/w/cpp/error/terminate
+[personality]: https://itanium-cxx-abi.github.io/cxx-abi/abi-eh.html#cxx-personality
+[invoke]: https://llvm.org/docs/LangRef.html#invoke-instruction
+[zerocost]: https://llvm.org/docs/ExceptionHandling.html#itanium-abi-zero-cost-exception-handling

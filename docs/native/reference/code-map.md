@@ -29,9 +29,9 @@ run inside Gradle or the IDE on any machine. Only `kotlin-native/backend.native`
 | `libraries/stdlib` | The rest of the stdlib; `native-wasm/` is shared by Native and Wasm |
 | `kotlin-native/Interop` | The `cinterop` tool (`Indexer`, `StubGenerator`) and the `kotlinx.cinterop` library (`Runtime`) → [cinterop.md](../interop/cinterop.md) |
 | `kotlin-native/platformLibs` | `.def` files from which the platform libraries (POSIX, Apple frameworks) are generated |
-| `kotlin-native/llvmInterop`, `kotlin-native/libclangInterop` | Bindings that let the compiler, a JVM program, call the C APIs of LLVM and Clang |
+| `kotlin-native/llvmInterop`, `kotlin-native/libclangInterop` | Bindings that let the compiler, a JVM program, call the C APIs of [LLVM](https://llvm.org/doxygen/group__LLVMC.html) and [Clang](https://clang.llvm.org/docs/LibClang.html) |
 | `kotlin-native/libllvmext`, `kotlin-native/libclangext` | C++ additions to those APIs, and Kotlin/Native's own LLVM passes |
-| `kotlin-native/llvmDebugInfoC` | Helpers for emitting debug information; the LLDB script `konan_lldb.py` |
+| `kotlin-native/llvmDebugInfoC` | Helpers for emitting debug information; the [LLDB](https://lldb.llvm.org/) script `konan_lldb.py` |
 | `kotlin-native/konan/konan.properties` | For every target: toolchain, sysroot, Clang and linker flags → [build-and-tests/](../build-and-tests/README.md) |
 | `kotlin-native/build-tools` | Gradle plugins that build Kotlin/Native itself: the runtime, the distribution, platform libraries |
 | `kotlin-native/cmd` | The launcher scripts: `konanc`, `cinterop`, `klib`, `run_konan` |

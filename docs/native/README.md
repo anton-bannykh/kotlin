@@ -1,7 +1,7 @@
 # Kotlin/Native internals: a short guide
 
 An introduction to how Kotlin/Native works inside, for people joining the team. It assumes you know Kotlin and compilers in
-general. It does not assume you know LLVM.
+general. It does not assume you know [LLVM][llvm].
 
 Each page answers **what happens and why** in one part of Kotlin/Native, with a picture or an example. It deliberately does
 not explain how the code does it: for that, every page ends with a few links into the source.
@@ -53,3 +53,5 @@ below it, so you can stop at the level of detail you need.
 - The first line is a trail back to this page; the line under the title says who can skip the page.
 - A picture or an example comes first, then what happens and why, then a few things to know.
 - A page does not explain how the code works. It ends with links to the source files that do.
+
+[llvm]: https://llvm.org/

@@ -9,7 +9,7 @@ reference for building, testing and debugging is [HACKING.md](../../../kotlin-na
 
 ## Targets
 
-A **target** is the platform a binary is built for: operating system plus CPU, such as `linux_x64`, `macos_arm64`,
+A [**target**][targets] is the platform a binary is built for: operating system plus CPU, such as `linux_x64`, `macos_arm64`,
 `ios_arm64`, `ios_simulator_arm64`, `mingw_x64`, `android_arm64`. In code it is a `KonanTarget`. The **host** is the machine
 the compiler runs on. They differ when cross-compiling: `konanc -target linux_arm64` on a `linux_x64` host.
 
@@ -23,8 +23,8 @@ runtime, the caches, the platform libraries, the LLVM settings.
 
 ## Toolchains
 
-To turn LLVM IR into a binary the compiler needs, for each target: LLVM itself, a **sysroot** (the target's system headers
-and libraries) and a linker. Which ones, and with which flags, is written in one file,
+To turn LLVM IR into a binary the compiler needs, for each target: LLVM itself, a [**sysroot**][cross] (the target's system
+headers and libraries) and a linker. Which ones, and with which flags, is written in one file,
 [konan.properties](../../../kotlin-native/konan/konan.properties), as `key.<target> = value` lines:
 
 ```properties
@@ -35,9 +35,9 @@ linkerKonanFlags.linux_x64 = -Bstatic -lstdc++ -Bdynamic -ldl -lm -lpthread ...
 ```
 
 These are not expected to be installed on the machine. On first use the compiler downloads them into
-`~/.konan/dependencies/` (for a Linux host: an LLVM build, a GCC toolchain with an old glibc as the sysroot, `lldb`,
-`libffi`). The exception is Apple: the SDKs and the linker come from the locally installed Xcode, so Apple targets need a
-Mac with Xcode, both to produce binaries for them and to run their tests.
+`~/.konan/dependencies/` (for a Linux host: an LLVM build, a GCC toolchain with an old glibc as the sysroot, [`lldb`][lldb],
+`libffi`). The exception is Apple: the SDKs and the linker come from the locally installed [Xcode][xcode], so Apple targets
+need a Mac with Xcode, both to produce binaries for them and to run their tests.
 
 ## Building
 
@@ -64,3 +64,8 @@ caching flags makes it build a stdlib cache first, inside the dist.
 - [konan.properties](../../../kotlin-native/konan/konan.properties) and
   [KonanTarget.kt](../../../native/utils/src/org/jetbrains/kotlin/konan/target/KonanTarget.kt): targets and their toolchains
 - [kotlin-native/build.gradle](../../../kotlin-native/build.gradle): the `dist` tasks that assemble the distribution
+
+[targets]: https://kotlinlang.org/docs/native-target-support.html
+[cross]: https://clang.llvm.org/docs/CrossCompilation.html
+[lldb]: https://lldb.llvm.org/
+[xcode]: https://developer.apple.com/xcode/

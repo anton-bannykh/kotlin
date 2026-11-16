@@ -9,8 +9,9 @@ Native wrappers around lowerings shared with the other backends. They run in thi
 
 ## NativeTailrecLowering
 
-Turns a `tailrec` function into a loop: each recursive call in tail position becomes "assign the new argument values and
-jump back to the start". `tailrec` promises that the stack does not grow, and a call in LLVM IR gives no such guarantee.
+Turns a [`tailrec` function][tailrec] into a loop: each recursive call in tail position becomes "assign the new argument
+values and jump back to the start". `tailrec` promises that the stack does not grow, and a call in LLVM IR gives no such
+guarantee.
 
 ```kotlin
 // before
@@ -125,3 +126,5 @@ while (inductionVariable < last) {
 **Source:** [ForLoopsLowering.kt](../../../../compiler/ir/backend.common/src/org/jetbrains/kotlin/backend/common/lower/loops/ForLoopsLowering.kt) (shared),
 [BCEForLoopBodyTransformer.kt](../../../../compiler/ir/backend.common/src/org/jetbrains/kotlin/backend/common/lower/loops/BCEForLoopBodyTransformer.kt)
 · **Runs:** after inlining, always.
+
+[tailrec]: https://kotlinlang.org/docs/functions.html#tail-recursive-functions

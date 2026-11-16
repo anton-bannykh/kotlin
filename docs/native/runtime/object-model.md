@@ -26,7 +26,7 @@ open class Circle(val r: Double) : Shape { override fun area() = 3.14 * r * r; o
                └──────────────────────┘ 16
 ```
 
-In LLVM IR this is a struct type per class. The header is the runtime's `ObjHeader`, a single pointer; fields of
+In LLVM IR this is a [struct type][struct] per class. The header is the runtime's `ObjHeader`, a single pointer; fields of
 superclasses come first. A reference is the address of the header, and `null` is the null pointer.
 
 ```llvm
@@ -52,7 +52,7 @@ Arrays are the only objects whose size is not fixed by their class. A `String` i
 ## TypeInfo: the description of a class
 
 One **TypeInfo** constant exists per class and per interface, laid out as the runtime's C++ struct `TypeInfo`. The table of
-virtual functions, the **vtable**, is placed directly after it in memory.
+virtual functions, the [**vtable**][vtable], is placed directly after it in memory.
 
 ```llvm
 @"kclass:Circle" = constant { %struct.TypeInfo, [5 x ptr] } {
@@ -153,3 +153,6 @@ and are used as a tag: 0 is a normal heap object, 1 is a permanent object, 3 is 
 - [TypeInfo.h](../../../kotlin-native/runtime/src/main/cpp/TypeInfo.h): `TypeInfo`, `InterfaceTableRecord`. [KString.h](../../../kotlin-native/runtime/src/main/cpp/KString.h): `String`
 - [RTTIGenerator.kt](../../../kotlin-native/backend.native/compiler/ir/backend.native/src/org/jetbrains/kotlin/backend/konan/llvm/RTTIGenerator.kt): builds the TypeInfo constants, vtables and interface tables
 - [ClassLayoutBuilder.kt](../../../kotlin-native/backend.native/compiler/ir/backend.native/src/org/jetbrains/kotlin/backend/konan/ir/ClassLayoutBuilder.kt): decides field order and vtable entry numbers
+
+[struct]: https://llvm.org/docs/LangRef.html#structure-type
+[vtable]: https://en.wikipedia.org/wiki/Virtual_method_table

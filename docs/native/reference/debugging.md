@@ -21,8 +21,8 @@ The answers usually name the area.
 | LLVM verifier error, crash in `IrToBitcode` or `CodeGenerator` | [codegen.md](../compiler/codegen.md) | `-Xsave-llvm-ir-after=Codegen`, read the function named in the error |
 | Linker error: undefined symbol | [codegen.md](../compiler/codegen.md); with libraries: [caches.md](../compiler/caches.md), [cinterop.md](../interop/cinterop.md) | Search the saved LLVM IR for the symbol. Is it only declared? Does it fail without caches? |
 | Fails only with caches, or only after an incremental build | [caches.md](../compiler/caches.md) | Compare with a build that uses no caches |
-| Wrong generated header, or an unresolved C or Objective-C name | [export.md](../interop/export.md), [cinterop.md](../interop/cinterop.md) | Run `cinterop` by hand on the `.def` file; read the generated header |
-| "Target is not available", toolchain or Xcode errors | [build-and-tests/](../build-and-tests/README.md) | Check the target's entries in `konan.properties` and what is in `~/.konan/dependencies` |
+| Wrong generated header, or an unresolved C or Objective-C name | [export.md](../interop/export.md), [cinterop.md](../interop/cinterop.md) | Run `cinterop` by hand on the [`.def` file](https://kotlinlang.org/docs/native-definition-file.html); read the generated header |
+| "Target is not available", toolchain or [Xcode](https://developer.apple.com/xcode/) errors | [build-and-tests/](../build-and-tests/README.md) | Check the target's entries in `konan.properties` and what is in `~/.konan/dependencies` |
 | **The program misbehaves** | | |
 | Wrong result in debug and with `-opt` | [lowerings/](../compiler/lowerings/README.md), [codegen.md](../compiler/codegen.md) | Minimize; dump IR after the suspected lowering; read the LLVM IR |
 | Wrong result or crash only with `-opt` | [optimizations/](../compiler/optimizations/README.md), then LLVM passes ([codegen.md](../compiler/codegen.md)) | Disable phases one at a time, as above, then `LTOBitcodeOptimization` and `ModuleBitcodeOptimization` |
@@ -33,10 +33,10 @@ The answers usually name the area.
 | `IrLinkageError` at run time | Partial linkage → [klibs-and-linking.md](../compiler/klibs-and-linking.md) | `-Xpartial-linkage-loglevel=warning` shows the mismatch at compile time |
 | A top-level property or object is not initialized, or too early | [initialization.md](../features/initialization.md) | Dump IR after `StaticInitializersLowering` |
 | Wrong value right after a `suspend` function resumes | [coroutines.md](../features/coroutines.md) | Dump IR after `NativeSuspendFunctionsLowering` |
-| An exception is not caught, or the program terminates instead | [exceptions.md](../features/exceptions.md) | Look at the `invoke` and `landingpad` instructions around the call in LLVM IR |
+| An exception is not caught, or the program terminates instead | [exceptions.md](../features/exceptions.md) | Look at the [`invoke`](https://llvm.org/docs/LangRef.html#invoke-instruction) and [`landingpad`](https://llvm.org/docs/LangRef.html#landingpad-instruction) instructions around the call in LLVM IR |
 | Crash when calling C or Objective-C | [cinterop.md](../interop/cinterop.md) | `-Xphases-to-dump-after=InteropLowering` |
-| Crash when Swift or Objective-C calls Kotlin | [export.md](../interop/export.md) | Check `@Throws` on the Kotlin declaration; read the generated header |
-| Stack trace without file names and line numbers | [exceptions.md](../features/exceptions.md) | Compile with `-g`; on Linux add `-Xbinary=sourceInfoType=libbacktrace` |
+| Crash when Swift or Objective-C calls Kotlin | [export.md](../interop/export.md) | Check [`@Throws`](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-throws/) on the Kotlin declaration; read the generated header |
+| Stack trace without file names and line numbers | [exceptions.md](../features/exceptions.md) | Compile with [`-g`](https://kotlinlang.org/docs/native-debugging.html); on Linux add `-Xbinary=sourceInfoType=libbacktrace` |
 | Crash inside the C++ runtime with no symbols | [runtime/](../runtime/README.md) | Build the runtime with debug information: [HACKING.md](../../../kotlin-native/HACKING.md#kotlinnative-runtime-specifics) |
 | **Tests** | | |
 | A test fails, or passes when it should not | [tests.md](../build-and-tests/tests.md) | [HACKING.md, Testing](../../../kotlin-native/HACKING.md#testing) |

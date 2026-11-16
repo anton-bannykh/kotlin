@@ -67,7 +67,7 @@ Two things make Kotlin/Native different from Kotlin/JVM, and explain most of the
 
 The frontend is the same one all Kotlin backends use. It checks the program and produces **Kotlin IR**: a tree of classes,
 functions and expressions. `inline` functions are inlined right here: `forEach` and our lambda are pasted into `total`. The
-first stage then stores the IR in a **klib**, which is a zip archive:
+first stage then stores the IR in a [**klib**][klib], which is a zip archive:
 
 ```
 default/ir/          the IR of every declaration, including function bodies
@@ -144,7 +144,7 @@ drops from 5430 (our code plus the whole stdlib) to 1932.
 
 ## Step 5. Kotlin IR → LLVM IR
 
-**LLVM IR** is the input language of LLVM, roughly "portable assembly". If you have not seen it before, read
+[**LLVM IR**][langref] is the input language of LLVM, roughly "portable assembly". If you have not seen it before, read
 [llvm-primer.md](llvm-primer.md) first. Code generation translates each Kotlin function into an LLVM function.
 → [codegen.md](compiler/codegen.md)
 
@@ -195,8 +195,8 @@ What to notice:
 
 ## Step 6. LLVM IR → binary
 
-The runtime, precompiled to LLVM bitcode (`runtime.bc` and others), is merged into the program's LLVM module. LLVM optimizes
-the result and emits an object file (`tour.kexe.o`), and the system linker turns it into `tour.kexe`.
+The runtime, precompiled to [LLVM bitcode][bitcode] (`runtime.bc` and others), is merged into the program's LLVM module. LLVM
+optimizes the result and emits an object file (`tour.kexe.o`), and the system linker turns it into `tour.kexe`.
 → [codegen.md](compiler/codegen.md#after-code-generation), [caches.md](compiler/caches.md) (how most of this work is skipped for
 libraries that did not change)
 
@@ -217,3 +217,7 @@ How to dump the Kotlin IR and the LLVM IR shown above: [cheat-sheet.md](referenc
 
 Next: [llvm-primer.md](llvm-primer.md) for the LLVM concepts used above, then the same pipeline with every step named in
 [compiler/](compiler/README.md).
+
+[klib]: https://kotlinlang.org/docs/native-libraries.html
+[langref]: https://llvm.org/docs/LangRef.html
+[bitcode]: https://llvm.org/docs/BitCodeFormat.html

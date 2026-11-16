@@ -6,7 +6,7 @@
 
 The compiler produces a normal native binary plus a **header** that describes the public Kotlin API in the other language,
 and puts an **adapter layer** between the two that converts arguments, results and exceptions. There are two such exports
-in the compiler: an Objective-C framework (which is also how Swift sees Kotlin today) and a C library.
+in the compiler: an [Objective-C framework][objcinterop] (which is also how Swift sees Kotlin today) and a [C library][clib].
 
 ```mermaid
 flowchart LR
@@ -47,27 +47,27 @@ __attribute__((objc_subclassing_restricted))                        // a final K
 ```
 
 In a real framework every class name gets the framework name as a prefix (`SharedSimpleDataClass`, `SharedBase`), because
-Objective-C has no packages. Each declaration also carries `__attribute__((swift_name("...")))`, which gives Swift a nicer
-name: `init(intValue:intVar:nullableDefaultStringValue:)`.
+Objective-C has no packages. Each declaration also carries [`__attribute__((swift_name("...")))`][swiftname], which gives
+Swift a nicer name: `init(intValue:intVar:nullableDefaultStringValue:)`.
 
 | Kotlin | Objective-C | Notes |
 |---|---|---|
 | `class`, `interface` | `@interface`, `@protocol` | |
 | `Int`, `Boolean`, `Double` | `int32_t`, `BOOL`, `double` | boxed (`Int?`): `KotlinInt`, an `NSNumber` |
 | `String`, `List`, `Map` | `NSString`, `NSArray`, `NSDictionary` | `MutableList` is `NSMutableArray` |
-| `(Int) -> String` | a block | |
+| `(Int) -> String` | [a block](https://clang.llvm.org/docs/BlockLanguageSpec.html) | |
 | top-level `fun` in `Foo.kt` | class method of `FooKt` | |
 | `object Foo` | `Foo.shared` | enum entries are class properties too |
-| `suspend fun foo()` | `fooWithCompletionHandler:(void (^)(NSError * _Nullable))` | Swift can call it with `await` |
-| `@Throws fun foo()` | `fooAndReturnError:(NSError **)` | Swift sees `throws` |
+| `suspend fun foo()` | `fooWithCompletionHandler:(void (^)(NSError * _Nullable))` | Swift can call it with [`await`](https://developer.apple.com/documentation/swift/calling-objective-c-apis-asynchronously) |
+| [`@Throws fun foo()`](https://kotlinlang.org/docs/native-objc-interop.html#errors-and-exceptions) | `fooAndReturnError:(NSError **)` | Swift sees [`throws`](https://developer.apple.com/documentation/swift/about-imported-cocoa-error-parameters) |
 
 A Kotlin exception that leaves a function without a matching `@Throws` terminates the program.
 → [exceptions.md](../features/exceptions.md#crossing-into-other-languages)
 
 ## How objects cross the boundary
 
-Kotlin objects are managed by a tracing garbage collector; Objective-C objects are reference counted. The adapter layer
-makes each side see the other side's objects in its own terms:
+Kotlin objects are managed by a [tracing garbage collector][tracing]; Objective-C objects are [reference counted][arc]. The
+adapter layer makes each side see the other side's objects in its own terms:
 
 - **Kotlin object → Objective-C.** The first time a Kotlin object is passed out, the runtime creates an Objective-C *wrapper*
   for it (an instance of the generated class). Later passes return the same wrapper. As long as Objective-C code holds a
@@ -83,9 +83,9 @@ message.
 
 ## Swift
 
-Swift imports the framework through the Objective-C header, like any Objective-C framework. That is why Kotlin generics,
-enums and top-level functions look less natural in Swift than they could. **Swift export** is a separate, newer project (in
-`native/swift`) that generates Swift source code directly. It is still experimental.
+Swift [imports the framework through the Objective-C header][swiftimport], like any Objective-C framework. That is why Kotlin
+generics, enums and top-level functions look less natural in Swift than they could. [**Swift export**][swiftexport] is a
+separate, newer project (in `native/swift`) that generates Swift source code directly. It is still experimental.
 → [docs/swift-export/README.md](../../swift-export/README.md)
 
 ## C: a dynamic or static library
@@ -141,3 +141,11 @@ returned object is a new handle, and C code cannot implement a Kotlin interface.
 - [cexport/](../../../kotlin-native/backend.native/compiler/ir/backend.native/src/org/jetbrains/kotlin/backend/konan/cexport):
   the C header and its adapters
 - [native/swift/](../../../native/swift/README.md): Swift export
+
+[objcinterop]: https://kotlinlang.org/docs/native-objc-interop.html
+[clib]: https://kotlinlang.org/docs/native-dynamic-libraries.html
+[swiftname]: https://clang.llvm.org/docs/AttributeReference.html#swift-name
+[tracing]: https://en.wikipedia.org/wiki/Tracing_garbage_collection
+[arc]: https://kotlinlang.org/docs/native-arc-integration.html
+[swiftimport]: https://developer.apple.com/documentation/swift/importing-objective-c-into-swift
+[swiftexport]: https://kotlinlang.org/docs/native-swift-export.html

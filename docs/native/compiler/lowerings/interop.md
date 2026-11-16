@@ -9,7 +9,8 @@ page shows only what changes in the IR. Three lowerings form a chain that runs a
 
 `InteropLowering → SpecialInteropIntrinsicsLowering → InteropBridgesNameInventor`
 
-The other two are independent: a check for `autoreleasepool`, and a fix for Swift export bridges in the first stage.
+The other two are independent: a check for `autoreleasepool`, and a fix for [Swift export][swiftexport] bridges in the first
+stage.
 
 ## InteropLowering
 
@@ -49,7 +50,7 @@ fun callback(x: Int): Int = interopCallMarker({
 - The names are placeholders between NUL characters (`␀` above), numbered within one interop call only.
 - Objective-C works the same way (not shown: it needs macOS). A method call gets a stub written in Objective-C that sends
   `@selector(...)` to the receiver. A Kotlin class that extends an Objective-C class also gets extra functions, for example for
-  `@ObjCAction` methods, so that the Objective-C runtime can call into it.
+  `@ObjCAction` methods, so that the [Objective-C runtime][objcrt] can call into it.
 
 **Source:** [InteropLowering.kt](../../../../kotlin-native/backend.native/compiler/ir/backend.native/src/org/jetbrains/kotlin/backend/konan/lower/InteropLowering.kt),
 [CBridgeGen.kt](../../../../kotlin-native/backend.native/compiler/ir/backend.native/src/org/jetbrains/kotlin/backend/konan/cgen/CBridgeGen.kt) (what a bridge looks like)
@@ -108,8 +109,8 @@ fun callC(x: Int): Int = {                                  // the marker is gon
 ## SpecialObjCValidationLowering
 
 Reports a compilation error when a `suspend` function is called inside `autoreleasepool { }`. It changes nothing in the IR.
-Autorelease pools form a stack. If the block suspends, the coroutine's caller goes on while the pool is still open; when the
-caller closes its own pool, the inner one is closed with it, and resuming the coroutine later crashes.
+[Autorelease pools][autorelease] form a stack. If the block suspends, the coroutine's caller goes on while the pool is still
+open; when the caller closes its own pool, the inner one is closed with it, and resuming the coroutine later crashes.
 
 ```kotlin
 inline fun <T> myPool(block: () -> T) = autoreleasepool(block)
@@ -159,3 +160,7 @@ fun Base_greet_direct(self: Base, name: String): String = self.super<Base>.greet
 
 **Source:** [NativeExportedBridgeCallDispatchLowering.kt](../../../../compiler/ir/backend.native/src/org/jetbrains/kotlin/backend/konan/lower/NativeExportedBridgeCallDispatchLowering.kt)
 · **Runs:** in the first stage, always, before the IR is written to the klib.
+
+[swiftexport]: https://kotlinlang.org/docs/native-swift-export.html
+[objcrt]: https://developer.apple.com/documentation/objectivec/objective-c-runtime
+[autorelease]: https://developer.apple.com/documentation/foundation/nsautoreleasepool

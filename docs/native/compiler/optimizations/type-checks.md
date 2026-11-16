@@ -86,7 +86,7 @@ Before any of this, lowerings remove the checks that can be decided at compile t
 
 ## Casts caused by generics
 
-Generics are erased: `List<Dog>.get()` returns `Any?` at run time. When you write
+[Generics are erased][erasure]: `List<Dog>.get()` returns `Any?` at run time. When you write
 
 ```kotlin
 fun first(list: List<Dog>): Dog = list[0]
@@ -117,7 +117,8 @@ the checks that an earlier `is` or `as` on the same value has already proven.
   `null` throws `NullPointerException`. In debug builds the whole cast is a call to the stdlib function `downcast`
   (→ [CastsLowering](../lowerings/casts-and-types.md#castslowering)).
 - **Class ids differ from build to build.** They depend on the set of classes in the program. Never rely on a number.
-- **Objective-C classes are checked differently**, by asking the Objective-C runtime (→ [cinterop.md](../../interop/cinterop.md)).
+- **Objective-C classes are checked differently**, by asking the [Objective-C runtime][objcrt] (→
+  [cinterop.md](../../interop/cinterop.md)).
 
 ## Where the code is
 
@@ -128,3 +129,6 @@ the checks that an earlier `is` or `as` on the same value has already proven.
 - [Types.cpp](../../../../kotlin-native/runtime/src/main/cpp/Types.cpp): `IsSubtype` and `IsSubclassFast` in the runtime.
 - [NativeSecondStageCompilationConfig.kt](../../../../kotlin-native/backend.native/compiler/ir/backend.native/src/org/jetbrains/kotlin/backend/konan/NativeSecondStageCompilationConfig.kt):
   `genericSafeCasts` and its default.
+
+[erasure]: https://kotlinlang.org/docs/generics.html#type-erasure
+[objcrt]: https://developer.apple.com/documentation/objectivec/objective-c-runtime

@@ -6,8 +6,8 @@
 
 Normally every Kotlin object is allocated on the heap by the runtime and later reclaimed by the
 [garbage collector](../../runtime/gc-and-allocator.md). Many objects are short-lived helpers that never leave the function
-that creates them. Escape analysis finds these, and code generation puts them into the function's stack frame instead: no
-call to the allocator, and nothing for the GC to clean up. It is one of the [whole-program optimizations](README.md).
+that creates them. [Escape analysis][ea] finds these, and code generation puts them into the function's stack frame instead:
+no call to the allocator, and nothing for the GC to clean up. It is one of the [whole-program optimizations](README.md).
 
 ```kotlin
 class Point(val x: Int, val y: Int)
@@ -26,8 +26,8 @@ fun remember(a: Int, b: Int): Int {
 ```
 
 In a debug build `manhattan` gets its `Point` from the runtime: `call ptr @AllocInstance(ptr @"kclass:Point", ptr %4)`.
-With `-opt` there is no allocation call. The object is a slot in the stack frame (`alloca`). LLVM IR right after code
-generation, shortened:
+With `-opt` there is no allocation call. The object is a slot in the stack frame ([`alloca`][alloca]). LLVM IR right after
+code generation, shortened:
 
 ```llvm
   %5 = alloca %"kclassbody:Point#internal"                      ; room for a Point (header + two Ints) in the stack frame
@@ -106,3 +106,6 @@ public external operator fun get(index: Int): T    // (in class Array)
   from its header (`OBJECT_TAG_STACK`).
 
 **Read next:** [dce.md](dce.md)
+
+[ea]: https://en.wikipedia.org/wiki/Escape_analysis
+[alloca]: https://llvm.org/docs/LangRef.html#alloca-instruction

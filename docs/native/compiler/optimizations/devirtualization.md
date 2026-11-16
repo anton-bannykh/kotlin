@@ -4,10 +4,10 @@
 
 *Skip this page if you know when a virtual call becomes a direct call or a `when` over classes, and when it does not.*
 
-A call to an `open` or interface function is a **virtual call**: at run time the code looks the function up in a table
-attached to the object's class (→ [object-model.md](../../runtime/object-model.md)). Devirtualization finds the call sites
-where only one or a few functions can actually be the target, and replaces the lookup with direct calls. It is the first of
-the [whole-program optimizations](README.md) and the one the others build on.
+A call to an `open` or interface function is a [**virtual call**][vtable]: at run time the code looks the function up in a
+table attached to the object's class (→ [object-model.md](../../runtime/object-model.md)). Devirtualization finds the call
+sites where only one or a few functions can actually be the target, and replaces the lookup with direct calls. It is the
+first of the [whole-program optimizations](README.md) and the one the others build on.
 
 ```kotlin
 interface Shape { fun area(): Double }
@@ -102,9 +102,12 @@ Depending on how many different functions can be the target of a call site:
 ## Where the code is
 
 - [DevirtualizationAnalysis.kt](../../../../kotlin-native/backend.native/compiler/ir/backend.native/src/org/jetbrains/kotlin/backend/konan/optimizations/DevirtualizationAnalysis.kt):
-  the whole optimization. The analysis is the algorithm known as Variable Type Analysis; the paper is linked at the top.
-  The limits (3 candidates) are the constants in `DevirtualizationUnfoldFactors`.
+  the whole optimization. The analysis is the algorithm known as [Variable Type Analysis][vta]; the paper is linked at the
+  top. The limits (3 candidates) are the constants in `DevirtualizationUnfoldFactors`.
 - [CodeGenerator.kt](../../../../kotlin-native/backend.native/compiler/ir/backend.native/src/org/jetbrains/kotlin/backend/konan/llvm/CodeGenerator.kt):
   how a call that stayed virtual is compiled (`getVirtualImpl`).
 
 **Read next:** [escape-analysis.md](escape-analysis.md)
+
+[vtable]: https://en.wikipedia.org/wiki/Virtual_method_table
+[vta]: https://web.cs.ucla.edu/~palsberg/tba/papers/sundaresan-et-al-oopsla00.pdf

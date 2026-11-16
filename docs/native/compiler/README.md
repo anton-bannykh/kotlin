@@ -11,7 +11,8 @@ real program are in the [tour](../tour.md).
 
 ## The outside view
 
-Building a binary in Gradle project `:B`, which depends on project `:A`. Each hexagon is one invocation of the compiler:
+[Building a binary][binaries] in Gradle project `:B`, which depends on project `:A`. Each hexagon is one invocation of the
+compiler:
 
 ```mermaid
 flowchart LR
@@ -95,11 +96,11 @@ flowchart TD
 5. **Whole-program optimizations.** Devirtualization, dead code elimination and escape analysis, on a data-flow graph of
    the whole program. → [optimizations/](optimizations/README.md)
 6. **LLVM declarations and RTTI.** Every function, class and global gets its LLVM declaration first, so that code can
-   refer to things that are generated later. Then the constants that describe classes at run time are emitted (**RTTI**,
-   run-time type information). → [object-model.md](../runtime/object-model.md)
+   refer to things that are generated later. Then the constants that describe classes at run time are emitted
+   ([**RTTI**][rtti], run-time type information). → [object-model.md](../runtime/object-model.md)
 7. **Code generation.** Each function body is translated to LLVM IR. → [codegen.md](codegen.md)
 8. **Steps 8 to 11** merge the runtime's bitcode and the C stubs generated for interop calls into the module, run LLVM's
-   passes, write an object file and call the system linker, which also adds the caches of libraries.
+   [passes][passes], write an object file and call the system linker, which also adds the caches of libraries.
    → [codegen.md](codegen.md#after-code-generation)
 
 ## Fragments and output kinds
@@ -155,3 +156,7 @@ native libraries are not available. The code is in `compiler/cli/cli-native-klib
 | [optimizations/](optimizations/README.md) | Whole-program optimizations (step 5) |
 | [codegen.md](codegen.md) | Kotlin IR to LLVM IR, and LLVM IR to a binary (the remaining steps) |
 | [caches.md](caches.md) | How most of this work is skipped for libraries that did not change |
+
+[binaries]: https://kotlinlang.org/docs/multiplatform/multiplatform-build-native-binaries.html
+[rtti]: https://en.wikipedia.org/wiki/Run-time_type_information
+[passes]: https://llvm.org/docs/Passes.html

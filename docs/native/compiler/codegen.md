@@ -107,32 +107,32 @@ A string literal is a complete `String` object in the binary's constant data, an
 
 ## After code generation
 
-1. **The runtime is linked in.** The C++ runtime is compiled by Clang to LLVM bitcode when Kotlin/Native itself is built
-   (`runtime.bc`, plus one file per [replaceable part](../runtime/README.md#how-it-is-shipped), such as
+1. **The runtime is linked in.** The C++ runtime is compiled by [Clang][clang] to [LLVM bitcode][bitcode] when Kotlin/Native
+   itself is built (`runtime.bc`, plus one file per [replaceable part](../runtime/README.md#how-it-is-shipped), such as
    `concurrent_ms_gc.bc` for the default garbage collector). The compiler merges the files matching the chosen options into
    the program's LLVM module, together with the C stubs generated for interop calls. Runtime and program are now one module,
    so LLVM can inline small runtime functions, such as the safepoint check, straight into Kotlin code.
-2. **LLVM passes run.** With `-opt`: LLVM's standard `O3` pipeline, then removal of unused symbols and a whole-module (LTO)
-   pipeline. With `-g`: the same sequence at `O0`, so the code stays as written; only the runtime part is optimized.
-   Kotlin/Native adds a few passes of its own, for example one that removes redundant safepoints.
+2. **LLVM passes run.** With `-opt`: LLVM's [standard `O3` pipeline][newpm], then removal of unused symbols and a
+   whole-module ([LTO][lto]) pipeline. With `-g`: the same sequence at `O0`, so the code stays as written; only the runtime
+   part is optimized. Kotlin/Native adds a few passes of its own, for example one that removes redundant safepoints.
 3. **Object file.** The module is written out as bitcode and the bundled Clang translates it to machine code.
-4. **System linker.** `ld.lld`, or `ld64` on Apple platforms, links the object file with system libraries and with the
+4. **System linker.** [`ld.lld`][lld], or `ld64` on Apple platforms, links the object file with system libraries and with the
    [caches](caches.md) of libraries compiled earlier.
 
 How `try`/`catch` is compiled is in [exceptions.md](../features/exceptions.md).
 
 ## Debug information
 
-With `-g` every instruction carries a source location (`!dbg !47372`), and locals and parameters are kept in named stack
-slots that are described to the debugger. LLVM turns this into DWARF in the object file. To DWARF every reference has the
-same opaque type, `ObjHeader *`, so the LLDB script `konan_lldb.py` (in the distribution's `tools/` directory) asks the
-running program, through debug functions of the runtime, for the class and the fields of an object. `-opt` and `-g` cannot
-be combined.
+With `-g` every instruction carries a [source location][dbg] (`!dbg !47372`), and locals and parameters are kept in named
+stack slots that are described to the debugger. LLVM turns this into [DWARF][dwarf] in the object file. To DWARF every
+reference has the same opaque type, `ObjHeader *`, so the [LLDB][lldb] script `konan_lldb.py` (in the distribution's `tools/`
+directory) asks the running program, through debug functions of the runtime, for the class and the fields of an object.
+`-opt` and `-g` cannot be combined.
 
 ## Things to know
 
 - **Raw output is noisy.** Every function has the same blocks (`prologue`, `entry`, `epilogue` with the single return),
-  many of them empty, and `phi`s with one input. LLVM removes all that.
+  many of them empty, and [`phi`s][phi] with one input. LLVM removes all that.
 - **The slot protocol is a contract with the runtime.** A reference that is live across a call but is in no registered
   slot is a bug that shows up only when the GC runs at the wrong moment.
 - **Code generation is deliberately naive.** Speed comes from the Kotlin-level [optimizations](optimizations/README.md) before
@@ -144,3 +144,13 @@ be combined.
 - [CodeGenerator.kt](../../../kotlin-native/backend.native/compiler/ir/backend.native/src/org/jetbrains/kotlin/backend/konan/llvm/CodeGenerator.kt): frames, slots, calls, trampolines
 - [OptimizationPipeline.kt](../../../kotlin-native/backend.native/compiler/ir/backend.native/src/org/jetbrains/kotlin/backend/konan/OptimizationPipeline.kt): which LLVM passes run in which mode
 - [Linker.kt](../../../kotlin-native/backend.native/compiler/ir/backend.native/src/org/jetbrains/kotlin/backend/konan/Linker.kt): the final link
+
+[clang]: https://clang.llvm.org/
+[bitcode]: https://llvm.org/docs/BitCodeFormat.html
+[newpm]: https://llvm.org/docs/NewPassManager.html
+[lto]: https://llvm.org/docs/LinkTimeOptimization.html
+[lld]: https://lld.llvm.org/
+[dbg]: https://llvm.org/docs/SourceLevelDebugging.html
+[dwarf]: https://dwarfstd.org/
+[lldb]: https://lldb.llvm.org/
+[phi]: https://llvm.org/docs/LangRef.html#phi-instruction

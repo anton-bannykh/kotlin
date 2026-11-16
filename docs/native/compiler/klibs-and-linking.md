@@ -4,10 +4,10 @@
 
 *Skip this page if you know how a klib is laid out, what a signature is and what partial linkage does.*
 
-A **klib** is the Kotlin library format for every backend except JVM: the output of the first stage and the input of the
-second. It stores a library as "half-compiled Kotlin": checked, resolved, but with no machine code. **Linking** here means
-IR linking: the second stage loads many klibs and connects them into one program. (The system linker comes much later, see
-[compiler/](README.md).)
+A [**klib**][klib] is the Kotlin library format for every backend except JVM: the output of the first stage and the input of
+the second. It stores a library as "half-compiled Kotlin": checked, resolved, but with no machine code. **Linking** here
+means IR linking: the second stage loads many klibs and connects them into one program. (The system linker comes much later,
+see [compiler/](README.md).)
 
 ## What a klib holds
 
@@ -124,3 +124,5 @@ Uncaught Kotlin exception: kotlin.internal.IrLinkageError: Function 'removedLate
   the Native IR linker; picks how each kind of klib (regular, interop, cached) is read.
 - [PartialLinkageSupportForLinkerImpl.kt](../../../compiler/ir/serialization.common/src/org/jetbrains/kotlin/backend/common/linkage/partial/PartialLinkageSupportForLinkerImpl.kt):
   partial linkage, shared with the JS and Wasm backends.
+
+[klib]: https://kotlinlang.org/docs/native-libraries.html

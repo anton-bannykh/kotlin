@@ -107,7 +107,7 @@ object Config {
 
 - Not everything needs initialization. A `const val`, a property with a constant initializer (`val greeting = "hi"`) and
   an object without state are plain data in the binary: laid out at compile time, no allocation, no check.
-- `@EagerInitialization` properties go to a separate function that runs at program start instead of on first access.
+- [`@EagerInitialization`][eager] properties go to a separate function that runs at program start instead of on first access.
 
 **Source:** [StaticInitializersLowering.kt](../../../kotlin-native/backend.native/compiler/ir/backend.native/src/org/jetbrains/kotlin/backend/konan/lower/StaticInitializersLowering.kt)
 · **Runs:** after inlining, always, after `ObjectClassLowering`.
@@ -151,8 +151,8 @@ label_continue:
 - **A failed initializer is permanent.** The access that ran it gets `ExceptionInInitializerError` with the original
   exception as its cause (an `Error` is rethrown as is). The container is never retried: every later access throws
   `NoClassDefFoundError("Could not initialize ...")`.
-- **`@ThreadLocal` properties** live in thread-local storage, so every thread has its own copy and its own state word. Their
-  initializer runs once per thread, on that thread's first use of the container, after the shared properties, without
+- **`@ThreadLocal` properties** live in [thread-local storage][tls], so every thread has its own copy and its own state word.
+  Their initializer runs once per thread, on that thread's first use of the container, after the shared properties, without
   locking.
 - **`@EagerInitialization`** exists for code that must register itself without being called. Deprecated: add no new uses.
 - **With `-opt` most checks disappear.** A [whole-program analysis](../compiler/optimizations/README.md) computes which
@@ -168,3 +168,6 @@ label_continue:
   the slow paths; `initRuntime`, which runs the eager initializers.
 - [StaticInitializersOptimization.kt](../../../kotlin-native/backend.native/compiler/ir/backend.native/src/org/jetbrains/kotlin/backend/konan/optimizations/StaticInitializersOptimization.kt):
   the `-opt` analysis that removes redundant checks.
+
+[tls]: https://en.wikipedia.org/wiki/Thread-local_storage
+[eager]: https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.native/-eager-initialization/

@@ -10,7 +10,7 @@ and follows it through every part that takes care of it, from the lowerings thro
 | Page | The feature | Parts involved |
 |---|---|---|
 | [initialization.md](initialization.md) | Top-level properties, objects, companions and enum entries: when they are initialized | lowerings, a check emitted by code generation, a slow path in the runtime |
-| [coroutines.md](coroutines.md) | `suspend` functions | several lowerings that build a state machine, a jump emitted by code generation, the stdlib |
+| [coroutines.md](coroutines.md) | `suspend` functions | several lowerings that build a [state machine](https://github.com/Kotlin/KEEP/blob/master/proposals/coroutines.md#state-machines), a jump emitted by code generation, the stdlib |
 | [exceptions.md](exceptions.md) | `throw`, `try`, `catch`, `finally` | a lowering for `finally`, landing pads from code generation, the runtime and the system unwinder |
 
 Features that are handled by lowerings alone (enums, lambdas, default arguments, inner classes, ...) are described on the

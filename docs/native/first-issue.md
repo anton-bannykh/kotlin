@@ -108,8 +108,8 @@ NativeSecondStageCompilationConfig.kt:333:    private val defaultGenericSafeCast
 ```
 
 The comment on line 333 ends "disabled in -opt due to performance penalty". So this is not a bug in a phase but a decision:
-checking implicit generic casts costs time, and `-opt` turns it off. `genericSafeCasts` is a binary option, which gives a
-way to confirm the diagnosis from outside, in both directions:
+checking implicit generic casts costs time, and `-opt` turns it off. `genericSafeCasts` is a [binary option][binopts], which
+gives a way to confirm the diagnosis from outside, in both directions:
 
 ```console
 $ konanc cast.kt -o opt3 -opt -Xbinary=genericSafeCasts=true && ./opt3.kexe
@@ -150,3 +150,5 @@ be run where this page was written: this is the only command here that is not ve
 - A subject with the area tag, imperative, at most 72 columns (`[K/N] ...`); a body that says what was wrong, why, and
   how the change fixes it: the result of steps 2 to 4 in a few sentences.
 - The issue as the last line: `^KT-XXXXX Fixed`. All rules are in [commit-guidelines.md](../../.ai/commit-guidelines.md).
+
+[binopts]: https://kotlinlang.org/docs/native-binary-options.html

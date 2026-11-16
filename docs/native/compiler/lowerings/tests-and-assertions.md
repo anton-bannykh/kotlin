@@ -10,8 +10,8 @@ one finishes the job when the binary is built: `TestProcessor → TestsInitializ
 
 ## TestProcessor
 
-Finds the functions marked with `kotlin.test` annotations and generates code that registers them with the test runner in
-the runtime. `TestsInitializer` makes that code run at program start. `TestsDumper` lists the tests in a file.
+Finds the functions marked with [`kotlin.test`][ktest] annotations and generates code that registers them with the test
+runner in the runtime. `TestsInitializer` makes that code run at program start. `TestsDumper` lists the tests in a file.
 
 **Why:** there is no reflection that could find `@Test` functions at run time. The list of tests has to be compiled in.
 
@@ -99,3 +99,5 @@ fun checkPositive(x: Int) { }                               fun checkPositive(x:
 (the shared base classes of both),
 [AssertRemovalLowering.kt](../../../../kotlin-native/backend.native/compiler/ir/backend.native/src/org/jetbrains/kotlin/backend/konan/lower/AssertRemovalLowering.kt)
 · **Runs:** the wrapper before inlining, the remover after inlining; both always.
+
+[ktest]: https://kotlinlang.org/api/core/kotlin-test/

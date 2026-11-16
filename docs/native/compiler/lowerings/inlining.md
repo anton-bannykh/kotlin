@@ -14,8 +14,8 @@ PostInlineLowering`
 ## NativeAllFunctionInlining
 
 Together with `NativePrivateFunctionInlining`, replaces every call of an `inline` function with a copy of the function's
-body. Lambdas passed to it are pasted into that copy, so no function object is created for them. `reified` type parameters
-and non-local `return` only work this way.
+body. Lambdas passed to it are pasted into that copy, so no function object is created for them.
+[`reified` type parameters][reified] and non-local `return` only work this way.
 
 ```kotlin
 // before
@@ -148,3 +148,5 @@ needs at run time. **In the current code it changes nothing:** for an annotated 
 the K2 frontend drops them when the IR is built, before any lowering.
 
 **Source:** [ContractsDslRemover.kt](../../../../kotlin-native/backend.native/compiler/ir/backend.native/src/org/jetbrains/kotlin/backend/konan/lower/ContractsDslRemover.kt) · **Runs:** after inlining, always.
+
+[reified]: https://kotlinlang.org/docs/inline-functions.html#reified-type-parameters

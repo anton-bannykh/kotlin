@@ -3,8 +3,8 @@
 # Cheat sheet: commands and flags
 *Skip this page if you can already dump IR from `konanc` and run a Native test in a chosen mode. Reference material.*
 
-The one place for commands. Every `konanc`, `klib` and `llvm-dis` line was run as written on a Linux x64 host with the
-compiler from `kotlin-native/dist`; the Gradle lines are copied from [HACKING.md](../../../kotlin-native/HACKING.md) and
+The one place for commands. Every `konanc`, `klib` and [`llvm-dis`][llvmdis] line was run as written on a Linux x64 host with
+the compiler from `kotlin-native/dist`; the Gradle lines are copied from [HACKING.md](../../../kotlin-native/HACKING.md) and
 [tests.md](../build-and-tests/tests.md). `main.kt` is any small program. How to use these on a real problem:
 [first-issue.md](../first-issue.md); which area a symptom points to: [debugging.md](debugging.md).
 
@@ -110,3 +110,5 @@ Log tags are in
 (`gc`, `mm`, `alloc`, `pause`, ...); all `-Xbinary=` options are in
 [BinaryOptions.kt](../../../native/binary-options/src/main/kotlin/org/jetbrains/kotlin/config/nativeBinaryOptions/BinaryOptions.kt).
 A runtime with debug information: [HACKING.md](../../../kotlin-native/HACKING.md#kotlinnative-runtime-specifics).
+
+[llvmdis]: https://llvm.org/docs/CommandGuide/llvm-dis.html

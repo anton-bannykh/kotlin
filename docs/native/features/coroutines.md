@@ -4,10 +4,10 @@
 
 *Skip this page if you already know how a suspend function becomes a state object with spilled locals and a `label`.*
 
-A `suspend` function can stop in the middle, give its thread back, and continue later, possibly on another thread. A native
-stack frame cannot do that, so the compiler rewrites every such function: its local state moves into a heap object, and
-its body becomes a method that can be entered again at the place where it stopped. The runtime and the GC know nothing about
-coroutines: they see ordinary objects and ordinary function calls.
+A [`suspend` function][keep] can stop in the middle, give its thread back, and continue later, possibly on another thread. A
+native stack frame cannot do that, so the compiler rewrites every such function: its local state moves into a heap object,
+and its body becomes a method that can be entered again at the place where it stopped. The runtime and the GC know nothing
+about coroutines: they see ordinary objects and ordinary function calls.
 
 ```kotlin
 suspend fun fetch(id: Int): String = suspendCoroutine { ... }   // may suspend
@@ -59,8 +59,8 @@ private class `$loadCOROUTINE$1`(val id: Int, completion: Continuation<String>) 
 }
 ```
 
-- A function gets a class only if it has a suspend call that is not a tail call. `tail` returns whatever `fetch` returns, so
-  it has nothing to do after resumption. A call inside `try` is never a tail call.
+- A function gets a class only if it has a suspend call that is not a [tail call][tailcall]. `tail` returns whatever `fetch`
+  returns, so it has nothing to do after resumption. A call inside `try` is never a tail call.
 - Parameters become fields at once. Local variables do not: `saveCoroutineState`/`restoreCoroutineState` are placeholders.
 
 **Source:** [NativeSuspendFunctionLowering.kt](../../../kotlin-native/backend.native/compiler/ir/backend.native/src/org/jetbrains/kotlin/backend/konan/lower/NativeSuspendFunctionLowering.kt)
@@ -68,10 +68,10 @@ private class `$loadCOROUTINE$1`(val id: Int, completion: Continuation<String>) 
 
 ### NativeAddContinuationToFunctionCallsLowering
 
-A suspend function must know whom to resume when it finishes: the **continuation** of its caller, hidden in source code.
-The shared `AddContinuationToNonLocalSuspendFunctionsLowering` adds it as a last parameter to every suspend function; this
-lowering, right after it, passes it at every call. From here on suspend functions are ordinary functions, which only code
-that has a continuation to pass can call.
+A suspend function must know whom to resume when it finishes: the [**continuation**][cps] of its caller, hidden in source
+code. The shared `AddContinuationToNonLocalSuspendFunctionsLowering` adds it as a last parameter to every suspend function;
+this lowering, right after it, passes it at every call. From here on suspend functions are ordinary functions, which only
+code that has a continuation to pass can call.
 
 ```kotlin
 fun fetch(id: Int, `$completion`: Continuation<String>): Any = ...     // returns Any: a String or COROUTINE_SUSPENDED
@@ -91,7 +91,7 @@ IR does not change. Only those variables must survive the suspension; fewer mean
 garbage kept alive by a suspended coroutine. In `load`: `prefix` at point 1, `prefix` and `a` at point 2. `id` is already
 a field, and `b` is assigned after the last point.
 
-- If this analysis (a backward data-flow analysis shared with other backends) is disabled as a phase,
+- If this analysis (a [backward data-flow analysis][liveness] shared with other backends) is disabled as a phase,
   `CoroutinesLivenessAnalysisFallback` takes every variable visible at the point instead: correct, only wasteful.
 - The result has two users: the data-flow graph of the whole-program optimizations, and the spilling below. With `-opt`,
   the pre-codegen inliner runs the analysis again on every function it inlined something into.
@@ -144,8 +144,9 @@ private class `$loadCOROUTINE$1`(val id: Int, completion: Continuation<String>) 
 
 ## Jumping into the middle of a function
 
-Kotlin IR has no `goto`; code generation gives the two special nodes their meaning. In LLVM a basic block has an address,
-and `indirectbr` jumps to an address held in a value. `label` stores such an address:
+Kotlin IR has no `goto`; code generation gives the two special nodes their meaning. In LLVM a basic block
+[has an address][blockaddr], and [`indirectbr`][indirectbr] jumps to an address held in a value. `label` stores such an
+address:
 
 ```llvm
 entry:
@@ -161,7 +162,8 @@ resume:
   %86 = load ptr, ptr %prefix_field                              ; prefix = this.prefix
 ```
 
-(`%label_field`, `%prefix_field`: the `getelementptr` field addresses.) Source: search for `evaluateSuspensionPoint` in
+(`%label_field`, `%prefix_field`: the [`getelementptr`][gep] field addresses.) Source: search for
+`evaluateSuspensionPoint` in
 [IrToBitcode.kt](../../../kotlin-native/backend.native/compiler/ir/backend.native/src/org/jetbrains/kotlin/backend/konan/llvm/IrToBitcode.kt).
 
 ## Suspending and resuming
@@ -197,6 +199,17 @@ to the innermost object; that reference is all that keeps the coroutine alive.
 - **Results travel as `Any?`**, so a suspend function returning `Int` returns a boxed `Int`
   ([Autoboxing](../compiler/lowerings/boxing.md#autoboxing)). Exceptions travel inside `Result` on resumption and are
   rethrown by `getOrThrow`.
-- **This repository contains only the mechanism**: the transformation, and the low-level API in `kotlin.coroutines`
-  (`Continuation`, `suspendCoroutine`, `startCoroutine`, `ContinuationInterceptor`). `launch`, `async`, `Job`, dispatchers,
-  cancellation and `Flow` are the library kotlinx.coroutines, which lives in another repository and is built on that API.
+- **This repository contains only the mechanism**: the transformation, and the low-level API in
+  [`kotlin.coroutines`][kcoroutines] (`Continuation`, `suspendCoroutine`, `startCoroutine`, `ContinuationInterceptor`).
+  `launch`, `async`, `Job`, dispatchers, cancellation and `Flow` are the library [kotlinx.coroutines][kxcoroutines], which
+  lives in another repository and is built on that API.
+
+[keep]: https://github.com/Kotlin/KEEP/blob/master/proposals/coroutines.md
+[tailcall]: https://en.wikipedia.org/wiki/Tail_call
+[cps]: https://github.com/Kotlin/KEEP/blob/master/proposals/coroutines.md#continuation-passing-style
+[liveness]: https://en.wikipedia.org/wiki/Live-variable_analysis
+[blockaddr]: https://llvm.org/docs/LangRef.html#addresses-of-basic-blocks
+[indirectbr]: https://llvm.org/docs/LangRef.html#indirectbr-instruction
+[gep]: https://llvm.org/docs/LangRef.html#getelementptr-instruction
+[kcoroutines]: https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.coroutines/
+[kxcoroutines]: https://github.com/Kotlin/kotlinx.coroutines
