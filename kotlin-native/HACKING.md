@@ -1,4 +1,4 @@
-For an overview of the code base, see [docs/native/architecture.md](../docs/native/architecture.md).
+For an overview of how Kotlin/Native works inside, see [docs/native/tour.md](../docs/native/tour.md).
 
 ## Profiling the compiler
 
@@ -153,9 +153,8 @@ All Native test directives are defined in
 
 #### Test infrastructure overview
 
-The full description of how the infrastructure works inside (settings hierarchy, grouping, the test runner and dump, the
-expected-failure protocol, cache modes, class generation) is [docs/native/build-and-tooling/test-infrastructure.md](../docs/native/build-and-tooling/test-infrastructure.md).
-In short, the infrastructure lives in
+An introduction to the kinds of tests and how one test is run is in
+[docs/native/build-and-tests.md](../docs/native/build-and-tests.md). The infrastructure lives in
 [native/native.tests/testFixtures](../native/native.tests/testFixtures/org/jetbrains/kotlin/konan/test/blackbox):
 * `Abstract*Test.kt` are the base classes of the generated tests: `AbstractNativeBlackBoxTest` for test data–driven tests,
   `AbstractNativeSimpleTest` for hand-written ones, and specializations for cinterop, ObjC/C export, partial linkage, etc.

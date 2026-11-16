@@ -1,0 +1,149 @@
+# The runtime
+
+Kotlin/Native has no virtual machine. What a VM would do while the program runs (allocate and collect memory, keep track of
+threads, check types, throw exceptions, start the program) is done by the **runtime**: a C++ library that is linked into
+every binary. Compiled Kotlin code calls it constantly; it is as much a part of the program as the standard library.
+
+```mermaid
+flowchart LR
+    OS["operating system"] -->|"calls C main"| L["launcher (runtime)"]
+    L -->|"initialize the runtime, register this thread"| KS["Konan_start (generated):<br/>try { main(args) } catch { report }"]
+    KS --> M["your fun main()"]
+    M -->|"AllocInstance, ThrowException, safepoints, ..."| RT["runtime: memory manager, GC, threads"]
+    RT -->|"functions marked @ExportForCppRuntime"| STD["stdlib (Kotlin)"]
+```
+
+## How it is built and shipped
+
+The runtime is compiled by Clang to LLVM bitcode once per target, when Kotlin/Native itself is built. The result is a set of
+`.bc` files in the distribution (`konan/targets/<target>/native/`): `runtime.bc` with the core, and one file for each
+**module** that has several interchangeable implementations.
+
+| Module | Implementations (one is linked) |
+|---|---|
+| garbage collector | `concurrent_ms_gc.bc` (default), `pmcs_gc.bc`, `same_thread_ms_gc.bc`, `noop_gc.bc` |
+| GC scheduler (when to collect) | `adaptive_gcScheduler.bc` (default), `manual_gcScheduler.bc`, `aggressive_gcScheduler.bc` |
+| allocator | `custom_alloc.bc` (default), `legacy_alloc.bc` |
+
+The compiler chooses the files from the binary options (for example `-Xbinary=gc=noop`), the target (`objc.bc` on Apple
+targets) and the kind of output (`launcher.bc` for an executable), and merges them into the program's LLVM module. LLVM then
+optimizes runtime and Kotlin code together and can inline one into the other. → [llvm-primer.md](llvm-primer.md)
+
+## Startup and shutdown
+
+In an executable, C `main` is the launcher's `Konan_main` (the compiler adds `main` as an alias for it). It initializes the
+runtime, wraps the command-line arguments into a Kotlin `Array<String>` and calls `Konan_start`. That function is generated
+by the compiler: it calls the Kotlin `main` inside a `try`/`catch` that reports an uncaught exception and terminates.
+
+Runtime initialization happens **per thread**, the first time the thread needs the runtime. The first thread also creates
+the process-wide state (heap, GC thread). A library has no launcher: the functions it exports to C or Objective-C call
+`Kotlin_initRuntimeIfNeeded()` on entry, so whichever thread calls in first initializes the runtime.
+
+There is almost no shutdown: when `main` returns, the main thread is switched to the native state (below) and the process
+exits, without a last collection. Top-level properties are not initialized at startup. → [initialization.md](initialization.md)
+
+## Threads and their two states
+
+Every thread that runs Kotlin code is **registered**: the runtime keeps a record for it (`ThreadData`) with everything the
+GC needs to know about that thread. The record is removed when the thread exits.
+
+The GC sometimes has to pause all Kotlin threads, for example to look at their stacks. It cannot stop a thread from the
+outside; it sets a flag and waits until each thread notices it (see safepoints below). A thread blocked in `read()` or
+`sleep()` would not notice for a long time. So every registered thread is in one of two states:
+
+- **runnable**: running Kotlin code. It may touch Kotlin objects, and it must reach a safepoint regularly.
+- **native**: running foreign code, or blocked. It promises not to touch Kotlin objects, so the GC does not wait for it.
+
+The compiler switches the state around every call to a C or Objective-C function. This is `usleep(1000u)` called through
+[cinterop](cinterop.md), in a debug build (optimized builds call the same functions without the `_debug` suffix):
+
+```llvm
+  call void @Kotlin_mm_switchThreadStateNative_debug()      ; "I am leaving Kotlin code: the GC need not wait for me"
+  %3 = invoke i32 @..._knbridge1(i32 1000)                  ; a small generated C function that calls usleep
+          to label %call_success unwind label %filteringExceptionHandler
+
+call_success:
+  call void @Kotlin_mm_switchThreadStateRunnable_debug()    ; back in Kotlin; if a GC pause is in progress, wait here
+```
+
+When foreign code calls into Kotlin (a callback, an exported function), the thread becomes runnable on entry and native
+again on return.
+
+## Safepoints
+
+A **safepoint** is a place in compiled code where the thread asks "does the runtime want something from me?". The compiler
+puts one at the start of every function and in the body of every loop, so a runnable thread reaches one after a bounded
+amount of work. In LLVM IR they are the calls to `Kotlin_mm_safePoint...` functions (see the [tour](tour.md)).
+
+Normally a safepoint costs one load of a global and a branch that is not taken. When the GC has requested a pause, the
+thread stops in the safepoint until the GC lets it go. Switching from native to runnable includes the same check.
+
+## How the GC finds references
+
+The GC starts from **roots**: references that are not inside heap objects. It has to know where every one of them is.
+
+- **Globals.** The compiler-generated initializer of each file registers the address of every top-level property that holds
+  a reference. `@ThreadLocal` properties live in a per-thread table instead.
+- **Local variables.** LLVM knows nothing about garbage collection, so the compiler cannot ask it where references are in
+  registers or on the machine stack. Instead each function keeps its references in a block of stack slots, and links that
+  block into a per-thread list with `EnterFrame` and unlinks it with `LeaveFrame`. This list is the **shadow stack**.
+- **References held by foreign code**, such as a Kotlin object retained by Swift. → [gc-and-allocator.md](gc-and-allocator.md)
+
+The shadow stack while `main` is inside `build()`, a function with two local objects:
+
+```
+ ┌──────────────────────┐◄─ the thread's "current frame" pointer. This block is in build()'s stack frame: `alloca ptr, i32 4`
+ │ previous ────────────┼─┐
+ │ parameters=0 count=4 │ │   count includes the two header slots
+ │ slot: a              │ │   every object the function creates or gets back from a call is stored in a slot;
+ │ slot: b              │ │   for a call, the callee receives a pointer to the slot and stores the result itself
+ └──────────────────────┘ │
+ ┌──────────────────────┐◄┘   the block in main()'s stack frame
+ │ previous ──► ...     │     ...and so on, down to the thread's first Kotlin frame
+ │ parameters=0 count=5 │
+ └──────────────────────┘
+```
+
+Walking this list gives the GC every reference held by the thread's Kotlin functions. The price is a store to memory for
+each reference a function obtains. The LLVM IR is shown in the [tour](tour.md#step-5-kotlin-ir--llvm-ir).
+
+## Calls in both directions
+
+**Compiled code calls the runtime by name.** The code generator emits calls to C++ functions with fixed names and
+signatures: `AllocInstance`, `AllocArrayInstance`, `ThrowException`, `IsSubtype`, `EnterFrame`, and so on. Some stdlib
+functions are also implemented in C++: `external fun` declarations annotated with `@GCUnsafeCall("Kotlin_String_plusImpl")`
+are calls straight to that symbol, with no state switch.
+
+**The runtime calls Kotlin.** Parts of the runtime's work are easier to write in Kotlin, such as creating and throwing a
+`NullPointerException` or printing an uncaught exception. These are internal stdlib functions annotated with
+`@ExportForCppRuntime`, which gives them a plain C symbol name (by default the function's name) that C++ can declare and call:
+
+```kotlin
+@ExportForCppRuntime                                   // C++ side declares: void ThrowNullPointerException();
+internal fun ThrowNullPointerException(): Nothing {
+    throw NullPointerException()
+}
+```
+
+Both sides must also agree on the layout of objects and type information. → [object-model.md](object-model.md)
+
+## Things to know
+
+- **A wrong thread state is a serious bug.** Touching Kotlin objects in the native state races with the GC; blocking in the
+  runnable state stalls every GC pause, and with it all other threads. Runtime C++ code uses `ThreadStateGuard` to switch.
+- **Safepoints are removed where redundant.** After LLVM inlining, one function can contain the prologue safepoints of
+  everything inlined into it; a pass written for Kotlin/Native deletes the extra ones.
+- **`EnterFrame` is skipped for functions that hold no references**, and exception handlers reset the shadow stack with
+  `SetCurrentFrame`, because unwinding skips the `LeaveFrame` calls of the frames it leaves. → [exceptions.md](exceptions.md)
+- **The runtime has its own threads**: the GC thread, a timer thread for the GC scheduler and a finalizer thread. Only
+  the finalizer thread is registered like a Kotlin thread, because it can run Kotlin cleanup code.
+
+## Where the code is
+
+- [launcher.cpp](../../kotlin-native/runtime/src/launcher/cpp/launcher.cpp),
+  [Runtime.cpp](../../kotlin-native/runtime/src/main/cpp/Runtime.cpp): startup, per-thread initialization
+- [Memory.h](../../kotlin-native/runtime/src/main/cpp/Memory.h): the functions compiled code calls for memory and thread state
+- [mm/](../../kotlin-native/runtime/src/main/cpp/mm): thread registry, thread states, safepoints, shadow stack, root set
+- [RuntimeUtils.kt](../../kotlin-native/runtime/src/main/kotlin/kotlin/native/internal/RuntimeUtils.kt): Kotlin functions
+  exported for the C++ side
+- [runtime/README.md](../../kotlin-native/runtime/README.md): the full list of modules and how to build and test them

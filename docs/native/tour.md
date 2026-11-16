@@ -26,7 +26,7 @@ fun main() {
 ```mermaid
 flowchart TD
     SRC["tour.kt"] -->|"frontend (shared with JVM, JS, Wasm)"| IR0["Kotlin IR"]
-    IR0 -->|serialize| KLIB["tour.klib"]
+    IR0 -->|"inline functions, serialize"| KLIB["tour.klib"]
     KLIB --> LINK["load all klibs into one IR"]
     STD["stdlib.klib, other libraries"] --> LINK
     LINK -->|"lowerings (~80 small rewrites)"| LIR["simple IR"]
@@ -62,13 +62,14 @@ Two things make Kotlin/Native different from Kotlin/JVM, and explain most of the
 ## Step 1. Sources → klib
 
 The frontend is the same one all Kotlin backends use. It checks the program and produces **Kotlin IR**: a tree of classes,
-functions and expressions. The first stage then stores that IR in a **klib**, which is a zip archive:
+functions and expressions. `inline` functions are inlined right here: `forEach` and our lambda are pasted into `total`. The
+first stage then stores the IR in a **klib**, which is a zip archive:
 
 ```
 default/ir/          the IR of every declaration, including function bodies
 default/linkdata/    metadata: declarations as the frontend sees them, for compiling code that uses this library
 default/manifest     name, dependencies, versions
-default/targets/     for interop libraries: native code for each target
+default/targets/     for interop libraries: LLVM bitcode of C stubs and bundled native libraries, per target
 ```
 
 A klib contains no machine code and nothing LLVM-specific. It is "half-compiled Kotlin" that is still portable across
@@ -85,7 +86,7 @@ one big IR. → [klibs-and-linking.md](klibs-and-linking.md)
 About 80 **lowerings** run one after another. Each rewrites one language feature into simpler IR, until only classes,
 fields, plain functions, calls, branches and loops are left. → [lowerings/](lowerings/README.md)
 
-Inlining is one of them. `forEach` is an inline function from the stdlib, so its body and our lambda are pasted into `total`:
+This is `total` after all lowerings. The `forEach` call was already replaced by a loop in step 1:
 
 ```kotlin
 fun total(shapes: List<Shape>): Double {
@@ -100,7 +101,7 @@ fun total(shapes: List<Shape>): Double {
 }
 ```
 
-And this is `main` after all lowerings:
+And this is `main`:
 
 ```kotlin
 fun main() {
@@ -200,7 +201,7 @@ What to notice:
    functions, such as the safepoint check, straight into Kotlin code.
 2. **LLVM optimizes** the module and emits machine code into an object file (`tour.kexe.o`).
 3. **The system linker** (`ld.lld`, or `ld64` on Apple platforms) links it with system libraries into `tour.kexe`. For this
-   program that is 727 KB in debug mode and 551 KB with `-opt`.
+   program that is 727 KB by default and 551 KB with `-opt`.
 
 → [codegen.md](codegen.md), [caches.md](caches.md) (how most of this work is skipped for libraries that did not change)
 

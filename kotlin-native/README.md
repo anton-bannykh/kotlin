@@ -116,5 +116,5 @@ For more details see [Testing](HACKING.md#Testing).
 More tips and tricks that might be useful when developing or debugging Kotlin/Native
 can be found in [HACKING.md](HACKING.md).
 
-For an overview of the code base and compiler internals, see [architecture.md](../docs/native/architecture.md)
+For an overview of the code base and compiler internals, see [tour.md](../docs/native/tour.md)
 and the rest of the [docs/native](../docs/native) directory.
