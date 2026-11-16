@@ -136,7 +136,8 @@ executable. The properties and their values are in [cheat-sheet.md](../reference
 - **FileCheck tests are skipped in cache modes that cache the test's own klibs.**
 - **Tests do not run the compiler the way you do by hand.** They pass `-Xverify-ir=error -Xphases-to-validate-after=all`,
   so malformed IR fails a test, while plain `konanc` validates nothing. And unless a cache mode is given, debug tests use
-  the dist's stdlib cache (`STATIC_ONLY_DIST`) and `-opt` tests use no cache. Reproduce with the logged command line.
+  the dist's stdlib cache (`STATIC_ONLY_DIST`) and `-opt` tests use no cache (when a cache mode is given, they pass
+  `enableReleaseBinaryCache`). Reproduce with the logged command line.
 
 ## Where the code is
 

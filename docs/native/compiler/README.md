@@ -42,9 +42,10 @@ copy of `:core` and its own runtime, and a `Data` object from one is a different
 
 **Why "link" is slow.** The second stage compiles the whole world every time. [Caches](caches.md) reuse machine code from
 earlier runs: each dependency klib is compiled once into a static library, and (experimentally) each source file of the
-project too. Gradle uses them for debug binaries only: release binaries (`-opt`) get whole-program optimizations, which
-need the IR of every library and are skipped as soon as one comes from a static cache. So debug and release builds
-exercise different compiler code.
+project too. By default Gradle uses them for debug binaries only: release binaries (`-opt`) get whole-program
+optimizations, which need the IR of every library and are skipped as soon as one comes from a static cache. So debug and
+release builds exercise different compiler code. Caches for release binaries are being worked on and are off by default.
+→ [caches.md](caches.md#the-price-no-whole-program-optimization)
 
 **Other languages.** The `cinterop` tool turns C or Objective-C headers into a klib that the compiler accepts as a
 dependency like any other ([cinterop.md](../interop/cinterop.md)). In the other direction the compiler produces a framework

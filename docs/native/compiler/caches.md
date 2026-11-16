@@ -2,7 +2,7 @@
 
 # Caches: precompiled libraries
 
-*Skip this page if you already know what a static cache holds, why `-opt` ignores caches, and what the cache ABI accessors are.*
+*Skip this page if you already know what a static cache holds, why `-opt` ignores caches by default, and what the cache ABI accessors are.*
 
 The second stage compiles the whole program at once: your code, the stdlib and every dependency go through lowerings, code
 generation and LLVM on every build, even when only one line of your code changed. A **cache** avoids this. It is a klib
@@ -60,7 +60,8 @@ Gradle plugin tells it to for debug builds.
 Code in a cache was compiled without knowing the program it will end up in. So the
 [whole-program optimizations](optimizations/README.md) cannot see into it or through it: devirtualization cannot claim "no other
 class implements this interface", dead code elimination cannot remove what a cache might call, and LLVM cannot inline across
-object files. Kotlin/Native therefore uses caches for debug builds only, where build speed matters more than code quality:
+object files. By default Kotlin/Native therefore uses caches for debug builds only, where build speed matters more than
+code quality:
 
 ```
 $ konanc -opt main.kt -Xcache-directory=...
@@ -69,6 +70,13 @@ warning: cached libraries will not be used with global optimizations
 
 With `-opt` all cache directories are ignored and the whole world is compiled again. In the other direction, if a static
 cache is in use, the whole-program optimizations are switched off. So some bugs reproduce in only one of debug and release.
+
+**Release caches** lift the first half of this rule. They are work in progress and off by default. With
+`-Xbinary=enableReleaseBinaryCache=true` an `-opt` build uses caches too, and the distribution already ships `-opt` caches
+of the stdlib and the platform libraries (the `<target>-optSTATIC-system` flavor). The second half still holds: a release
+build that uses caches gets LLVM's optimizations inside each cache, but none of the whole-program ones. For the
+[tour](../tour.md) program this build takes 3 s instead of 11 s, and the binary grows from 550 KB to 716 KB. In Gradle the
+switch is the internal property `kotlin.internal.native.enableReleaseBinaryCache`.
 
 ## When a cache is thrown away
 
@@ -152,4 +160,4 @@ fun use(d: Derived) = `$lib.Derived.hello_accessor`(inst = d)
 - [CacheBuilder.kt](../../../kotlin-native/backend.native/compiler/ir/backend.native/src/org/jetbrains/kotlin/backend/konan/CacheBuilder.kt):
   decides what to (re)build, including the incremental analysis
 - [NativeSecondStageCompilationConfig.kt](../../../kotlin-native/backend.native/compiler/ir/backend.native/src/org/jetbrains/kotlin/backend/konan/NativeSecondStageCompilationConfig.kt):
-  the flavor strings and `ignoreCacheReason` (why `-opt` ignores caches)
+  the flavor strings and `ignoreCacheReason` (when caches are ignored)

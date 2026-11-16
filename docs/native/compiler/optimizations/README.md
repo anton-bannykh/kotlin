@@ -71,7 +71,8 @@ somewhere if any path through the function could take it there. In the source co
 
 - **Only with `-opt`, and not with precompiled libraries.** If some of the program was compiled earlier into a static
   [cache](../caches.md), the cached machine code cannot be analysed or changed. The compiler then turns off every step on
-  this page, even with `-opt`. Fast type checks are affected too.
+  this page, even with `-opt`. By default this cannot happen, because `-opt` ignores caches; it does happen with
+  [release caches](../caches.md#the-price-no-whole-program-optimization). Fast type checks are affected too.
 - **A library is a half-open world.** When the output is a framework or a dynamic/static library there is no `main`. Every
   public function may be called from outside with any arguments, so the analyses must assume more and find less.
 - **Bugs here show up only in release builds.** If a program misbehaves with `-opt` and works in debug, switch off one
