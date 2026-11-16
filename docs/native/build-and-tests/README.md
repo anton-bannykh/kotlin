@@ -1,15 +1,9 @@
 # Targets, toolchains and building
 
-Practical orientation: what a target is, what the compiler needs to produce a binary for it, and how to build the compiler
-itself. The full reference for building, testing and debugging is [HACKING.md](../../../kotlin-native/HACKING.md).
+*Skip this page if you have built `kotlin-native/dist` and know what a target and a sysroot are. Reference material.*
 
-```mermaid
-flowchart LR
-    SRC["compiler and runtime<br/>sources"] -->|"./gradlew :kotlin-native:dist"| DIST["kotlin-native/dist<br/>a complete compiler"]
-    DEPS["~/.konan/dependencies<br/>LLVM, sysroot, linker (downloaded)"] --> BIN
-    DIST -->|"konanc -target T"| BIN["binary for target T"]
-    DIST --> TESTS["the tests (tests.md)"]
-```
+What a target is, what the compiler needs to produce a binary for it, and how to build the compiler itself. The full
+reference for building, testing and debugging is [HACKING.md](../../../kotlin-native/HACKING.md).
 
 ## Targets
 
@@ -35,52 +29,29 @@ and libraries) and a linker. Which ones, and with which flags, is written in one
 llvmHome.linux_x64 = $llvm.linux_x64.dev
 targetTriple.linux_x64 = x86_64-unknown-linux-gnu
 targetSysRoot.linux_x64 = $gccToolchain.linux_x64/x86_64-unknown-linux-gnu/sysroot
-clangOptFlags.linux_x64 = -O3
 linkerKonanFlags.linux_x64 = -Bstatic -lstdc++ -Bdynamic -ldl -lm -lpthread ...
 ```
 
 These are not expected to be installed on the machine. On first use the compiler downloads them into
 `~/.konan/dependencies/` (for a Linux host: an LLVM build, a GCC toolchain with an old glibc as the sysroot, `lldb`,
 `libffi`). The exception is Apple: the SDKs and the linker come from the locally installed Xcode, so Apple targets need a
-Mac with Xcode.
+Mac with Xcode, both to produce binaries for them and to run their tests.
 
 ## Building
 
 1. Put `kotlin.native.enabled=true` into `local.properties` in the repository root. Without it the `:kotlin-native:*` Gradle
-   projects do not exist.
+   projects do not exist and the Native test tasks fail.
 2. `./gradlew :kotlin-native:dist` builds a **distribution** for the host into `kotlin-native/dist`: the same layout a user
-   downloads.
+   downloads, described in [code-map.md](../code-map.md#the-built-distribution). A distribution for another target is built by
+   `:kotlin-native:<target>CrossDist`.
 
-```
-dist/bin/                       konanc, cinterop, klib and other launch scripts
-dist/konan/lib/                 the compiler itself (kotlin-native-compiler-embeddable.jar)
-dist/konan/targets/<target>/    the runtime as LLVM bitcode: runtime.bc, one .bc per GC, allocator, ...
-dist/konan/konan.properties     the toolchain settings from above
-dist/klib/common/stdlib         the standard library klib
-dist/klib/cache/                precompiled stdlib (→ caches.md)
-dist/klib/platform/<target>/    platform libraries; only after :kotlin-native:distPlatformLibs (→ cinterop.md)
-```
+The [tests](tests.md) run the compiler from `kotlin-native/dist`, so they need this build.
 
-Where each part comes from in the repository: [code-map.md](../code-map.md). A distribution for another target is built by
-`:kotlin-native:<target>CrossDist`.
-
-## Tests
-
-How the compiler is tested has its own page: [tests.md](tests.md). It covers the kinds of tests, what happens to one test
-from the test data file to the checked result, test modes, and how to add a test and investigate a failing one. The
-one thing to remember here: tests run the compiler from `kotlin-native/dist`, so they need the build described above.
-
-## Things to know
-
-- **Without `kotlin.native.enabled=true` nothing Native exists in Gradle**: the `:kotlin-native:*` projects are missing and
-  the Native test tasks fail.
-- **Apple targets need a Mac with Xcode**, both to produce binaries for them and to run their tests.
-- **The dist has caches only for some flavors.** Running the compiler by hand with unusual options plus caching flags makes
-  it build a stdlib cache first, inside the dist.
+The dist has [caches](../compiler/caches.md) only for some flavors. Running the compiler by hand with unusual options plus
+caching flags makes it build a stdlib cache first, inside the dist.
 
 ## Where the code is
 
-- [HACKING.md](../../../kotlin-native/HACKING.md): building, debugging the compiler, LLVM tips
 - [konan.properties](../../../kotlin-native/konan/konan.properties) and
   [KonanTarget.kt](../../../native/utils/src/org/jetbrains/kotlin/konan/target/KonanTarget.kt): targets and their toolchains
 - [kotlin-native/build.gradle](../../../kotlin-native/build.gradle): the `dist` tasks that assemble the distribution

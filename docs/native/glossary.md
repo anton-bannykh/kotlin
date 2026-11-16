@@ -1,13 +1,13 @@
 # Glossary
 
+*Skip this page until you meet a term you do not know. Reference material.*
+
 Terms you will meet in the code, in reviews and in issues, each in one line. The arrow points to the page that explains it.
 
 ## Compiler: the outside view
 
-- **konan**: the old name of Kotlin/Native. It survives in package names, `konanc`, `konan.properties`, `~/.konan`.
-- **K/N**: short for Kotlin/Native.
-- **First stage / second stage**: sources → klib / klibs → binary. → [compiler/](compiler/README.md)
-- **One-stage mode**: both stages in one `konanc` command, through a temporary klib. → [compiler/](compiler/README.md)
+- **konan**, **K/N**: the old name of Kotlin/Native (it survives in package names, `konanc`, `~/.konan`), and the short one.
+- **First stage / second stage**: sources → klib / klibs → binary. **One-stage mode**: both in one `konanc` command. → [compiler/](compiler/README.md)
 - **klib**: the Kotlin library format: metadata plus Kotlin IR in a zip archive. → [klibs-and-linking.md](compiler/klibs-and-linking.md)
 - **Metadata**: the declarations of a library as the frontend sees them, without bodies. → [klibs-and-linking.md](compiler/klibs-and-linking.md)
 - **Kotlin IR**: the compiler's tree of classes, functions and expressions; what lowerings work on. → [tour.md](tour.md)
@@ -15,15 +15,14 @@ Terms you will meet in the code, in reviews and in issues, each in one line. The
 - **K1, descriptors**: the old frontend's model of declarations; the second stage still loads klib metadata this way.
 - **Signature** (`IdSignature`): the string that identifies a declaration across klibs. → [klibs-and-linking.md](compiler/klibs-and-linking.md)
 - **Partial linkage**: klibs that do not match still link; the broken spot throws `IrLinkageError` when reached. → [klibs-and-linking.md](compiler/klibs-and-linking.md)
-- **Closed world**: the second stage sees the whole program, and a binary contains all of it. → [compilation-model.md](compiler/compilation-model.md)
+- **Closed world**: the second stage sees the whole program, and a binary contains all of it. → [compiler/](compiler/README.md#the-outside-view)
 - **Output kind**: what `-produce` asks for: program, static or dynamic library, framework, cache. → [compiler/](compiler/README.md)
 - **`.kexe`**: the file extension of a Kotlin/Native executable (except on Windows).
 - **Binary option**: a `-Xbinary=name=value` setting that changes the produced binary, for example `gc=pmcs`.
 - **Target, host**: the platform a binary is for (`KonanTarget`, e.g. `linux_x64`), and the one the compiler runs on. → [build-and-tests/](build-and-tests/README.md)
 - **Distribution** (`dist`, konan home): the built compiler with the runtime and stdlib. → [code-map.md](code-map.md)
 - **`konan.properties`**: per-target settings: toolchain, sysroot, Clang and linker flags. → [build-and-tests/](build-and-tests/README.md)
-- **Compiler cache**: a library compiled to machine code once and reused in later debug builds. → [caches.md](compiler/caches.md)
-- **Per-file cache, incremental compilation**: the same with one cache per source file of a project. → [caches.md](compiler/caches.md)
+- **Compiler cache**: a library compiled to machine code once and reused in later debug builds. **Per-file cache, incremental compilation**: the same per source file. → [caches.md](compiler/caches.md)
 
 ## Compiler: inside
 
@@ -41,14 +40,12 @@ Terms you will meet in the code, in reviews and in issues, each in one line. The
 - **DCE**: dead code elimination, removing what the program cannot reach. → [optimizations/dce.md](compiler/optimizations/dce.md)
 - **Escape analysis, lifetime**: finding objects that can be allocated on the stack. → [optimizations/escape-analysis.md](compiler/optimizations/escape-analysis.md)
 - **Codegen**: translating Kotlin IR to LLVM IR. → [codegen.md](compiler/codegen.md)
-- **`kfun:`, `kclass:`**: prefixes of the symbol names of Kotlin functions and class descriptions in LLVM IR and binaries.
-- **Mangled name**: the full symbol name, e.g. `kfun:shapes#total(kotlin.collections.List<shapes.Shape>){}kotlin.Double`.
+- **`kfun:`, `kclass:`, mangled name**: symbol names of Kotlin functions and class descriptions in LLVM IR and binaries. → [codegen.md](compiler/codegen.md)
 
 ## LLVM
 
 - **LLVM IR, bitcode**: LLVM's input language, and its binary encoding (`.bc`). → [llvm-primer.md](llvm-primer.md)
-- **Module**: LLVM's unit of compilation. Normally one for the whole program. → [llvm-primer.md](llvm-primer.md)
-- **Pass**: one LLVM transformation of a module. → [llvm-primer.md](llvm-primer.md)
+- **Module**, **pass**: LLVM's unit of compilation, and one LLVM transformation of it. → [llvm-primer.md](llvm-primer.md)
 - **LTO**: link-time optimization: optimizing across what were separate compilation units. → [llvm-primer.md](llvm-primer.md)
 - **Landing pad, unwinding**: where an exception arrives in a function, and how it gets there. → [exceptions.md](features/exceptions.md)
 - **Debug info, DWARF**: the mapping from machine code back to source lines and variables, read by debuggers.
@@ -62,15 +59,13 @@ Terms you will meet in the code, in reviews and in issues, each in one line. The
 - **`TypeInfo`** (RTTI): the constant that describes a class at run time: size, supertypes, vtable. → [object-model.md](runtime/object-model.md)
 - **vtable, itable**: tables of function pointers used for virtual calls and for interface calls. → [object-model.md](runtime/object-model.md)
 - **Permanent object**: an object stored in the binary itself, such as a string literal; never collected. → [object-model.md](runtime/object-model.md)
-- **Mutator**: a thread that runs Kotlin code, as opposed to a GC thread. → [gc-and-allocator.md](runtime/gc-and-allocator.md)
+- **Mutator**: a thread that runs Kotlin code, as opposed to a GC thread. **Stop-the-world (STW)**: a pause of all mutators.
 - **Safepoint**: a place where a thread checks whether the GC wants it to pause. → [runtime/](runtime/README.md)
 - **Thread state**: *runnable* (running Kotlin code) or *native* (in foreign code; the GC need not wait for it). → [runtime/](runtime/README.md)
-- **Stop-the-world (STW)**: a pause of all mutators, requested by the GC. → [gc-and-allocator.md](runtime/gc-and-allocator.md)
 - **Shadow stack, frame**: per-function blocks of stack slots through which the GC finds local references. → [runtime/](runtime/README.md)
 - **CMS, PMCS, STWMS, noop**: the garbage collectors; CMS (concurrent mark and sweep) is the default. → [gc-and-allocator.md](runtime/gc-and-allocator.md)
 - **Custom allocator**: the runtime's own heap allocator, the default one. → [gc-and-allocator.md](runtime/gc-and-allocator.md)
-- **`@GCUnsafeCall`**: marks a Kotlin `external` function implemented in the C++ runtime. → [runtime/](runtime/README.md)
-- **`@ExportForCppRuntime`**: marks a Kotlin function that the C++ runtime calls by name. → [runtime/](runtime/README.md)
+- **`@GCUnsafeCall`**, **`@ExportForCppRuntime`**: a Kotlin `external` function implemented in the C++ runtime, and a Kotlin function the runtime calls by name. → [runtime/](runtime/README.md#calls-in-both-directions)
 
 ## Interop and export
 
@@ -80,7 +75,5 @@ Terms you will meet in the code, in reviews and in issues, each in one line. The
 - **Platform libraries**: cinterop klibs for system APIs (POSIX, Apple frameworks), shipped with the compiler. → [cinterop.md](interop/cinterop.md)
 - **C stub / C bridge**: a small C function the compiler generates and compiles with Clang to make an interop call. → [cinterop.md](interop/cinterop.md)
 - **Commonizer**: makes platform libraries usable from code shared between several targets. → [cinterop.md](interop/cinterop.md)
-- **ObjCExport**: producing an Objective-C framework from Kotlin, and its run-time support. → [export.md](interop/export.md)
-- **C export**: producing a C library with a generated header (`-produce dynamic` or `static`). → [export.md](interop/export.md)
-- **Swift export**: direct export to Swift without Objective-C, in development. → [export.md](interop/export.md)
-- **Umbrella framework**: one framework that contains all Kotlin modules of an app. → [compilation-model.md](compiler/compilation-model.md)
+- **ObjCExport**, **C export**, **Swift export**: producing an Objective-C framework, a C library with a header, or (in development) Swift sources from Kotlin. → [export.md](interop/export.md)
+- **Umbrella framework**: one framework that contains all Kotlin modules of an app. → [compiler/](compiler/README.md#the-outside-view)

@@ -1,8 +1,53 @@
 # The pipeline: from klibs to a binary
 
+*Skip this page if you know the two stages, what Gradle's "compile" and "link" tasks run, and the backend's steps in order.*
+
 Kotlin/Native compiles in two stages. The **first stage** turns sources into a klib and is mostly shared with the other
-Kotlin backends. The **second stage** turns a set of klibs into a binary. It is what people mean by "the Native backend",
-and this page lists its steps in order. For the same steps shown on a real program, read the [tour](../tour.md) first.
+Kotlin backends. The **second stage** turns a set of klibs into a binary. It is what people mean by "the Native backend".
+This page shows the two stages from the outside and then lists the steps of the second one in order. The same steps on a
+real program are in the [tour](../tour.md).
+
+## The outside view
+
+Building a binary in Gradle project `:B`, which depends on project `:A`. Each hexagon is one invocation of the compiler:
+
+```mermaid
+flowchart LR
+    Asrc["sources of :A"] --> Ac{{":A:compileKotlin&lt;Target&gt;"}} --> Aklib["A.klib"]
+    Bsrc["sources of :B"] --> Bc{{":B:compileKotlin&lt;Target&gt;"}} --> Bklib["B.klib"]
+    Aklib -.->|"compiled against"| Bc
+    deps["klibs from Maven, stdlib"] -.-> Ac
+    deps -.-> Bc
+    Aklib --> link{{":B:linkDebugExecutable&lt;Target&gt;"}}
+    Bklib --> link
+    deps --> link
+    link --> bin["binary"]
+```
+
+- **"compile" tasks run the first stage**: sources → klib. Klibs are what gets published, and what dependencies from Maven
+  are. → [klibs-and-linking.md](klibs-and-linking.md)
+- **"link" tasks run the second stage**: all klibs → binary. Despite the name, this is where all code generation happens.
+  In this guide, "linking" is either IR linking (connecting klibs) or the system linker, never the Gradle task.
+- **`konanc` can run both stages in one command**: `konanc main.kt -o main` compiles the sources into a temporary klib and
+  runs the second stage on it. Gradle never does that.
+
+**The closed world.** A binary always contains everything it needs: its own code, all dependencies, the stdlib and the
+runtime. The second stage relies on seeing all of it at once, so two Kotlin/Native binaries never share Kotlin code through,
+say, a common dynamic library. If frameworks `Feature1` and `Feature2` both depend on project `:core`, each contains its own
+copy of `:core` and its own runtime, and a `Data` object from one is a different type for the other. The fix is one
+**umbrella framework** that includes all the Kotlin projects the application needs.
+
+**Why "link" is slow.** The second stage compiles the whole world every time. [Caches](caches.md) reuse machine code from
+earlier runs: each dependency klib is compiled once into a static library, and (experimentally) each source file of the
+project too. Gradle uses them for debug binaries only: release binaries (`-opt`) get whole-program optimizations, which
+need the IR of every library and are skipped as soon as one comes from a static cache. So debug and release builds
+exercise different compiler code.
+
+**Other languages.** The `cinterop` tool turns C or Objective-C headers into a klib that the compiler accepts as a
+dependency like any other ([cinterop.md](../interop/cinterop.md)). In the other direction the compiler produces a framework
+or a C library with a generated header ([export.md](../interop/export.md)).
+
+## The steps of the second stage
 
 ```mermaid
 flowchart TD
@@ -36,8 +81,6 @@ flowchart TD
     end
 ```
 
-## The steps
-
 1. **Loading klibs.** The IR of every klib is read and references between klibs are connected, so the rest of the pipeline
    sees one program. → [klibs-and-linking.md](klibs-and-linking.md)
 2. **Lowerings before inlining.** A short list that prepares functions for being inlined. It ends by generating accessors
@@ -47,20 +90,15 @@ flowchart TD
    built with an older one.
 4. **Lowerings after inlining.** The long list. Each one rewrites a language feature (enums, lambdas, coroutines, string
    templates, default arguments, ...) into simpler IR. → [lowerings/](lowerings/README.md)
-5. **Whole-program optimizations.** The compiler builds a data-flow graph of the whole program, then runs, in this order:
-   devirtualization (replace virtual calls with direct ones), dead code elimination (drop what `main` cannot reach) and,
-   just before code generation, escape analysis (find objects that can live on the stack). → [optimizations/](optimizations/README.md)
+5. **Whole-program optimizations.** Devirtualization, dead code elimination and escape analysis, on a data-flow graph of
+   the whole program. → [optimizations/](optimizations/README.md)
 6. **LLVM declarations and RTTI.** Every function, class and global gets its LLVM declaration first, so that code can
    refer to things that are generated later. Then the constants that describe classes at run time are emitted (**RTTI**,
    run-time type information). → [object-model.md](../runtime/object-model.md)
 7. **Code generation.** Each function body is translated to LLVM IR. → [codegen.md](codegen.md)
-8. **Linking runtime bitcode.** The C++ runtime ships as LLVM bitcode. The files matching the chosen options (which GC,
-   which allocator) are merged into the program's LLVM module, together with small C stubs generated for interop calls.
-   → [runtime/](../runtime/README.md)
-9. **LLVM passes.** LLVM optimizes the merged module, so runtime functions can be inlined into Kotlin code. Debug builds
-   run very few passes. → [llvm-primer.md](../llvm-primer.md)
-10. **Object file.** The module is written as bitcode, and the bundled Clang compiles it to an object file (`.o`).
-11. **Linker.** The system linker combines the object file, caches of libraries and system libraries into the result.
+8. **Steps 8 to 11** merge the runtime's bitcode and the C stubs generated for interop calls into the module, run LLVM's
+   passes, write an object file and call the system linker, which also adds the caches of libraries.
+   → [codegen.md](codegen.md#after-code-generation)
 
 ## Fragments and output kinds
 
@@ -71,14 +109,13 @@ program. When the compiler builds per-file [caches](caches.md) for a library, ea
 The **output kind** (`-produce`, or `-p`) does not select a different pipeline. All kinds go through the steps above and
 differ only at the edges:
 
-| Output kind | What is different |
+| Output kind | What you get, and what is different |
 |---|---|
-| `program` | An entry point that calls `main` is added |
-| `static`, `dynamic` | A C header and C adapter functions are generated next to the code → [export.md](../interop/export.md) |
-| `framework` | An Objective-C header and the framework bundle are generated → [export.md](../interop/export.md) |
+| `program` | `name.kexe` (or `.exe`). An entry point that calls `main` is added. With `-generate-test-runner` it runs all `@Test` functions instead; Gradle test tasks use that |
+| `static`, `dynamic` | `libname.a`, or `libname.so` / `.dylib` / `.dll`, plus a generated C header and C adapter functions → [export.md](../interop/export.md) |
+| `framework` | `Name.framework` with a generated Objective-C header; usable from Swift → [export.md](../interop/export.md) |
 | `static_cache` and other cache kinds | Only one library is compiled, not the whole program → [caches.md](caches.md) |
-
-`-p library` is not in the table: it produces a klib and that is the first stage.
+| `library` | Not a binary: a klib, the output of the first stage |
 
 ## The first stage in three lines
 
@@ -88,38 +125,16 @@ native libraries are not available. The code is in `compiler/cli/cli-native-klib
 
 ## Things to know
 
-- **One command can run both stages.** `konanc main.kt -o main` compiles the sources into a temporary klib and then runs
-  the second stage on it. Gradle always runs the stages separately: `compileKotlin<Target>` and `link...<Target>`.
-- **Whole-program optimizations need the whole program.** They are skipped when any library comes from a static cache,
-  because the compiler then has no IR to change for that library. This is why Gradle uses caches for debug builds only.
 - **Lowerings run file by file**, and a lowering normally changes only the file it runs on. Inlining is the exception: it
   reads bodies from other files. So all files are brought to the same point before inlining starts.
 - **Phase names are class names.** Each lowering is a phase named after its class, for example `EnumClassLowering`. The
-  other steps have names such as `Devirtualization`, `DCEPhase`, `EscapeAnalysis`, `Codegen`, `Linker`. The flags below
-  take these names.
-- **The exact order of steps 5 to 7** is one function, `runCodegen`. Read it when you need to know what runs before what.
-
-## Looking inside
-
-```bash
-# Kotlin IR before or after a phase, one file per source file (the stdlib included). Never pass "all": it writes about 1 GB.
-konanc main.kt -o main -Xphases-to-dump-after=EnumClassLowering -Xdump-directory=ir \
-    -Dorg.jetbrains.kotlin.compiler.ir.dump.strategy=KotlinLike      # Kotlin-like text instead of a tree
-
-# LLVM IR after a phase: ll/out.Codegen.ll (the directory must exist)
-konanc main.kt -o main -Xsave-llvm-ir-after=Codegen -Xsave-llvm-ir-directory=ll
-
-# Keep the intermediate files: tmp/out.bc (the final bitcode) and tmp/main.kexe.o
-konanc main.kt -o main -Xtemporary-files-dir=tmp
-
-# Skip a phase, to check whether it causes a problem
-konanc main.kt -o main -opt -Xdisable-phases=EscapeAnalysis
-```
+  other steps have names such as `Devirtualization`, `DCEPhase`, `EscapeAnalysis`, `Codegen`, `Linker`. The flags that dump
+  IR before or after a phase, or switch a phase off, take these names. → [cheat-sheet.md](../cheat-sheet.md)
 
 ## Where the code is
 
 - [TopLevelPhases.kt](../../../kotlin-native/backend.native/compiler/ir/backend.native/src/org/jetbrains/kotlin/backend/konan/driver/phases/TopLevelPhases.kt):
-  the pipeline itself. `runBackend` covers steps 2 to 11, `runCodegen` steps 5 to 7.
+  the pipeline itself. `runBackend` covers steps 2 to 11; `runCodegen` is the exact order of steps 5 to 7.
 - [NativeLoweringPhases.kt](../../../kotlin-native/backend.native/compiler/ir/backend.native/src/org/jetbrains/kotlin/backend/konan/driver/phases/NativeLoweringPhases.kt):
   the two lists of lowerings, in order.
 - [NativeCompilerDriver.kt](../../../kotlin-native/backend.native/compiler/ir/backend.native/src/org/jetbrains/kotlin/backend/konan/driver/NativeCompilerDriver.kt):
@@ -133,7 +148,6 @@ konanc main.kt -o main -opt -Xdisable-phases=EscapeAnalysis
 
 | Page | What it explains |
 |---|---|
-| [compilation-model.md](compilation-model.md) | The outside view: klibs, binaries, caches, interop, export |
 | [klibs-and-linking.md](klibs-and-linking.md) | What a klib holds and how several klibs become one program (step 1) |
 | [lowerings/](lowerings/README.md) | How language features are rewritten into simpler IR (steps 2 to 4) |
 | [optimizations/](optimizations/README.md) | Whole-program optimizations (step 5) |

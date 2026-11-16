@@ -1,9 +1,11 @@
 # Type checks: `is` and `as`
 
-On the JVM, `x is Dog` is one bytecode instruction and the virtual machine does the rest. Kotlin/Native has to generate the
-check itself. Every object starts with a pointer to a constant describing its class, the **type info**
-(→ [object-model.md](../../runtime/object-model.md)). A type check reads that pointer and has to answer: is this class `Dog`, or one
-of its subclasses? This page shows how the answer is made cheap, and which checks are not generated at all.
+*Skip this page if you know how a subtype test is compiled (class-id intervals, interface tables) and when casts are checked.*
+
+Kotlin/Native has to generate the code of `x is Dog` itself. Every object starts with a pointer to a constant describing
+its class, the **type info** (→ [object-model.md](../../runtime/object-model.md)). A type check reads that pointer and has
+to answer: is this class `Dog`, or one of its subclasses? This page shows how the answer is made cheap, and which checks
+are not generated at all.
 
 ```kotlin
 open class Animal
@@ -51,8 +53,7 @@ at compile time and written into the code as two constants:
   %4 = call i1 @IsSubclassFast(ptr %3, i32 446, i32 447)                ; typeInfo->classId_ >= 446 && typeInfo->classId_ <= 447
 ```
 
-`IsSubclassFast` is a one-line function of the runtime. The cost is a load and two comparisons, no matter how deep the
-hierarchy is.
+The cost is a load and two comparisons, no matter how deep the hierarchy is.
 
 ## Interfaces: one table lookup
 
@@ -77,23 +78,9 @@ check is used.
 
 ## Checks that are never generated
 
-Before any of this, the compiler removes the checks it can decide from static types:
-
-```kotlin
-fun upcast(d: Dog): Animal = d as Animal        // Dog is a subclass of Animal: no type check at all
-
-fun twice(x: Any): String {
-    if (x is Dog) {                             // one real check
-        return x.sound()                        // the smart cast to Dog costs nothing: it was just proven
-    }
-    return ""
-}
-
-fun safe(x: Any): Dog? = x as? Dog              // rewritten by a lowering to: if (x is Dog) x else null
-```
-
-After inlining, the compiler also recomputes the types of local variables, because inlined generic code leaves many of
-them typed `Any?`; with the precise type, more casts turn out to be upcasts and disappear.
+Before any of this, lowerings remove the checks that can be decided at compile time: a cast to a superclass
+(`d as Animal` for a `Dog`) is at most a null check, a smart cast after `x is Dog` costs nothing, and `x as? Dog` becomes
+`if (x is Dog) x else null`. The rewrites are described in [casts-and-types.md](../lowerings/casts-and-types.md).
 
 ## Casts caused by generics
 
@@ -116,19 +103,19 @@ list. The JVM always checks at this point. Kotlin/Native checks **only in debug 
 ```
 
 The option is called `genericSafeCasts` (`-Xbinary=genericSafeCasts=true` or `false`). It is off in `-opt` builds because
-of the cost of the checks. When it is on, an extra pass (`CastsOptimization`) follows conditions through each function
-and removes checks that an earlier `is` or `as` on the same value has already proven.
+of the cost of the checks. When it is on, [CastsOptimization](../lowerings/casts-and-types.md#castsoptimization) removes
+the checks that an earlier `is` or `as` on the same value has already proven.
 
 ## Things to know
 
-- **A wrong unchecked cast behaves differently in debug and `-opt`.** Debug throws `ClassCastException` where the value is
-  used. An `-opt` build goes on with an object of the wrong class and may read its fields at the wrong offsets.
+- **A wrong unchecked cast behaves differently in debug and `-opt`.** `a as T` inside a generic function checks only the
+  upper bound of `T`, so the wrong object gets out. Debug throws `ClassCastException` where the caller uses the value. An
+  `-opt` build goes on with an object of the wrong class and may read its fields at the wrong offsets.
 - **`as` throws through the runtime.** A failed cast calls `ThrowClassCastException`; `as` to a non-null type applied to
-  `null` throws `NullPointerException`. In debug builds the whole cast is a call to the stdlib function `downcast`.
+  `null` throws `NullPointerException`. In debug builds the whole cast is a call to the stdlib function `downcast`
+  (→ [CastsLowering](../lowerings/casts-and-types.md#castslowering)).
 - **Class ids differ from build to build.** They depend on the set of classes in the program. Never rely on a number.
 - **Objective-C classes are checked differently**, by asking the Objective-C runtime (→ [cinterop.md](../../interop/cinterop.md)).
-- [Devirtualization](devirtualization.md) uses an even cheaper test in its `when`: comparing the type info pointer with
-  one class, which is enough when the exact class is known.
 
 ## Where the code is
 
@@ -137,8 +124,5 @@ and removes checks that an earlier `is` or `as` on the same value has already pr
 - [CodeGenerator.kt](../../../../kotlin-native/backend.native/compiler/ir/backend.native/src/org/jetbrains/kotlin/backend/konan/llvm/CodeGenerator.kt):
   `checkIsSubtype` chooses between the general and the fast check.
 - [Types.cpp](../../../../kotlin-native/runtime/src/main/cpp/Types.cpp): `IsSubtype` and `IsSubclassFast` in the runtime.
-- [CastsOptimization.kt](../../../../kotlin-native/backend.native/compiler/ir/backend.native/src/org/jetbrains/kotlin/backend/konan/optimizations/CastsOptimization.kt)
-  and [ComputeTypesPass.kt](../../../../kotlin-native/backend.native/compiler/ir/backend.native/src/org/jetbrains/kotlin/backend/konan/optimizations/ComputeTypesPass.kt):
-  removal of redundant checks.
 - [NativeSecondStageCompilationConfig.kt](../../../../kotlin-native/backend.native/compiler/ir/backend.native/src/org/jetbrains/kotlin/backend/konan/NativeSecondStageCompilationConfig.kt):
   `genericSafeCasts` and its default.

@@ -1,9 +1,11 @@
 # Garbage collector and allocator
 
-Compiled Kotlin code never frees memory. It asks the [runtime](README.md) for every object (`AllocInstance`,
-`AllocArrayInstance`), and a **garbage collector** (GC) finds the objects the program can no longer reach and gives their
-memory back to the **allocator**. Both are replaceable runtime modules; this page describes the defaults: the concurrent
-mark-and-sweep collector (CMS) and the "custom" allocator.
+*Skip this page if you know the phases of the concurrent mark-and-sweep cycle, the write barrier and the paged allocator.*
+
+Compiled Kotlin code never frees memory. It asks the [runtime](README.md) for every object, and a **garbage collector**
+(GC) finds the objects the program can no longer reach and gives their memory back to the **allocator**. Both are
+replaceable [runtime modules](README.md#how-it-is-shipped); this page describes the defaults: the concurrent mark-and-sweep
+collector (CMS) and the "custom" allocator.
 
 One collection with the default collector. Time goes left to right. Neither marking nor sweeping happens during a pause:
 
@@ -31,20 +33,19 @@ marking needs one because the program can hide an object from the marker: it rea
 has not visited yet, keeps it only in a local variable, and overwrites the field. The marker scanned the stack earlier and
 will never see that object, although it is alive.
 
-The barrier used here closes the hole from the other side: before a reference is overwritten, the **old** value is handed to
-the marker. Together with "objects allocated during marking are born marked", this means everything that was reachable at
-the pause in step 2 survives the collection. Garbage created during the cycle is collected by the next one.
+So before a reference is overwritten, the barrier hands the **old** value to the marker. Together with "objects allocated
+during marking are born marked", this means everything that was reachable at the pause in step 2 survives the collection.
+Garbage created during the cycle is collected by the next one.
 
 Outside of marking the barrier is one load and a branch that is not taken. It lives inside the runtime functions that
-compiled code calls to store references (`UpdateHeapRef` and friends), so the compiler does not generate it itself.
+compiled code calls to store references (`UpdateHeapRef` and friends).
 
 ## What kind of collector this is
 
-- **Tracing**: it finds live objects by following references from roots. There is no reference counting, so cycles are not
-  a problem. What the roots are is explained in [runtime/](README.md#how-the-gc-finds-references).
-- **Non-moving**: an object stays at the same address for its whole life. Pointers held in registers, in the runtime's C++
-  code or in foreign code stay valid across a collection and never have to be updated. The cost is that free memory can
-  become fragmented.
+- **Tracing**: it finds live objects by following references from [roots](README.md#how-the-gc-finds-references). There
+  is no reference counting, so cycles are not a problem.
+- **Non-moving**: an object stays at the same address for its whole life, so pointers held in registers, in the runtime's
+  C++ code or in foreign code stay valid across a collection. The cost is that free memory can become fragmented.
 - **Non-generational**: there is no "young generation". Every collection marks the whole heap.
 
 ## When a collection starts
@@ -54,8 +55,7 @@ The default scheduler (`adaptive`) triggers a collection in two cases:
 - **Heap growth.** Threads report how much they allocate. When the heap approaches a target size, a collection starts. The
   target is recomputed after each collection from the amount of memory that survived (by default, twice that amount).
   If the heap still passes the target before the collection finishes, Kotlin threads are paused until it does.
-- **Time.** If no collection happened for a while (10 seconds by default), a timer thread starts one, except when a
-  UIKit application is in the background.
+- **Time.** If no collection happened for a while (10 seconds by default), a timer thread starts one.
 
 A program can also ask explicitly with `kotlin.native.runtime.GC.collect()`.
 
@@ -63,12 +63,12 @@ A program can also ask explicitly with `kotlin.native.runtime.GC.collect()`.
 
 Chosen at compile time with the binary option `gc`. All share the cycle above; they differ in what runs during a pause.
 
-| Collector | What is different | Used |
-|---|---|---|
-| `cms`: concurrent mark and sweep | Described above | Default |
-| `pmcs`: parallel mark, concurrent sweep | All marking happens inside the first pause, on several threads: the paused Kotlin threads help. No write barrier | On request |
-| `stwms`: stop-the-world mark and sweep | The whole collection up to finalizers is one pause, on the GC thread | On request |
-| `noop` | Never collects; memory only grows. Comes with the `manual` scheduler | On request |
+| Collector | What is different |
+|---|---|
+| `cms`: concurrent mark and sweep | The default, described above |
+| `pmcs`: parallel mark, concurrent sweep | All marking happens inside the first pause, on several threads: the paused Kotlin threads help. No write barrier |
+| `stwms`: stop-the-world mark and sweep | The whole collection up to finalizers is one pause, on the GC thread |
+| `noop` | Never collects; memory only grows. Comes with the `manual` scheduler |
 
 ## The allocator
 
@@ -97,17 +97,14 @@ kind of allocation:
 
 ## Things to know
 
-- **Not every object is on this heap.** Objects that [escape analysis](../compiler/optimizations/escape-analysis.md) proves local are
-  allocated in the stack frame of the function. Constants such as string literals are **permanent** objects in the binary's
-  data. A tag in the object header tells the three kinds apart; the GC never frees the last two.
-- **Objective-C and Swift keep Kotlin objects alive through a counter.** A Kotlin object passed to Swift gets a record with
-  the number of foreign references to it. While the number is above zero the object is a GC root; at zero the record is
-  only a weak reference. → [export.md](../interop/export.md)
+- **Not every object is on this heap.** Stack objects (→ [escape analysis](../compiler/optimizations/escape-analysis.md))
+  and permanent objects in the binary's data are told apart by a tag in the header and are never freed by the GC.
+  → [object-model.md](object-model.md#objects-that-are-constants)
+- **Objective-C and Swift keep Kotlin objects alive through a counter** of foreign references. While it is above zero the
+  object is a GC root; at zero the record is only a weak reference. → [export.md](../interop/export.md#how-objects-cross-the-boundary)
 - **A dead object is not freed at once**, and with a finalizer it may live through one more collection. Never rely on
   the timing of `Cleaner` actions.
 - **The compiler flag `-Xgc=cms` selects `pmcs`**, for historical reasons. The binary option `-Xbinary=gc=cms` means CMS.
-- **With a sanitizer** the page scheme is switched off by default and every object is allocated separately, because
-  sanitizers are not useful with paged allocation.
 
 ## Where the code is
 
@@ -115,5 +112,3 @@ kind of allocation:
   collectors; [gc/cms/](../../../kotlin-native/runtime/src/gc/cms/cpp) has concurrent marking and the barriers
 - [gcScheduler/](../../../kotlin-native/runtime/src/main/cpp/gcScheduler): when to collect; defaults are in `GCSchedulerConfig.hpp`
 - [alloc/custom/](../../../kotlin-native/runtime/src/alloc/custom): the allocator, with its own README
-- [mm/ExternalRCRefRegistry.hpp](../../../kotlin-native/runtime/src/main/cpp/mm/ExternalRCRefRegistry.hpp): references held by
-  foreign code, and weak references

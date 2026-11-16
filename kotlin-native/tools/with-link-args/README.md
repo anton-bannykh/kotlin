@@ -1,7 +1,7 @@
 # with-link-args
 This tool allows one to run a KMP Gradle build in such a way that the link
 tasks (aka 
-"[the Kotlin/Native second compilation stage](../../../docs/native/compiler/compilation-model.md)")
+"[the Kotlin/Native second compilation stage](../../../docs/native/compiler/README.md)")
 get additional Gradle flags.
 
 # Usage

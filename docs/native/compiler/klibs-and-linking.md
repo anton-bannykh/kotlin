@@ -1,5 +1,7 @@
 # Klibs and linking
 
+*Skip this page if you know how a klib is laid out, what a signature is and what partial linkage does.*
+
 A **klib** is the Kotlin library format for every backend except JVM: the output of the first stage and the input of the
 second. It stores a library as "half-compiled Kotlin": checked, resolved, but with no machine code. **Linking** here means
 IR linking: the second stage loads many klibs and connects them into one program. (The system linker comes much later, see
@@ -49,8 +51,8 @@ compiler_version=2.5.255-SNAPSHOT
 | Who reads it | The frontend, when it compiles code that *uses* this library. Also the IDE | The second stage, to generate code |
 | Looks like | `public final fun total(shapes: List<Shape>): Double` | The tree behind `shapes.sumOf { it.area() }` |
 
-The frontend never needs bodies, and the backend needs more than headers, so the two are stored separately. You can print
-both: `klib dump-metadata shapes.klib` and `klib dump-ir shapes.klib` (the `klib` tool is in `kotlin-native/dist/bin`).
+The frontend never needs bodies, and the backend needs more than headers, so the two are stored separately. The `klib` tool
+(in `kotlin-native/dist/bin`) prints either. → [cheat-sheet.md](../cheat-sheet.md)
 
 ## How several klibs become one IR
 
@@ -72,21 +74,17 @@ kotlin.collections/sumOf|sumOf@kotlin.collections.Iterable<0:0>(kotlin.Function1
 ...
 ```
 
-The second stage loads all klibs of the program. Whenever it meets an imported signature, it looks for a library that
-declares the same signature and connects the two. After this step a call to `sumOf` in `shapes` points at the real `sumOf`
-function from the stdlib klib, with its body, and the compiler can inline it.
+Whenever the second stage meets an imported signature, it looks for a library that declares the same signature and connects
+the two. After this step a call to `sumOf` in `shapes` points at the real `sumOf` function from the stdlib klib, with its
+body.
 
-The same naming scheme later gives the function its name in the binary. Code generation emits `total` as:
-
-```llvm
-define double @"kfun:shapes#total(kotlin.collections.List<shapes.Shape>){}kotlin.Double"(ptr %0)
-```
+The same naming scheme later gives the function its symbol name in the binary:
+`kfun:shapes#total(kotlin.collections.List<shapes.Shape>){}kotlin.Double`. → [codegen.md](codegen.md#a-function-and-its-name)
 
 ## Interop klibs
 
-`cinterop` turns C or Objective-C headers into a klib too. Such a klib has metadata but no `ir/` directory: the compiler
-builds the IR for a C declaration from the metadata at the moment something refers to it. Its manifest says `interop=true`,
-and `targets/<target>/native/` holds bitcode compiled from C. → [cinterop.md](../interop/cinterop.md)
+`cinterop` turns C or Objective-C headers into a klib too. Such a klib has metadata but no `ir/` directory, its manifest
+says `interop=true`, and `targets/<target>/native/` holds bitcode compiled from C. → [cinterop.md](../interop/cinterop.md)
 
 ## Partial linkage
 
@@ -109,8 +107,7 @@ Uncaught Kotlin exception: kotlin.internal.IrLinkageError: Function 'removedLate
   different signature, and libraries compiled against the old one no longer link. Renaming a parameter changes nothing.
 - **IR is loaded on demand.** From a dependency, the compiler reads only the declarations the program refers to, directly
   or indirectly, not the whole library.
-- **Partial linkage is silent by default.** If a program throws `IrLinkageError`, rebuild it with
-  `-Xpartial-linkage-loglevel=warning` to see every mismatch at compile time.
+- **Partial linkage is silent by default.** `-Xpartial-linkage-loglevel=warning` shows every mismatch at compile time.
 - **The second stage has a "K1 frontend" step.** It compiles no sources. It only loads the metadata of the klibs in the
   form used by the old frontend (descriptors), because some parts of the backend, such as Objective-C export, still
   work with it.
@@ -123,9 +120,5 @@ Uncaught Kotlin exception: kotlin.internal.IrLinkageError: Function 'removedLate
   the second stage loads and links klibs.
 - [KonanIrLinker.kt](../../../compiler/ir/serialization.native/src/org/jetbrains/kotlin/backend/konan/serialization/KonanIrLinker.kt):
   the Native IR linker; picks how each kind of klib (regular, interop, cached) is read.
-- [KonanMangler.kt](../../../compiler/ir/serialization.native/src/org/jetbrains/kotlin/backend/konan/serialization/KonanMangler.kt):
-  how signatures are computed for Native.
 - [PartialLinkageSupportForLinkerImpl.kt](../../../compiler/ir/serialization.common/src/org/jetbrains/kotlin/backend/common/linkage/partial/PartialLinkageSupportForLinkerImpl.kt):
   partial linkage, shared with the JS and Wasm backends.
-
-Read next: [lowerings/](lowerings/README.md), [caches.md](caches.md).

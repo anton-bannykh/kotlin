@@ -1,7 +1,9 @@
 # Code map: where things are
 
-Kotlin/Native is not one directory. For historical reasons the code sits in three places of the Kotlin repository, and the
-name **konan** (the old name of the project) is still in most package and file names.
+*Skip this page until you need to find where something lives. Reference material.*
+
+For historical reasons the code sits in three places of the Kotlin repository, and the name **konan** (the old name of the
+project) is still in most package and file names.
 
 ```
 kotlin-native/     the backend that uses LLVM, the C++ runtime, the cinterop tool, platform libraries, the distribution
@@ -31,7 +33,6 @@ run inside Gradle or the IDE on any machine. Only `kotlin-native/backend.native`
 | `kotlin-native/konan/konan.properties` | For every target: toolchain, sysroot, Clang and linker flags → [build-and-tests/](build-and-tests/README.md) |
 | `kotlin-native/build-tools` | Gradle plugins that build Kotlin/Native itself: the runtime, the distribution, platform libraries |
 | `kotlin-native/cmd` | The launcher scripts: `konanc`, `cinterop`, `klib`, `run_konan` |
-| `kotlin-native/performance` | Benchmarks |
 | `native/utils` | `KonanTarget`, host detection, access to `konan.properties`, downloading of toolchains |
 | `native/binary-options` | The `-Xbinary=name=value` options (`BinaryOptions.kt`) |
 | `native/frontend` | Declarations in the old frontend's form (K1 descriptors), still used by the second stage |
@@ -60,24 +61,21 @@ All under `kotlin-native/backend.native/compiler/ir/backend.native/src/org/jetbr
 
 ## Inside the runtime
 
-`kotlin-native/runtime/src/` has one directory per **runtime module**. Each is compiled to its own bitcode file, and the
-compiler links into a binary only the ones the options select. → [runtime/](runtime/README.md)
+`kotlin-native/runtime/src/` has one directory per [runtime module](runtime/README.md#how-it-is-shipped):
 
 | Directory | What is in it |
 |---|---|
 | `main/cpp/` | The core, always linked: objects and type information, threads, exceptions, strings, startup |
 | `main/kotlin/` | The Native-only part of the stdlib, including `kotlin.native.internal`, which the compiler calls into |
-| `gc/` | The garbage collectors, one is chosen: `cms` (default), `pmcs`, `stms`, `noop` → [gc-and-allocator.md](runtime/gc-and-allocator.md) |
-| `alloc/`, `gcScheduler/` | The allocators (`custom`, `legacy`) and the policies that decide when to collect |
+| `gc/`, `alloc/`, `gcScheduler/` | The garbage collectors, the allocators and the policies that decide when to collect → [gc-and-allocator.md](runtime/gc-and-allocator.md) |
 | `launcher/` | The C `main` of an executable |
 | `objc/` | Objective-C support, for Apple targets |
 | `compiler_interface/` | A module the compiler reads to learn the runtime's C++ struct layouts and function signatures |
-| others | `debug`, `exceptions_support`, `source_info`, `libbacktrace`, `crashHandler`: debugger and stack trace support |
 
 ## The built distribution
 
-`./gradlew :kotlin-native:dist` puts a working compiler into `kotlin-native/dist`. It has the same layout as a released
-Kotlin/Native:
+`./gradlew :kotlin-native:dist` puts a working compiler into `kotlin-native/dist`, with the same layout as a released
+Kotlin/Native (→ [build-and-tests/](build-and-tests/README.md)):
 
 ```
 bin/                           konanc, cinterop, klib, run_konan
@@ -91,5 +89,4 @@ klib/cache/<target>-.../       caches: the stdlib (and platform libraries) alrea
 tools/konan_lldb.py            pretty-printers for LLDB
 ```
 
-LLVM, Clang, linkers and sysroots are not in the distribution. They are downloaded into `~/.konan/dependencies/` on first
-use.
+LLVM, Clang, linkers and sysroots are not in the distribution: they are downloaded into `~/.konan/dependencies/`.

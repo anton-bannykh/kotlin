@@ -1,5 +1,7 @@
 # Interop
 
+*Skip this page if you know that cinterop (Kotlin calls C) and export (C and Swift call Kotlin) are separate mechanisms.*
+
 Kotlin/Native code does not live alone: it calls system libraries written in C and Objective-C, and it is itself packaged
 as libraries and frameworks that C, Objective-C and Swift code calls. The two directions are separate mechanisms.
 

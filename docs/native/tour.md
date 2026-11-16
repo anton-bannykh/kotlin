@@ -1,7 +1,9 @@
 # A tour: from source code to a running binary
 
-This page follows one small program through Kotlin/Native and shows what it looks like at every step. All snippets are real
-compiler output, shortened. Each step links to the page that explains it.
+*Skip this page if you can already say what a klib, a lowering, `EnterFrame` and `runtime.bc` are and where each appears.*
+
+One small program followed through Kotlin/Native, with what it looks like at every step. All snippets are real compiler
+output, shortened. Each step links to the page that explains it.
 
 ```kotlin
 // tour.kt
@@ -72,8 +74,7 @@ default/manifest     name, dependencies, versions
 default/targets/     for interop libraries: LLVM bitcode of C stubs and bundled native libraries, per target
 ```
 
-A klib contains no machine code and nothing LLVM-specific. It is "half-compiled Kotlin" that is still portable across
-targets. → [klibs-and-linking.md](compiler/klibs-and-linking.md), [compilation-model.md](compiler/compilation-model.md)
+A klib contains no machine code and nothing LLVM-specific. → [klibs-and-linking.md](compiler/klibs-and-linking.md)
 
 ## Step 2. All klibs → one IR
 
@@ -122,7 +123,7 @@ fun main() {
 
 ## Step 4. Whole-program optimizations (only with `-opt`)
 
-Because the compiler sees the entire program, it can work out facts such as "which classes can this variable actually hold?".
+Because the compiler sees the entire program, it can work out which classes a variable can actually hold.
 → [optimizations/](compiler/optimizations/README.md)
 
 In our program the only lists that can reach `total` come from `listOf(...)`, which returns either an array wrapper (the
@@ -141,8 +142,8 @@ drops from 5430 (our code plus the whole stdlib) to 1932.
 
 ## Step 5. Kotlin IR → LLVM IR
 
-**LLVM IR** is the input language of LLVM: a typed, low-level language, roughly "portable assembly". If you have not seen it
-before, read [llvm-primer.md](llvm-primer.md) first. Code generation translates each Kotlin function into an LLVM function.
+**LLVM IR** is the input language of LLVM, roughly "portable assembly". If you have not seen it before, read
+[llvm-primer.md](llvm-primer.md) first. Code generation translates each Kotlin function into an LLVM function.
 → [codegen.md](compiler/codegen.md)
 
 A simple one first. `Circle.area()` takes `this` as a pointer and returns a `double`:
@@ -182,55 +183,35 @@ define void @"kfun:#main(){}"() {
 
 What to notice:
 
-- **`@"kclass:Circle"`** is a constant describing the class: its size, its supertypes, its table of virtual functions. Every
-  object starts with a pointer to such a constant. → [object-model.md](runtime/object-model.md)
-- **`AllocInstance`** is the runtime's allocator. There is no `new` instruction and no `free`: memory is reclaimed by the
-  garbage collector. → [gc-and-allocator.md](runtime/gc-and-allocator.md)
-- **`EnterFrame` / `LeaveFrame`** and the extra `ptr` argument passed to calls that return an object: this is how the GC
-  finds references held in local variables. Each function keeps them in a block of stack slots and tells the runtime where
-  the block is. → [runtime/](runtime/README.md)
-- **Safepoints** are places where a thread checks whether the GC wants it to pause. The compiler puts one at the start of
-  every function and in every loop.
-- **String literals and class descriptions are constants** in the binary; nothing is built at startup.
+- **`@"kclass:Circle"`** is a constant describing the class; every object starts with a pointer to such a constant. String
+  literals are constants too: nothing is built at startup. → [object-model.md](runtime/object-model.md)
+- **`AllocInstance`** is the runtime's allocator. There is no `free`: memory is reclaimed by the garbage collector.
+  → [gc-and-allocator.md](runtime/gc-and-allocator.md)
+- **`EnterFrame` / `LeaveFrame`**, and the extra `ptr` argument of calls that return an object, are how the GC finds
+  references held in local variables. The **safepoint** calls are where a thread lets the GC pause it.
+  → [runtime/](runtime/README.md)
 
 ## Step 6. LLVM IR → binary
 
-1. **The runtime is added.** The runtime is written in C++ but ships precompiled to LLVM bitcode (`runtime.bc`, plus one
-   file per replaceable part, e.g. `concurrent_ms_gc.bc` for the default garbage collector). The compiler merges the chosen
-   files into the program's LLVM module. Since runtime and program are now one module, LLVM can inline small runtime
-   functions, such as the safepoint check, straight into Kotlin code.
-2. **LLVM optimizes** the module and emits machine code into an object file (`tour.kexe.o`).
-3. **The system linker** (`ld.lld`, or `ld64` on Apple platforms) links it with system libraries into `tour.kexe`. For this
-   program that is 727 KB by default and 551 KB with `-opt`.
-
-→ [codegen.md](compiler/codegen.md), [caches.md](compiler/caches.md) (how most of this work is skipped for libraries that did not change)
+The runtime, precompiled to LLVM bitcode (`runtime.bc` and others), is merged into the program's LLVM module. LLVM optimizes
+the result and emits an object file (`tour.kexe.o`), and the system linker turns it into `tour.kexe`.
+→ [codegen.md](compiler/codegen.md#after-code-generation), [caches.md](compiler/caches.md) (how most of this work is skipped for
+libraries that did not change)
 
 ## Step 7. Running
 
-The operating system calls the C `main` of the runtime. It initializes the runtime (memory manager, the current thread), then
-calls the compiler-generated function `Konan_start`, which calls our `main` inside a `try`/`catch` that reports uncaught
-exceptions. From here on the program runs with no interpreter or JIT involved. The runtime only does work when the program
-asks for it (allocation, type checks, exceptions) or in the background (the GC thread). → [runtime/](runtime/README.md)
+The operating system calls the C `main` of the runtime. It initializes the runtime, then calls our `main` inside a
+`try`/`catch` that reports uncaught exceptions. The runtime only does work when the program asks for it (allocation, type
+checks, exceptions) or in the background (the GC thread). → [runtime/](runtime/README.md)
 
 ## Try it yourself
 
 ```bash
 ./gradlew :kotlin-native:dist                      # build the compiler into kotlin-native/dist (slow the first time)
 kotlin-native/dist/bin/konanc tour.kt -o tour      # both stages in one go; add -opt for an optimized build
-
-# Kotlin IR after a lowering, written as Kotlin-like code into ./ir
-konanc -Dorg.jetbrains.kotlin.compiler.ir.dump.strategy=KotlinLike tour.kt -o tour \
-    -Xphases-to-dump-after=NativeAllFunctionInlining,CastsLowering -Xdump-directory=ir
-
-# LLVM IR right after code generation, written into ./ll (the directory must exist)
-konanc tour.kt -o tour -Xsave-llvm-ir-after=Codegen -Xsave-llvm-ir-directory=ll
-
-# just the klib
-konanc tour.kt -p library -o tour && unzip -l tour.klib
 ```
 
-## Where to go next
+How to dump the Kotlin IR and the LLVM IR shown above: [cheat-sheet.md](cheat-sheet.md).
 
-- The same pipeline with every step named: [compiler/](compiler/README.md)
-- Where all this lives in the repository: [code-map.md](code-map.md)
-- LLVM concepts used above: [llvm-primer.md](llvm-primer.md)
+Next: [llvm-primer.md](llvm-primer.md) for the LLVM concepts used above, then the same pipeline with every step named in
+[compiler/](compiler/README.md).

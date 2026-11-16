@@ -1,10 +1,11 @@
 # Escape analysis
 
-Normally every Kotlin object is allocated on the heap by the runtime and later reclaimed by the garbage collector
-(→ [gc-and-allocator.md](../../runtime/gc-and-allocator.md)). Many objects are short-lived helpers that never leave the function that
-creates them. Escape analysis finds these, and code generation puts them into the function's stack frame instead: no call
-to the allocator, and nothing for the GC to clean up. It is one of the
-[whole-program optimizations](README.md) and runs only with `-opt`.
+*Skip this page if you know which objects Kotlin/Native allocates on the stack and what makes an object escape.*
+
+Normally every Kotlin object is allocated on the heap by the runtime and later reclaimed by the
+[garbage collector](../../runtime/gc-and-allocator.md). Many objects are short-lived helpers that never leave the function
+that creates them. Escape analysis finds these, and code generation puts them into the function's stack frame instead: no
+call to the allocator, and nothing for the GC to clean up. It is one of the [whole-program optimizations](README.md).
 
 ```kotlin
 class Point(val x: Int, val y: Int)
@@ -22,18 +23,9 @@ fun remember(a: Int, b: Int): Int {
 }
 ```
 
-LLVM IR of `manhattan` right after code generation, shortened. In a debug build the object comes from the runtime:
-
-```llvm
-  %7 = call ptr @AllocInstance(ptr @"kclass:Point", ptr %4)                 ; ask the runtime's allocator for a Point
-  call void @"kfun:Point#<init>(kotlin.Int;kotlin.Int){}"(ptr %7, i32 %0, i32 %1)
-  %8 = call i32 @"kfun:Point#<get-x>(){}kotlin.Int"(ptr %7)
-  %9 = call i32 @"kfun:Point#<get-y>(){}kotlin.Int"(ptr %7)
-  %10 = add i32 %8, %9
-```
-
-With `-opt` there is no allocation call. The object is a slot in the stack frame (`alloca`, see
-[llvm-primer.md](../../llvm-primer.md)):
+In a debug build `manhattan` gets its `Point` from the runtime: `call ptr @AllocInstance(ptr @"kclass:Point", ptr %4)`.
+With `-opt` there is no allocation call. The object is a slot in the stack frame (`alloca`). LLVM IR right after code
+generation, shortened:
 
 ```llvm
   %5 = alloca %"kclassbody:Point#internal"                      ; room for a Point (header + two Ints) in the stack frame
@@ -48,16 +40,13 @@ With `-opt` there is no allocation call. The object is a slot in the stack frame
   %12 = add i32 %9, %11
 ```
 
-`remember` still calls `AllocInstance` in the `-opt` build, because its `Point` escapes.
-
-The stack object is a complete Kotlin object with a normal header, so any code can use it without knowing where it lives.
+`remember` still calls `AllocInstance` in the `-opt` build, because its `Point` escapes. The stack object is a complete
+Kotlin object with a normal header, so any code can use it without knowing where it lives.
 
 ## The question it answers
 
-For every allocation: **can this object still be referenced after the function that created it has returned?** If it
-cannot, its memory can die together with the stack frame.
-
-An object **escapes** (must stay on the heap) when it is:
+For every allocation: **can this object still be referenced after the function that created it has returned?** An object
+**escapes** (must stay on the heap) when it is:
 
 - stored in a global: a top-level property or a field of an `object`;
 - stored in a field or array element of something that itself escapes or lives on the heap;
@@ -72,9 +61,9 @@ Everything an escaping object refers to escapes too.
 
 Passing an object to another function does not by itself make it escape. The compiler analyses callees before callers
 and keeps, for each function, a short summary: what happens to each parameter (does it escape? does it end up referenced
-from another parameter or from the return value?). At a call site the summary is used in place of the callee's body. In the
-program this example comes from, `main` calls `speak(Dog())`, where `fun speak(a: Animal) = a.sound()`. The summary of
-`speak` says its parameter does not escape, so this `Dog` is placed in the stack frame of `main`.
+from another parameter or from the return value?). At a call site the summary is used in place of the callee's body. For
+example, `main` calls `speak(Dog())`, where `fun speak(a: Animal) = a.sound()`. The summary of `speak` says its parameter
+does not escape, so this `Dog` is placed in the stack frame of `main`.
 
 This is why [devirtualization](devirtualization.md) runs first. For a direct call there is one summary to apply. For a
 virtual call with a few known targets (up to five), all their summaries are applied. For a virtual call with more targets
@@ -95,11 +84,8 @@ public external operator fun get(index: Int): T    // (in class Array)
 
 - **The result is all or nothing.** Internally the analysis distinguishes more cases (escapes only through the return
   value, only into a parameter, ...), but code generation supports two outcomes: stack or heap.
-- **Arrays** go on the stack only if their size is a compile-time constant, and all stack arrays of one function together
-  take at most 64 KB. Bigger ones stay on the heap so that the stack does not overflow.
-- **Classes with a finalizer** (for example ones that own a native resource) are never stack-allocated.
-- **An object allocated in a loop** can be a stack object if it does not survive the iteration. If it is assigned to a
-  variable declared outside the loop, it goes to the heap.
+- **Some objects never go on the stack**: classes with a finalizer; arrays whose size is not a compile-time constant, or
+  beyond 64 KB of stack arrays per function; an object allocated in a loop and assigned to a variable declared outside it.
 - **A wrong answer here corrupts memory.** If an object is put on the stack but a reference to it survives the function,
   that reference points into a dead stack frame. Such a bug appears only with `-opt`; to check, compile with
   `-Xdisable-phases=EscapeAnalysis`.

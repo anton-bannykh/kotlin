@@ -1,5 +1,7 @@
 # Exceptions: how `throw` reaches `catch`
 
+*Skip this page if you know that a Kotlin exception travels as a C++ exception and what a Kotlin landing pad does.*
+
 Kotlin/Native does not have its own mechanism for finding the `catch` that handles a `throw`. It reuses the one every
 platform already has for C++: a Kotlin exception is thrown **as a C++ exception** whose only content is a reference to the
 Kotlin exception object, and the system's C++ unwinding library carries it up the stack. The compiler only has to mark which
@@ -38,7 +40,7 @@ sequenceDiagram
 ## The same thing in LLVM IR
 
 The throwing side is three calls: allocate the exception, run its constructor, call `ThrowException`
-(shown in [llvm-primer.md](../llvm-primer.md#reading-llvm-ir)). This is the catching side, `safe`:
+([llvm-primer.md](../llvm-primer.md#reading-llvm-ir) shows `risky`). This is the catching side, `safe`:
 
 ```llvm
 define i32 @"kfun:#safe(kotlin.Int){}kotlin.Int"(i32 %0) personality ptr @__gxx_personality_v0 {   ; "unwind me like C++"
@@ -67,13 +69,12 @@ catch:
 
 A `try` with several `catch` clauses has one landing pad and a chain of such `IsSubtype` checks, in source order.
 
-`SetCurrentFrame` is needed because of how the GC finds local references: every function registers a block of stack slots
-with `EnterFrame` and removes it with `LeaveFrame` (see [runtime/](../runtime/README.md)). The frames that were skipped during
-unwinding never ran their `LeaveFrame`, so the catching function resets the list to its own frame.
+`SetCurrentFrame` repairs the [shadow stack](../runtime/README.md#how-the-gc-finds-references): the frames that were
+skipped during unwinding never ran their `LeaveFrame`, so the catching function resets the list to its own frame.
 
 ## `finally`
 
-Code generation does not know `finally`. [NativeFinallyBlocksLowering](../compiler/lowerings/NativeFinallyBlocksLowering.md) copies the
+Code generation does not know `finally`. [NativeFinallyBlocksLowering](../compiler/lowerings/control-flow.md#nativefinallyblockslowering) copies the
 block onto every way out of the `try` beforehand, and the exceptional way out becomes a catch-all that rethrows:
 
 ```kotlin
@@ -100,25 +101,25 @@ private fun Konan_start(args: Array<String>): Int {
 }
 ```
 
-Exceptions that escape elsewhere (for example on a thread that was not started by Kotlin) end in C++ `std::terminate`. The
-runtime installs a terminate handler that recognizes a Kotlin exception and does the same two steps.
+Exceptions that escape elsewhere (for example on a thread that was not started by Kotlin) end in C++ `std::terminate`,
+where a handler installed by the runtime does the same two steps.
 
 ## Crossing into other languages
 
-A Kotlin exception is a C++ exception that only Kotlin code understands. It must not travel through C, Objective-C or Swift
-frames, so every boundary has a rule (the Objective-C behaviour below is taken from the sources, not from a compilation):
+A Kotlin exception must not travel through C, Objective-C or Swift frames, so every boundary has a rule (the Objective-C
+behaviour below is taken from the sources, not from a compilation):
 
 | Direction | What happens |
 |---|---|
-| Kotlin function exported to **Objective-C/Swift**, marked `@Throws(E::class)` | The exported method gets an extra `NSError**` parameter (`- (BOOL)fooAndReturnError:(NSError **)error`; `throws` in Swift). The generated bridge catches the exception; if it is an `E`, it is wrapped into an `NSError` (domain `KotlinException`, the Kotlin object in `userInfo`) and the method returns `NO`/`nil` |
+| Kotlin function exported to **Objective-C/Swift**, marked `@Throws(E::class)` | The exported method gets an extra `NSError**` parameter (`throws` in Swift). The generated bridge catches the exception; if it is an `E`, it is wrapped into an `NSError` (domain `KotlinException`, the Kotlin object in `userInfo`) and the method returns `NO`/`nil` |
 | The same, without `@Throws`, or the exception is not an `E` | The bridge treats it as unhandled: hook, report, terminate. See [export.md](../interop/export.md) |
 | Kotlin function exported to **C** (`-p dynamic`/`static`) | Always terminates |
 | Kotlin calls **Objective-C**, which throws an `NSException` | Terminates by default. If the library's `.def` file sets `foreignExceptionMode = objc-wrap`, the call site catches it and throws a Kotlin `ForeignException` holding the `NSException`. See [cinterop.md](../interop/cinterop.md) |
 
 ## Things to know
 
-- **A frame without `try` costs nothing and runs nothing during unwinding.** Kotlin has no destructors, so such functions
-  use plain `call` and have no landing pads. That is why the catching side must repair the GC's frame list itself.
+- **A frame without `try` runs nothing during unwinding.** Kotlin has no destructors, so such functions use plain `call`
+  and have no landing pads. That is why the catching side must repair the GC's frame list itself.
 - **The type check is done by Kotlin code, not by the unwinder.** C++ would let the unwinder pick the handler by type. Kotlin
   landing pads catch everything and rethrow what they do not want.
 - **The stack trace is captured when the exception object is created**, in the constructor of `Throwable`, not when it is
@@ -126,8 +127,6 @@ frames, so every boundary has a rule (the Objective-C behaviour below is taken f
   Creating an exception therefore always costs a stack walk, and a rethrown exception keeps its original trace.
 - **Not throwing is free.** `invoke` adds no instructions to the normal path: the landing pad is found through tables
   in the binary, which only the unwinder reads.
-- **A failed top-level initializer** is caught by the runtime and rethrown as another exception; see
-  [initialization.md](initialization.md).
 
 ## Where the code is
 
@@ -137,5 +136,4 @@ frames, so every boundary has a rule (the Objective-C behaviour below is taken f
   generation of landing pads, including the ones at the foreign boundary (search for `filteringExceptionHandler`).
 - [IrToBitcode.kt](../../../kotlin-native/backend.native/compiler/ir/backend.native/src/org/jetbrains/kotlin/backend/konan/llvm/IrToBitcode.kt):
   how `try`, `catch` and `throw` are translated (search for `CatchScope`).
-- [Throwable.kt](../../../kotlin-native/runtime/src/main/kotlin/kotlin/Throwable.kt): stack trace capture and printing.
 - [ObjCExportErrors.mm](../../../kotlin-native/runtime/src/main/cpp/ObjCExportErrors.mm): Kotlin exception ↔ `NSError`.

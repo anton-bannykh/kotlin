@@ -1,5 +1,7 @@
 # How Kotlin/Native is tested
 
+*Skip this page if you have added a Native box test, run it in another test mode and found the compiler command in its log.*
+
 Almost all tests of the compiler are **black-box tests**: a Kotlin file is compiled by the real compiler into a real binary,
 the binary is run, and its output and exit code are checked. This catches bugs in any step from the frontend to the linker
 and the runtime, but a failing test only says "the program misbehaved"; finding the step is up to you
@@ -30,36 +32,33 @@ flowchart TD
     RUN --> CH["check exit code and output"]
 ```
 
-Many files end up in one executable because linking a binary per file would be too slow. A test gets its own executable
-(it is **standalone**) when it cannot share one, for example a FileCheck test or one with `// IGNORE_NATIVE`.
+Many files end up in one executable because linking a binary per file would be too slow. A test that cannot share one,
+for example a FileCheck test, gets its own executable (it is **standalone**).
 
 ## The kinds of tests
 
-Test data paths without a prefix are under `native/native.tests/testData/`. Tasks without a prefix are in
-`:native:native.tests`; its `test` task runs everything in that project, and `--tests` narrows it. Everything at once is
-`./gradlew :nativeCompilerTest :nativeCompilerUnitTest --continue`: very slow, CI runs it.
+Test data paths without a prefix are under `native/native.tests/testData/`. The Gradle task for each kind is in
+[cheat-sheet.md](../cheat-sheet.md).
 
-| Kind | Test data | Run with |
-|---|---|---|
-| Box tests shared with other backends | `compiler/testData/codegen/box`, `boxInline` | `:native:native.tests:codegen-box:test` |
-| Native-only box tests; FileCheck tests (below) | `codegen/`; `codegen/fileCheck/` | `test --tests "*FirNativeCodegenLocalTestGenerated*"` |
-| Programs with their own `main`, checked by output | `standalone/` | `standaloneTest` |
-| Garbage collector | `gc/` | `gcTest` |
-| Standard library | the stdlib's own tests in `libraries/stdlib` | `stdlibTest` |
-| Klib contents; partial linkage | `klib/`; `compiler/testData/klib/partial-linkage` | `klibTest`; `partialLinkageTest` |
-| Caches and incremental compilation | `caches/` | `cachesTest` |
-| cinterop | `CInterop/`, `interop/` | `cinteropTest` |
-| Objective-C and C export | `ObjCExport/`, `CExport/` | `test -Pkotlin.native.tests.tags=objcexport` (or `cexport`) |
-| Swift export | `native/swift/*/testData` | `:swiftExportTest` |
-| Debugger: an `lldb` session against a binary | `lldb/` | `debuggerTest` |
-| Runtime unit tests: C++, Google Test, no compiler | `*Test.cpp` next to the runtime sources | `:kotlin-native:runtime:hostRuntimeTests` |
-| Compiler unit tests: no dist needed | `kotlin-native/backend.native/compiler/ir/backend.native/test` | `:kotlin-native:backend.native:check` |
+| Kind | Test data |
+|---|---|
+| Box tests shared with other backends | `compiler/testData/codegen/box`, `boxInline` |
+| Native-only box tests; FileCheck tests (below) | `codegen/`; `codegen/fileCheck/` |
+| Programs with their own `main`, checked by output | `standalone/` |
+| Garbage collector; standard library | `gc/`; the stdlib's own tests in `libraries/stdlib` |
+| Klib contents; partial linkage | `klib/`; `compiler/testData/klib/partial-linkage` |
+| Caches and incremental compilation | `caches/` |
+| cinterop; Objective-C and C export | `CInterop/`, `interop/`; `ObjCExport/`, `CExport/` |
+| Swift export | `native/swift/*/testData` |
+| Debugger: an `lldb` session against a binary | `lldb/` |
+| Runtime unit tests: C++, Google Test, no compiler | `*Test.cpp` next to the runtime sources |
+| Compiler unit tests: no dist needed | `kotlin-native/backend.native/compiler/ir/backend.native/test` |
 
 ## FileCheck tests
 
 Some properties cannot be seen from outside: "this object is allocated on the stack", "this call was devirtualized". A
-**FileCheck test** checks the generated LLVM IR instead. The compiler saves the IR after the named phase, and LLVM's
-`FileCheck` tool matches the `// CHECK` comments against it, in order. From `codegen/fileCheck/escape_analysis.kt`:
+**FileCheck test** checks the generated LLVM IR instead: LLVM's `FileCheck` tool matches the `// CHECK` comments against
+the IR saved after the named phase, in order. From `codegen/fileCheck/escape_analysis.kt`:
 
 ```kotlin
 // FILECHECK_STAGE: CStubs                                   ← look at the IR after this compiler phase
@@ -81,8 +80,6 @@ Comments at the top of a test file steer the infrastructure. The ones you will m
 // IGNORE_BACKEND: NATIVE                     expected to fail on Native in every mode; fails if it passes (shared)
 // IGNORE_NATIVE: optimizationMode=OPT && cacheMode=STATIC_ONLY_DIST     the same, in this mode only
 // DISABLE_NATIVE: targetFamily=MINGW         do not compile or run at all for these targets
-// KIND: STANDALONE_LLDB                      own executable, run under lldb (the debugger tests)
-// OUTPUT_DATA_FILE: funptr.out               the program must print exactly this file
 ```
 
 One file can hold several source files and modules; each module becomes its own klib. This is the complete
@@ -99,28 +96,22 @@ fun box() = Q.S().ok
 ## Test modes
 
 The compiler has many configurations, and a bug often shows in only one of them. So the same tests can run in different
-**modes**, chosen with Gradle properties. `kn.` is short for `kotlin.internal.native.test.`.
-
-| Property | Values | Meaning |
-|---|---|---|
-| `-Pkn.optimizationMode=` | `DEBUG` (default), `OPT`, `NO` | `OPT` turns on the [whole-program optimizations](../compiler/optimizations/README.md) |
-| `-Pkn.cacheMode=` | `NO`, `STATIC_ONLY_DIST`, `STATIC_EVERYWHERE`, ... | which klibs go through [caches](../compiler/caches.md) |
-| `-Pkn.gcType=` | `CMS` (default), `PMCS`, `STWMS`, `NOOP` | which [garbage collector](../runtime/gc-and-allocator.md) is linked in |
-| `-Pkn.target=` | a target name | cross-compile, run on a simulator or emulator |
-| `-Pkn.forceStandalone=true` | | every test gets its own executable |
+**modes**, chosen with Gradle properties: the optimization mode (debug by default, or `-opt` with the
+[whole-program optimizations](../compiler/optimizations/README.md)), which klibs go through [caches](../compiler/caches.md),
+which [garbage collector](../runtime/gc-and-allocator.md) is linked in, the target, and whether every test gets its own
+executable. The properties and their values are in [cheat-sheet.md](../cheat-sheet.md).
 
 ## Adding and running a test
 
 1. Put a `.kt` file into the right test data directory. There is nothing to register.
 2. Run the test task. It first generates the JUnit classes into `build/tests-gen/` (they are not checked in, and the
-   repository-wide `./gradlew generateTests` does not make them; `:native:native.tests:generateTests` does, for the IDE).
-   The class nests one level per directory and the method is `test` plus the file name:
+   repository-wide `./gradlew generateTests` does not make them). The class nests one level per directory and the method
+   is `test` plus the file name:
 
 ```bash
 # native/native.tests/testData/codegen/fileCheck/smoke0.kt
 ./gradlew :native:native.tests:test \
     --tests "org.jetbrains.kotlin.konan.test.blackbox.FirNativeCodegenLocalTestGenerated\$FileCheck.testSmoke0"
-./gradlew :native:native.tests:test --tests "..." -Pkn.optimizationMode=OPT -Pkn.cacheMode=NO   # in another mode
 ```
 
 ## When a test fails
@@ -128,23 +119,20 @@ The compiler has many configurations, and a bug often shows in only one of them.
 - **Find the log.** Every compiled artifact has a `<artifact>.log` next to it, under `<project>/build/t/bb.out/` for box
   tests. It holds the test data files, the exact command line after `COMPILER ARGUMENTS:`, and the compiler's output.
 - **Reproduce by hand.** Copy that command line into a shell. It starts with `<dist>/bin/kotlinc-native`, which is the
-  same compiler as `konanc`. Then add dump flags as described in [debugging.md](../debugging.md).
-- **Dozens of sources in the command?** The test shares an executable with its neighbours. Use `-Pkn.forceStandalone=true`.
+  same compiler as `konanc`. Then add dump flags from the [cheat sheet](../cheat-sheet.md).
+- **Dozens of sources in the command?** The test shares an executable with its neighbours. Run it in the standalone mode.
 - **"Test did not fail as expected"**: the test has an `IGNORE` directive but now passes. Remove or narrow the directive.
 
 ## Things to know
 
 - **Tests use the compiler from `kotlin-native/dist`**, not the classes in the IDE. A test run rebuilds the dist when the
-  compiler, the runtime or the stdlib changed: minutes per edit. `-Pkn.nativeHome=<dist>` tests an existing one instead.
+  compiler, the runtime or the stdlib changed: minutes per edit. A test mode can point at an existing dist instead.
 - **Grouped tests are changed before compilation**: their declarations are moved into a package made from the file's path
   so that they do not clash. A test can therefore behave differently alone and in a group.
-- **Apple-only tests** (Objective-C export, Swift export, simulators) need a macOS host with Xcode.
 - **FileCheck tests are skipped in cache modes that cache the test's own klibs.**
 
 ## Where the code is
 
-- [HACKING.md, Testing](../../../kotlin-native/HACKING.md#testing): every property, tag and directive;
-  [native/native.tests/README.md](../../../native/native.tests/README.md): the layout of the test project
+- [native/native.tests/README.md](../../../native/native.tests/README.md): the layout of the test project
 - [testFixtures/.../blackbox/support/](../../../native/native.tests/testFixtures/org/jetbrains/kotlin/konan/test/blackbox/support): the infrastructure: `group/`, `compilation/`, `runner/`
 - [TestDirectives.kt](../../../native/native.tests/testFixtures/org/jetbrains/kotlin/konan/test/blackbox/support/TestDirectives.kt): the Native directives, with descriptions
-- [native/executors/](../../../native/executors/src/main/kotlin/org/jetbrains/kotlin/native/executors): running a binary on the host, a simulator or an emulator

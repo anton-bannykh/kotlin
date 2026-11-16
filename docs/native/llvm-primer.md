@@ -1,7 +1,8 @@
 # LLVM in ten minutes
 
-What you need to know about LLVM to follow the rest of this guide. Examples are real output of the Kotlin/Native compiler,
-shortened.
+*Skip this page if you can read LLVM IR and know what a module, bitcode, a pass and a landing pad are.*
+
+What you need to know about LLVM to follow the rest of this guide. Examples are real compiler output, shortened.
 
 ## What LLVM is, and what Kotlin/Native uses it for
 
@@ -18,10 +19,16 @@ flowchart LR
 ```
 
 Kotlin/Native writes the first arrow. Everything after it is LLVM, driven through its C API. The compiler downloads its own
-LLVM build into `~/.konan/dependencies/`; that directory also has the command-line tools mentioned below.
+LLVM build, with its command-line tools, into `~/.konan/dependencies/`.
 
-LLVM knows nothing about Kotlin: no classes, no objects, no garbage collector. Everything Kotlin-specific must be spelled out
-in LLVM IR by the code generator, usually as calls into the [runtime](runtime/README.md).
+LLVM knows nothing about Kotlin: no classes, no objects, no garbage collector. Others provide that:
+
+| Need | Who provides it |
+|---|---|
+| Objects, classes, virtual calls | Code generation emits structs, constants and indirect calls → [object-model.md](runtime/object-model.md) |
+| Memory management | The runtime; the compiler tells it where references are → [runtime/](runtime/README.md) |
+| Kotlin-aware optimizations (devirtualization, escape analysis) | Done on Kotlin IR before LLVM sees the program → [optimizations/](compiler/optimizations/README.md) |
+| Calling C and Objective-C | Kotlin/Native runs Clang as a library to parse headers and to compile small C stubs → [cinterop.md](interop/cinterop.md) |
 
 ## Reading LLVM IR
 
@@ -75,61 +82,34 @@ loop_check:
 
 ## Exceptions: `invoke` and landing pads
 
-A normal `call` cannot be the target of exception handling. A call that sits inside a `try` is written as `invoke`, which
-has two continuations: one for a normal return and one for an exception. The exceptional one is a **landing pad**.
+A call that sits inside a `try` is written as `invoke` instead of `call`. It has two continuations: one for a normal return
+and one for an exception. The exceptional one is a **landing pad**. Getting from the `throw` to the landing pad is called
+**unwinding**. → [exceptions.md](features/exceptions.md)
 
 ```llvm
-entry:                                                        ; try { risky(x) } catch (e: IllegalArgumentException) { -1 }
-  %4 = invoke i32 @"kfun:#risky(kotlin.Int){}kotlin.Int"(i32 %0)
+  %4 = invoke i32 @"kfun:#risky(kotlin.Int){}kotlin.Int"(i32 %0)     ; try { risky(x) } catch (...) { ... }
           to label %call_success unwind label %landingpad
 
 landingpad:
-  %lp = landingpad { ptr, i32 } catch ptr null                ; catch everything...
-  %6 = call ptr @Kotlin_getExceptionObject(...)               ; ...get the Kotlin exception object...
-  %9 = call i1 @IsSubtype(ptr %8, ptr @"kclass:kotlin.IllegalArgumentException")
-  br i1 %9, label %catch, label %rethrow                      ; ...and check its type ourselves
+  %lp = landingpad { ptr, i32 } catch ptr null                       ; an exception thrown inside risky arrives here
 ```
 
-Getting from the `throw` to the landing pad is called **unwinding**. It is done by the same system library that implements
-C++ exceptions, so a Kotlin exception is, at this level, a C++ exception. → [exceptions.md](features/exceptions.md)
-
-## Modules, bitcode and why the runtime ships as bitcode
+## Modules and bitcode
 
 - A **module** is LLVM's unit of compilation: a set of functions and globals, like one `.c` file after preprocessing.
   Kotlin/Native normally generates **one module for the whole program**, not one per source file.
 - LLVM IR has two equivalent forms: text (`.ll`), which is what you read, and **bitcode** (`.bc`), a compact binary encoding.
   `llvm-dis` and `llvm-as` convert between them.
-- Modules can be merged. The runtime, written in C++, is compiled by Clang to bitcode when Kotlin/Native itself is built. The
-  compiler merges it into the program's module, so LLVM optimizes Kotlin code and runtime code together and can inline
-  one into the other. Optimizing across what used to be separate compilation units is called **LTO** (link-time
-  optimization).
+- Modules can be merged, and LLVM then optimizes across what used to be separate compilation units. This is called **LTO**
+  (link-time optimization). Kotlin/Native uses it to combine the program with its C++ runtime.
+  → [codegen.md](compiler/codegen.md#after-code-generation)
 
 ## Optimization passes and code generation
 
 LLVM's optimizer is a pipeline of **passes**, each a transformation from IR to IR: inlining, removing dead code, moving
-stack slots into registers, simplifying loops, and many more. Kotlin/Native picks a pipeline depending on the build mode
-(almost nothing in debug builds, a full pipeline with `-opt`) and adds a few passes of its own, for example one that removes
-redundant safepoints.
+stack slots into registers, and many more. After that, LLVM's code generator turns the module into an
+object file for the target. Only at this point does anything depend on the target's instruction set, which is why one
+compiler can produce binaries for many platforms.
 
-After that, LLVM's code generator turns the module into an object file for the target. The linker then combines it with
-system libraries. Only at this point does anything depend on the target's instruction set, which is why one compiler can
-produce binaries for many platforms.
-
-## What LLVM does not do for Kotlin
-
-| Need | Who provides it |
-|---|---|
-| Objects, classes, virtual calls | Code generation emits structs, constants and indirect calls → [object-model.md](runtime/object-model.md) |
-| Memory management | The runtime. The compiler tells it where references are by keeping them in stack slots registered with `EnterFrame` → [runtime/](runtime/README.md), [gc-and-allocator.md](runtime/gc-and-allocator.md) |
-| Kotlin-aware optimizations (devirtualization, escape analysis) | Done on Kotlin IR before LLVM sees the program → [optimizations/](compiler/optimizations/README.md) |
-| Calling C and Objective-C | Kotlin/Native runs Clang as a library to parse headers and to compile small C stubs → [cinterop.md](interop/cinterop.md) |
-
-## Looking at LLVM IR yourself
-
-```bash
-konanc file.kt -o out -Xsave-llvm-ir-after=Codegen -Xsave-llvm-ir-directory=ll   # ll/out.Codegen.ll (the directory must exist)
-konanc file.kt -o out -Xtemporary-files-dir=tmp                                  # keeps tmp/out.bc and the object file
-~/.konan/dependencies/llvm-*/bin/llvm-dis tmp/out.bc                             # bitcode → text
-```
-
-More tricks (running single passes with `opt`, debugging the compiler) are in [HACKING.md](../../kotlin-native/HACKING.md).
+How to get the LLVM IR of your own code: [cheat-sheet.md](cheat-sheet.md). More tricks (running single passes with `opt`,
+debugging the compiler) are in [HACKING.md](../../kotlin-native/HACKING.md).

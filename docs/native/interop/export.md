@@ -1,9 +1,10 @@
 # Calling Kotlin from Objective-C, Swift and C (export)
 
-A Kotlin/Native library can be used from other languages. The compiler produces a normal native binary plus a **header** that
-describes the public Kotlin API in the other language, and puts an **adapter layer** between the two that converts arguments,
-results and exceptions. There are two such exports in the compiler: an Objective-C framework (which is also how Swift sees
-Kotlin today) and a C library.
+*Skip this page unless you work on a framework or C library produced from Kotlin. Reference material.*
+
+The compiler produces a normal native binary plus a **header** that describes the public Kotlin API in the other language,
+and puts an **adapter layer** between the two that converts arguments, results and exceptions. There are two such exports
+in the compiler: an Objective-C framework (which is also how Swift sees Kotlin today) and a C library.
 
 ```mermaid
 flowchart LR
@@ -22,8 +23,8 @@ flowchart LR
 
 ## Objective-C: what a Kotlin class looks like
 
-The header cannot be generated on Linux, so this pair is from the header generator's test data
-(`native/objcexport-header-generator/testData/headers/simpleDataClass`), with the `swift_name` attributes removed:
+This pair is from the header generator's test data (`native/objcexport-header-generator/testData/headers/simpleDataClass`),
+with the `swift_name` attributes removed:
 
 ```kotlin
 data class SimpleDataClass(val intValue: Int, var intVar: Int, val nullableDefaultStringValue: String? = "")
@@ -50,22 +51,21 @@ name: `init(intValue:intVar:nullableDefaultStringValue:)`.
 | Kotlin | Objective-C | Notes |
 |---|---|---|
 | `class`, `interface` | `@interface`, `@protocol` | |
-| `Int`, `Long`, `Boolean`, `Double` | `int32_t`, `int64_t`, `BOOL`, `double` | boxed (`Int?`): `KotlinInt`, an `NSNumber` |
-| `String` | `NSString` | |
-| `List`, `Set`, `Map` | `NSArray`, `NSSet`, `NSDictionary` | `MutableList` is `NSMutableArray` |
+| `Int`, `Boolean`, `Double` | `int32_t`, `BOOL`, `double` | boxed (`Int?`): `KotlinInt`, an `NSNumber` |
+| `String`, `List`, `Map` | `NSString`, `NSArray`, `NSDictionary` | `MutableList` is `NSMutableArray` |
 | `(Int) -> String` | a block | |
 | top-level `fun` in `Foo.kt` | class method of `FooKt` | |
 | `object Foo` | `Foo.shared` | enum entries are class properties too |
 | `suspend fun foo()` | `fooWithCompletionHandler:(void (^)(NSError * _Nullable))` | Swift can call it with `await` |
 | `@Throws fun foo()` | `fooAndReturnError:(NSError **)` | Swift sees `throws` |
 
-A Kotlin exception that leaves a function *without* `@Throws` (or of a class not listed in it) terminates the program. The
-generated header says so in a comment: "Other uncaught Kotlin exceptions are fatal".
+A Kotlin exception that leaves a function without a matching `@Throws` terminates the program.
+→ [exceptions.md](../features/exceptions.md#crossing-into-other-languages)
 
 ## How objects cross the boundary
 
-Kotlin objects are managed by a tracing garbage collector; Objective-C objects are reference counted. The adapter layer makes
-each side see the other side's objects in its own terms:
+Kotlin objects are managed by a tracing garbage collector; Objective-C objects are reference counted. The adapter layer
+makes each side see the other side's objects in its own terms:
 
 - **Kotlin object → Objective-C.** The first time a Kotlin object is passed out, the runtime creates an Objective-C *wrapper*
   for it (an instance of the generated class). Later passes return the same wrapper. As long as Objective-C code holds a
@@ -77,15 +77,14 @@ each side see the other side's objects in its own terms:
 
 An Objective-C or Swift class can subclass an open Kotlin class or implement a Kotlin interface. For this the compiler also
 generates **reverse adapters**: when Kotlin code calls a virtual method on such an object, the adapter sends the Objective-C
-message. → [object-model.md](../runtime/object-model.md) (virtual calls), [gc-and-allocator.md](../runtime/gc-and-allocator.md) (GC roots)
+message.
 
 ## Swift
 
-Swift does not need anything of its own: it imports the framework through the Objective-C header, like any Objective-C
-framework. That is why Kotlin generics, enums and top-level functions look less natural in Swift than they could.
-
-**Swift export** is a separate, newer project (in `native/swift`) that generates Swift source code directly, without going
-through an Objective-C header. It is still experimental. → [docs/swift-export/README.md](../../swift-export/README.md)
+Swift imports the framework through the Objective-C header, like any Objective-C framework. That is why Kotlin generics,
+enums and top-level functions look less natural in Swift than they could. **Swift export** is a separate, newer project (in
+`native/swift`) that generates Swift source code directly. It is still experimental.
+→ [docs/swift-export/README.md](../../swift-export/README.md)
 
 ## C: a dynamic or static library
 
@@ -115,9 +114,9 @@ typedef struct {
 extern shapes_ExportedSymbols* shapes_symbols(void);                       // the only exported function
 ```
 
-A C client calls `shapes_symbols()->kotlin.root.shapes.Circle.Circle(2.0)`. C has no classes and no automatic memory
-management, so the API is a table of function pointers and every object is an opaque handle. A handle keeps its Kotlin object
-alive until the client calls `DisposeStablePointer`. Returned strings are copies that the client frees with `DisposeString`.
+A C client calls `shapes_symbols()->kotlin.root.shapes.Circle.Circle(2.0)`. The API is a table of function pointers and
+every object is an opaque handle, which keeps its Kotlin object alive until the client calls `DisposeStablePointer`. Each
+returned object is a new handle, and C code cannot implement a Kotlin interface.
 
 ## Things to know
 
@@ -128,9 +127,7 @@ alive until the client calls `DisposeStablePointer`. Returned strings are copies
 - **Names are made unique by appending `_`** when two Kotlin declarations would get the same Objective-C name. Which one
   gets the underscore depends on the order of translation, so reordering declarations can change the header.
 - **Every call into Kotlin switches the thread to the "runnable" state** and back on return, and initializes the runtime on
-  that thread if needed. → [runtime/](../runtime/README.md)
-- **C export has no identity and no subclassing**: each returned object is a new handle, and C code cannot implement a
-  Kotlin interface.
+  that thread if needed. → [runtime/](../runtime/README.md#threads-and-their-two-states)
 
 ## Where the code is
 
@@ -142,5 +139,3 @@ alive until the client calls `DisposeStablePointer`. Returned strings are copies
 - [cexport/](../../../kotlin-native/backend.native/compiler/ir/backend.native/src/org/jetbrains/kotlin/backend/konan/cexport):
   the C header and its adapters
 - [native/swift/](../../../native/swift/README.md): Swift export
-
-Read next: [cinterop.md](cinterop.md) (the opposite direction), [exceptions.md](../features/exceptions.md) (exceptions at the boundary).

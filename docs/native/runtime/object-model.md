@@ -1,9 +1,11 @@
 # The object model
 
+*Skip this page if you know the object header and its tag bits, what a TypeInfo holds, and how vtables and itables work.*
+
 What a Kotlin object looks like in memory, and how the program finds an object's class, its fields and its virtual
-functions. There is no virtual machine to keep this knowledge: the compiler writes a description of every class into the
-binary as a constant, and every object starts with a pointer to the description of its class. The generated code and the
-C++ [runtime](README.md) both read these structures directly, so they must agree on every offset.
+functions. The compiler writes a description of every class into the binary as a constant, and every object starts with a
+pointer to the description of its class. The generated code and the C++ [runtime](README.md) both read these structures
+directly, so they must agree on every offset.
 
 All examples are real compiler output for linux_x64, shortened, for:
 
@@ -42,13 +44,13 @@ superclasses come first. A reference is the address of the header, and `null` is
                └──────────────────────┘
 ```
 
-Arrays are the only objects whose size is not fixed by their class. A `String` is such an array too: an array of 16-bit
-units, with the hash code and a flags word packed in front of the characters. Characters are normally UTF-16.
+Arrays are the only objects whose size is not fixed by their class. A `String` is such an array too: 16-bit units
+(normally UTF-16), with the hash code and a flags word packed in front of the characters.
 
 ## TypeInfo: the description of a class
 
-One **TypeInfo** constant exists per class and per interface. It is the same C++ struct, `TypeInfo`, that the runtime
-uses. The table of virtual functions, the **vtable**, is placed directly after it in memory.
+One **TypeInfo** constant exists per class and per interface, laid out as the runtime's C++ struct `TypeInfo`. The table of
+virtual functions, the **vtable**, is placed directly after it in memory.
 
 ```llvm
 @"kclass:Circle" = constant { %struct.TypeInfo, [5 x ptr] } {
@@ -83,13 +85,14 @@ Who uses what:
 
 A subclass's vtable starts with its superclass's entries, with overridden ones replaced, and adds its own at the end. So
 `name()` is entry 4 in `Circle` and in every subclass of `Circle`, and a call is: load the TypeInfo from the header, step
-over it to the vtable, load entry 4, call it. → [codegen.md](../compiler/codegen.md#a-virtual-call-and-an-interface-call)
+over it to the vtable, load entry 4, call it. The LLVM IR of both kinds of call is in
+[codegen.md](../compiler/codegen.md#a-virtual-call-and-an-interface-call).
 
 ## Interface calls
 
 A fixed entry number does not work for interfaces: `Shape.area` would need the same number in every class that implements
-`Shape`, whatever else the class extends or implements. Instead each class has an **interface table** with one record per
-implemented interface. A record holds the interface's id and a small vtable with this class's implementations:
+`Shape`, whatever else the class extends or implements. Instead each class has an **interface table** (itable) with one
+record per implemented interface: the interface's id and a small vtable with this class's implementations.
 
 ```llvm
 @"kifacetable:Circle" = internal constant [1 x %struct.InterfaceTableRecord]
@@ -103,8 +106,8 @@ size works, the table is sorted by id and the runtime function `LookupInterfaceT
 
 ## Boxing
 
-Primitives and value classes are not objects. They are passed as machine values and become an object, a **box**, only where
-an object is required: as `Any`, as a generic argument, as a nullable type.
+Primitives and value classes are passed as machine values and become an object, a **box**, only where an object is
+required: as `Any`, as a generic argument, as a nullable type.
 
 ```llvm
 define double @"kfun:#twice(Meters){}Meters"(double %m)          ; fun twice(m: Meters): Meters, Meters is a value class
@@ -113,12 +116,12 @@ define double @"kfun:#twice(Meters){}Meters"(double %m)          ; fun twice(m: 
 
 A box is an ordinary object of class `kotlin.Int` (or `Meters`): header plus the value. `<Int-box>` allocates one, except
 for values from -128 to 127, which come from a table of 256 ready-made boxes in the binary. The lowering that inserts
-the box and unbox calls is [Autoboxing](../compiler/lowerings/Autoboxing.md).
+the box and unbox calls is [Autoboxing](../compiler/lowerings/boxing.md#autoboxing).
 
 ## Objects that are constants
 
-Some objects are built by the compiler and placed in the binary's constant data: string literals, the box tables, `Unit`,
-constant arrays, `KClass` and `KType` instances. They are called **permanent** objects.
+Objects built by the compiler and placed in the binary's constant data are called **permanent** objects: string literals,
+the box tables, `Unit`, constant arrays, `KClass` and `KType` instances.
 
 ```llvm
 @2267 = internal unnamed_addr constant { ptr, i32, i32, i16, [10 x i8] }      ; "hello": header, length, hash, flags, chars

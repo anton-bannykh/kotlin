@@ -13,10 +13,11 @@ the source files each page links to. This file only adds what an agent needs on 
 | When you are working on…                                           | Read                                                                                      |
 |--------------------------------------------------------------------|-------------------------------------------------------------------------------------------|
 | A bug report or a failing test, and you do not know where to start | [docs/native/debugging.md](../docs/native/debugging.md)                                   |
+| How to investigate an issue step by step; every dump and test command | [docs/native/first-issue.md](../docs/native/first-issue.md), [cheat-sheet.md](../docs/native/cheat-sheet.md) |
 | Running or adding compiler tests, test directives                  | [docs/native/build-and-tests/tests.md](../docs/native/build-and-tests/tests.md), [HACKING.md#testing](HACKING.md#testing) |
-| Klibs vs binaries, the two stages                                  | [docs/native/compiler/compilation-model.md](../docs/native/compiler/compilation-model.md), [klibs-and-linking.md](../docs/native/compiler/klibs-and-linking.md) |
+| Klibs vs binaries, the two stages                                  | [docs/native/compiler/](../docs/native/compiler/README.md), [klibs-and-linking.md](../docs/native/compiler/klibs-and-linking.md) |
 | What runs when; dump and disable flags                             | [docs/native/compiler/](../docs/native/compiler/README.md)                                     |
-| A lowering, or wrong code for a language feature                   | [docs/native/compiler/lowerings/](../docs/native/compiler/lowerings/README.md) (index, one page per lowering) |
+| A lowering, or wrong code for a language feature                   | [docs/native/compiler/lowerings/](../docs/native/compiler/lowerings/README.md) (index; lowerings are grouped on theme pages) |
 | Devirtualization, DCE, escape analysis, `-opt`-only bugs           | [docs/native/compiler/optimizations/](../docs/native/compiler/optimizations/README.md) and the pages it links    |
 | IR → LLVM IR, runtime bitcode, LLVM passes, linker, debug info     | [docs/native/compiler/codegen.md](../docs/native/compiler/codegen.md), [llvm-primer.md](../docs/native/llvm-primer.md) |
 | Object layout, type info, anything touching both `llvm/` and `runtime/` | [docs/native/runtime/object-model.md](../docs/native/runtime/object-model.md)                        |

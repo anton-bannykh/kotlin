@@ -1,5 +1,7 @@
 # Initialization of top-level properties, objects and enums
 
+*Skip this page if you already know that globals are initialized lazily per file or class, behind a state-word check in every function.*
+
 Kotlin/Native does not initialize global state at program start. A file's top-level properties are initialized **the first
 time anything in that file is used**; an `object`, a companion object or an enum is initialized the first time the class is
 used. This keeps startup fast and means unused code costs nothing, but it requires a check in front of almost every
@@ -40,14 +42,55 @@ using `Config` initializes `Config`, not the rest of `lib.kt`.
 
 ## What happens
 
-**1. Lowerings make "first use" explicit.** [ObjectClassLowering](../compiler/lowerings/ObjectClassLowering.md) and
-[EnumClassLowering](../compiler/lowerings/EnumClassLowering.md) turn object instances and enum entries into static fields with
-initializers. [StaticInitializersLowering](../compiler/lowerings/StaticInitializersLowering.md) then moves all initializers of a
-container into one function and inserts a call to it at the start of every function that could be the first one used:
+Two lowerings make "first use" explicit, code generation turns it into a cheap check, and the runtime runs the
+initializer once.
+
+### ObjectClassLowering
+
+Gives every `object` and `companion object` a static field holding its single instance, plus a getter, and replaces every
+reference to the object with a call to that getter. "The instance of `Foo`" is a language concept; codegen needs an actual
+place where the instance is stored and code that creates it. Enum entries become static fields in
+[EnumClassLowering](../compiler/lowerings/enums.md#enumclasslowering).
 
 ```kotlin
-private fun `$init_global$lib.kt`()       { table = listOf(1, 2, 3).also { ... } }
-private fun `$init_thread_local$lib.kt`() { scratch = ArrayList<Int>().also { ... } }
+// before
+object Plain { val y = 1 }
+object OnlyConst { const val x = 1 }
+class Host { companion object { const val c = 3 } }
+fun main() { println(Plain.y); val u = Unit }
+
+// after
+object Plain {
+    val y = 1
+    static val `$instance`: Plain = {
+        `$instance` = createUninitializedInstance<Plain>()    // published before the constructor runs
+        initInstance(`$instance`, Plain())
+        `$instance`
+    }
+}
+object OnlyConst {
+    const val x = 1
+    static val `$instance`: OnlyConst = <constant object>     // no state, no init code: nothing to run
+}
+class Host {
+    companion object { const val c = 3 }
+    static val `$companion`: Companion = <constant object>    // lives in the outer class
+}
+fun main() { println(Plain.`$instance`.y); val u = theUnitInstance() }
+```
+
+**Source:** [ObjectClassLowering.kt](../../../kotlin-native/backend.native/compiler/ir/backend.native/src/org/jetbrains/kotlin/backend/konan/lower/ObjectClassLowering.kt)
+· **Runs:** after inlining, always.
+
+### StaticInitializersLowering
+
+Moves the initializers of all static fields of a container (top-level properties, `$instance`, the enum's `$VALUES`) into one
+init function, and inserts a call to it at the start of every function that could be the first one used (in a class:
+constructors and static members).
+
+```kotlin
+private fun `$init_global$lib.kt`()       { table = listOf(1, 2, 3).also { ... } }       // runs once per process
+private fun `$init_thread_local$lib.kt`() { scratch = ArrayList<Int>().also { ... } }    // runs once per thread
 
 fun lookup(i: Int): Int {
     `$init_global$lib.kt`()             // inserted
@@ -60,8 +103,17 @@ object Config {
 }
 ```
 
-**2. Code generation turns each inserted call into a check.** Every container gets a **state word**, a global integer.
-The call becomes "load the state; if it is not 2, call the runtime". This is `lookup` in LLVM IR (names shortened):
+- Not everything needs initialization. A `const val`, a property with a constant initializer (`val greeting = "hi"`) and
+  an object without state are plain data in the binary: laid out at compile time, no allocation, no check.
+- `@EagerInitialization` properties go to a separate function that runs at program start instead of on first access.
+
+**Source:** [StaticInitializersLowering.kt](../../../kotlin-native/backend.native/compiler/ir/backend.native/src/org/jetbrains/kotlin/backend/konan/lower/StaticInitializersLowering.kt)
+· **Runs:** after inlining, always, after `ObjectClassLowering`.
+
+### Code generation: each inserted call becomes a check
+
+Every container gets a **state word**, a global integer. The call becomes "load the state; if it is not 2, call the
+runtime". This is `lookup` in LLVM IR (names shortened):
 
 ```llvm
 define i32 @"kfun:#lookup(kotlin.Int){}kotlin.Int"(i32 %0) {
@@ -76,11 +128,11 @@ label_init:                                                     ; slow path: let
 
 label_continue:
   ...                                                           ; the same for the thread-local state word, then the body
-  %10 = call ptr @"kfun:#<get-table>(){}kotlin.collections.List<kotlin.Int>"(ptr %3)
 ```
 
-**3. The runtime runs the initializer exactly once.** `CallInitGlobalPossiblyLock` is a C++ function of the
-[runtime](../runtime/README.md). The state word itself is the lock:
+### The runtime runs the initializer exactly once
+
+`CallInitGlobalPossiblyLock` is a C++ function of the [runtime](../runtime/README.md). The state word itself is the lock:
 
 | State word | Meaning | A thread that arrives now |
 |---|---|---|
@@ -91,10 +143,6 @@ label_continue:
 
 ## Things to know
 
-- **Not everything needs initialization.** A `const val`, a property with a constant initializer (`val greeting = "hi"`) and
-  an object without state are plain data in the binary: the string or object is laid out at compile time and the field
-  points at it from the start. See the constant
-  objects in [ObjectClassLowering](../compiler/lowerings/ObjectClassLowering.md).
 - **Re-entrance on the same thread is allowed, and shows half-initialized state.** If an initializer reaches, through some
   call chain, a function of its own container, that function proceeds and sees properties that are not assigned yet. This
   is how cyclic dependencies between files "work" instead of deadlocking.
@@ -102,28 +150,19 @@ label_continue:
   exception as its cause (an `Error` is rethrown as is). The container is never retried: every later access throws
   `NoClassDefFoundError("Could not initialize ...")`.
 - **`@ThreadLocal` properties** live in thread-local storage, so every thread has its own copy and its own state word. Their
-  initializer runs once per thread, on that thread's first use of the container, after the shared properties. No locking
-  is needed for them.
-- **`@EagerInitialization`** opts a top-level property out of laziness: it is initialized when the runtime starts, before
-  `main`. It exists for code that must register itself without being called (the annotation is deprecated; do not add new
-  uses).
-- **With `-opt` most checks disappear.** A [whole-program analysis](../compiler/optimizations/README.md) computes which containers are
-  certainly initialized whenever a function is entered, and deletes the checks that can never take the slow path. In the
-  optimized build of a program like the one above, `lookup` has no check at all, because `main`, its only caller, already
+  initializer runs once per thread, on that thread's first use of the container, after the shared properties, without
+  locking.
+- **`@EagerInitialization`** exists for code that must register itself without being called. Deprecated: add no new uses.
+- **With `-opt` most checks disappear.** A [whole-program analysis](../compiler/optimizations/README.md) computes which
+  containers are certainly initialized whenever a function is entered, and deletes the checks that can never take the slow
+  path. In the optimized build of the program above, `lookup` has no check at all, because `main`, its only caller, already
   did it. Over the whole binary (mostly the standard library), 540 slow-path call sites became 132.
 
 ## Where the code is
 
-- [StaticInitializersLowering.kt](../../../kotlin-native/backend.native/compiler/ir/backend.native/src/org/jetbrains/kotlin/backend/konan/lower/StaticInitializersLowering.kt):
-  builds the `$init_...` functions and inserts the calls.
 - [IrToBitcode.kt](../../../kotlin-native/backend.native/compiler/ir/backend.native/src/org/jetbrains/kotlin/backend/konan/llvm/IrToBitcode.kt):
   search for `evaluateFileGlobalInitializerCall` to find the generated check, and for `state_global` to find the state words.
 - [Runtime.cpp](../../../kotlin-native/runtime/src/main/cpp/Runtime.cpp): `CallInitGlobalPossiblyLock` and `CallInitThreadLocal`,
   the slow paths; `initRuntime`, which runs the eager initializers.
 - [StaticInitializersOptimization.kt](../../../kotlin-native/backend.native/compiler/ir/backend.native/src/org/jetbrains/kotlin/backend/konan/optimizations/StaticInitializersOptimization.kt):
   the `-opt` analysis that removes redundant checks.
-- [KotlinStaticData.kt](../../../kotlin-native/backend.native/compiler/ir/backend.native/src/org/jetbrains/kotlin/backend/konan/llvm/KotlinStaticData.kt):
-  how constant objects and strings are laid out in the binary.
-
-Read next: [object-model.md](../runtime/object-model.md) for what a constant object looks like, [exceptions.md](exceptions.md) for what
-happens to the exception of a failed initializer.
