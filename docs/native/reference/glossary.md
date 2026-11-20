@@ -24,7 +24,7 @@ Terms you will meet in the code, in reviews and in issues, each in one line. The
 - [**Target, host**](https://kotlinlang.org/docs/native-target-support.html): the platform a binary is for (`KonanTarget`, e.g. `linux_x64`), and the one the compiler runs on. → [build-and-tests/](../build-and-tests/README.md)
 - **Distribution** (`dist`, konan home): the built compiler with the runtime and stdlib. → [code-map.md](code-map.md)
 - **`konan.properties`**: per-target settings: toolchain, sysroot, [Clang](https://clang.llvm.org/) and linker flags. → [build-and-tests/](../build-and-tests/README.md)
-- **Compiler cache**: a library compiled to machine code once and reused in later builds: debug builds by default, release builds with the opt-in **release caches**. **Per-file cache, incremental compilation**: the same per source file. → [caches.md](../compiler/caches.md)
+- **Compiler cache**: a library compiled to machine code once and reused in later builds: debug builds by default, release builds with the opt-in **release caches**. **Per-file cache, incremental compilation**: the same per source file, so that a build recompiles only the changed files and the files that depend on them. → [caches.md](../compiler/caches.md), [incremental-compilation.md](../compiler/incremental-compilation.md)
 
 ## Compiler: inside
 

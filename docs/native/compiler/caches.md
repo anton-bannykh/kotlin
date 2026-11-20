@@ -100,12 +100,8 @@ A cache is valid only for the exact inputs it was built from. Three mechanisms c
 
 A cache can hold one static library **per source file** of the klib instead of one for the whole klib. Then a change in one
 file does not invalidate the rest. This is how incremental compilation of your own project works: on the next build the
-compiler compares each file's hash with the stored one, and recompiles the changed files plus the files that depend on them
-(known from `bitcode_deps`).
-
-A real run with three files, `util.kt` (`square`), `greet.kt` (`greeting`) and `main.kt` (calls both), built with
-`-Xenable-incremental-compilation -Xic-cache-dir=cache`. After editing only `greet.kt`, the second build took 2.3 s and
-rebuilt two of the three caches: the one for `greet.kt` and the one for `main.kt`, which depends on it.
+compiler recompiles the changed files plus the files that depend on them (known from `bitcode_deps`).
+→ [incremental-compilation.md](incremental-compilation.md)
 
 ## CachesAbiLowering
 

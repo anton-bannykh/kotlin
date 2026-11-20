@@ -28,7 +28,7 @@ the source files each page links to. This file only adds what an agent needs on 
 | Exceptions, unwinding, `@Throws`/`NSError`                         | [docs/native/features/exceptions.md](../docs/native/features/exceptions.md)                                 |
 | cinterop, platform libraries, the commonizer                       | [docs/native/interop/cinterop.md](../docs/native/interop/cinterop.md)                                     |
 | ObjC/C export                                                      | [docs/native/interop/export.md](../docs/native/interop/export.md)                                         |
-| Caches, incremental compilation                                    | [docs/native/compiler/caches.md](../docs/native/compiler/caches.md)                                         |
+| Caches, incremental compilation                                    | [docs/native/compiler/caches.md](../docs/native/compiler/caches.md), [incremental-compilation.md](../docs/native/compiler/incremental-compilation.md) |
 | Targets, toolchains, `konan.properties`, the distribution          | [docs/native/build-and-tests/](../docs/native/build-and-tests/README.md)                       |
 | Cross-module inlining in klibs                                     | [docs/inlining/klib-inining.md](../docs/inlining/klib-inining.md)                         |
 | LLVM IR dumps, a debugger on the compiler                          | [HACKING.md](HACKING.md) (LLVM and Debugging sections)                                    |

@@ -28,6 +28,14 @@ konanc main.kt -p library -target linux_arm64 -o main   # a klib for another tar
                                                # runtime in the dist (dist/konan/targets/<target>/native)
 ```
 
+## Incremental builds (not run for this page)
+```bash
+konanc -Xinclude=main.klib -o main -Xenable-incremental-compilation -Xic-cache-dir=cache -verbose
+                                               # per-file caches in ./cache; prints changed, added, removed and dirty files
+# Gradle: IC is on for debug link tasks except on Linux; switch with kotlin.incremental.native=true|false
+```
+How it decides what to rebuild: [incremental-compilation.md](../compiler/incremental-compilation.md).
+
 ## Look at Kotlin IR
 ```bash
 # IR before and after a phase as Kotlin-like text: one file per source file and phase in ./ir, about 500 files per

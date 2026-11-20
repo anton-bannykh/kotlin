@@ -20,7 +20,7 @@ The answers usually name the area.
 | Crash in `optimizations/`, or only with `-opt` | [optimizations/](../compiler/optimizations/README.md) | `-Xdisable-phases=Devirtualization`, `DCEPhase`, `EscapeAnalysis`, one at a time |
 | LLVM verifier error, crash in `IrToBitcode` or `CodeGenerator` | [codegen.md](../compiler/codegen.md) | `-Xsave-llvm-ir-after=Codegen`, read the function named in the error |
 | Linker error: undefined symbol | [codegen.md](../compiler/codegen.md); with libraries: [caches.md](../compiler/caches.md), [cinterop.md](../interop/cinterop.md) | Search the saved LLVM IR for the symbol. Is it only declared? Does it fail without caches? |
-| Fails only with caches, or only after an incremental build | [caches.md](../compiler/caches.md) | Compare with a build that uses no caches |
+| Fails only with caches, or only after an incremental build | [caches.md](../compiler/caches.md), [incremental-compilation.md](../compiler/incremental-compilation.md) | Compare with a build that uses no caches; after an incremental build, with a clean one (delete the IC cache directory) |
 | Wrong generated header, or an unresolved C or Objective-C name | [export.md](../interop/export.md), [cinterop.md](../interop/cinterop.md) | Run `cinterop` by hand on the [`.def` file](https://kotlinlang.org/docs/native-definition-file.html); read the generated header |
 | "Target is not available", toolchain or [Xcode](https://developer.apple.com/xcode/) errors | [build-and-tests/](../build-and-tests/README.md) | Check the target's entries in `konan.properties` and what is in `~/.konan/dependencies` |
 | **The program misbehaves** | | |

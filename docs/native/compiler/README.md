@@ -42,7 +42,7 @@ copy of `:core` and its own runtime, and a `Data` object from one is a different
 
 **Why "link" is slow.** The second stage compiles the whole world every time. [Caches](caches.md) reuse machine code from
 earlier runs: each dependency klib is compiled once into a static library, and (experimentally) each source file of the
-project too. By default Gradle uses them for debug binaries only: release binaries (`-opt`) get whole-program
+project too ([incremental compilation](incremental-compilation.md)). By default Gradle uses them for debug binaries only: release binaries (`-opt`) get whole-program
 optimizations, which need the IR of every library and are skipped as soon as one comes from a static cache. So debug and
 release builds exercise different compiler code. Caches for release binaries are being worked on and are off by default.
 → [caches.md](caches.md#the-price-no-whole-program-optimization)
@@ -157,6 +157,7 @@ native libraries are not available. The code is in `compiler/cli/cli-native-klib
 | [optimizations/](optimizations/README.md) | Whole-program optimizations (step 5) |
 | [codegen.md](codegen.md) | Kotlin IR to LLVM IR, and LLVM IR to a binary (the remaining steps) |
 | [caches.md](caches.md) | How most of this work is skipped for libraries that did not change |
+| [incremental-compilation.md](incremental-compilation.md) | How only the changed files of the project and their dependents are recompiled; the algorithms in [incremental-compilation-in-depth.md](incremental-compilation-in-depth.md) |
 
 [binaries]: https://kotlinlang.org/docs/multiplatform/multiplatform-build-native-binaries.html
 [rtti]: https://en.wikipedia.org/wiki/Run-time_type_information

@@ -51,7 +51,7 @@ Test data paths without a prefix are under `native/native.tests/testData/`. The 
 | Klib contents; partial linkage | `klib/`; `compiler/testData/klib/partial-linkage` |
 | Klib compatibility: box tests with one stage done by an old released compiler | the box tests above; project `klib-compatibility/` |
 | First stage only: IR and klib dumps, diagnostics, klib tools | `compiler/testData/ir`, `klib`, ...; project `klib-ir-inliner/` |
-| Caches and incremental compilation | `caches/` |
+| Caches and incremental compilation ([how the IC tests work](../compiler/incremental-compilation-in-depth.md#tests)) | `caches/`; IC: `caches/ic/` |
 | cinterop; Objective-C and C export | `CInterop/`, `interop/`; `ObjCExport/`, `CExport/` |
 | Swift export | `native/swift/*/testData` |
 | Debugger: an [`lldb`](https://lldb.llvm.org/) session against a binary | `lldb/` |
