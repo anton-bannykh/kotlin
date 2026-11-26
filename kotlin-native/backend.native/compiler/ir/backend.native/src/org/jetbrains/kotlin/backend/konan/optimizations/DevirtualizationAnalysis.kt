@@ -15,7 +15,8 @@ import org.jetbrains.kotlin.backend.konan.lower.loweredConstructorFunction
 import org.jetbrains.kotlin.backend.konan.util.IntArrayList
 import org.jetbrains.kotlin.backend.konan.lower.getObjectClassInstanceFunction
 import org.jetbrains.kotlin.backend.konan.util.CustomBitSet
-import org.jetbrains.kotlin.backend.konan.util.LongArrayList
+import org.jetbrains.kotlin.backend.konan.util.BigIntArray
+import org.jetbrains.kotlin.backend.konan.util.BigLongArrayList
 import org.jetbrains.kotlin.backend.konan.util.LongHashSet
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.ir.IrElement
@@ -262,12 +263,34 @@ internal object DevirtualizationAnalysis {
             }
         }
 
-        private inline fun IntArray.forEachEdge(v: Int, block: (Int) -> Unit) {
-            for (i in this[v] until this[v + 1])
-                block(this[i])
+        /**
+         * The edges of a graph in the compressed sparse row form:
+         * for each node `v` its edges are stored in `targets[offsets[v] until offsets[v + 1]]`.
+         *
+         * The total number of edges might not fit into [Int] (KT-92086), hence [Long] offsets and [BigIntArray].
+         * [targets] might have some unused space at the end, see [CondensationBuilder.mergeEdges].
+         */
+        class Edges(val offsets: LongArray, val targets: BigIntArray) {
+            constructor(numberOfNodes: Int, numberOfEdges: Long) : this(LongArray(numberOfNodes + 1), BigIntArray(numberOfEdges))
+
+            inline fun forEachEdge(v: Int, block: (Int) -> Unit) = targets.forEach(offsets[v], offsets[v + 1], block)
+
+            fun edgeCount(v: Int): Long = offsets[v + 1] - offsets[v]
+
+            /**
+             * Sets up [offsets] from the number of edges for each node and resets [counts] to zeros,
+             * so that the edges can then be placed with `targets[offsets[v] + counts[v]++] = ...`.
+             */
+            fun initOffsets(counts: LongArray) {
+                var offset = 0L
+                for (v in offsets.indices) {
+                    offsets[v] = offset
+                    offset += counts[v]
+                    counts[v] = 0
+                }
+                require(offset <= targets.size) { "Too many edges: $offset > ${targets.size}" }
+            }
         }
-        private fun IntArray.getEdge(v: Int, id: Int) = this[this[v] + id]
-        private fun IntArray.edgeCount(v: Int) = this[v + 1] - this[v]
 
         private fun DataFlowIR.Type.calleeAt(callSite: DataFlowIR.Node.VirtualCall) = when (callSite) {
             is DataFlowIR.Node.VtableCall ->
@@ -277,7 +300,7 @@ internal object DevirtualizationAnalysis {
                 itable[callSite.interfaceId]!![callSite.calleeItableIndex]
         }
 
-        fun logPathToType(reversedEdges: IntArray, node: Node, type: Int) {
+        fun logPathToType(reversedEdges: Edges, node: Node, type: Int) {
             val nodes = constraintGraph.nodes
             val visited = CustomBitSet()
             val prev = mutableMapOf<Node, Node>()
@@ -333,7 +356,7 @@ internal object DevirtualizationAnalysis {
 
         private inner class Condensation(val topologicalOrder: IntArray)
 
-        private inner class CondensationBuilder(val directEdges: IntArray, val reversedEdges: IntArray) {
+        private inner class CondensationBuilder(val directEdges: Edges, val reversedEdges: Edges) {
             val nodes = constraintGraph.nodes
             val nodesCount = nodes.size
             val order = IntArray(nodesCount)
@@ -342,28 +365,29 @@ internal object DevirtualizationAnalysis {
             val potentialExternalVirtualCall = CustomBitSet(nodesCount)
 
             private fun calculateTopologicalSort() {
-                require(directEdges.size == reversedEdges.size)
+                require(directEdges.targets.size == reversedEdges.targets.size)
                 var index = 0
                 val nodesStack = IntArray(nodesCount)
-                val edgeIdsStack = IntArray(nodesCount)
+                // Positions of the next edge to visit in `directEdges.targets`.
+                val edgePositionsStack = LongArray(nodesCount)
                 for (nodeId in 0 until nodesCount) {
                     if (visited[nodeId]) continue
                     visited.set(nodeId)
                     nodesStack[0] = nodeId
-                    edgeIdsStack[0] = 0
+                    edgePositionsStack[0] = directEdges.offsets[nodeId]
                     var stackPtr = 0
                     while (stackPtr != -1) {
                         val v = nodesStack[stackPtr]
-                        val eid = edgeIdsStack[stackPtr]++
-                        if (eid == directEdges.edgeCount(v)) {
+                        val edgePosition = edgePositionsStack[stackPtr]++
+                        if (edgePosition == directEdges.offsets[v + 1]) {
                             order[index++] = v
                             stackPtr--
                         } else {
-                            val next = directEdges.getEdge(v, eid)
+                            val next = directEdges.targets[edgePosition]
                             if (!visited[next]) {
                                 ++stackPtr
                                 nodesStack[stackPtr] = next
-                                edgeIdsStack[stackPtr] = 0
+                                edgePositionsStack[stackPtr] = directEdges.offsets[next]
                                 visited.set(next)
                             }
                         }
@@ -444,8 +468,8 @@ internal object DevirtualizationAnalysis {
                     }
                 }
 
-                val directEdgesCount = IntArray(numberOfNodes + 1)
-                val reversedEdgesCount = IntArray(numberOfNodes + 1)
+                val directEdgesCount = LongArray(numberOfNodes + 1)
+                val reversedEdgesCount = LongArray(numberOfNodes + 1)
 
                 // Don't need the reversed cast edges.
                 nodes.forEach { it.reversedCastEdges = null }
@@ -520,13 +544,8 @@ internal object DevirtualizationAnalysis {
                 processCastEdges(prevRootId, prevI, nodeOrder.size)
 
                 // Go through all the edges once again and build the reversed edges first.
-                reversedEdges.fill(0)
-                index = numberOfNodes + 1
-                for (v in 0..numberOfNodes) {
-                    reversedEdges[v] = index
-                    index += reversedEdgesCount[v]
-                    reversedEdgesCount[v] = 0
-                }
+                // Note: at this point `reversedEdges` are no longer needed, and the merged edges take no more space.
+                reversedEdges.initOffsets(reversedEdgesCount)
 
                 seenEdgeTo.fill(0)
                 seenColor = 0
@@ -545,24 +564,18 @@ internal object DevirtualizationAnalysis {
                         if (fromRootId != toRootId) {
                             if (seenEdgeTo[toRootId] != seenColor) {
                                 seenEdgeTo[toRootId] = seenColor
-                                reversedEdges[reversedEdges[toRootId] + (reversedEdgesCount[toRootId]++)] = fromRootId
+                                reversedEdges.targets[reversedEdges.offsets[toRootId] + (reversedEdgesCount[toRootId]++)] = fromRootId
                             }
                         }
                     }
                 }
 
                 // Go through the reversed edges and build the direct edges
-                directEdges.fill(0)
-                index = numberOfNodes + 1
-                for (v in 0..numberOfNodes) {
-                    directEdges[v] = index
-                    index += directEdgesCount[v]
-                    directEdgesCount[v] = 0
-                }
+                directEdges.initOffsets(directEdgesCount)
 
                 for (to in 0 until numberOfNodes) {
                     reversedEdges.forEachEdge(to) { from ->
-                        directEdges[directEdges[from] + (directEdgesCount[from]++)] = to
+                        directEdges.targets[directEdges.offsets[from] + (directEdgesCount[from]++)] = to
                     }
                 }
             }
@@ -706,7 +719,7 @@ internal object DevirtualizationAnalysis {
         private fun DataFlowIR.Node.VirtualCall.debugString() =
                 irCallSite?.let { ir2stringWhole(it).trimEnd() } ?: this.toString()
 
-        private fun propagateVirtualType(directEdges: IntArray) {
+        private fun propagateVirtualType(directEdges: Edges) {
             val processedVirtualNodes = CustomBitSet()
 
             fun markVirtualNodes(node: Node) {
@@ -737,7 +750,7 @@ internal object DevirtualizationAnalysis {
          * A node is called "useful" if any of the nodes which we are trying to devirtualize is reachable from it.
          * In some cases the number of "useful" nodes is on an order of magnitude less than the total number of nodes.
          */
-        private fun collectUsefulNodes(reversedEdges: IntArray): CustomBitSet {
+        private fun collectUsefulNodes(reversedEdges: Edges): CustomBitSet {
             val usefulNodes = CustomBitSet(constraintGraph.nodes.size)
 
             fun markReachableFrom(nodeId: Int) {
@@ -801,14 +814,14 @@ internal object DevirtualizationAnalysis {
 
             constraintGraph.nodes.forEach {
                 if (it is Node.Source) {
-                    assert(reversedEdges[it.id] == reversedEdges[it.id + 1]) { "A source node #${it.id} has incoming edges" }
+                    assert(reversedEdges.edgeCount(it.id) == 0L) { "A source node #${it.id} has incoming edges" }
                     assert(it.reversedCastEdges?.isEmpty() ?: true) { "A source node #${it.id} has incoming edges" }
                 }
             }
 
             context.logMultiple {
                 val edgesCount = constraintGraph.nodes.sumOf {
-                    (directEdges[it.id + 1] - directEdges[it.id]) + (it.directCastEdges?.size ?: 0)
+                    directEdges.edgeCount(it.id) + (it.directCastEdges?.size ?: 0)
                 }
                 +"CONSTRAINT GRAPH: ${constraintGraph.nodes.size} nodes, $edgesCount edges"
                 +""
@@ -1047,10 +1060,8 @@ internal object DevirtualizationAnalysis {
             }
         }
 
-        // Both [directEdges] and [reversedEdges] are the array representation of a graph:
-        // for each node v the edges of that node are stored in edges[edges[v] until edges[v + 1]].
         private data class ConstraintGraphBuildResult(val instantiatingClasses: CustomBitSet,
-                                                      val directEdges: IntArray, val reversedEdges: IntArray)
+                                                      val directEdges: Edges, val reversedEdges: Edges)
 
         // Here we're dividing the build process onto two phases:
         // 1. build bag of edges and direct edges array;
@@ -1067,23 +1078,15 @@ internal object DevirtualizationAnalysis {
         }
 
         private class ConstraintGraphPrecursor(val instantiatingClasses: CustomBitSet,
-                                               val directEdges: IntArray, val reversedEdgesCount: IntArrayList)
+                                               val directEdges: Edges, val reversedEdgesCount: LongArray)
 
-        private fun buildReversedEdges(directEdges: IntArray, reversedEdgesCount: IntArrayList): IntArray {
+        private fun buildReversedEdges(directEdges: Edges, reversedEdgesCount: LongArray): Edges {
             val numberOfNodes = constraintGraph.nodes.size
-            var edgesArraySize = numberOfNodes + 1
-            for (v in 0 until numberOfNodes)
-                edgesArraySize += reversedEdgesCount[v]
-            val reversedEdges = IntArray(edgesArraySize)
-            var index = numberOfNodes + 1
-            for (v in 0..numberOfNodes) {
-                reversedEdges[v] = index
-                index += reversedEdgesCount[v]
-                reversedEdgesCount[v] = 0
-            }
+            val reversedEdges = Edges(numberOfNodes, directEdges.targets.size)
+            reversedEdges.initOffsets(reversedEdgesCount)
             for (from in 0 until numberOfNodes) {
                 directEdges.forEachEdge(from) { to ->
-                    reversedEdges[reversedEdges[to] + (reversedEdgesCount[to]++)] = from
+                    reversedEdges.targets[reversedEdges.offsets[to] + (reversedEdgesCount[to]++)] = from
                 }
             }
             return reversedEdges
@@ -1096,31 +1099,20 @@ internal object DevirtualizationAnalysis {
             val constraintGraphBuilder = ConstraintGraphBuilder(functions, rootSet, true)
             constraintGraphBuilder.build()
             val bagOfEdges = constraintGraphBuilder.bagOfEdges
-            val directEdgesCount = constraintGraphBuilder.directEdgesCount
-            val reversedEdgesCount = constraintGraphBuilder.reversedEdgesCount
             val numberOfNodes = constraintGraph.nodes.size
             // numberOfNodes + 1 for convenience.
-            directEdgesCount.reserve(numberOfNodes + 1)
-            reversedEdgesCount.reserve(numberOfNodes + 1)
-            for (index in 0 ..< bagOfEdges.size) {
-                val edge = bagOfEdges.get(index)
+            val directEdgesCount = LongArray(numberOfNodes + 1)
+            val reversedEdgesCount = LongArray(numberOfNodes + 1)
+            bagOfEdges.forEach { edge ->
                 directEdgesCount[edge.toInt()]++
                 reversedEdgesCount[(edge ushr 32).toInt()]++
             }
-            var edgesArraySize = numberOfNodes + 1
-            for (v in 0 until numberOfNodes)
-                edgesArraySize += directEdgesCount[v]
-            val directEdges = IntArray(edgesArraySize)
-            var index = numberOfNodes + 1
-            for (v in 0..numberOfNodes) {
-                directEdges[v] = index
-                index += directEdgesCount[v]
-                directEdgesCount[v] = 0
-            }
-            for (edge in bagOfEdges) {
+            val directEdges = Edges(numberOfNodes, bagOfEdges.size)
+            directEdges.initOffsets(directEdgesCount)
+            bagOfEdges.forEach { edge ->
                 val from = edge.toInt()
                 val to = (edge shr 32).toInt()
-                directEdges[directEdges[from] + (directEdgesCount[from]++)] = to
+                directEdges.targets[directEdges.offsets[from] + (directEdgesCount[from]++)] = to
             }
             return ConstraintGraphPrecursor(constraintGraphBuilder.instantiatingClasses, directEdges, reversedEdgesCount)
         }
@@ -1159,11 +1151,10 @@ internal object DevirtualizationAnalysis {
             private val virtualTypeFilter = CustomBitSet().apply { set(VIRTUAL_TYPE_ID) }
             val instantiatingClasses = CustomBitSet()
 
-            val bagOfEdges = LongArrayList()
+            // Might hold more than Int.MAX_VALUE edges for huge projects (KT-92086).
+            val bagOfEdges = BigLongArrayList()
             // Only filter duplicate edges within a function scope. That covers up to 98% of duplicates in practice.
             private var localBagOfEdges = LongHashSet(10, 0.4f)
-            val directEdgesCount = IntArrayList()
-            val reversedEdgesCount = IntArrayList()
 
             private fun addEdge(from: Node, to: Node) {
                 val fromId = from.id
