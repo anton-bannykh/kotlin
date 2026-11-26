@@ -1,0 +1,7 @@
+$TESTDATA_DIR$/simple.kt
+-p
+library
+-o
+$TEMP_DIR$/reportDetailedPerf
+-Xreport-perf=true
+-Xdetailed-perf=true

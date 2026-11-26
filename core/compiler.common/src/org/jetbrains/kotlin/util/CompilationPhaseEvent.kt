@@ -69,7 +69,7 @@ internal class CompilationPhaseEvent : Event() {
         this.phaseType = phaseType.name
         this.dynamicPhase = dynamicPhase
         heapUsedAtEnd = Runtime.getRuntime().let { it.totalMemory() - it.freeMemory() }
-        allocated = threadMXBean.currentThreadAllocatedBytes - allocatedAtStart
+        allocated = allocatedByCurrentThread() - allocatedAtStart
         commit()
     }
 
@@ -79,11 +79,14 @@ internal class CompilationPhaseEvent : Event() {
         private val threadMXBean = ManagementFactory.getThreadMXBean() as com.sun.management.ThreadMXBean
         private val eventType = EventType.getEventType(CompilationPhaseEvent::class.java)
 
+        // Not `currentThreadAllocatedBytes`, which needs the JDK 14 API
+        private fun allocatedByCurrentThread(): Long = threadMXBean.getThreadAllocatedBytes(Thread.currentThread().id)
+
         /** Returns `null` when no recording wants the event, which keeps the measurements free in that case. */
         fun startIfEnabled(): CompilationPhaseEvent? {
             if (!eventType.isEnabled) return null
             val event = CompilationPhaseEvent()
-            event.allocatedAtStart = threadMXBean.currentThreadAllocatedBytes
+            event.allocatedAtStart = allocatedByCurrentThread()
             event.begin()
             return event
         }
