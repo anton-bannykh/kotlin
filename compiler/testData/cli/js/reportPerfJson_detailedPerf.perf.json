@@ -312,5 +312,229 @@
       "millis": $UINT$
     }
   ],
-  "jitTimeMillis": $UINT$
+  "jitTimeMillis": $UINT$,
+  "memoryStats": {
+    "Analysis": {
+      "peakHeapBytes": $UINT$,
+      "allocatedBytes": $UINT$,
+      "gcCount": $UINT$,
+      "gcPauseNanos": $UINT$
+    },
+    "TranslationToIr": {
+      "peakHeapBytes": $UINT$,
+      "allocatedBytes": $UINT$,
+      "gcCount": $UINT$,
+      "gcPauseNanos": $UINT$
+    },
+    "IrPreLowering": {
+      "peakHeapBytes": $UINT$,
+      "allocatedBytes": $UINT$,
+      "gcCount": $UINT$,
+      "gcPauseNanos": $UINT$
+    },
+    "IrSerialization": {
+      "peakHeapBytes": $UINT$,
+      "allocatedBytes": $UINT$,
+      "gcCount": $UINT$,
+      "gcPauseNanos": $UINT$
+    },
+    "KlibWriting": {
+      "peakHeapBytes": $UINT$,
+      "allocatedBytes": $UINT$,
+      "gcCount": $UINT$,
+      "gcPauseNanos": $UINT$
+    }
+  },
+  "dynamicMemoryStats": [
+    {
+      "parentPhaseType": "IrPreLowering",
+      "name": "UpgradeCallableReferences",
+      "memory": {
+        "peakHeapBytes": $UINT$,
+        "allocatedBytes": $UINT$,
+        "gcCount": $UINT$,
+        "gcPauseNanos": $UINT$
+      }
+    },
+    {
+      "parentPhaseType": "IrPreLowering",
+      "name": "JsCodeOutliningLowering",
+      "memory": {
+        "peakHeapBytes": $UINT$,
+        "allocatedBytes": $UINT$,
+        "gcCount": $UINT$,
+        "gcPauseNanos": $UINT$
+      }
+    },
+    {
+      "parentPhaseType": "IrPreLowering",
+      "name": "AvoidLocalFOsInInlineFunctionsLowering",
+      "memory": {
+        "peakHeapBytes": $UINT$,
+        "allocatedBytes": $UINT$,
+        "gcCount": $UINT$,
+        "gcPauseNanos": $UINT$
+      }
+    },
+    {
+      "parentPhaseType": "IrPreLowering",
+      "name": "VersionOverloadsLowering",
+      "memory": {
+        "peakHeapBytes": $UINT$,
+        "allocatedBytes": $UINT$,
+        "gcCount": $UINT$,
+        "gcPauseNanos": $UINT$
+      }
+    },
+    {
+      "parentPhaseType": "IrPreLowering",
+      "name": "InlineCallCycleCheckerLowering",
+      "memory": {
+        "peakHeapBytes": $UINT$,
+        "allocatedBytes": $UINT$,
+        "gcCount": $UINT$,
+        "gcPauseNanos": $UINT$
+      }
+    },
+    {
+      "parentPhaseType": "IrPreLowering",
+      "name": "LateinitLowering",
+      "memory": {
+        "peakHeapBytes": $UINT$,
+        "allocatedBytes": $UINT$,
+        "gcCount": $UINT$,
+        "gcPauseNanos": $UINT$
+      }
+    },
+    {
+      "parentPhaseType": "IrPreLowering",
+      "name": "SharedVariablesLowering",
+      "memory": {
+        "peakHeapBytes": $UINT$,
+        "allocatedBytes": $UINT$,
+        "gcCount": $UINT$,
+        "gcPauseNanos": $UINT$
+      }
+    },
+    {
+      "parentPhaseType": "IrPreLowering",
+      "name": "LocalClassesInInlineLambdasLowering",
+      "memory": {
+        "peakHeapBytes": $UINT$,
+        "allocatedBytes": $UINT$,
+        "gcCount": $UINT$,
+        "gcPauseNanos": $UINT$
+      }
+    },
+    {
+      "parentPhaseType": "IrPreLowering",
+      "name": "ArrayConstructorLowering",
+      "memory": {
+        "peakHeapBytes": $UINT$,
+        "allocatedBytes": $UINT$,
+        "gcCount": $UINT$,
+        "gcPauseNanos": $UINT$
+      }
+    },
+    {
+      "parentPhaseType": "IrPreLowering",
+      "name": "PreSerializationPrivateFunctionInlining",
+      "memory": {
+        "peakHeapBytes": $UINT$,
+        "allocatedBytes": $UINT$,
+        "gcCount": $UINT$,
+        "gcPauseNanos": $UINT$
+      }
+    },
+    {
+      "parentPhaseType": "IrPreLowering",
+      "name": "InlineDeclarationCheckerLowering",
+      "memory": {
+        "peakHeapBytes": $UINT$,
+        "allocatedBytes": $UINT$,
+        "gcCount": $UINT$,
+        "gcPauseNanos": $UINT$
+      }
+    },
+    {
+      "parentPhaseType": "IrPreLowering",
+      "name": "OuterThisInInlineFunctionsSpecialAccessorLowering",
+      "memory": {
+        "peakHeapBytes": $UINT$,
+        "allocatedBytes": $UINT$,
+        "gcCount": $UINT$,
+        "gcPauseNanos": $UINT$
+      }
+    },
+    {
+      "parentPhaseType": "IrPreLowering",
+      "name": "SyntheticAccessorLowering",
+      "memory": {
+        "peakHeapBytes": $UINT$,
+        "allocatedBytes": $UINT$,
+        "gcCount": $UINT$,
+        "gcPauseNanos": $UINT$
+      }
+    },
+    {
+      "parentPhaseType": "IrPreLowering",
+      "name": "IrValidationAfterInliningPrivateFunctionsKlibPhase",
+      "memory": {
+        "peakHeapBytes": $UINT$,
+        "allocatedBytes": $UINT$,
+        "gcCount": $UINT$,
+        "gcPauseNanos": $UINT$
+      }
+    },
+    {
+      "parentPhaseType": "IrPreLowering",
+      "name": "FunctionInlining",
+      "memory": {
+        "peakHeapBytes": $UINT$,
+        "allocatedBytes": $UINT$,
+        "gcCount": $UINT$,
+        "gcPauseNanos": $UINT$
+      }
+    },
+    {
+      "parentPhaseType": "IrPreLowering",
+      "name": "InlineFunctionSerializationPreProcessing",
+      "memory": {
+        "peakHeapBytes": $UINT$,
+        "allocatedBytes": $UINT$,
+        "gcCount": $UINT$,
+        "gcPauseNanos": $UINT$
+      }
+    },
+    {
+      "parentPhaseType": "IrPreLowering",
+      "name": "RedundantCastsRemoverLowering",
+      "memory": {
+        "peakHeapBytes": $UINT$,
+        "allocatedBytes": $UINT$,
+        "gcCount": $UINT$,
+        "gcPauseNanos": $UINT$
+      }
+    },
+    {
+      "parentPhaseType": "IrPreLowering",
+      "name": "IrValidationAfterInliningAllFunctionsKlibFirstStagePhase",
+      "memory": {
+        "peakHeapBytes": $UINT$,
+        "allocatedBytes": $UINT$,
+        "gcCount": $UINT$,
+        "gcPauseNanos": $UINT$
+      }
+    },
+    {
+      "parentPhaseType": "IrPreLowering",
+      "name": "TailrecCheckerLowering",
+      "memory": {
+        "peakHeapBytes": $UINT$,
+        "allocatedBytes": $UINT$,
+        "gcCount": $UINT$,
+        "gcPauseNanos": $UINT$
+      }
+    }
+  ]
 }

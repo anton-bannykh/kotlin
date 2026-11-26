@@ -5,6 +5,7 @@
 
 package org.jetbrains.kotlin.stats
 
+import org.jetbrains.kotlin.util.MemoryStats
 import org.jetbrains.kotlin.util.Time
 import org.jetbrains.kotlin.util.UnitStats
 import org.jetbrains.kotlin.util.forEachPhaseMeasurement
@@ -31,6 +32,7 @@ class MarkdownReportRenderer(val statsCalculator: StatsCalculator) {
         return buildString {
             renderInfo()
             renderAggregateTimeStats()
+            renderMemoryStats()
             renderKlibStats()
             renderSystemStats()
             if (statsCalculator.unitStats.size > 1) {
@@ -97,6 +99,41 @@ class MarkdownReportRenderer(val statsCalculator: StatsCalculator) {
         }
 
         appendLine()
+    }
+
+    private fun StringBuilder.renderMemoryStats() {
+        val memoryStats = aggregatedStats.memoryStats ?: return
+        appendLine("# Memory" + if (isTimestampMode) " (Average)" else "")
+        appendLine()
+
+        val rows = buildList {
+            aggregatedStats.forEachPhaseMeasurement { phaseType, _ ->
+                memoryStats[phaseType]?.let { add(phaseTypeName.getValue(phaseType) to it) }
+                aggregatedStats.dynamicMemoryStats?.forEach { (parentPhaseType, name, memory) ->
+                    if (parentPhaseType == phaseType) add("↳ $name" to memory)
+                }
+            }
+        }
+        val cells = rows.map { [name, memory] -> listOf(name) + memory.formatColumns() }
+        val nameColumnWidth = maxOf("Phase".length, cells.maxOfOrNull { it[0].length } ?: 0)
+        val valueColumnWidth = maxOf("GC pauses".length, cells.maxOfOrNull { row -> row.drop(1).maxOf { it.length } } ?: 0)
+
+        with(MarkdownTableRenderer(5, nameColumnWidth, valueColumnWidth)) {
+            renderHeader("Phase", "Heap peak", "Allocated", "GCs", "GC pauses")
+            cells.forEach { renderLine(*it.toTypedArray()) }
+        }
+
+        appendLine()
+    }
+
+    private fun MemoryStats.formatColumns(): List<String> {
+        val mb = 1024 * 1024
+        return listOf(
+            "${peakHeapBytes / mb} MB",
+            "${allocatedBytes / mb} MB",
+            gcCount.toString(),
+            "${TimeUnit.NANOSECONDS.toMillis(gcPauseNanos)} ms",
+        )
     }
 
     private fun StringBuilder.renderSystemStats() {

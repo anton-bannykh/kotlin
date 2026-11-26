@@ -67,6 +67,22 @@ object UnitStatsJsonDumper {
 
                     // Ignore deprecated `extendedStats` that used in K1 only
 
+                    memoryStats?.let {
+                        appendInternal("\"${::memoryStats.name}\": {", indent = 1, trailingComma = false)
+                        for ([index, entry] in memoryStats.entries.withIndex()) {
+                            appendMemory(entry.key.name, entry.value, indent = 2, trailingComma = index < memoryStats.size - 1)
+                        }
+                        appendInternal("}", indent = 1, trailingComma = true)
+                    }
+
+                    dynamicMemoryStats?.let {
+                        appendArray(::dynamicMemoryStats, dynamicMemoryStats, indent = 1, trailingComma = true) {
+                            appendKeyValue(it::parentPhaseType, it.parentPhaseType.name, indent = 3)
+                            appendKeyValue(it::name, it.name, indent = 3)
+                            appendMemory(it::memory.name, it.memory, indent = 3, trailingComma = false)
+                        }
+                    }
+
                     if (endsWith(TRAILING_COMMA_SUFFIX)) {
                         replace(length - TRAILING_COMMA_SUFFIX.length, length, "\n")
                     }
@@ -96,6 +112,15 @@ object UnitStatsJsonDumper {
                 appendKeyValue(it::cpuNanos, it.cpuNanos, indent + 1, trailingComma = false)
             }
         }
+    }
+
+    private fun StringBuilder.appendMemory(key: String, memory: MemoryStats, indent: Int, trailingComma: Boolean) {
+        appendInternal("\"$key\": {", indent, trailingComma = false)
+        appendKeyValue(memory::peakHeapBytes, memory.peakHeapBytes, indent + 1)
+        appendKeyValue(memory::allocatedBytes, memory.allocatedBytes, indent + 1)
+        appendKeyValue(memory::gcCount, memory.gcCount, indent + 1)
+        appendKeyValue(memory::gcPauseNanos, memory.gcPauseNanos, indent + 1, trailingComma = false)
+        appendInternal("}", indent, trailingComma)
     }
 
     private fun <T> StringBuilder.appendArray(

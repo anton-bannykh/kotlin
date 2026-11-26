@@ -125,9 +125,10 @@ class K2Native : CLICompiler<K2NativeCompilerArguments>() {
                 try {
                     setIdeaIoUseFallback()
 
-                    val code = doExecute(arguments, configuration, rootDisposable, services)
+                    val code = performanceManager.measureCompilation().use {
+                        doExecute(arguments, configuration, rootDisposable, services)
+                    }
 
-                    performanceManager.notifyCompilationFinished()
                     if (arguments.reportPerf) {
                         collector.report(LOGGING, "PERF: " + performanceManager.getTargetInfo())
                         performanceManager.forEachStringMeasurement {

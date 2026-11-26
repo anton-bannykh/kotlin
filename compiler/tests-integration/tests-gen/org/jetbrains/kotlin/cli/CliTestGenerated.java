@@ -2073,6 +2073,12 @@ public class CliTestGenerated extends AbstractCliTest {
     }
 
     @Test
+    @TestMetadata("reportDetailedPerf.args")
+    public void testReportDetailedPerf() {
+      run("reportDetailedPerf.args");
+    }
+
+    @Test
     @TestMetadata("reportInternalDiagnosticNames.args")
     public void testReportInternalDiagnosticNames() {
       run("reportInternalDiagnosticNames.args");

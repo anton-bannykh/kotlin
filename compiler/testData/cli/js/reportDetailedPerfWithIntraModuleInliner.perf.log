@@ -1,29 +1,29 @@
 Kotlin to JS compiler performance report
                      INIT        $UINT>>$ ms
-                  ANALYZE        $UINT>>$ ms            $REAL>>$ loc/s
-        TRANSLATION to IR        $UINT>>$ ms            $REAL>>$ loc/s
-          IR PRE-LOWERING        $UINT>>$ ms            $REAL>>$ loc/s
-            DYNAMIC PHASE        $UINT>>$ ms            $REAL>>$ loc/s (UpgradeCallableReferences)
-            DYNAMIC PHASE        $UINT>>$ ms            $REAL>>$ loc/s (JsCodeOutliningLowering)
-            DYNAMIC PHASE        $UINT>>$ ms            $REAL>>$ loc/s (AvoidLocalFOsInInlineFunctionsLowering)
-            DYNAMIC PHASE        $UINT>>$ ms            $REAL>>$ loc/s (VersionOverloadsLowering)
-            DYNAMIC PHASE        $UINT>>$ ms            $REAL>>$ loc/s (InlineCallCycleCheckerLowering)
-            DYNAMIC PHASE        $UINT>>$ ms            $REAL>>$ loc/s (LateinitLowering)
-            DYNAMIC PHASE        $UINT>>$ ms            $REAL>>$ loc/s (SharedVariablesLowering)
-            DYNAMIC PHASE        $UINT>>$ ms            $REAL>>$ loc/s (LocalClassesInInlineLambdasLowering)
-            DYNAMIC PHASE        $UINT>>$ ms            $REAL>>$ loc/s (ArrayConstructorLowering)
-            DYNAMIC PHASE        $UINT>>$ ms            $REAL>>$ loc/s (PreSerializationPrivateFunctionInlining)
-            DYNAMIC PHASE        $UINT>>$ ms            $REAL>>$ loc/s (InlineDeclarationCheckerLowering)
-            DYNAMIC PHASE        $UINT>>$ ms            $REAL>>$ loc/s (OuterThisInInlineFunctionsSpecialAccessorLowering)
-            DYNAMIC PHASE        $UINT>>$ ms            $REAL>>$ loc/s (SyntheticAccessorLowering)
-            DYNAMIC PHASE        $UINT>>$ ms            $REAL>>$ loc/s (IrValidationAfterInliningPrivateFunctionsKlibPhase)
-            DYNAMIC PHASE        $UINT>>$ ms            $REAL>>$ loc/s (FunctionInlining)
-            DYNAMIC PHASE        $UINT>>$ ms            $REAL>>$ loc/s (InlineFunctionSerializationPreProcessing)
-            DYNAMIC PHASE        $UINT>>$ ms            $REAL>>$ loc/s (RedundantCastsRemoverLowering)
-            DYNAMIC PHASE        $UINT>>$ ms            $REAL>>$ loc/s (IrValidationAfterInliningAllFunctionsKlibFirstStagePhase)
-            DYNAMIC PHASE        $UINT>>$ ms            $REAL>>$ loc/s (TailrecCheckerLowering)
-         IR SERIALIZATION        $UINT>>$ ms            $REAL>>$ loc/s
-             KLIB WRITING        $UINT>>$ ms            $REAL>>$ loc/s
+                  ANALYZE        $UINT>>$ ms            $REAL>>$ loc/s, heap peak $UINT$ MB, allocated $UINT$ MB, $UINT$ GCs ($UINT$ ms)
+        TRANSLATION to IR        $UINT>>$ ms            $REAL>>$ loc/s, heap peak $UINT$ MB, allocated $UINT$ MB, $UINT$ GCs ($UINT$ ms)
+          IR PRE-LOWERING        $UINT>>$ ms            $REAL>>$ loc/s, heap peak $UINT$ MB, allocated $UINT$ MB, $UINT$ GCs ($UINT$ ms)
+            DYNAMIC PHASE        $UINT>>$ ms            $REAL>>$ loc/s (UpgradeCallableReferences), heap peak $UINT$ MB, allocated $UINT$ MB, $UINT$ GCs ($UINT$ ms)
+            DYNAMIC PHASE        $UINT>>$ ms            $REAL>>$ loc/s (JsCodeOutliningLowering), heap peak $UINT$ MB, allocated $UINT$ MB, $UINT$ GCs ($UINT$ ms)
+            DYNAMIC PHASE        $UINT>>$ ms            $REAL>>$ loc/s (AvoidLocalFOsInInlineFunctionsLowering), heap peak $UINT$ MB, allocated $UINT$ MB, $UINT$ GCs ($UINT$ ms)
+            DYNAMIC PHASE        $UINT>>$ ms            $REAL>>$ loc/s (VersionOverloadsLowering), heap peak $UINT$ MB, allocated $UINT$ MB, $UINT$ GCs ($UINT$ ms)
+            DYNAMIC PHASE        $UINT>>$ ms            $REAL>>$ loc/s (InlineCallCycleCheckerLowering), heap peak $UINT$ MB, allocated $UINT$ MB, $UINT$ GCs ($UINT$ ms)
+            DYNAMIC PHASE        $UINT>>$ ms            $REAL>>$ loc/s (LateinitLowering), heap peak $UINT$ MB, allocated $UINT$ MB, $UINT$ GCs ($UINT$ ms)
+            DYNAMIC PHASE        $UINT>>$ ms            $REAL>>$ loc/s (SharedVariablesLowering), heap peak $UINT$ MB, allocated $UINT$ MB, $UINT$ GCs ($UINT$ ms)
+            DYNAMIC PHASE        $UINT>>$ ms            $REAL>>$ loc/s (LocalClassesInInlineLambdasLowering), heap peak $UINT$ MB, allocated $UINT$ MB, $UINT$ GCs ($UINT$ ms)
+            DYNAMIC PHASE        $UINT>>$ ms            $REAL>>$ loc/s (ArrayConstructorLowering), heap peak $UINT$ MB, allocated $UINT$ MB, $UINT$ GCs ($UINT$ ms)
+            DYNAMIC PHASE        $UINT>>$ ms            $REAL>>$ loc/s (PreSerializationPrivateFunctionInlining), heap peak $UINT$ MB, allocated $UINT$ MB, $UINT$ GCs ($UINT$ ms)
+            DYNAMIC PHASE        $UINT>>$ ms            $REAL>>$ loc/s (InlineDeclarationCheckerLowering), heap peak $UINT$ MB, allocated $UINT$ MB, $UINT$ GCs ($UINT$ ms)
+            DYNAMIC PHASE        $UINT>>$ ms            $REAL>>$ loc/s (OuterThisInInlineFunctionsSpecialAccessorLowering), heap peak $UINT$ MB, allocated $UINT$ MB, $UINT$ GCs ($UINT$ ms)
+            DYNAMIC PHASE        $UINT>>$ ms            $REAL>>$ loc/s (SyntheticAccessorLowering), heap peak $UINT$ MB, allocated $UINT$ MB, $UINT$ GCs ($UINT$ ms)
+            DYNAMIC PHASE        $UINT>>$ ms            $REAL>>$ loc/s (IrValidationAfterInliningPrivateFunctionsKlibPhase), heap peak $UINT$ MB, allocated $UINT$ MB, $UINT$ GCs ($UINT$ ms)
+            DYNAMIC PHASE        $UINT>>$ ms            $REAL>>$ loc/s (FunctionInlining), heap peak $UINT$ MB, allocated $UINT$ MB, $UINT$ GCs ($UINT$ ms)
+            DYNAMIC PHASE        $UINT>>$ ms            $REAL>>$ loc/s (InlineFunctionSerializationPreProcessing), heap peak $UINT$ MB, allocated $UINT$ MB, $UINT$ GCs ($UINT$ ms)
+            DYNAMIC PHASE        $UINT>>$ ms            $REAL>>$ loc/s (RedundantCastsRemoverLowering), heap peak $UINT$ MB, allocated $UINT$ MB, $UINT$ GCs ($UINT$ ms)
+            DYNAMIC PHASE        $UINT>>$ ms            $REAL>>$ loc/s (IrValidationAfterInliningAllFunctionsKlibFirstStagePhase), heap peak $UINT$ MB, allocated $UINT$ MB, $UINT$ GCs ($UINT$ ms)
+            DYNAMIC PHASE        $UINT>>$ ms            $REAL>>$ loc/s (TailrecCheckerLowering), heap peak $UINT$ MB, allocated $UINT$ MB, $UINT$ GCs ($UINT$ ms)
+         IR SERIALIZATION        $UINT>>$ ms            $REAL>>$ loc/s, heap peak $UINT$ MB, allocated $UINT$ MB, $UINT$ GCs ($UINT$ ms)
+             KLIB WRITING        $UINT>>$ ms            $REAL>>$ loc/s, heap peak $UINT$ MB, allocated $UINT$ MB, $UINT$ GCs ($UINT$ ms)
 KLIB element 'KLIB file cumulative size' has size of $UINT$ Bytes
 KLIB element 'KLIB file cumulative size/IR (inlinable functions)' has size of $UINT$ Bytes
 KLIB element 'KLIB file cumulative size/IR (inlinable functions)/IR bodies' has size of $UINT$ Bytes

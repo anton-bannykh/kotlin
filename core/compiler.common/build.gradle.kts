@@ -5,6 +5,14 @@ plugins {
     id("gradle-plugin-compiler-dependency-configuration")
 }
 
+// `CompilationPhaseEvent.kt` uses the current-thread allocation counter, which appeared in JDK 14. The compiler
+// itself requires a JDK 17 runtime, so that API is available wherever the compiler runs, while the bytecode stays
+// runnable on older JDKs.
+jvmToolchains {
+    jdkVersion = JdkMajorVersion.JDK_17_0
+    jdkApiVersion = jdkVersion
+}
+
 dependencies {
     api(project(":core:util.runtime"))
     api(project(":core:names"))

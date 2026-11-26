@@ -6,8 +6,10 @@
 package org.jetbrains.kotlin.stats
 
 import org.jetbrains.kotlin.util.CompilerType
+import org.jetbrains.kotlin.util.DynamicMemoryStats
 import org.jetbrains.kotlin.util.DynamicStats
 import org.jetbrains.kotlin.util.GarbageCollectionStats
+import org.jetbrains.kotlin.util.MemoryStats
 import org.jetbrains.kotlin.util.PhaseType
 import org.jetbrains.kotlin.util.PlatformType
 import org.jetbrains.kotlin.util.SideStats
@@ -111,6 +113,9 @@ class StatsCalculator(val reportsData: ReportsData) {
         val gcStats = mutableMapOf<String, Pair<GarbageCollectionStats, Long>>()
         var jitTimeMillis: Long = 0
         var measuredCpuAndUserTime = true
+        // Null unless some unit tracked the memory
+        var memoryStats: MutableMap<PhaseType, MemoryStats>? = null
+        var dynamicMemoryStats: LinkedHashMap<Pair<PhaseType, String>, MemoryStats>? = null
 
         for (moduleStats in this) {
             if (name == null) {
@@ -162,6 +167,13 @@ class StatsCalculator(val reportsData: ReportsData) {
             }
             jitTimeMillis += moduleStats.jitTimeMillis ?: 0
             measuredCpuAndUserTime = measuredCpuAndUserTime && moduleStats.measuredCpuAndUserTime
+            moduleStats.memoryStats?.forEach { [phaseType, memory] ->
+                (memoryStats ?: sortedMapOf<PhaseType, MemoryStats>().also { memoryStats = it }).merge(phaseType, memory, MemoryStats::plus)
+            }
+            moduleStats.dynamicMemoryStats?.forEach { (val parentPhase = parentPhaseType, val name, val memory) ->
+                (dynamicMemoryStats ?: LinkedHashMap<Pair<PhaseType, String>, MemoryStats>().also { dynamicMemoryStats = it })
+                    .merge(parentPhase to name, memory, MemoryStats::plus)
+            }
         }
 
         fun getStats(total: Boolean): UnitStats {
@@ -200,6 +212,11 @@ class StatsCalculator(val reportsData: ReportsData) {
                     )
                 },
                 jitTimeMillis = jitTimeMillis.let { if (total) it else it / size },
+                memoryStats = memoryStats?.mapValues { [_, memory] -> if (total) memory else memory / size },
+                dynamicMemoryStats = dynamicMemoryStats?.map { [key, memory] ->
+                    val [phaseType, name] = key
+                    DynamicMemoryStats(phaseType, name, if (total) memory else memory / size)
+                },
             )
         }
 

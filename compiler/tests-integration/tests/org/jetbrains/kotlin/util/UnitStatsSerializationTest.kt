@@ -52,6 +52,13 @@ class UnitStatsSerializationTest {
                 KlibElementStats("KLIB directory cumulative size/Manifest file", 40_000),
                 KlibElementStats("KLIB directory cumulative size/IR files", 60_000)
             ),
+            memoryStats = mapOf(
+                PhaseType.IrLowering to MemoryStats(10_000_000L, 20_000_000L, gcCount = 2, gcPauseNanos = 3_000_000L),
+                PhaseType.Backend to MemoryStats(12_000_000L, 22_000_000L, gcCount = 0, gcPauseNanos = 0L),
+            ),
+            dynamicMemoryStats = listOf(
+                DynamicMemoryStats(PhaseType.IrLowering, "Dynamic 2", MemoryStats(11_000_000L, 21_000_000L, gcCount = 1, gcPauseNanos = 4_000_000L)),
+            ),
         )
 
         val serialized = UnitStatsJsonDumper.dump(moduleStats)

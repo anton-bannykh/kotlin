@@ -5,6 +5,9 @@
 
 package org.jetbrains.kotlin.stats
 
+import org.jetbrains.kotlin.util.DynamicMemoryStats
+import org.jetbrains.kotlin.util.MemoryStats
+import org.jetbrains.kotlin.util.PhaseType
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -152,6 +155,38 @@ class MarkdownRendererTests {
 
 """,
             MarkdownReportRenderer(StatsCalculator(TestData.timeStampStats)).render()
+        )
+    }
+
+    @Test
+    fun testMemoryRendering() {
+        val mb = 1024L * 1024
+        val ms = 1_000_000L
+        val stats = ModulesReportsData(
+            listOf(
+                TestData.moduleStats0.copy(
+                    memoryStats = mapOf(PhaseType.Analysis to MemoryStats(100 * mb, 300 * mb, gcCount = 2, gcPauseNanos = 20 * ms)),
+                    dynamicMemoryStats = listOf(
+                        DynamicMemoryStats(PhaseType.IrPreLowering, "IrPreLoweringDynamicStat1", MemoryStats(50 * mb, 10 * mb, 0, 0))
+                    ),
+                ),
+                TestData.moduleStats1.copy(
+                    memoryStats = mapOf(PhaseType.Analysis to MemoryStats(150 * mb, 200 * mb, gcCount = 1, gcPauseNanos = 15 * ms)),
+                ),
+            ).associateBy { it.name!! }
+        )
+
+        // The peaks of the modules keep the highest one, the rest is summed up
+        assertEquals(
+            """# Memory
+
+| Phase                       | Heap peak | Allocated |       GCs | GC pauses |
+| --------------------------- | --------: | --------: | --------: | --------: |
+| ANALYZE                     |    150 MB |    500 MB |         3 |     35 ms |
+| ↳ IrPreLoweringDynamicStat1 |     50 MB |     10 MB |         0 |      0 ms |
+
+""",
+            MarkdownReportRenderer(StatsCalculator(stats)).render().let { "# Memory" + it.substringAfter("# Memory").substringBefore("# System stats") }
         )
     }
 }

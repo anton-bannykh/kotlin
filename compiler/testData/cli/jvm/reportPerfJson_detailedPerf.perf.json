@@ -69,5 +69,39 @@
       "millis": $UINT$
     }
   ],
-  "jitTimeMillis": $UINT$
+  "jitTimeMillis": $UINT$,
+  "memoryStats": {
+    "Analysis": {
+      "peakHeapBytes": $UINT$,
+      "allocatedBytes": $UINT$,
+      "gcCount": $UINT$,
+      "gcPauseNanos": $UINT$
+    },
+    "TranslationToIr": {
+      "peakHeapBytes": $UINT$,
+      "allocatedBytes": $UINT$,
+      "gcCount": $UINT$,
+      "gcPauseNanos": $UINT$
+    },
+    "KlibMetadataWriting": {
+      "peakHeapBytes": $UINT$,
+      "allocatedBytes": $UINT$,
+      "gcCount": $UINT$,
+      "gcPauseNanos": $UINT$
+    },
+    "IrLowering": {
+      "peakHeapBytes": $UINT$,
+      "allocatedBytes": $UINT$,
+      "gcCount": $UINT$,
+      "gcPauseNanos": $UINT$
+    },
+    "Backend": {
+      "peakHeapBytes": $UINT$,
+      "allocatedBytes": $UINT$,
+      "gcCount": $UINT$,
+      "gcPauseNanos": $UINT$
+    }
+  },
+  "dynamicMemoryStats": [
+  ]
 }

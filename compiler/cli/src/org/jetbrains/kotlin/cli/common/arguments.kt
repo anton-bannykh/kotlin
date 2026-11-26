@@ -25,6 +25,7 @@ import org.jetbrains.kotlin.diagnostics.KtSourcelessDiagnosticFactory
 import org.jetbrains.kotlin.metadata.deserialization.BinaryVersion
 import org.jetbrains.kotlin.types.AbstractTypeChecker
 import org.jetbrains.kotlin.types.FlexibleTypeImpl
+import org.jetbrains.kotlin.util.PerformanceManager
 import org.jetbrains.kotlin.utils.DFS
 import org.jetbrains.kotlin.utils.KotlinPaths
 import org.jetbrains.kotlin.utils.KotlinPathsFromHomeDir
@@ -73,6 +74,13 @@ fun CompilerConfiguration.setupCommonArguments(
         )
     }
     put(CommonConfigurationKeys.ADDITIONAL_IR_CHECKERS, arguments.enableAdditionalIrCheckers.toList())
+
+    if (arguments.detailedPerf && (arguments.reportPerf || arguments.dumpPerf != null) && !PerformanceManager.isMemoryTrackingSupported) {
+        this.report(
+            COMPILER_ARGUMENTS_WARNING,
+            "The memory used by each phase is not reported because the Java runtime lacks Java Flight Recorder (the 'jdk.jfr' module)."
+        )
+    }
 
     setupMetadataVersion(arguments, createMetadataVersion)
 

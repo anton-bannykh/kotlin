@@ -68,6 +68,10 @@ data class UnitStats(
 
     @property:DeprecatedMeasurementForBackCompatibility
     val extendedStats: List<String>? = null,
+
+    // Null if the memory is not tracked, see `PerformanceManager.isMemoryTrackingSupported`
+    val memoryStats: Map<PhaseType, MemoryStats>? = null,
+    val dynamicMemoryStats: List<DynamicMemoryStats>? = null,
 ) : Comparable<UnitStats> {
     fun getTotalTime(): Time {
         return Time.ZERO +
@@ -217,7 +221,38 @@ data class GarbageCollectionStats(val kind: String, val millis: Long, val count:
     }
 }
 
+/**
+ * Memory used by a phase or a dynamic phase.
+ *
+ * [allocatedBytes] is allocated by the thread that ran the phase, so it is exact even when phases run in parallel.
+ * [peakHeapBytes] is the peak usage of the whole heap while the phase was running, so it includes whatever
+ * was in use when the phase started. Like [gcCount] and [gcPauseNanos], it is attributed to every phase
+ * running at the time, whatever thread or unit the phase belongs to.
+ *
+ * A phase measured several times under the same name, like a lowering applied per file, keeps the highest peak
+ * and sums up the rest.
+ */
+data class MemoryStats(
+    val peakHeapBytes: Long,
+    val allocatedBytes: Long,
+    val gcCount: Int,
+    val gcPauseNanos: Long,
+) {
+    operator fun plus(other: MemoryStats): MemoryStats = MemoryStats(
+        maxOf(peakHeapBytes, other.peakHeapBytes),
+        allocatedBytes + other.allocatedBytes,
+        gcCount + other.gcCount,
+        gcPauseNanos + other.gcPauseNanos,
+    )
+
+    /** Averages the summed up measurements, the peak stays the highest one. */
+    operator fun div(divider: Int): MemoryStats =
+        MemoryStats(peakHeapBytes, allocatedBytes / divider, gcCount / divider, gcPauseNanos / divider)
+}
+
 data class DynamicStats(val parentPhaseType: PhaseType, val name: String, val time: Time)
+
+data class DynamicMemoryStats(val parentPhaseType: PhaseType, val name: String, val memory: MemoryStats)
 
 data class KlibElementStats(val path: String, val size: Long)
 
@@ -271,7 +306,7 @@ fun PerformanceManager.forEachStringMeasurement(action: (String) -> Unit) {
                             "%12.3f loc/s".format(Locale.ENGLISH, getLinesPerSecond(time))
                         } else {
                             ""
-                        }
+                        } + memoryStats?.get(phaseType).formatMemory()
             )
 
             dynamicStats?.filter { it.parentPhaseType == phaseType }?.let { filteredDynamicStats ->
@@ -283,7 +318,7 @@ fun PerformanceManager.forEachStringMeasurement(action: (String) -> Unit) {
                                         "%12.3f loc/s ($dynamicName)".format(Locale.ENGLISH, getLinesPerSecond(dynamicTime))
                                     } else {
                                         " ($dynamicName)"
-                                    }
+                                    } + dynamicMemoryStats?.find { it.parentPhaseType == phaseType && it.name == dynamicName }?.memory.formatMemory()
                         )
                     }
                 } else {
@@ -326,6 +361,14 @@ fun PerformanceManager.forEachStringMeasurement(action: (String) -> Unit) {
         @OptIn(DeprecatedMeasurementForBackCompatibility::class)
         extendedStats?.forEach { action(it) }
     }
+}
+
+private fun MemoryStats?.formatMemory(): String {
+    if (this == null) return ""
+    val mb = 1024 * 1024
+    return ", heap peak %d MB, allocated %d MB, %d GCs (%d ms)".format(
+        peakHeapBytes / mb, allocatedBytes / mb, gcCount, TimeUnit.NANOSECONDS.toMillis(gcPauseNanos)
+    )
 }
 
 val nanosInSecond = TimeUnit.SECONDS.toNanos(1)

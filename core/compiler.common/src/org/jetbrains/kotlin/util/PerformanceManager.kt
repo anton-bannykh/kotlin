@@ -27,6 +27,10 @@ import java.util.*
 abstract class PerformanceManager(val targetPlatform: TargetPlatform, val presentableName: String) {
     companion object {
         private const val DEBUG_MODE: Boolean = false
+
+        /** `false` when the runtime lacks Java Flight Recorder, which the memory is tracked with. */
+        val isMemoryTrackingSupported: Boolean
+            get() = FlightRecorderSupport.isAvailable
     }
 
     private lateinit var thread: Thread
@@ -59,6 +63,16 @@ abstract class PerformanceManager(val targetPlatform: TargetPlatform, val presen
     private var currentDynamicPhaseTime: Time? = null
     private var currentDynamicPhase: String? = null
     private val dynamicPhaseMeasurements = LinkedHashMap<Pair<PhaseType, String>, Time>()
+
+    // Random rather than a counter: compilers loaded by different class loaders of one process would count independently
+    internal var compilationId: Long = Random().nextLong()
+    private var phaseEvent: CompilationPhaseEvent? = null
+    private var dynamicPhaseEvent: CompilationPhaseEvent? = null
+    private var isMeasuring: Boolean = false
+    private var memoryRecording: PhaseMemoryRecording? = null
+    // Null if the memory is not tracked
+    private var phaseMemoryMeasurements: SortedMap<PhaseType, MemoryStats>? = null
+    private var dynamicPhaseMemoryMeasurements: LinkedHashMap<Pair<PhaseType, String>, MemoryStats>? = null
 
     private val klibElementStats: SortedMap<String, Long> = sortedMapOf()
 
@@ -159,6 +173,11 @@ abstract class PerformanceManager(val targetPlatform: TargetPlatform, val presen
             gcMeasurements.values.toList(),
             jitTimeMillis,
             extendedStats,
+            phaseMemoryMeasurements,
+            dynamicPhaseMemoryMeasurements?.map { [key, memory] ->
+                val [phaseType, name] = key
+                DynamicMemoryStats(phaseType, name, memory)
+            },
         )
     }
 
@@ -208,6 +227,23 @@ abstract class PerformanceManager(val targetPlatform: TargetPlatform, val presen
 
         @OptIn(DeprecatedMeasurementForBackCompatibility::class)
         otherUnitStats.extendedStats?.let { extendedStats.addAll(it) }
+
+        otherUnitStats.memoryStats?.forEach { [phaseType, memory] ->
+            addPhaseMemory(phaseType, dynamicPhase = null, memory)
+        }
+        otherUnitStats.dynamicMemoryStats?.forEach { (val phaseType = parentPhaseType, val name, val memory) ->
+            addPhaseMemory(phaseType, name, memory)
+        }
+    }
+
+    private fun addPhaseMemory(phaseType: PhaseType, dynamicPhase: String?, memory: MemoryStats) {
+        if (dynamicPhase == null) {
+            (phaseMemoryMeasurements ?: sortedMapOf<PhaseType, MemoryStats>().also { phaseMemoryMeasurements = it })
+                .merge(phaseType, memory, MemoryStats::plus)
+        } else {
+            (dynamicPhaseMemoryMeasurements ?: LinkedHashMap<Pair<PhaseType, String>, MemoryStats>().also { dynamicPhaseMemoryMeasurements = it })
+                .merge(phaseType to dynamicPhase, memory, MemoryStats::plus)
+        }
     }
 
     private fun TargetPlatform.getPlatformEnumValue(): PlatformType {
@@ -236,6 +272,27 @@ abstract class PerformanceManager(val targetPlatform: TargetPlatform, val presen
         }
     }
 
+    /**
+     * Measures the compilation until the returned measurement is closed, which finishes the compilation, see [notifyCompilationFinished].
+     * Closing it finishes the compilation even when it fails, so the measurements are always final and the resources used
+     * for them are released.
+     *
+     * With [detailedPerf] and the extended statistics, it also records the memory used by the phases of this manager and
+     * of its children (see [PerformanceManagerImpl.createChildIfNeeded]), see [MemoryStats].
+     *
+     * A compilation that is already measured, like the first stage of a one-stage Kotlin/Native compilation, gets a measurement
+     * that does nothing when closed, so the compilation is finished by the code that started measuring it.
+     */
+    fun measureCompilation(): AutoCloseable {
+        ensureNotFinalizedAndSameThread()
+        if (isMeasuring || isFinalized) return AutoCloseable {}
+        isMeasuring = true
+        if (detailedPerf && isExtendedStatsEnabled && isMemoryTrackingSupported) {
+            memoryRecording = PhaseMemoryRecording(compilationId)
+        }
+        return AutoCloseable { notifyCompilationFinished() }
+    }
+
     open fun addSourcesStats(files: Int, lines: Int) {
         ensureNotFinalizedAndSameThread()
 
@@ -244,6 +301,7 @@ abstract class PerformanceManager(val targetPlatform: TargetPlatform, val presen
     }
 
     fun notifyDynamicPhaseStarted(name: String) {
+        dynamicPhaseEvent = startPhaseEvent()
         currentDynamicPhaseTime = currentTime()
         currentDynamicPhase = name
     }
@@ -258,6 +316,8 @@ abstract class PerformanceManager(val targetPlatform: TargetPlatform, val presen
             dynamicPhaseMeasurements[parentPhaseType to name] =
                 (dynamicPhaseMeasurements[parentPhaseType to name] ?: Time.ZERO) + (currentTime() - localCurrentDynamicPhaseTime)
         }
+        dynamicPhaseEvent?.finish(compilationId, parentPhaseType, name)
+        dynamicPhaseEvent = null
         currentDynamicPhaseTime = null
     }
 
@@ -274,6 +334,7 @@ abstract class PerformanceManager(val targetPlatform: TargetPlatform, val presen
 
         phaseStartTime = currentTime()
         currentPhaseType = newPhaseType
+        phaseEvent = startPhaseEvent()
     }
 
     fun notifyPhaseFinished(phaseType: PhaseType) {
@@ -283,7 +344,7 @@ abstract class PerformanceManager(val targetPlatform: TargetPlatform, val presen
         finishPhase(phaseType)
     }
 
-    open fun notifyCompilationFinished() {
+    protected open fun notifyCompilationFinished() {
         ensureNotFinalizedAndSameThread()
         isFinalized = true
 
@@ -296,6 +357,13 @@ abstract class PerformanceManager(val targetPlatform: TargetPlatform, val presen
         // In this case, the current phase measurement is being finished here.
         @OptIn(PotentiallyIncorrectPhaseTimeMeasurement::class)
         notifyCurrentPhaseFinishedIfNeeded()
+
+        memoryRecording?.stop()?.let { phases ->
+            phaseMemoryMeasurements = phaseMemoryMeasurements ?: sortedMapOf()
+            dynamicPhaseMemoryMeasurements = dynamicPhaseMemoryMeasurements ?: LinkedHashMap()
+            phases.forEach { (phaseType, dynamicPhase, stats) -> addPhaseMemory(phaseType, dynamicPhase, stats) }
+        }
+        memoryRecording = null
 
         if (!isExtendedStatsEnabled) return
 
@@ -336,7 +404,13 @@ abstract class PerformanceManager(val targetPlatform: TargetPlatform, val presen
             phaseMeasurements[phaseType] = (phaseMeasurements[phaseType] ?: Time.ZERO) + (currentTime() - localPhaseStartTime)
         }
         phaseStartTime = null
+        phaseEvent?.finish(compilationId, phaseType, null)
+        phaseEvent = null
     }
+
+    // `CompilationPhaseEvent` fails to load without `jdk.jfr`
+    private fun startPhaseEvent(): CompilationPhaseEvent? =
+        if (isMemoryTrackingSupported) CompilationPhaseEvent.startIfEnabled() else null
 
     internal fun <T> measureSideTime(phaseSideType: PhaseSideType, block: () -> T): T {
         ensureNotFinalizedAndSameThread()
@@ -452,6 +526,7 @@ class PerformanceManagerImpl(targetPlatform: TargetPlatform, presentableName: St
                         it.notifyPhaseFinished(PhaseType.Initialization)
                     }
                     it.compilerType = mainPerformanceManager.compilerType
+                    it.compilationId = mainPerformanceManager.compilationId
                 }
             } else {
                 null
